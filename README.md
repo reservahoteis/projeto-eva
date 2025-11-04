@@ -374,7 +374,7 @@ Este software é desenvolvido para uso exclusivo em redes de hotéis autorizadas
 
 ## 👨‍💻 Desenvolvido por
 
-**Claude Code** (Anthropic)
+**3IAN Tecnologia** 
 Desenvolvido com excelência para atender os mais altos padrões enterprise.
 
 ---

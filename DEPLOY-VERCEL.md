@@ -25,8 +25,9 @@ apps/frontend
 
 ### 3️⃣ **Build Command**
 ```bash
-pnpm install && pnpm build
+pnpm build
 ```
+⚠️ **IMPORTANTE**: Use apenas `pnpm build` (não `pnpm install && pnpm build`)
 
 ### 4️⃣ **Output Directory**
 ```
@@ -68,8 +69,8 @@ Configure as seguintes variáveis na seção "Environment Variables" da Vercel:
 | Campo | Valor |
 |-------|-------|
 | **Framework** | Next.js |
-| **Root Directory** | `apps/frontend` |
-| **Build Command** | `pnpm install && pnpm build` |
+| **Root Directory** | `apps/frontend` ✅ + "Include source files..." |
+| **Build Command** | `pnpm build` |
 | **Output Directory** | `.next` |
 | **Install Command** | `pnpm install` |
 | **Node Version** | 20.x (automático) |
@@ -85,7 +86,7 @@ Configure as seguintes variáveis na seção "Environment Variables" da Vercel:
    - Root Directory: `apps/frontend` ✅ marcar "Include source files..."
 
 3. **Build and Output Settings**:
-   - Build Command: `pnpm install && pnpm build`
+   - Build Command: `pnpm build`
    - Output Directory: `.next`
    - Install Command: `pnpm install`
 
@@ -112,6 +113,11 @@ Após o deploy, verifique:
 ---
 
 ## 🐛 Troubleshooting
+
+### Erro: "Command exited with 1"
+- **Causa**: Build command incorreto
+- **Solução**: Use apenas `pnpm build` (não `pnpm install && pnpm build`)
+- A Vercel já faz o install automaticamente com o Install Command
 
 ### Erro: "No Output Directory named '.next' found"
 - Verifique se o Root Directory está configurado como `apps/frontend`
@@ -143,8 +149,7 @@ projeto-hoteis-reserva/
 │   └── backend/           ← Deploy na VPS (próximo passo)
 ├── package.json
 ├── pnpm-workspace.yaml
-├── pnpm-lock.yaml
-└── vercel.json           ← Configuração criada
+└── pnpm-lock.yaml
 ```
 
 ---
