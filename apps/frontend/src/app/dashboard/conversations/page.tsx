@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { conversationService } from '@/services/conversation.service';
 import { ConversationStatus } from '@/types';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { KanbanBoard } from '@/components/tenant/kanban-board';
 import { ConversationList } from '@/components/tenant/conversation-list';
 import { Button } from '@/components/ui/button';
