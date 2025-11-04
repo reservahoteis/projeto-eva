@@ -1,0 +1,643 @@
+{
+  "info": {
+    "name": "CRM WhatsApp SaaS - Multi-Tenant API",
+    "description": "Collection completa da API Multi-Tenant para teste",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3001",
+      "type": "string"
+    },
+    {
+      "key": "super_admin_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "tenant_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "tenant_slug",
+      "value": "demo-hotel",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/health",
+          "host": ["{{base_url}}"],
+          "path": ["health"]
+        }
+      }
+    },
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "1. Login Super Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('super_admin_token', jsonData.accessToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@seucrm.com\",\n  \"password\": \"change_me_in_production\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "2. Login Tenant Demo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('tenant_token', jsonData.accessToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@demo.hotel\",\n  \"password\": \"demo123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login?tenant={{tenant_slug}}",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"],
+              "query": [
+                {
+                  "key": "tenant",
+                  "value": "{{tenant_slug}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "3. Get My Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tenant_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/me",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "me"]
+            }
+          }
+        },
+        {
+          "name": "4. Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"REFRESH_TOKEN_AQUI\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "refresh"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Super Admin - Tenants",
+      "item": [
+        {
+          "name": "1. Create Tenant",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{super_admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Hotel Copacabana\",\n  \"slug\": \"hotelcopacabana\",\n  \"email\": \"admin@hotelcopa.com\",\n  \"plan\": \"BASIC\",\n  \"maxAttendants\": 10,\n  \"maxMessages\": 10000\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/tenants",
+              "host": ["{{base_url}}"],
+              "path": ["api", "tenants"]
+            }
+          }
+        },
+        {
+          "name": "2. List All Tenants",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{super_admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/tenants?page=1&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["api", "tenants"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "status",
+                  "value": "ACTIVE",
+                  "disabled": true
+                },
+                {
+                  "key": "search",
+                  "value": "hotel",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "3. Get Tenant by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{super_admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/tenants/TENANT_ID_AQUI",
+              "host": ["{{base_url}}"],
+              "path": ["api", "tenants", "TENANT_ID_AQUI"]
+            }
+          }
+        },
+        {
+          "name": "4. Update Tenant",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{super_admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"ACTIVE\",\n  \"plan\": \"PRO\",\n  \"maxAttendants\": 20\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/tenants/TENANT_ID_AQUI",
+              "host": ["{{base_url}}"],
+              "path": ["api", "tenants", "TENANT_ID_AQUI"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tenant - WhatsApp Config",
+      "item": [
+        {
+          "name": "1. Configure WhatsApp",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tenant_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"whatsappPhoneNumberId\": \"123456789\",\n  \"whatsappAccessToken\": \"EAAG...\",\n  \"whatsappBusinessAccountId\": \"987654321\",\n  \"whatsappAppSecret\": \"abc123...\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/tenant/whatsapp-config?tenant={{tenant_slug}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "tenant", "whatsapp-config"],
+              "query": [
+                {
+                  "key": "tenant",
+                  "value": "{{tenant_slug}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "2. Get WhatsApp Config",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tenant_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/tenant/whatsapp-config?tenant={{tenant_slug}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "tenant", "whatsapp-config"],
+              "query": [
+                {
+                  "key": "tenant",
+                  "value": "{{tenant_slug}}"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Conversations",
+      "item": [
+        {
+          "name": "1. List Conversations",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tenant_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/conversations?tenant={{tenant_slug}}&status=OPEN&page=1&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["api", "conversations"],
+              "query": [
+                {
+                  "key": "tenant",
+                  "value": "{{tenant_slug}}"
+                },
+                {
+                  "key": "status",
+                  "value": "OPEN"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "priority",
+                  "value": "HIGH",
+                  "disabled": true
+                },
+                {
+                  "key": "search",
+                  "value": "João",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "2. Get Conversation by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tenant_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/conversations/CONVERSATION_ID?tenant={{tenant_slug}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "conversations", "CONVERSATION_ID"],
+              "query": [
+                {
+                  "key": "tenant",
+                  "value": "{{tenant_slug}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "3. Update Conversation",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tenant_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"IN_PROGRESS\",\n  \"priority\": \"HIGH\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/conversations/CONVERSATION_ID?tenant={{tenant_slug}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "conversations", "CONVERSATION_ID"],
+              "query": [
+                {
+                  "key": "tenant",
+                  "value": "{{tenant_slug}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "4. Assign Conversation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tenant_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"USER_ID_AQUI\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/conversations/CONVERSATION_ID/assign?tenant={{tenant_slug}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "conversations", "CONVERSATION_ID", "assign"],
+              "query": [
+                {
+                  "key": "tenant",
+                  "value": "{{tenant_slug}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "5. Close Conversation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tenant_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/conversations/CONVERSATION_ID/close?tenant={{tenant_slug}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "conversations", "CONVERSATION_ID", "close"],
+              "query": [
+                {
+                  "key": "tenant",
+                  "value": "{{tenant_slug}}"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Messages",
+      "item": [
+        {
+          "name": "1. List Messages",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tenant_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/messages/conversations/CONVERSATION_ID/messages?tenant={{tenant_slug}}&limit=50",
+              "host": ["{{base_url}}"],
+              "path": ["api", "messages", "conversations", "CONVERSATION_ID", "messages"],
+              "query": [
+                {
+                  "key": "tenant",
+                  "value": "{{tenant_slug}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                },
+                {
+                  "key": "before",
+                  "value": "MESSAGE_ID",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "2. Send Message (Text)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tenant_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"conversationId\": \"CONVERSATION_ID_AQUI\",\n  \"content\": \"Olá! Como posso ajudar?\",\n  \"type\": \"TEXT\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/messages?tenant={{tenant_slug}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "messages"],
+              "query": [
+                {
+                  "key": "tenant",
+                  "value": "{{tenant_slug}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "3. Send Message (Image)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tenant_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"conversationId\": \"CONVERSATION_ID_AQUI\",\n  \"content\": \"https://exemplo.com/imagem.jpg\",\n  \"type\": \"IMAGE\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/messages?tenant={{tenant_slug}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "messages"],
+              "query": [
+                {
+                  "key": "tenant",
+                  "value": "{{tenant_slug}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "4. Mark as Read",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tenant_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/messages/MESSAGE_ID/read?tenant={{tenant_slug}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "messages", "MESSAGE_ID", "read"],
+              "query": [
+                {
+                  "key": "tenant",
+                  "value": "{{tenant_slug}}"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Webhooks - WhatsApp",
+      "item": [
+        {
+          "name": "Verify Webhook (Meta)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=dev_webhook_token_change_me&hub.challenge=1234567890&tenant={{tenant_slug}}",
+              "host": ["{{base_url}}"],
+              "path": ["webhooks", "whatsapp"],
+              "query": [
+                {
+                  "key": "hub.mode",
+                  "value": "subscribe"
+                },
+                {
+                  "key": "hub.verify_token",
+                  "value": "dev_webhook_token_change_me"
+                },
+                {
+                  "key": "hub.challenge",
+                  "value": "1234567890"
+                },
+                {
+                  "key": "tenant",
+                  "value": "{{tenant_slug}}"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

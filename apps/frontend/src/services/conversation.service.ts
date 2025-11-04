@@ -1,0 +1,83 @@
+import api from '@/lib/axios';
+import { Conversation, ConversationStatus, PaginatedResponse } from '@/types';
+
+interface ListConversationsParams {
+  page?: number;
+  limit?: number;
+  status?: ConversationStatus;
+  assignedToId?: string;
+  search?: string;
+}
+
+interface UpdateConversationRequest {
+  status?: ConversationStatus;
+  assignedToId?: string;
+}
+
+interface AssignConversationRequest {
+  userId: string;
+}
+
+/**
+ * Conversation service (Tenant users)
+ */
+export const conversationService = {
+  /**
+   * List conversations
+   */
+  async list(params?: ListConversationsParams): Promise<PaginatedResponse<Conversation>> {
+    const { data } = await api.get<PaginatedResponse<Conversation>>('/api/conversations', {
+      params,
+    });
+    return data;
+  },
+
+  /**
+   * Get conversation by ID (with messages)
+   */
+  async getById(id: string): Promise<Conversation> {
+    const { data } = await api.get<Conversation>(`/api/conversations/${id}`);
+    return data;
+  },
+
+  /**
+   * Update conversation
+   */
+  async update(id: string, payload: UpdateConversationRequest): Promise<Conversation> {
+    const { data } = await api.patch<Conversation>(`/api/conversations/${id}`, payload);
+    return data;
+  },
+
+  /**
+   * Assign conversation to user
+   */
+  async assign(id: string, userId: string): Promise<Conversation> {
+    const { data } = await api.post<Conversation>(`/api/conversations/${id}/assign`, {
+      userId,
+    });
+    return data;
+  },
+
+  /**
+   * Close conversation
+   */
+  async close(id: string): Promise<Conversation> {
+    const { data } = await api.post<Conversation>(`/api/conversations/${id}/close`);
+    return data;
+  },
+
+  /**
+   * Get conversation statistics
+   */
+  async getStats(): Promise<{
+    total: number;
+    open: number;
+    pending: number;
+    inProgress: number;
+    resolved: number;
+    closed: number;
+  }> {
+    const { data } = await api.get('/api/conversations/stats');
+    return data;
+  },
+};

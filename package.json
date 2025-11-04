@@ -1,0 +1,36 @@
+{
+  "name": "crm-whatsapp-saas",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SaaS Multi-Tenant CRM WhatsApp para Hotéis",
+  "author": "Sua Empresa",
+  "license": "PROPRIETARY",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "pnpm --parallel -r dev",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "lint": "pnpm -r lint",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "clean": "pnpm -r clean && rm -rf node_modules",
+    "backend:dev": "pnpm --filter @crm/backend dev",
+    "frontend:dev": "pnpm --filter @crm/frontend dev",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "prisma:studio": "pnpm --filter @crm/backend prisma:studio",
+    "prisma:migrate": "pnpm --filter @crm/backend prisma:migrate"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "prettier": "^3.1.0",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@8.15.0"
+}
