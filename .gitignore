@@ -48,6 +48,11 @@ prisma/migrations/**/*.sql
 # Docker
 .docker/
 
+# Deploy & SSL
+backups/
+infra/certbot/conf/
+infra/certbot/www/
+
 # Misc
 *.pem
 *.key
