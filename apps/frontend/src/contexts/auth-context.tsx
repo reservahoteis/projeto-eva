@@ -22,28 +22,36 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  // 🚀 MODO DEMO - Usuário mock para testar sem backend
-  const DEMO_USER: User = {
-    id: 'demo-user-id',
-    tenantId: 'demo-tenant-id',
-    email: 'demo@hotel.com',
-    name: 'Demo User',
-    role: 'TENANT_ADMIN' as any,
-    status: 'ACTIVE' as any,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-
-  const [user, setUser] = useState<User | null>(DEMO_USER); // Login automático!
-  const [isLoading, setIsLoading] = useState(false); // Não precisa carregar
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
   // Check if user is logged in on mount
   useEffect(() => {
-    // MODO DEMO - já está logado automaticamente
-    setUser(DEMO_USER);
-    setIsLoading(false);
+    checkAuth();
   }, []);
+
+  const checkAuth = async () => {
+    try {
+      const token = localStorage.getItem('accessToken');
+
+      if (!token) {
+        setIsLoading(false);
+        return;
+      }
+
+      // Verify token and get user
+      const currentUser = await authService.me();
+      setUser(currentUser);
+    } catch (error) {
+      // Token invalid or expired
+      console.error('Auth check failed:', error);
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const login = async (email: string, password: string) => {
     try {

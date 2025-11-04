@@ -19,10 +19,6 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
   const { user, isLoading, isAuthenticated } = useAuth();
   const router = useRouter();
 
-  // 🚀 MODO DEMO - Desabilitado para testes sem backend
-  // Comentei as verificações para você poder navegar livremente
-
-  /*
   useEffect(() => {
     if (!isLoading) {
       // Not authenticated -> redirect to login
@@ -38,7 +34,6 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
       }
     }
   }, [isLoading, isAuthenticated, user, allowedRoles, router]);
-  */
 
   // Show loading state
   if (isLoading) {
@@ -49,6 +44,15 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
     );
   }
 
-  // MODO DEMO - Sempre renderiza os children
+  // Not authenticated
+  if (!isAuthenticated) {
+    return null;
+  }
+
+  // Wrong role
+  if (allowedRoles && user && !allowedRoles.includes(user.role)) {
+    return null;
+  }
+
   return <>{children}</>;
 }
