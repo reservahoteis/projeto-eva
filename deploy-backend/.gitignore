@@ -1,0 +1,99 @@
+# ========================================
+# Node.js & npm
+# ========================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ========================================
+# Build Output
+# ========================================
+dist/
+build/
+*.tsbuildinfo
+
+# ========================================
+# Environment Variables
+# ========================================
+.env
+.env.local
+.env.production
+.env.*.local
+**/.env.production  # ⚠️ NUNCA commitar produção!
+
+# ========================================
+# TypeScript
+# ========================================
+*.tsbuildinfo
+
+# ========================================
+# Prisma
+# ========================================
+prisma/migrations/.migrationlock
+
+# ========================================
+# Logs
+# ========================================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ========================================
+# OS Files
+# ========================================
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# ========================================
+# IDE & Editors
+# ========================================
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+.history/
+
+# ========================================
+# Docker
+# ========================================
+.dockerignore
+
+# ========================================
+# Backups & Archives
+# ========================================
+*.sql
+*.tar.gz
+*.zip
+backups/
+*.bak
+
+# ========================================
+# Credentials & Sensitive Data
+# ========================================
+CREDENTIALS.md  # ⚠️ Contém senhas e tokens!
+secrets/
+*.key
+*.pem
+*.cert
+
+# ========================================
+# Testing
+# ========================================
+coverage/
+.nyc_output/
+*.test.ts.snap
+
+# ========================================
+# Temporary Files
+# ========================================
+tmp/
+temp/
+*.tmp
