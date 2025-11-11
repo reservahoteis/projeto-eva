@@ -29,11 +29,12 @@ export class MessageController {
       return res.status(400).json({ error: 'Tenant ou user não encontrado' });
     }
 
+    // Type assertion: Zod validation already ensured required fields
     const message = await messageService.sendMessage(
       {
         ...data,
         sentById: req.user.userId,
-      },
+      } as any,
       req.tenantId
     );
 

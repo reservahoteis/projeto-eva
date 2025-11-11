@@ -1,89 +1,73 @@
-# 🏨 CRM WhatsApp para Hotéis - SaaS Multi-Tenant
+# 🏨 CRM WhatsApp SaaS Multi-Tenant
 
-> **Plataforma SaaS enterprise de gerenciamento de conversas WhatsApp com arquitetura multi-tenant**
+> **Sistema completo de CRM com integração WhatsApp Business API para gestão de múltiplos hotéis**
 
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue)](https://www.typescriptlang.org/)
-[![Node.js](https://img.shields.io/badge/Node.js-20-green)](https://nodejs.org/)
-[![Next.js](https://img.shields.io/badge/Next.js-14-black)](https://nextjs.org/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue)](https://www.postgresql.org/)
-[![Multi-Tenant](https://img.shields.io/badge/Architecture-Multi--Tenant-orange)]()
-[![License](https://img.shields.io/badge/License-Proprietário-red)]()
+[![Node.js](https://img.shields.io/badge/Node.js-20.11.0-green.svg)](https://nodejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.3.3-blue.svg)](https://www.typescriptlang.org/)
+[![Prisma](https://img.shields.io/badge/Prisma-5.9.1-2D3748.svg)](https://www.prisma.io/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16.1-336791.svg)](https://www.postgresql.org/)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Production](https://img.shields.io/badge/Production-Ready-success.svg)](https://github.com/fredcast/projeto-eva)
 
 ---
 
 ## 📋 Sobre o Projeto
 
-**SaaS Multi-Tenant** para gerenciamento de conversas WhatsApp, desenvolvido para ser **vendido como serviço** para múltiplos hotéis. Cada hotel tem seu **ambiente completamente isolado** com suas próprias credenciais WhatsApp.
+Sistema SaaS Multi-Tenant completo para gestão de atendimento via WhatsApp, desenvolvido especificamente para o setor hoteleiro. Cada hotel opera de forma isolada com seu próprio subdomínio, credenciais WhatsApp Business API e dados segregados.
 
-### Modelo de Negócio SaaS
+### ✨ Principais Funcionalidades
 
-Similar ao Claude Code, Slack, ou Notion:
-- **Você (Empresa):** Oferece a plataforma como serviço
-- **Clientes (Hotéis):** Assinam mensalmente e têm seu painel exclusivo
-- **Isolamento Total:** Cada hotel (`hotelcopacabana.seucrm.com`) vê apenas seus dados
-- **Escalável:** Suporta centenas/milhares de hotéis na mesma infraestrutura
-
-Utiliza a **WhatsApp Business API oficial da Meta** e oferece:
-
-✅ **Interface Kanban** para gerenciamento visual de conversas
-✅ **Chat em tempo real** similar ao WhatsApp Web
-✅ **Multi-atendente** com atribuição automática
-✅ **Integração n8n** para automações
-✅ **WebSocket** para atualizações instantâneas
-✅ **Sistema de filas** para processamento assíncrono
-✅ **API RESTful** completa e documentada
-✅ **Segurança enterprise** (JWT, RBAC, HTTPS)
-
----
-
-## 🎯 Problema que Resolve
-
-- ❌ **Antes:** Cliente usava ZAPI (API não oficial) com risco de bloqueio
-- ✅ **Agora:** WhatsApp Business API oficial da Meta, 100% dentro das regras
-- ✅ **Bônus:** Interface profissional para atendentes + automações n8n mantidas
+- 🔐 **Multi-Tenant Architecture** - Isolamento completo de dados por tenant (hotel)
+- 💬 **WhatsApp Business API** - Integração oficial com Meta API v21.0
+- 📊 **CRM Completo** - Gestão de contatos, conversas e mensagens
+- 🤖 **Webhook Handling** - Recebimento e processamento de eventos em tempo real
+- 🔒 **Autenticação JWT** - Sistema seguro de autenticação e autorização
+- 📱 **API REST** - Endpoints completos e documentados
+- 🐳 **Docker** - Containerização completa para deploy facilitado
+- 🚀 **Deploy Automático** - Scripts prontos para VPS
 
 ---
 
 ## 🏗️ Arquitetura
 
+### **Stack Tecnológico**
+
+- **Runtime:** Node.js 20.11.0 LTS
+- **Language:** TypeScript 5.3.3
+- **Framework:** Express 4.18.2
+- **ORM:** Prisma 5.9.1
+- **Database:** PostgreSQL 16.1
+- **Cache:** Redis 7.2
+- **Validation:** Zod 3.22.4
+- **Logs:** Pino 8.17.2
+- **Containerization:** Docker + Docker Compose
+
+### **Arquitetura em Camadas**
+
 ```
-┌────────────────┐        ┌────────────────┐        ┌────────────────┐
-│  WhatsApp API  │◄──────►│  Backend API   │◄──────►│  Frontend CRM  │
-│  (Meta Cloud)  │        │  (Node.js)     │        │  (Next.js)     │
-└────────────────┘        └────────┬───────┘        └────────────────┘
-                                   │
-                          ┌────────┴────────┐
-                          │                 │
-                     ┌────▼─────┐    ┌─────▼──────┐
-                     │PostgreSQL│    │   Redis    │
-                     └──────────┘    └────────────┘
+┌─────────────────────────────────────────┐
+│         Routes (Rotas da API)           │
+├─────────────────────────────────────────┤
+│      Middlewares (Validação, Auth)      │
+├─────────────────────────────────────────┤
+│    Controllers (Orquestração)           │
+├─────────────────────────────────────────┤
+│     Services (Lógica de Negócio)        │
+├─────────────────────────────────────────┤
+│   Repositories (Acesso ao Banco)        │
+├─────────────────────────────────────────┤
+│      Database (PostgreSQL + Prisma)     │
+└─────────────────────────────────────────┘
 ```
 
-**Detalhes técnicos:** Veja [DOCS-ARQUITETURA.md](./DOCS-ARQUITETURA.md)
+### **Multi-Tenant por Subdomínio**
 
----
-
-## 🚀 Features Principais
-
-### Para Atendentes
-- 💬 **Chat interface** - Conversar igual WhatsApp Web
-- 📊 **Kanban board** - Arrasta e solta conversas entre status
-- 🔔 **Notificações real-time** - Via WebSocket
-- 🏷️ **Tags e prioridades** - Organizar conversas
-- 📎 **Mídias** - Enviar/receber imagens, vídeos, documentos
-- 👤 **Perfil de contatos** - Histórico completo
-
-### Para Administradores
-- 👥 **Gerenciar atendentes** - Criar, editar, desativar usuários
-- 📈 **Dashboard analytics** - Métricas de atendimento
-- 🎨 **Customizar tags** - Criar etiquetas personalizadas
-- 🔐 **Controle de acesso** - RBAC (Admin/Atendente)
-
-### Para Desenvolvedores (n8n)
-- 🔌 **API RESTful** - Endpoints documentados
-- 📡 **Webhooks** - Receber eventos em tempo real
-- 🔑 **API Key auth** - Autenticação simples
-- 📚 **OpenAPI/Swagger** - Documentação interativa
+```
+hotel1.seudominio.com ──┐
+                        ├──► Backend ──► DB (tenantId: hotel1)
+hotel2.seudominio.com ──┤
+                        └──► Backend ──► DB (tenantId: hotel2)
+```
 
 ---
 
@@ -91,315 +75,347 @@ Utiliza a **WhatsApp Business API oficial da Meta** e oferece:
 
 ```
 projeto-hoteis-reserva/
-├── 📚 DOCS-ARQUITETURA.md           # Arquitetura detalhada
-├── 📚 DOCS-DESENVOLVIMENTO.md       # Guia de desenvolvimento
-├── 📚 DOCS-DEPLOY.md                # Guia de deploy
-├── 📚 DOCS-API-REFERENCE.md         # Referência da API
 │
-├── apps/
-│   ├── backend/                     # API Node.js + TypeScript
+├── 📘 DOCUMENTACAO-DEFINITIVA.md      # Documentação completa do projeto
+├── 🏗️  ARQUITETURA-IDEAL.md            # Guia de boas práticas e anti-patterns
+├── 🎯 MODELO-PROJETO-SUCESSO.md       # Template copy-paste para novos projetos
+├── 📋 README.md                       # Este arquivo
+│
+├── 📂 apps/
+│   ├── backend/                       # Backend em desenvolvimento
 │   │   ├── src/
-│   │   │   ├── controllers/         # Rotas Express
-│   │   │   ├── services/            # Lógica de negócio
-│   │   │   ├── repositories/        # Acesso a dados (Prisma)
-│   │   │   ├── middlewares/         # Auth, validação, etc
-│   │   │   ├── websocket/           # Socket.io handlers
-│   │   │   └── queues/              # Bull jobs (Redis)
-│   │   └── prisma/                  # Schema e migrations
+│   │   │   ├── config/               # Configurações (env, logger, database)
+│   │   │   ├── controllers/          # Controladores da API
+│   │   │   ├── middlewares/          # Middlewares (auth, tenant, validation)
+│   │   │   ├── services/             # Lógica de negócio
+│   │   │   ├── repositories/         # Acesso ao banco de dados
+│   │   │   ├── routes/               # Rotas da API
+│   │   │   ├── validators/           # Schemas de validação Zod
+│   │   │   ├── utils/                # Utilitários
+│   │   │   └── server.ts             # Entry point
+│   │   ├── prisma/                   # Prisma schema e migrations
+│   │   ├── package.json
+│   │   ├── tsconfig.json
+│   │   └── Dockerfile
 │   │
-│   └── frontend/                    # CRM Next.js + React
-│       ├── src/
-│       │   ├── app/                 # Next.js App Router
-│       │   ├── components/          # React components
-│       │   │   ├── kanban/          # Kanban board
-│       │   │   └── chat/            # Chat interface
-│       │   └── lib/                 # API client, utils
-│       └── public/                  # Assets estáticos
+│   └── frontend/                      # Frontend (Next.js) - Em desenvolvimento
 │
-├── packages/                        # Shared code
-│   ├── shared-types/                # TypeScript types
-│   └── config/                      # ESLint, Prettier
+├── 📂 deploy-backend/                 # Backend standalone para VPS (produção)
 │
-└── infra/                           # DevOps
-    ├── docker/                      # Dockerfiles
-    └── docker-compose.yml           # Orquestração
+├── 📂 infra/                          # Infraestrutura
+│   ├── docker-compose.production.yml
+│   └── nginx/                         # Configuração Nginx
+│
+├── 📂 docs/                           # Documentação específica
+│   ├── GUIA-DEPLOY.md                # Guia de deploy completo
+│   ├── GUIA-META-WHATSAPP-API.md     # Configuração WhatsApp Business API
+│   └── FRONTEND-GUIA-RAPIDO.md       # Setup do frontend
+│
+├── 📜 deploy.ps1                      # Script de deploy (Windows)
+├── 📜 deploy.sh                       # Script de deploy (Linux/Mac)
+│
+└── 📜 package.json                    # Root workspace
 ```
 
 ---
 
-## 🛠️ Stack Tecnológico
+## 🚀 Quick Start
 
-### Backend
-- **Node.js 20** + **TypeScript** - Runtime e linguagem
-- **Express.js** - Framework web
-- **Prisma ORM** - Database access layer
-- **PostgreSQL 16** - Database principal
-- **Redis 7** - Cache e filas
-- **Bull/BullMQ** - Job queues
-- **Socket.io** - WebSocket real-time
-- **Zod** - Validação de dados
-- **JWT** - Autenticação
-- **Pino** - Logging estruturado
-- **Jest** - Testes
+### **Pré-requisitos**
 
-### Frontend
-- **Next.js 14** - React framework (App Router)
-- **TypeScript** - Type safety
-- **TailwindCSS** - Styling
-- **Shadcn/ui** - Component library
-- **React Query** - Server state
-- **Zustand** - Client state
-- **Socket.io Client** - WebSocket
-- **Playwright** - E2E tests
+- Node.js 20.11.0 ou superior
+- PostgreSQL 16+
+- Redis 7+ (opcional para desenvolvimento)
+- Docker + Docker Compose (para produção)
 
-### DevOps
-- **Docker** + **Docker Compose** - Containerização
-- **GitHub Actions** - CI/CD
-- **Nginx** - Reverse proxy
-- **Let's Encrypt** - SSL certificates
-
----
-
-## 🚀 Começando
-
-### Pré-requisitos
-
-```bash
-Node.js 20+
-pnpm 8+
-Docker & Docker Compose
-PostgreSQL 16 (ou via Docker)
-Redis 7 (ou via Docker)
-```
-
-### Instalação Rápida (Desenvolvimento)
+### **Instalação Local**
 
 ```bash
 # 1. Clonar repositório
-git clone https://github.com/seu-usuario/projeto-hoteis-reserva.git
-cd projeto-hoteis-reserva
+git clone https://github.com/fredcast/projeto-eva.git
+cd projeto-eva
 
 # 2. Instalar dependências
-pnpm install
+npm install
+cd apps/backend
+npm install
 
 # 3. Configurar variáveis de ambiente
-cp .env.example .env
-# Edite o .env com suas credenciais
+cp .env.example .env.development
+# Edite .env.development com suas credenciais
 
-# 4. Subir banco de dados com Docker
-docker-compose up -d postgres redis
+# 4. Configurar banco de dados
+npx prisma generate
+npx prisma migrate dev
 
-# 5. Rodar migrations
-cd apps/backend
-pnpm prisma migrate dev
-
-# 6. Criar usuário admin
-pnpm prisma db seed
-
-# 7. Iniciar backend (terminal 1)
-pnpm dev
-
-# 8. Iniciar frontend (terminal 2)
-cd ../frontend
-pnpm dev
+# 5. Rodar em desenvolvimento
+npm run dev
 ```
 
-**Acessar:**
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:3001
-- Prisma Studio: http://localhost:5555
+O servidor estará rodando em `http://localhost:3001`
 
-**Login padrão:**
-- Email: `admin@hotel.com`
-- Senha: `admin123` (MUDAR EM PRODUÇÃO!)
+### **Deploy para Produção**
+
+```bash
+# Usar script automático
+./deploy.ps1  # Windows
+bash deploy.sh  # Linux/Mac
+```
+
+Ou veja o [Guia de Deploy Completo](docs/GUIA-DEPLOY.md) para deploy manual.
 
 ---
 
-## 📚 Documentação Completa
+## 📚 Documentação
 
 | Documento | Descrição |
 |-----------|-----------|
-| [DOCS-MULTI-TENANT.md](./DOCS-MULTI-TENANT.md) | **⭐ Arquitetura Multi-Tenant SaaS** (LEIA PRIMEIRO!) |
-| [DOCS-ARQUITETURA.md](./DOCS-ARQUITETURA.md) | Decisões arquiteturais, stack, diagramas |
-| [DOCS-DESENVOLVIMENTO.md](./DOCS-DESENVOLVIMENTO.md) | Como desenvolver cada parte do sistema |
-| [DOCS-DEPLOY.md](./DOCS-DEPLOY.md) | Deploy em VPS (produção) |
-| [DOCS-API-REFERENCE.md](./DOCS-API-REFERENCE.md) | Referência completa da API REST |
+| [DOCUMENTACAO-DEFINITIVA.md](DOCUMENTACAO-DEFINITIVA.md) | 📘 Documentação completa - História, arquitetura, problemas e soluções |
+| [ARQUITETURA-IDEAL.md](ARQUITETURA-IDEAL.md) | 🏗️ Boas práticas e anti-patterns - O que fazer e o que NÃO fazer |
+| [MODELO-PROJETO-SUCESSO.md](MODELO-PROJETO-SUCESSO.md) | 🎯 Template copy-paste para novos projetos similares |
+| [docs/GUIA-DEPLOY.md](docs/GUIA-DEPLOY.md) | 🚀 Guia completo de deploy para VPS |
+| [docs/GUIA-META-WHATSAPP-API.md](docs/GUIA-META-WHATSAPP-API.md) | 💬 Configuração WhatsApp Business API |
+| [docs/FRONTEND-GUIA-RAPIDO.md](docs/FRONTEND-GUIA-RAPIDO.md) | 🎨 Setup e desenvolvimento do frontend |
 
 ---
 
-## 🔐 Configuração WhatsApp Business API
+## 🔌 API Endpoints
 
-### 1. Criar App na Meta
-
-1. Acesse [Facebook Developers](https://developers.facebook.com/)
-2. Crie um App tipo "Business"
-3. Adicione produto "WhatsApp"
-4. Configure número de telefone
-5. Gere **Access Token** permanente
-
-### 2. Configurar Webhook
-
-Na interface da Meta, configure:
-
-```
-URL: https://api.seudominio.com/webhooks/whatsapp
-Verify Token: [seu_token_secreto]
-Campos: messages
-```
-
-### 3. Variáveis de Ambiente
-
-```env
-WHATSAPP_PHONE_NUMBER_ID=123456789
-WHATSAPP_ACCESS_TOKEN=EAAG...
-WHATSAPP_APP_SECRET=abc123...
-WHATSAPP_WEBHOOK_VERIFY_TOKEN=seu_token_secreto
-```
-
-**Guia completo:** [DOCS-DESENVOLVIMENTO.md](./DOCS-DESENVOLVIMENTO.md#4-whatsapp)
-
----
-
-## 🤖 Integração com n8n
-
-### Enviar Mensagem
+### **Autenticação**
 
 ```http
-POST https://api.seudominio.com/api/n8n/send-message
-Content-Type: application/json
-X-API-Key: sua_api_key
-
-{
-  "phoneNumber": "5511999999999",
-  "message": "Seu check-in foi confirmado!"
-}
+POST   /api/auth/login              # Login
+POST   /api/auth/register           # Registro
+POST   /api/auth/refresh            # Refresh token
+GET    /api/auth/me                 # Dados do usuário
 ```
 
-### Receber Webhooks (n8n)
+### **Contatos**
 
-Configure webhook no n8n para receber eventos:
-- Nova mensagem recebida
-- Status de mensagem atualizado
-- Conversa criada/fechada
+```http
+GET    /api/contacts                # Listar contatos
+GET    /api/contacts/:id            # Buscar contato
+POST   /api/contacts                # Criar contato
+PUT    /api/contacts/:id            # Atualizar contato
+DELETE /api/contacts/:id            # Deletar contato
+```
 
-**API completa:** [DOCS-API-REFERENCE.md](./DOCS-API-REFERENCE.md#-n8n-integration)
+### **Conversas**
+
+```http
+GET    /api/conversations           # Listar conversas
+GET    /api/conversations/:id       # Buscar conversa
+POST   /api/conversations           # Criar conversa
+PUT    /api/conversations/:id       # Atualizar conversa
+```
+
+### **Mensagens**
+
+```http
+GET    /api/messages                # Listar mensagens
+POST   /api/messages                # Enviar mensagem
+POST   /api/messages/template       # Enviar template
+POST   /api/messages/media          # Enviar mídia
+```
+
+### **Webhooks**
+
+```http
+GET    /api/webhooks                # Verificação WhatsApp
+POST   /api/webhooks                # Receber eventos WhatsApp
+```
+
+### **Tenant**
+
+```http
+GET    /api/tenant                  # Dados do tenant
+PUT    /api/tenant                  # Atualizar tenant
+POST   /api/tenant/whatsapp/setup   # Configurar WhatsApp
+```
+
+Veja exemplos completos de requisições na [Documentação da API](DOCUMENTACAO-DEFINITIVA.md#api-endpoints).
 
 ---
 
-## 🐳 Deploy em Produção (VPS)
+## 🐳 Docker
+
+### **Desenvolvimento**
 
 ```bash
-# 1. No servidor
-git clone https://github.com/seu-usuario/projeto-hoteis-reserva.git
-cd projeto-hoteis-reserva
-
-# 2. Configurar .env.production
-nano .env.production
-
-# 3. Subir containers
-docker-compose -f infra/docker-compose.prod.yml up -d --build
-
-# 4. Configurar SSL (Let's Encrypt)
-sudo certbot --nginx -d seudominio.com -d api.seudominio.com
-
-# 5. Verificar
-docker ps
+docker-compose up -d
 ```
 
-**Guia completo:** [DOCS-DEPLOY.md](./DOCS-DEPLOY.md)
+### **Produção**
+
+```bash
+cd deploy-backend
+docker-compose -f docker-compose.production.yml up -d
+```
+
+**Containers:**
+- `crm-backend` - Aplicação Node.js/Express
+- `crm-postgres` - Banco de dados PostgreSQL
+- `crm-redis` - Cache Redis
+- `crm-nginx` - Reverse proxy
+- `crm-certbot` - Certificados SSL
 
 ---
 
 ## 🧪 Testes
 
 ```bash
-# Testes unitários (Backend)
-cd apps/backend
-pnpm test
+# Rodar todos os testes
+npm test
 
-# Testes E2E (Frontend)
-cd apps/frontend
-pnpm test:e2e
+# Testes unitários
+npm run test:unit
+
+# Testes de integração
+npm run test:integration
 
 # Coverage
-pnpm test:coverage
+npm run test:coverage
 ```
 
 ---
 
-## 📊 Roadmap
+## 🔐 Segurança
 
-### ✅ Fase 1 - MVP (Atual)
-- [x] Documentação completa
-- [ ] Backend API completo
-- [ ] Frontend CRM básico
-- [ ] Integração WhatsApp
-- [ ] Deploy VPS
+### **Implementado:**
 
-### 🚧 Fase 2 - Melhorias
-- [ ] Dashboard analytics
-- [ ] Relatórios em PDF
-- [ ] Chatbot com IA
-- [ ] App mobile (React Native)
+- ✅ Autenticação JWT
+- ✅ Bcrypt para senhas (10 rounds)
+- ✅ Validação de entrada com Zod
+- ✅ Isolamento de dados por tenant
+- ✅ CORS configurado
+- ✅ Rate limiting
+- ✅ Helmet.js para headers de segurança
+- ✅ HMAC validation para webhooks WhatsApp
+- ✅ Sanitização de logs (não expõe secrets)
 
-### 🔮 Fase 3 - Enterprise
-- [ ] Multi-tenancy (SaaS)
-- [ ] Integrações PMS (Opera, Mews)
-- [ ] Webhooks customizáveis
-- [ ] API pública documentada
+### **Boas Práticas:**
+
+- Variáveis sensíveis apenas em `.env` (nunca commitadas)
+- Senhas com mínimo 8 caracteres
+- JWT com expiração configurável
+- HTTPS obrigatório em produção
+- Backup automático do banco de dados
+
+---
+
+## 📊 Status do Projeto
+
+| Componente | Status | Progresso |
+|------------|--------|-----------|
+| **Backend API** | ✅ Completo | 100% |
+| **Multi-Tenant** | ✅ Completo | 100% |
+| **WhatsApp Integration** | ✅ Completo | 100% |
+| **Autenticação** | ✅ Completo | 100% |
+| **Deploy VPS** | ✅ Completo | 100% |
+| **Documentação** | ✅ Completo | 100% |
+| **Frontend** | 🔄 Em Desenvolvimento | 40% |
+| **Testes E2E** | 🔄 Em Desenvolvimento | 30% |
+| **Dashboard Admin** | ⏳ Planejado | 0% |
+
+**Status Geral:** 🟢 **Produção** - Backend funcionando em produção
+
+---
+
+## 🛠️ Comandos Úteis
+
+```bash
+# Desenvolvimento
+npm run dev                    # Rodar servidor dev
+npm run build                  # Build TypeScript
+npm start                      # Rodar produção
+
+# Prisma
+npx prisma studio              # Abrir Prisma Studio
+npx prisma migrate dev         # Criar migration
+npx prisma migrate deploy      # Aplicar migrations (produção)
+npx prisma generate            # Gerar Prisma Client
+
+# Docker
+docker ps                      # Ver containers rodando
+docker logs crm-backend -f     # Ver logs do backend
+docker restart crm-backend     # Restart backend
+
+# Deploy
+./deploy.ps1                   # Deploy automático (Windows)
+bash deploy.sh                 # Deploy automático (Linux/Mac)
+```
 
 ---
 
 ## 🤝 Contribuindo
 
-Este é um projeto proprietário. Contribuições são aceitas mediante aprovação.
+Contribuições são bem-vindas! Por favor:
 
 1. Fork o projeto
-2. Crie uma branch (`git checkout -b feature/AmazingFeature`)
-3. Commit suas mudanças (`git commit -m 'Add: nova feature incrível'`)
-4. Push para a branch (`git push origin feature/AmazingFeature`)
+2. Crie uma branch para sua feature (`git checkout -b feature/MinhaFeature`)
+3. Commit suas mudanças (`git commit -m 'Add: Minha feature incrível'`)
+4. Push para a branch (`git push origin feature/MinhaFeature`)
 5. Abra um Pull Request
 
-**Padrões de código:** ESLint + Prettier (configurado)
+Veja [CONTRIBUTING.md](CONTRIBUTING.md) para mais detalhes.
 
 ---
 
-## 📄 Licença
+## 📝 Licença
 
-**Proprietário** - Todos os direitos reservados.
-
-Este software é desenvolvido para uso exclusivo em redes de hotéis autorizadas.
+Este projeto está sob a licença MIT. Veja [LICENSE](LICENSE) para mais informações.
 
 ---
 
-## 👨‍💻 Desenvolvido por
+## 👥 Autores
 
-**3IAN Tecnologia** 
-Desenvolvido com excelência para atender os mais altos padrões enterprise.
-
----
-
-## 📞 Suporte
-
-- 📧 Email: suporte@seudominio.com
-- 📚 Docs: https://docs.seudominio.com
-- 🐛 Issues: [GitHub Issues](https://github.com/seu-usuario/projeto-hoteis-reserva/issues)
+**Fred Castro**
+- GitHub: [@fredcast](https://github.com/fredcast)
+- Projeto: [projeto-eva](https://github.com/fredcast/projeto-eva)
 
 ---
 
 ## 🙏 Agradecimentos
 
 - [Meta WhatsApp Business API](https://developers.facebook.com/docs/whatsapp)
-- [Next.js Team](https://nextjs.org/)
-- [Prisma Team](https://www.prisma.io/)
-- [Shadcn](https://ui.shadcn.com/)
+- [Prisma](https://www.prisma.io/)
+- [Express](https://expressjs.com/)
+- Comunidade Open Source
+
+---
+
+## 📞 Suporte
+
+- 📧 Email: [Criar issue no GitHub](https://github.com/fredcast/projeto-eva/issues)
+- 📖 Documentação: [DOCUMENTACAO-DEFINITIVA.md](DOCUMENTACAO-DEFINITIVA.md)
+- 🐛 Bugs: [GitHub Issues](https://github.com/fredcast/projeto-eva/issues)
+
+---
+
+## 🎯 Roadmap
+
+- [x] Backend API REST completo
+- [x] Multi-Tenant Architecture
+- [x] WhatsApp Business API Integration
+- [x] Deploy em VPS
+- [x] Documentação completa
+- [ ] Frontend completo (Dashboard + Chat)
+- [ ] Testes E2E com Playwright
+- [ ] CI/CD com GitHub Actions
+- [ ] Monitoramento e alertas
+- [ ] Internacionalização (i18n)
+- [ ] Mobile App (React Native)
 
 ---
 
 <div align="center">
 
-**Construído com ❤️ usando as melhores práticas de desenvolvimento**
+**[⬆ Voltar ao topo](#-crm-whatsapp-saas-multi-tenant)**
 
-[⬆ Voltar ao topo](#-crm-whatsapp-para-hotéis)
+---
+
+Feito com ❤️ para o setor hoteleiro
+
+[![GitHub](https://img.shields.io/badge/GitHub-fredcast-181717?logo=github)](https://github.com/fredcast/projeto-eva)
 
 </div>

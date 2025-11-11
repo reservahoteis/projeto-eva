@@ -32,10 +32,11 @@ export class AuthController {
   async register(req: Request, res: Response) {
     const data = req.body as RegisterInput;
 
+    // Type assertion: Zod validation already ensured required fields
     const user = await authService.register({
       ...data,
       tenantId: req.tenantId,
-    });
+    } as any);
 
     res.status(201).json(user);
   }

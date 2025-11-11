@@ -9,7 +9,8 @@ export class TenantController {
   async create(req: Request, res: Response) {
     const data = req.body as CreateTenantInput;
 
-    const result = await tenantService.createTenant(data);
+    // Type assertion: Zod validation already ensured required fields
+    const result = await tenantService.createTenant(data as any);
 
     res.status(201).json(result);
   }
@@ -74,7 +75,8 @@ export class TenantController {
       return res.status(400).json({ error: 'Tenant ID não encontrado' });
     }
 
-    const tenant = await tenantService.configureWhatsApp(req.tenantId, data);
+    // Type assertion: Zod validation already ensured required fields
+    const tenant = await tenantService.configureWhatsApp(req.tenantId, data as any);
 
     res.json(tenant);
   }

@@ -288,6 +288,168 @@ export class WhatsAppService {
     const phoneRegex = /^[1-9][0-9]{10,14}$/;
     return phoneRegex.test(phoneNumber);
   }
+
+  /**
+   * Enviar mensagem com botões de resposta rápida
+   */
+  async sendInteractiveButtons(
+    tenantId: string,
+    to: string,
+    bodyText: string,
+    buttons: Array<{ id: string; title: string }>,
+    headerText?: string,
+    footerText?: string
+  ): Promise<SendMessageResult> {
+    try {
+      const tenant = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { whatsappPhoneNumberId: true },
+      });
+
+      if (!tenant?.whatsappPhoneNumberId) {
+        throw new BadRequestError('WhatsApp não configurado');
+      }
+
+      // Limitar a 3 botões (regra da Meta)
+      if (buttons.length > 3) {
+        throw new BadRequestError('Máximo de 3 botões permitidos');
+      }
+
+      const axiosInstance = await this.getAxiosForTenant(tenantId);
+
+      const payload: any = {
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to: to,
+        type: 'interactive',
+        interactive: {
+          type: 'button',
+          body: {
+            text: bodyText,
+          },
+          action: {
+            buttons: buttons.map((btn) => ({
+              type: 'reply',
+              reply: {
+                id: btn.id,
+                title: btn.title.substring(0, 20), // Max 20 caracteres
+              },
+            })),
+          },
+        },
+      };
+
+      if (headerText) {
+        payload.interactive.header = {
+          type: 'text',
+          text: headerText,
+        };
+      }
+
+      if (footerText) {
+        payload.interactive.footer = {
+          text: footerText,
+        };
+      }
+
+      const response = await axiosInstance.post(
+        `/${tenant.whatsappPhoneNumberId}/messages`,
+        payload
+      );
+
+      const whatsappMessageId = response.data.messages[0]?.id;
+
+      logger.info({ tenantId, to, buttons: buttons.length, whatsappMessageId }, 'Interactive buttons sent');
+
+      return {
+        whatsappMessageId,
+        success: true,
+      };
+    } catch (error: any) {
+      logger.error({ error, tenantId, to }, 'Failed to send interactive buttons');
+
+      if (axios.isAxiosError(error)) {
+        const errorMessage = error.response?.data?.error?.message || 'WhatsApp API error';
+        throw new InternalServerError(`WhatsApp: ${errorMessage}`);
+      }
+
+      throw error;
+    }
+  }
+
+  /**
+   * Enviar mensagem com lista de opções (até 10 itens)
+   */
+  async sendInteractiveList(
+    tenantId: string,
+    to: string,
+    bodyText: string,
+    buttonText: string,
+    sections: Array<{
+      title?: string;
+      rows: Array<{ id: string; title: string; description?: string }>;
+    }>
+  ): Promise<SendMessageResult> {
+    try {
+      const tenant = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { whatsappPhoneNumberId: true },
+      });
+
+      if (!tenant?.whatsappPhoneNumberId) {
+        throw new BadRequestError('WhatsApp não configurado');
+      }
+
+      const axiosInstance = await this.getAxiosForTenant(tenantId);
+
+      const payload: any = {
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to: to,
+        type: 'interactive',
+        interactive: {
+          type: 'list',
+          body: {
+            text: bodyText,
+          },
+          action: {
+            button: buttonText.substring(0, 20), // Max 20 caracteres
+            sections: sections.map((section) => ({
+              ...(section.title && { title: section.title }),
+              rows: section.rows.map((row) => ({
+                id: row.id,
+                title: row.title.substring(0, 24), // Max 24 caracteres
+                ...(row.description && { description: row.description.substring(0, 72) }),
+              })),
+            })),
+          },
+        },
+      };
+
+      const response = await axiosInstance.post(
+        `/${tenant.whatsappPhoneNumberId}/messages`,
+        payload
+      );
+
+      const whatsappMessageId = response.data.messages[0]?.id;
+
+      logger.info({ tenantId, to, whatsappMessageId }, 'Interactive list sent');
+
+      return {
+        whatsappMessageId,
+        success: true,
+      };
+    } catch (error: any) {
+      logger.error({ error, tenantId, to }, 'Failed to send interactive list');
+
+      if (axios.isAxiosError(error)) {
+        const errorMessage = error.response?.data?.error?.message || 'WhatsApp API error';
+        throw new InternalServerError(`WhatsApp: ${errorMessage}`);
+      }
+
+      throw error;
+    }
+  }
 }
 
 export const whatsAppService = new WhatsAppService();

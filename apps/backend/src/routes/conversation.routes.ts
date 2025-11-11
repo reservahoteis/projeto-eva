@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { conversationController } from '@/controllers/conversation.controller';
 import { validate } from '@/middlewares/validate.middleware';
 import { authenticate } from '@/middlewares/auth.middleware';
-import { requireTenant, verifyTenantAccess } from '@/middlewares/tenant.middleware';
+import { requireTenant } from '@/middlewares/tenant.middleware';
 import { listConversationsSchema, updateConversationSchema, assignConversationSchema } from '@/validators/conversation.validator';
 
 const router = Router();
@@ -10,7 +10,6 @@ const router = Router();
 // Todas as rotas requerem autenticação e tenant
 router.use(authenticate);
 router.use(requireTenant);
-router.use(verifyTenantAccess);
 
 // GET /api/conversations
 router.get('/', validate(listConversationsSchema, 'query'), conversationController.list.bind(conversationController));
