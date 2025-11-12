@@ -2,6 +2,7 @@ import 'express-async-errors'; // Deve ser a primeira importação!
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import { createServer } from 'http';
 import { env, isDev } from './config/env';
 import { testDatabaseConnection } from './config/database';
 import { testRedisConnection } from './config/redis';
@@ -9,9 +10,14 @@ import logger from './config/logger';
 import { errorHandler, notFoundHandler } from './middlewares/error-handler.middleware';
 import { tenantIsolationMiddleware } from './middlewares/tenant.middleware';
 import { generalLimiter } from './middlewares/rate-limit.middleware';
+import { initializeSocketIO } from './config/socket';
+import { registerWorkers } from './queues/workers';
 
 // Create Express app
 const app = express();
+
+// Create HTTP server (necessário para Socket.io)
+const httpServer = createServer(app);
 
 // ============================================
 // MIDDLEWARES GLOBAIS
@@ -120,10 +126,18 @@ async function startServer() {
       throw new Error('Failed to connect to Redis');
     }
 
-    // Start Express server
+    // Initialize Socket.io
+    initializeSocketIO(httpServer);
+    logger.info('✅ Socket.io initialized');
+
+    // Register Bull workers (para processar filas)
+    registerWorkers();
+    logger.info('✅ Queue workers registered');
+
+    // Start HTTP server (Express + Socket.io)
     const PORT = parseInt(env.PORT);
 
-    app.listen(PORT, () => {
+    httpServer.listen(PORT, () => {
       logger.info(`
       ╔════════════════════════════════════════╗
       ║  🚀 CRM WhatsApp SaaS - Backend API   ║
@@ -132,6 +146,8 @@ async function startServer() {
       ║  Port: ${PORT.toString().padEnd(31)}║
       ║  Database: ✅  Connected               ║
       ║  Redis: ✅  Connected                  ║
+      ║  Socket.io: ✅  Initialized            ║
+      ║  Workers: ✅  Registered               ║
       ╚════════════════════════════════════════╝
       `);
     });

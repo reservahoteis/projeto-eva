@@ -263,7 +263,8 @@ enum MessageType {
   DOCUMENT
   LOCATION
   STICKER
-  TEMPLATE // Template pré-aprovado da Meta
+  TEMPLATE    // Template pré-aprovado da Meta
+  INTERACTIVE // Botões ou listas interativas
 }
 
 enum MessageStatus {
