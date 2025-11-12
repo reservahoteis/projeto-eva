@@ -22,25 +22,38 @@ export async function tenantIsolationMiddleware(
 ) {
   try {
     const host = req.headers.host || '';
-    logger.debug({ host }, 'Processing tenant from host');
+    const tenantSlugHeader = req.headers['x-tenant-slug'] as string;
 
-    // Extrair subdomínio
-    const parts = host.split('.');
-    let subdomain: string;
+    logger.debug({ host, tenantSlugHeader }, 'Processing tenant');
 
-    // Em desenvolvimento (localhost:3000), pode não ter subdomínio
-    if (host.includes('localhost') || host.includes('127.0.0.1')) {
-      // Aceitar localhost sem tenant (para super admin)
-      // Ou permitir query param ?tenant=slug para testes
-      subdomain = req.query.tenant as string || 'super-admin';
-    } else {
-      subdomain = parts[0] || '';
+    let tenantSlug: string;
+
+    // PRIORIDADE 1: Header X-Tenant-Slug (para APIs sem subdomínio)
+    if (tenantSlugHeader) {
+      tenantSlug = tenantSlugHeader;
+      logger.debug({ tenantSlug }, 'Tenant from header X-Tenant-Slug');
+    }
+    // PRIORIDADE 2: Subdomínio (para multi-tenant com subdomínios)
+    else {
+      const parts = host.split('.');
+
+      // Em desenvolvimento (localhost:3000), pode não ter subdomínio
+      if (host.includes('localhost') || host.includes('127.0.0.1')) {
+        // Aceitar query param ?tenant=slug para testes
+        tenantSlug = (req.query.tenant as string) || 'super-admin';
+      } else if (parts.length >= 3) {
+        // api.botreserva.com.br ou hotel1.botreserva.com.br
+        tenantSlug = parts[0];
+      } else {
+        // botreserva.com.br (sem subdomínio) = super-admin
+        tenantSlug = 'super-admin';
+      }
+
+      logger.debug({ tenantSlug, host }, 'Tenant from subdomain');
     }
 
-    logger.debug({ subdomain }, 'Extracted subdomain');
-
     // Se é super-admin, não precisa de tenant
-    if (subdomain === 'super-admin' || subdomain === 'admin') {
+    if (tenantSlug === 'super-admin' || tenantSlug === 'admin' || tenantSlug === 'api') {
       req.tenantId = null;
       logger.debug('Super admin access - no tenant required');
 
@@ -50,7 +63,7 @@ export async function tenantIsolationMiddleware(
 
     // Buscar tenant pelo slug
     const tenant = await prisma.tenant.findUnique({
-      where: { slug: subdomain },
+      where: { slug: tenantSlug },
       select: {
         id: true,
         slug: true,
@@ -60,7 +73,7 @@ export async function tenantIsolationMiddleware(
     });
 
     if (!tenant) {
-      logger.warn({ subdomain }, 'Tenant not found');
+      logger.warn({ tenantSlug }, 'Tenant not found');
       throw new TenantNotFoundError();
     }
 
