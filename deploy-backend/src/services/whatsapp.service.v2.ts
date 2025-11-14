@@ -3,6 +3,7 @@ import { prisma } from '@/config/database';
 import { env } from '@/config/env';
 import { BadRequestError, InternalServerError } from '@/utils/errors';
 import logger from '@/config/logger';
+import { validateMediaUrl } from '@/utils/url-validator';
 
 // ============================================
 // Types & Interfaces
@@ -195,26 +196,72 @@ export class WhatsAppServiceV2 {
   }
 
   /**
-   * Valida número de telefone WhatsApp
-   * Formato: 5511999999999 (país + DDD + número)
+   * Valida número de telefone WhatsApp seguindo padrão E.164
+   *
+   * Padrão E.164: [+][código país][número nacional]
+   * - Tamanho: 7-15 dígitos (sem o +)
+   * - Não pode começar com 0
+   * - Apenas dígitos (sem espaços, hífens, parênteses)
+   *
+   * Exemplos válidos:
+   * - Brasil: 5511999999999 (13 dígitos)
+   * - EUA: 12025551234 (11 dígitos)
+   * - Reino Unido: 442071234567 (12 dígitos)
+   * - França: 33612345678 (11 dígitos)
+   * - Alemanha: 4915123456789 (13 dígitos)
+   * - Índia: 919876543210 (12 dígitos)
+   * - China: 8613812345678 (13 dígitos)
+   * - Japão: 819012345678 (12 dígitos)
+   *
+   * @param phoneNumber - Número de telefone (com ou sem formatação)
+   * @returns true se número é válido para WhatsApp
    */
   validatePhoneNumber(phoneNumber: string): boolean {
-    // Remover espaços, hífens, parênteses
-    const cleaned = phoneNumber.replace(/[\s\-\(\)]/g, '');
+    if (!phoneNumber || typeof phoneNumber !== 'string') {
+      return false;
+    }
 
-    // Formato esperado: [1-9][0-9]{10,14}
-    // Mínimo 11 dígitos (país + DDD + número)
-    // Máximo 15 dígitos (limite E.164)
-    const phoneRegex = /^[1-9][0-9]{10,14}$/;
+    // Remover espaços, hífens, parênteses, e o símbolo +
+    const cleaned = phoneNumber.replace(/[\s\-\(\)\+]/g, '');
 
-    return phoneRegex.test(cleaned);
+    // E.164: 7-15 dígitos, não pode começar com 0
+    // Mínimo 7: alguns países insulares têm códigos curtos (ex: +1-242 Bahamas = 10 dígitos total)
+    // Máximo 15: limite do padrão E.164
+    const phoneRegex = /^[1-9][0-9]{6,14}$/;
+
+    if (!phoneRegex.test(cleaned)) {
+      return false;
+    }
+
+    // Validações adicionais opcionais
+    const length = cleaned.length;
+
+    // Números muito curtos provavelmente inválidos (menos de 8 dígitos total)
+    if (length < 8) {
+      return false;
+    }
+
+    // Números muito longos definitivamente inválidos (mais de 15 é fora do E.164)
+    if (length > 15) {
+      return false;
+    }
+
+    return true;
   }
 
   /**
-   * Formata número de telefone para padrão WhatsApp
+   * Formata número de telefone para padrão WhatsApp (apenas dígitos)
+   * Remove: espaços, hífens, parênteses, e o símbolo +
+   *
+   * @param phoneNumber - Número com formatação
+   * @returns Número apenas com dígitos
+   *
+   * @example
+   * formatPhoneNumber('+55 (11) 99999-9999') // '5511999999999'
+   * formatPhoneNumber('+1 (202) 555-1234')   // '12025551234'
    */
   formatPhoneNumber(phoneNumber: string): string {
-    return phoneNumber.replace(/[\s\-\(\)]/g, '');
+    return phoneNumber.replace(/[\s\-\(\)\+]/g, '');
   }
 
   /**
@@ -322,10 +369,11 @@ export class WhatsAppServiceV2 {
         throw new BadRequestError(`Número inválido: ${to}`);
       }
 
-      // Validar URL
-      if (!media.url || !media.url.startsWith('http')) {
-        throw new BadRequestError('URL de mídia inválida');
-      }
+      // ✅ SEGURANÇA: Validação completa contra SSRF e URLs maliciosas
+      validateMediaUrl(media.url, {
+        allowAnyHost: false, // Apenas hosts whitelist
+        maxLength: 2048,
+      });
 
       // Validar caption (máximo 1024 caracteres)
       if (media.caption && media.caption.length > 1024) {

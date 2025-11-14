@@ -32,11 +32,16 @@ export class AuthController {
   async register(req: Request, res: Response) {
     const data = req.body as RegisterInput;
 
-    // Type assertion: Zod validation already ensured required fields
-    const user = await authService.register({
-      ...data,
-      tenantId: req.tenantId,
-    } as any);
+    // ✅ TYPE-SAFE: Criar payload tipado corretamente
+    const payload = {
+      email: data.email,
+      password: data.password,
+      name: data.name,
+      role: data.role,
+      tenantId: req.tenantId || '', // requireTenant middleware garante que existe
+    };
+
+    const user = await authService.register(payload);
 
     res.status(201).json(user);
   }
@@ -53,7 +58,7 @@ export class AuthController {
 
     await authService.changePassword(req.user.userId, oldPassword, newPassword);
 
-    res.json({ message: 'Senha alterada com sucesso' });
+    return res.json({ message: 'Senha alterada com sucesso' });
   }
 
   /**
@@ -82,7 +87,7 @@ export class AuthController {
       },
     });
 
-    res.json(user);
+    return res.json(user);
   }
 }
 

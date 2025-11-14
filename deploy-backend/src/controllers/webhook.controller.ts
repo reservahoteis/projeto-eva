@@ -38,9 +38,9 @@ export class WebhookController {
 
     if (mode === 'subscribe' && token === tenant?.whatsappWebhookVerifyToken) {
       logger.info({ tenantId: req.tenantId }, 'Webhook verified');
-      res.status(200).send(challenge);
+      return res.status(200).send(challenge);
     } else {
-      res.status(403).send('Forbidden');
+      return res.status(403).send('Forbidden');
     }
   }
 
@@ -49,22 +49,43 @@ export class WebhookController {
    */
   async handleWhatsApp(req: Request, res: Response) {
     try {
-      // 1. VALIDAR ASSINATURA (SEGURANÇA CRÍTICA!)
-      const signature = req.headers['x-hub-signature-256'] as string;
+      // 1. IDENTIFICAR TENANT
+      let tenantId = req.tenantId;
 
-      if (!req.tenantId) {
-        // Tentar detectar tenant pelo payload
-        logger.warn('Webhook received without tenant context');
-        return res.status(200).send('EVENT_RECEIVED'); // Responder 200 para não bloquear Meta
+      // Se não tem tenantId no middleware, tentar identificar pelo payload
+      if (!tenantId) {
+        const body = req.body;
+        const wabaId = body.entry?.[0]?.id; // WhatsApp Business Account ID
+
+        if (wabaId) {
+          const tenant = await prisma.tenant.findFirst({
+            where: { whatsappBusinessAccountId: wabaId },
+            select: { id: true, whatsappAppSecret: true },
+          });
+
+          if (tenant) {
+            tenantId = tenant.id;
+            logger.info({ tenantId, wabaId }, 'Tenant identified by WABA ID');
+          } else {
+            logger.warn({ wabaId }, 'Webhook received for unknown WABA ID');
+            return res.status(200).send('EVENT_RECEIVED');
+          }
+        } else {
+          logger.warn('Webhook received without tenant context and no WABA ID');
+          return res.status(200).send('EVENT_RECEIVED');
+        }
       }
 
+      // 2. VALIDAR ASSINATURA (SEGURANÇA CRÍTICA!)
+      const signature = req.headers['x-hub-signature-256'] as string;
+
       const tenant = await prisma.tenant.findUnique({
-        where: { id: req.tenantId },
+        where: { id: tenantId },
         select: { whatsappAppSecret: true },
       });
 
       if (!tenant?.whatsappAppSecret) {
-        logger.warn({ tenantId: req.tenantId }, 'Tenant has no WhatsApp secret configured');
+        logger.warn({ tenantId }, 'Tenant has no WhatsApp secret configured');
         return res.status(200).send('EVENT_RECEIVED');
       }
 
@@ -75,17 +96,17 @@ export class WebhookController {
       );
 
       if (!isValid) {
-        logger.error({ tenantId: req.tenantId }, 'Invalid webhook signature - possible attack!');
+        logger.error({ tenantId }, 'Invalid webhook signature - possible attack!');
         return res.status(403).send('Invalid signature');
       }
 
-      // 2. PROCESSAR WEBHOOK
+      // 3. PROCESSAR WEBHOOK
       const body = req.body;
 
       // Log do evento (opcional, para debug)
       await prisma.webhookEvent.create({
         data: {
-          tenantId: req.tenantId,
+          tenantId,
           source: 'whatsapp',
           event: body.entry?.[0]?.changes?.[0]?.field || 'unknown',
           payload: body,
@@ -97,7 +118,7 @@ export class WebhookController {
         for (const entry of body.entry || []) {
           for (const change of entry.changes || []) {
             if (change.field === 'messages') {
-              await this.processMessages(change.value, req.tenantId!);
+              await this.processMessages(change.value, tenantId);
             }
 
             if (change.field === 'message_status') {
@@ -107,12 +128,12 @@ export class WebhookController {
         }
       }
 
-      // 3. RESPONDER IMEDIATAMENTE (Meta espera 200 OK rápido!)
-      res.status(200).send('EVENT_RECEIVED');
+      // 4. RESPONDER IMEDIATAMENTE (Meta espera 200 OK rápido!)
+      return res.status(200).send('EVENT_RECEIVED');
     } catch (error) {
-      logger.error({ error, tenantId: req.tenantId }, 'Error processing webhook');
+      logger.error({ error }, 'Error processing webhook');
       // SEMPRE responder 200, mesmo com erro (para não bloquear webhook)
-      res.status(200).send('EVENT_RECEIVED');
+      return res.status(200).send('EVENT_RECEIVED');
     }
   }
 

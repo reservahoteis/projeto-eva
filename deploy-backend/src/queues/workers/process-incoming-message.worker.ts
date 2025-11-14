@@ -19,7 +19,7 @@ import { emitNewMessage } from '@/config/socket';
  * Worker para processar mensagens recebidas do WhatsApp
  */
 export async function processIncomingMessage(job: Job<ProcessMessageJobData>): Promise<void> {
-  const { tenantId, message, contactName, metadata } = job.data;
+  const { tenantId, message, contactName } = job.data;
 
   logger.info(
     {

@@ -4,6 +4,7 @@ export const sendMessageSchema = z.object({
   conversationId: z.string().uuid(),
   content: z.string().min(1, 'Conteúdo é obrigatório').max(4096, 'Conteúdo muito longo'),
   type: z.enum(['TEXT', 'IMAGE', 'VIDEO', 'AUDIO', 'DOCUMENT']).optional(),
+  metadata: z.record(z.any()).optional(),
 });
 
 export const listMessagesSchema = z.object({

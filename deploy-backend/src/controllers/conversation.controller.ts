@@ -27,10 +27,10 @@ export class ConversationController {
         ...params,
       });
 
-      res.json(result);
+      return res.json(result);
     } catch (error) {
       logger.error({ error }, 'Erro ao listar conversas');
-      res.status(500).json({ error: 'Erro interno ao listar conversas' });
+      return res.status(500).json({ error: 'Erro interno ao listar conversas' });
     }
   }
 
@@ -39,7 +39,7 @@ export class ConversationController {
    */
   async getById(req: Request, res: Response) {
     try {
-      const { id } = req.params;
+      const id = req.params.id as string;
 
       if (!req.tenantId) {
         return res.status(400).json({ error: 'Tenant ID não encontrado' });
@@ -52,7 +52,7 @@ export class ConversationController {
         req.user?.role
       );
 
-      res.json(conversation);
+      return res.json(conversation);
     } catch (error) {
       logger.error({ error, conversationId: req.params.id }, 'Erro ao buscar conversa');
 
@@ -64,7 +64,7 @@ export class ConversationController {
         return res.status(403).json({ error: error.message });
       }
 
-      res.status(500).json({ error: 'Erro interno ao buscar conversa' });
+      return res.status(500).json({ error: 'Erro interno ao buscar conversa' });
     }
   }
 
@@ -73,7 +73,7 @@ export class ConversationController {
    */
   async update(req: Request, res: Response) {
     try {
-      const { id } = req.params;
+      const id = req.params.id as string;
       const data = req.body as UpdateConversationInput;
 
       if (!req.tenantId) {
@@ -108,7 +108,7 @@ export class ConversationController {
         updated = await conversationService.assignConversation(id, req.tenantId, data.assignedToId);
       }
 
-      res.json(updated);
+      return res.json(updated);
     } catch (error) {
       logger.error({ error, conversationId: req.params.id }, 'Erro ao atualizar conversa');
 
@@ -120,7 +120,7 @@ export class ConversationController {
         return res.status(403).json({ error: error.message });
       }
 
-      res.status(500).json({ error: 'Erro interno ao atualizar conversa' });
+      return res.status(500).json({ error: 'Erro interno ao atualizar conversa' });
     }
   }
 
@@ -129,7 +129,7 @@ export class ConversationController {
    */
   async assign(req: Request, res: Response) {
     try {
-      const { id } = req.params;
+      const id = req.params.id as string;
       const { userId } = req.body as AssignConversationInput;
 
       if (!req.tenantId) {
@@ -138,7 +138,7 @@ export class ConversationController {
 
       const conversation = await conversationService.assignConversation(id, req.tenantId, userId);
 
-      res.json(conversation);
+      return res.json(conversation);
     } catch (error) {
       logger.error({ error, conversationId: req.params.id }, 'Erro ao atribuir conversa');
 
@@ -146,7 +146,7 @@ export class ConversationController {
         return res.status(404).json({ error: error.message });
       }
 
-      res.status(500).json({ error: 'Erro interno ao atribuir conversa' });
+      return res.status(500).json({ error: 'Erro interno ao atribuir conversa' });
     }
   }
 
@@ -155,7 +155,7 @@ export class ConversationController {
    */
   async close(req: Request, res: Response) {
     try {
-      const { id } = req.params;
+      const id = req.params.id as string;
 
       if (!req.tenantId) {
         return res.status(400).json({ error: 'Tenant ID não encontrado' });
@@ -163,7 +163,7 @@ export class ConversationController {
 
       const conversation = await conversationService.closeConversation(id, req.tenantId);
 
-      res.json(conversation);
+      return res.json(conversation);
     } catch (error) {
       logger.error({ error, conversationId: req.params.id }, 'Erro ao fechar conversa');
 
@@ -171,7 +171,7 @@ export class ConversationController {
         return res.status(404).json({ error: error.message });
       }
 
-      res.status(500).json({ error: 'Erro interno ao fechar conversa' });
+      return res.status(500).json({ error: 'Erro interno ao fechar conversa' });
     }
   }
 }

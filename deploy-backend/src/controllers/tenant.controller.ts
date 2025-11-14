@@ -9,8 +9,8 @@ export class TenantController {
   async create(req: Request, res: Response) {
     const data = req.body as CreateTenantInput;
 
-    // Type assertion: Zod validation already ensured required fields
-    const result = await tenantService.createTenant(data as any);
+    // ✅ TYPE-SAFE: Data já validado por Zod, tipo correto
+    const result = await tenantService.createTenant(data);
 
     res.status(201).json(result);
   }
@@ -22,8 +22,8 @@ export class TenantController {
     const { status, search, page, limit } = req.query;
 
     const result = await tenantService.listTenants({
-      status: status as any,
-      search: search as string,
+      status: status as 'ACTIVE' | 'SUSPENDED' | 'INACTIVE' | undefined,
+      search: search as string | undefined,
       page: page ? parseInt(page as string) : undefined,
       limit: limit ? parseInt(limit as string) : undefined,
     });
@@ -75,8 +75,8 @@ export class TenantController {
       return res.status(400).json({ error: 'Tenant ID não encontrado' });
     }
 
-    // Type assertion: Zod validation already ensured required fields
-    const tenant = await tenantService.configureWhatsApp(req.tenantId, data as any);
+    // ✅ TYPE-SAFE: Data já validado por Zod, tipo correto
+    const tenant = await tenantService.configureWhatsApp(req.tenantId, data);
 
     res.json(tenant);
   }

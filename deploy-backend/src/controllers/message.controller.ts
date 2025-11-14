@@ -1,11 +1,9 @@
 import { Request, Response } from 'express';
 import { messageServiceV2 } from '@/services/message.service.v2';
-import { whatsAppServiceV2 } from '@/services/whatsapp.service.v2';
 import { WhatsAppApiError, WhatsAppErrorCode } from '@/services/whatsapp.service.v2';
 import { NotFoundError, BadRequestError } from '@/utils/errors';
 import type { SendMessageInput, ListMessagesInput } from '@/validators/message.validator';
 import logger from '@/config/logger';
-import { prisma } from '@/config/database';
 
 export class MessageController {
   /**
@@ -13,7 +11,7 @@ export class MessageController {
    */
   async list(req: Request, res: Response) {
     try {
-      const { conversationId } = req.params;
+      const conversationId = req.params.conversationId as string;
       const params = req.query as unknown as ListMessagesInput;
 
       if (!req.tenantId) {
@@ -22,7 +20,7 @@ export class MessageController {
 
       const result = await messageServiceV2.listMessages(conversationId, req.tenantId, params);
 
-      res.json(result);
+      return res.json(result);
     } catch (error) {
       logger.error({ error, conversationId: req.params.conversationId }, 'Erro ao listar mensagens');
 
@@ -30,7 +28,7 @@ export class MessageController {
         return res.status(404).json({ error: error.message });
       }
 
-      res.status(500).json({ error: 'Erro interno ao listar mensagens' });
+      return res.status(500).json({ error: 'Erro interno ao listar mensagens' });
     }
   }
 
@@ -46,16 +44,19 @@ export class MessageController {
         return res.status(400).json({ error: 'Tenant ou user não encontrado' });
       }
 
-      // Usar messageServiceV2 - enfileira e retorna imediatamente
-      const message = await messageServiceV2.sendMessage(
-        {
-          ...data,
-          sentById: req.user.userId,
-        } as any,
-        req.tenantId
-      );
+      // ✅ TYPE-SAFE: Criar payload tipado corretamente
+      const payload = {
+        conversationId: data.conversationId,
+        content: data.content,
+        type: data.type,
+        metadata: data.metadata,
+        sentById: req.user.userId,
+      };
 
-      res.status(201).json(message);
+      // Usar messageServiceV2 - enfileira e retorna imediatamente
+      const message = await messageServiceV2.sendMessage(payload, req.tenantId);
+
+      return res.status(201).json(message);
     } catch (error) {
       logger.error(
         {
@@ -105,7 +106,7 @@ export class MessageController {
         }
       }
 
-      res.status(500).json({ error: 'Erro interno ao enviar mensagem' });
+      return res.status(500).json({ error: 'Erro interno ao enviar mensagem' });
     }
   }
 
@@ -136,7 +137,7 @@ export class MessageController {
         languageCode || 'pt_BR'
       );
 
-      res.status(201).json(message);
+      return res.status(201).json(message);
     } catch (error) {
       logger.error(
         {
@@ -183,7 +184,7 @@ export class MessageController {
         }
       }
 
-      res.status(500).json({ error: 'Erro interno ao enviar template' });
+      return res.status(500).json({ error: 'Erro interno ao enviar template' });
     }
   }
 
@@ -205,52 +206,18 @@ export class MessageController {
         });
       }
 
-      // Buscar conversa para pegar número do contato
-      const conversation = await prisma.conversation.findFirst({
-        where: {
-          id: conversationId,
-          tenantId: req.tenantId,
-        },
-        include: {
-          contact: true,
-        },
-      });
-
-      if (!conversation) {
-        return res.status(404).json({ error: 'Conversa não encontrada' });
-      }
-
-      // Enviar botões
-      await whatsAppServiceV2.sendInteractiveButtons(
+      // ✅ UNIFICADO: Usar MessageService (cria no BD + enfileira)
+      const message = await messageServiceV2.sendInteractiveButtons(
         req.tenantId,
-        conversation.contact.phoneNumber,
+        conversationId,
         bodyText,
         buttons,
+        req.user.userId,
         headerText,
         footerText
       );
 
-      // Criar registro no banco
-      const message = await prisma.message.create({
-        data: {
-          tenantId: req.tenantId,
-          conversationId,
-          direction: 'OUTBOUND',
-          type: 'INTERACTIVE',
-          content: bodyText,
-          metadata: {
-            interactiveType: 'button',
-            buttons,
-            headerText,
-            footerText,
-          },
-          sentById: req.user.userId,
-          timestamp: new Date(),
-          status: 'SENT',
-        },
-      });
-
-      res.status(201).json(message);
+      return res.status(201).json(message);
     } catch (error) {
       logger.error(
         {
@@ -268,7 +235,14 @@ export class MessageController {
         return res.status(404).json({ error: error.message });
       }
 
-      res.status(500).json({ error: 'Erro interno ao enviar mensagem com botões' });
+      if (error instanceof WhatsAppApiError) {
+        return res.status(500).json({
+          error: 'Erro ao enviar mensagem via WhatsApp',
+          details: error.title,
+        });
+      }
+
+      return res.status(500).json({ error: 'Erro interno ao enviar mensagem com botões' });
     }
   }
 
@@ -290,50 +264,17 @@ export class MessageController {
         });
       }
 
-      // Buscar conversa
-      const conversation = await prisma.conversation.findFirst({
-        where: {
-          id: conversationId,
-          tenantId: req.tenantId,
-        },
-        include: {
-          contact: true,
-        },
-      });
-
-      if (!conversation) {
-        return res.status(404).json({ error: 'Conversa não encontrada' });
-      }
-
-      // Enviar lista
-      await whatsAppServiceV2.sendInteractiveList(
+      // ✅ UNIFICADO: Usar MessageService (cria no BD + enfileira)
+      const message = await messageServiceV2.sendInteractiveList(
         req.tenantId,
-        conversation.contact.phoneNumber,
+        conversationId,
         bodyText,
         buttonText,
-        sections
+        sections,
+        req.user.userId
       );
 
-      // Criar registro no banco
-      const message = await prisma.message.create({
-        data: {
-          tenantId: req.tenantId,
-          conversationId,
-          direction: 'OUTBOUND',
-          type: 'INTERACTIVE',
-          content: bodyText,
-          metadata: {
-            interactiveType: 'list',
-            buttonText,
-            sections,
-          },
-          sentById: req.user.userId,
-          timestamp: new Date(),
-          status: 'SENT',
-        },
-      });
-
-      res.status(201).json(message);
+      return res.status(201).json(message);
     } catch (error) {
       logger.error(
         {
@@ -351,7 +292,14 @@ export class MessageController {
         return res.status(404).json({ error: error.message });
       }
 
-      res.status(500).json({ error: 'Erro interno ao enviar mensagem com lista' });
+      if (error instanceof WhatsAppApiError) {
+        return res.status(500).json({
+          error: 'Erro ao enviar mensagem via WhatsApp',
+          details: error.title,
+        });
+      }
+
+      return res.status(500).json({ error: 'Erro interno ao enviar mensagem com lista' });
     }
   }
 
@@ -360,7 +308,7 @@ export class MessageController {
    */
   async markAsRead(req: Request, res: Response) {
     try {
-      const { id } = req.params;
+      const id = req.params.id as string;
 
       if (!req.tenantId) {
         return res.status(400).json({ error: 'Tenant ID não encontrado' });
@@ -368,7 +316,7 @@ export class MessageController {
 
       await messageServiceV2.markAsRead(id, req.tenantId);
 
-      res.status(204).send();
+      return res.status(204).send();
     } catch (error) {
       logger.error({ error, messageId: req.params.id }, 'Erro ao marcar mensagem como lida');
 
@@ -376,7 +324,7 @@ export class MessageController {
         return res.status(404).json({ error: error.message });
       }
 
-      res.status(500).json({ error: 'Erro interno ao marcar mensagem como lida' });
+      return res.status(500).json({ error: 'Erro interno ao marcar mensagem como lida' });
     }
   }
 
@@ -401,11 +349,11 @@ export class MessageController {
         limit: limit ? parseInt(limit as string) : undefined,
       });
 
-      res.json(result);
+      return res.json(result);
     } catch (error) {
       logger.error({ error, query: req.query.query }, 'Erro ao buscar mensagens');
 
-      res.status(500).json({ error: 'Erro interno ao buscar mensagens' });
+      return res.status(500).json({ error: 'Erro interno ao buscar mensagens' });
     }
   }
 
@@ -415,7 +363,7 @@ export class MessageController {
    */
   async getStats(req: Request, res: Response) {
     try {
-      const { conversationId } = req.params;
+      const conversationId = req.params.conversationId as string;
 
       if (!req.tenantId) {
         return res.status(400).json({ error: 'Tenant ID não encontrado' });
@@ -423,11 +371,11 @@ export class MessageController {
 
       const stats = await messageServiceV2.getConversationStats(conversationId, req.tenantId);
 
-      res.json(stats);
+      return res.json(stats);
     } catch (error) {
       logger.error({ error, conversationId: req.params.conversationId }, 'Erro ao buscar estatísticas');
 
-      res.status(500).json({ error: 'Erro interno ao buscar estatísticas' });
+      return res.status(500).json({ error: 'Erro interno ao buscar estatísticas' });
     }
   }
 }

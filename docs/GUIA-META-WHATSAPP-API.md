@@ -1,19 +1,37 @@
 # 📱 Guia - Integração WhatsApp Business API (Meta)
 
+**Última atualização:** 12/11/2025
+**Status:** ✅ Backend pronto | ⏸️ Aguardando configuração Meta
+
+---
+
+## 🌐 Informações de Produção
+
+**Backend API:** https://api.botreserva.com.br
+**Webhook URL:** https://api.botreserva.com.br/webhooks/whatsapp
+**SSL:** ✅ Let's Encrypt (HTTPS obrigatório)
+**Status:** ✅ Online e operacional
+
+---
+
 ## ✅ O que já foi configurado
 
-### 1. **Credenciais no `.env`**
+### 1. **Credenciais no `.env`** (Produção)
 
-Arquivo: `apps/backend/.env`
+Arquivo: `/root/deploy-backend/.env`
 
 ```env
 WHATSAPP_API_VERSION=v21.0
-WHATSAPP_WEBHOOK_VERIFY_TOKEN=smart_hoteis_webhook_2024_secure_token
-WHATSAPP_TEST_PHONE_NUMBER_ID=796628440207853
-WHATSAPP_TEST_ACCESS_TOKEN=EAAhLVq96CJ8...
-WHATSAPP_APP_ID=2334635496966303
-WHATSAPP_WABA_ID=1350650163185836
+WHATSAPP_WEBHOOK_VERIFY_TOKEN=[SERÁ_CONFIGURADO_POR_TENANT]
+# Cada tenant terá suas próprias credenciais no banco de dados
 ```
+
+**Nota:** No sistema multi-tenant, cada hotel (tenant) terá suas próprias credenciais WhatsApp armazenadas na tabela `tenants`:
+- `whatsappPhoneNumberId`
+- `whatsappAccessToken`
+- `whatsappBusinessAccountId`
+- `whatsappWebhookVerifyToken`
+- `whatsappAppSecret`
 
 ### 2. **Serviço WhatsApp**
 
@@ -93,20 +111,71 @@ Você verá uma lista com quartos de Campos do Jordão e Ilhabela.
 
 ---
 
-## 🔗 Configurar Webhook na Meta
+## 🔗 Configurar Webhook na Meta (PRODUÇÃO)
 
-Para receber mensagens, você precisa configurar o webhook:
+### ✅ **Configuração de Produção** (Recomendado)
 
-### **Opção A: Desenvolvimento Local (com ngrok)**
+Agora que o backend está em produção com HTTPS, use a URL definitiva:
+
+**URL do Webhook:** `https://api.botreserva.com.br/webhooks/whatsapp`
+
+#### Passo a Passo:
+
+1. **Acesse o Meta for Developers:**
+   - URL: https://developers.facebook.com/apps/
+   - Crie um novo app ou use um existente
+   - Adicione o produto "WhatsApp Business API"
+
+2. **Configure o Webhook:**
+   - Vá em **WhatsApp** → **Configuration**
+   - Clique em **"Edit"** na seção Webhook
+   - **Callback URL**: `https://api.botreserva.com.br/webhooks/whatsapp`
+   - **Verify Token**: Você define (ex: `meu_token_seguro_2025`)
+   - Clique em **"Verify and Save"**
+
+3. **Configure o Verify Token no Tenant:**
+   ```bash
+   # Via API (use o token do Super Admin)
+   curl -X PATCH "https://api.botreserva.com.br/api/tenants/[TENANT_ID]" \
+     -H "Authorization: Bearer [SUPER_ADMIN_TOKEN]" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "whatsappWebhookVerifyToken": "meu_token_seguro_2025",
+       "whatsappPhoneNumberId": "[SEU_PHONE_NUMBER_ID]",
+       "whatsappAccessToken": "[SEU_ACCESS_TOKEN]",
+       "whatsappBusinessAccountId": "[SEU_WABA_ID]"
+     }'
+   ```
+
+4. **Subscreva aos Eventos:**
+   - Ainda nas configurações do Webhook
+   - Marque as opções:
+     - ✅ `messages` (mensagens recebidas)
+     - ✅ `message_status` (status de entrega)
+     - ✅ `message_template_status_update` (templates)
+   - Clique em **"Save"**
+
+5. **Teste o Webhook:**
+   ```bash
+   # A Meta enviará uma requisição GET para validar
+   # O backend deve responder com o challenge
+   # Se configurado corretamente, você verá: ✅ Webhook verified
+   ```
+
+---
+
+### 🧪 **Opção Alternativa: Desenvolvimento Local (com ngrok)**
+
+Se quiser testar localmente antes de usar produção:
 
 1. **Instale o ngrok:**
 ```bash
 npm install -g ngrok
 ```
 
-2. **Inicie o backend:**
+2. **Inicie o backend localmente:**
 ```bash
-cd apps/backend
+cd deploy-backend
 npm run dev
 ```
 
@@ -115,15 +184,12 @@ npm run dev
 ngrok http 3001
 ```
 
-4. **Copie a URL pública:**
+4. **Use a URL ngrok:**
 ```
-https://abc123.ngrok.io
+https://abc123.ngrok-free.app/webhooks/whatsapp
 ```
 
-5. **Configure na Meta:**
-   - Acesse: https://developers.facebook.com/apps/2334635496966303/whatsapp-business/wa-settings
-   - Clique em **"Configurar"** no Webhook
-   - **URL de callback**: `https://abc123.ngrok.io/api/webhooks/whatsapp`
+⚠️ **Lembre-se:** URLs ngrok mudam a cada execução. Use produção para algo definitivo.
    - **Token de verificação**: `smart_hoteis_webhook_2024_secure_token`
    - Clique em **"Verificar e salvar"**
 
@@ -162,28 +228,85 @@ Para adicionar um novo hotel:
 
 ---
 
+---
+
+## 🧪 Testar Fluxo Completo
+
+### Teste 1: Enviar Mensagem (API → WhatsApp)
+
+```bash
+# 1. Login como tenant admin
+TOKEN=$(curl -k -X POST "https://api.botreserva.com.br/auth/login" \
+  -H "Content-Type: application/json" \
+  -H "X-Tenant-Slug: hotel-ipanema" \
+  -d '{"email":"contato@hotelipanema.com.br","password":"[SENHA]"}' \
+  | jq -r '.accessToken')
+
+# 2. Enviar mensagem de teste
+curl -k -X POST "https://api.botreserva.com.br/api/messages/send" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "X-Tenant-Slug: hotel-ipanema" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "to": "5511999999999",
+    "type": "text",
+    "content": "Olá! Esta é uma mensagem de teste do Hotel Ipanema."
+  }'
+```
+
+### Teste 2: Receber Mensagem (WhatsApp → API)
+
+1. Envie uma mensagem do WhatsApp para o número configurado
+2. Verifique os logs do backend:
+```bash
+ssh root@72.61.39.235
+cd /root/deploy-backend
+docker compose -f docker-compose.production.yml logs -f backend | grep -i webhook
+```
+
+3. Verifique se a mensagem foi salva no banco:
+```bash
+docker compose -f docker-compose.production.yml exec backend node -e "
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
+
+prisma.message.findMany({
+  where: { direction: 'INBOUND' },
+  orderBy: { timestamp: 'desc' },
+  take: 5,
+  include: { contact: true }
+}).then(msgs => {
+  console.log(JSON.stringify(msgs, null, 2));
+  prisma.\$disconnect();
+});
+"
+```
+
+---
+
 ## 🎯 Próximos Passos
 
-### 1. ✅ **Testar Envio de Mensagens**
-Execute os 3 scripts de teste e veja se as mensagens chegam.
+### ✅ **Passo 1: Criar App Meta for Developers**
+1. Acesse https://developers.facebook.com/apps/
+2. Crie novo aplicativo → WhatsApp Business
+3. Anote: `App ID`, `App Secret`
 
-### 2. 🔧 **Configurar Webhook**
-Configure o webhook para receber mensagens dos clientes.
+### ✅ **Passo 2: Configurar Webhook**
+1. WhatsApp → Configuration → Webhook
+2. URL: `https://api.botreserva.com.br/webhooks/whatsapp`
+3. Verify Token: `[seu_token_aqui]`
+4. Subscrever: `messages`, `message_status`
 
-### 3. 🔄 **Migrar Workflows do N8N**
-Os workflows atuais usam Z-API. Precisam ser adaptados para:
-- Usar `whatsAppService.sendTextMessage()` ao invés de Z-API
-- Usar `sendInteractiveList()` para carrosseis
-- Usar `sendInteractiveButtons()` para menus
+### ✅ **Passo 3: Obter Credenciais**
+1. Anote o `Phone Number ID`
+2. Gere um `Access Token` (System User Token para produção)
+3. Anote o `WhatsApp Business Account ID`
 
-### 4. 📱 **Adicionar Número Real**
-Quando tudo estiver funcionando:
-- Adicionar o número real do hotel
-- Gerar token permanente
-- Migrar do número de teste para produção
+### ✅ **Passo 4: Configurar Tenant**
+Use o endpoint PATCH `/api/tenants/:id` (como Super Admin) para adicionar as credenciais WhatsApp ao tenant.
 
-### 5. 🚀 **Deploy**
-Colocar o backend em produção com webhook público.
+### ✅ **Passo 5: Testar Envio e Recebimento**
+Execute os testes acima para validar a integração completa.
 
 ---
 

@@ -5,6 +5,7 @@ import { whatsAppServiceV2 } from './whatsapp.service.v2';
 import { conversationService } from './conversation.service';
 import { enqueueOutgoingMessage } from '@/queues/whatsapp-webhook.queue';
 import logger from '@/config/logger';
+import { validateMediaUrl } from '@/utils/url-validator';
 
 // ============================================
 // Types & Interfaces
@@ -104,7 +105,7 @@ export class MessageServiceV2 {
     return {
       data: reversedMessages,
       hasMore: messages.length === limit,
-      nextCursor: messages.length > 0 ? messages[0]?.id : null,
+      nextCursor: messages.length > 0 ? (messages[0]?.id ?? null) : null,
     };
   }
 
@@ -156,10 +157,16 @@ export class MessageServiceV2 {
     }
 
     if (['IMAGE', 'VIDEO', 'AUDIO', 'DOCUMENT'].includes(messageType)) {
-      // Para mídia, content deve ser uma URL ou media ID
-      if (!data.content || !data.content.startsWith('http')) {
-        throw new BadRequestError('URL de mídia inválida');
+      // Para mídia, content deve ser uma URL válida e segura
+      if (!data.content) {
+        throw new BadRequestError('URL de mídia é obrigatória');
       }
+
+      // ✅ SEGURANÇA: Validação completa contra SSRF e URLs maliciosas
+      validateMediaUrl(data.content, {
+        allowAnyHost: false, // Apenas hosts whitelist
+        maxLength: 2048,
+      });
     }
 
     // 4. CRIAR MENSAGEM NO BANCO COM STATUS "PENDING"
@@ -325,6 +332,285 @@ export class MessageServiceV2 {
         languageCode,
       },
     });
+
+    // Atualizar conversa
+    await prisma.conversation.update({
+      where: { id: conversationId },
+      data: {
+        lastMessageAt: new Date(),
+        status: conversation.status === 'CLOSED' ? 'IN_PROGRESS' : conversation.status,
+      },
+    });
+
+    return message;
+  }
+
+  /**
+   * Enviar mensagem com botões interativos (até 3 botões)
+   * Segue o mesmo padrão: criar no BD → enfileirar → retornar
+   */
+  async sendInteractiveButtons(
+    tenantId: string,
+    conversationId: string,
+    bodyText: string,
+    buttons: Array<{ id: string; title: string }>,
+    sentById: string,
+    headerText?: string,
+    footerText?: string
+  ) {
+    logger.info(
+      {
+        conversationId,
+        buttonCount: buttons.length,
+      },
+      'Sending interactive buttons message'
+    );
+
+    // Validações
+    if (buttons.length === 0 || buttons.length > 3) {
+      throw new BadRequestError('Número de botões deve ser entre 1 e 3');
+    }
+
+    if (bodyText.length > 1024) {
+      throw new BadRequestError('Body text excede 1024 caracteres');
+    }
+
+    buttons.forEach((btn, index) => {
+      if (btn.title.length > 20) {
+        throw new BadRequestError(`Botão ${index + 1}: título excede 20 caracteres`);
+      }
+    });
+
+    // Buscar conversa
+    const conversation = await prisma.conversation.findFirst({
+      where: {
+        id: conversationId,
+        tenantId,
+      },
+      include: {
+        contact: true,
+      },
+    });
+
+    if (!conversation) {
+      throw new NotFoundError('Conversa não encontrada');
+    }
+
+    // Validar número
+    if (!whatsAppServiceV2.validatePhoneNumber(conversation.contact.phoneNumber)) {
+      throw new BadRequestError('Número de telefone inválido');
+    }
+
+    // Criar mensagem no banco
+    const message = await prisma.message.create({
+      data: {
+        tenantId,
+        conversationId,
+        direction: 'OUTBOUND',
+        type: 'INTERACTIVE',
+        content: bodyText,
+        metadata: {
+          interactiveType: 'button',
+          buttons,
+          headerText,
+          footerText,
+        },
+        sentById,
+        timestamp: new Date(),
+        status: 'SENT',
+      },
+    });
+
+    // Enfileirar para envio
+    try {
+      await enqueueOutgoingMessage({
+        tenantId,
+        conversationId,
+        messageId: message.id,
+        to: conversation.contact.phoneNumber,
+        type: 'interactive_buttons',
+        content: bodyText,
+        metadata: {
+          buttons,
+          headerText,
+          footerText,
+        },
+      });
+
+      logger.info(
+        {
+          messageId: message.id,
+          conversationId,
+        },
+        'Interactive buttons message enqueued'
+      );
+    } catch (error) {
+      // Marcar como FAILED se não conseguir enfileirar
+      await prisma.message.update({
+        where: { id: message.id },
+        data: {
+          status: 'FAILED',
+          metadata: {
+            ...(message.metadata || {}),
+            error: {
+              message: 'Failed to enqueue message',
+              timestamp: new Date().toISOString(),
+            },
+          },
+        },
+      });
+
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : 'Unknown error',
+          messageId: message.id,
+        },
+        'Failed to enqueue interactive buttons message'
+      );
+
+      throw new BadRequestError('Falha ao enfileirar mensagem para envio');
+    }
+
+    // Atualizar conversa
+    await prisma.conversation.update({
+      where: { id: conversationId },
+      data: {
+        lastMessageAt: new Date(),
+        status: conversation.status === 'CLOSED' ? 'IN_PROGRESS' : conversation.status,
+      },
+    });
+
+    return message;
+  }
+
+  /**
+   * Enviar mensagem com lista interativa (até 10 itens)
+   * Segue o mesmo padrão: criar no BD → enfileirar → retornar
+   */
+  async sendInteractiveList(
+    tenantId: string,
+    conversationId: string,
+    bodyText: string,
+    buttonText: string,
+    sections: Array<{
+      title?: string;
+      rows: Array<{ id: string; title: string; description?: string }>;
+    }>,
+    sentById: string
+  ) {
+    logger.info(
+      {
+        conversationId,
+        sectionCount: sections.length,
+      },
+      'Sending interactive list message'
+    );
+
+    // Validações
+    if (sections.length === 0 || sections.length > 10) {
+      throw new BadRequestError('Número de seções deve ser entre 1 e 10');
+    }
+
+    const totalRows = sections.reduce((acc, section) => acc + section.rows.length, 0);
+    if (totalRows > 10) {
+      throw new BadRequestError('Total de opções não pode exceder 10');
+    }
+
+    if (bodyText.length > 1024) {
+      throw new BadRequestError('Body text excede 1024 caracteres');
+    }
+
+    if (buttonText.length > 20) {
+      throw new BadRequestError('Button text excede 20 caracteres');
+    }
+
+    // Buscar conversa
+    const conversation = await prisma.conversation.findFirst({
+      where: {
+        id: conversationId,
+        tenantId,
+      },
+      include: {
+        contact: true,
+      },
+    });
+
+    if (!conversation) {
+      throw new NotFoundError('Conversa não encontrada');
+    }
+
+    // Validar número
+    if (!whatsAppServiceV2.validatePhoneNumber(conversation.contact.phoneNumber)) {
+      throw new BadRequestError('Número de telefone inválido');
+    }
+
+    // Criar mensagem no banco
+    const message = await prisma.message.create({
+      data: {
+        tenantId,
+        conversationId,
+        direction: 'OUTBOUND',
+        type: 'INTERACTIVE',
+        content: bodyText,
+        metadata: {
+          interactiveType: 'list',
+          buttonText,
+          sections,
+        },
+        sentById,
+        timestamp: new Date(),
+        status: 'SENT',
+      },
+    });
+
+    // Enfileirar para envio
+    try {
+      await enqueueOutgoingMessage({
+        tenantId,
+        conversationId,
+        messageId: message.id,
+        to: conversation.contact.phoneNumber,
+        type: 'interactive_list',
+        content: bodyText,
+        metadata: {
+          buttonText,
+          sections,
+        },
+      });
+
+      logger.info(
+        {
+          messageId: message.id,
+          conversationId,
+        },
+        'Interactive list message enqueued'
+      );
+    } catch (error) {
+      // Marcar como FAILED se não conseguir enfileirar
+      await prisma.message.update({
+        where: { id: message.id },
+        data: {
+          status: 'FAILED',
+          metadata: {
+            ...(message.metadata || {}),
+            error: {
+              message: 'Failed to enqueue message',
+              timestamp: new Date().toISOString(),
+            },
+          },
+        },
+      });
+
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : 'Unknown error',
+          messageId: message.id,
+        },
+        'Failed to enqueue interactive list message'
+      );
+
+      throw new BadRequestError('Falha ao enfileirar mensagem para envio');
+    }
 
     // Atualizar conversa
     await prisma.conversation.update({

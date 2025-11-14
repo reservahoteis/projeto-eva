@@ -7,7 +7,15 @@
 [![Prisma](https://img.shields.io/badge/Prisma-5.9.1-2D3748.svg)](https://www.prisma.io/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16.1-336791.svg)](https://www.postgresql.org/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Production](https://img.shields.io/badge/Production-Ready-success.svg)](https://github.com/fredcast/projeto-eva)
+[![Production](https://img.shields.io/badge/Production-Live-success.svg)](https://api.botreserva.com.br)
+[![HTTPS](https://img.shields.io/badge/HTTPS-Enabled-brightgreen.svg)](https://api.botreserva.com.br)
+
+## 🌐 Produção
+
+**URL:** https://api.botreserva.com.br
+**Status:** ✅ Online | Última atualização: 12/11/2025
+**SSL:** Let's Encrypt (Auto-renovação ativa)
+**VPS:** 72.61.39.235 (Ubuntu 24.04)
 
 ---
 

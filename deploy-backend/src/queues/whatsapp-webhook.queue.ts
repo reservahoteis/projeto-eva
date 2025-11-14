@@ -56,7 +56,7 @@ export interface SendMessageJobData {
   conversationId: string;
   messageId: string;
   to: string;
-  type: 'text' | 'image' | 'video' | 'audio' | 'document' | 'template';
+  type: 'text' | 'image' | 'video' | 'audio' | 'document' | 'template' | 'interactive_buttons' | 'interactive_list';
   content: string;
   metadata?: Record<string, any>;
 }

@@ -21,12 +21,16 @@ export async function tenantIsolationMiddleware(
   next: NextFunction
 ) {
   try {
+    // Rotas públicas que não precisam REQUERER tenant (mas podem ter)
+    const publicRoutes = ['/auth/login', '/auth/refresh', '/webhooks', '/health'];
+    const isPublicRoute = publicRoutes.some((route) => req.path.startsWith(route));
+
     const host = req.headers.host || '';
     const tenantSlugHeader = req.headers['x-tenant-slug'] as string;
 
-    logger.debug({ host, tenantSlugHeader }, 'Processing tenant');
+    logger.debug({ host, tenantSlugHeader, isPublicRoute }, 'Processing tenant');
 
-    let tenantSlug: string;
+    let tenantSlug: string | null = null;
 
     // PRIORIDADE 1: Header X-Tenant-Slug (para APIs sem subdomínio)
     if (tenantSlugHeader) {
@@ -40,24 +44,29 @@ export async function tenantIsolationMiddleware(
       // Em desenvolvimento (localhost:3000), pode não ter subdomínio
       if (host.includes('localhost') || host.includes('127.0.0.1')) {
         // Aceitar query param ?tenant=slug para testes
-        tenantSlug = (req.query.tenant as string) || 'super-admin';
+        tenantSlug = (req.query.tenant as string) || null;
       } else if (parts.length >= 3) {
         // api.botreserva.com.br ou hotel1.botreserva.com.br
         tenantSlug = parts[0];
       } else {
-        // botreserva.com.br (sem subdomínio) = super-admin
-        tenantSlug = 'super-admin';
+        // botreserva.com.br (sem subdomínio) = sem tenant
+        tenantSlug = null;
       }
 
       logger.debug({ tenantSlug, host }, 'Tenant from subdomain');
     }
 
-    // Se é super-admin, não precisa de tenant
-    if (tenantSlug === 'super-admin' || tenantSlug === 'admin' || tenantSlug === 'api') {
+    // Se não tem tenant slug, é acesso sem tenant (super-admin)
+    if (!tenantSlug || tenantSlug === 'super-admin' || tenantSlug === 'admin' || tenantSlug === 'api') {
       req.tenantId = null;
-      logger.debug('Super admin access - no tenant required');
+      logger.debug('No tenant - super admin access');
 
-      // Set async context
+      // Se é rota pública, permite continuar
+      if (isPublicRoute) {
+        return asyncStorage.run({ tenantId: null }, () => next());
+      }
+
+      // Se é rota protegida sem tenant, deixa os middlewares de auth decidirem
       return asyncStorage.run({ tenantId: null }, () => next());
     }
 
@@ -74,6 +83,14 @@ export async function tenantIsolationMiddleware(
 
     if (!tenant) {
       logger.warn({ tenantSlug }, 'Tenant not found');
+
+      // Se é rota pública, permite continuar sem tenant
+      if (isPublicRoute) {
+        req.tenantId = null;
+        return asyncStorage.run({ tenantId: null }, () => next());
+      }
+
+      // Se é rota protegida, retorna erro
       throw new TenantNotFoundError();
     }
 
