@@ -9,7 +9,7 @@ const envSchema = z.object({
   // App
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.string().default('3001'),
-  FRONTEND_URL: z.string().url(),
+  FRONTEND_URL: z.string(), // Aceita múltiplas URLs separadas por vírgula
   BASE_DOMAIN: z.string().default('localhost:3000'),
 
   // Database

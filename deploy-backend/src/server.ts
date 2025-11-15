@@ -26,10 +26,11 @@ const httpServer = createServer(app);
 // Security headers
 app.use(helmet());
 
-// CORS
+// CORS - Aceita múltiplas origens (separadas por vírgula no .env)
+const allowedOrigins = env.FRONTEND_URL.split(',').map(url => url.trim());
 app.use(
   cors({
-    origin: env.FRONTEND_URL,
+    origin: allowedOrigins,
     credentials: true,
   })
 );
