@@ -11,23 +11,28 @@ export const generalLimiter = rateLimit({
   message: 'Too many requests, please try again later',
   standardHeaders: true,
   legacyHeaders: false,
-  // Key function para incluir tenantId (isolar por tenant)
   keyGenerator: (req: Request) => {
-    return `${req.tenantId || 'global'}:${req.ip}`;
+    const ip = req.ip || req.socket.remoteAddress || 'unknown';
+    return `${req.tenantId || 'global'}:${ip}`;
   },
+  skip: (req) => false,
 });
 
 /**
- * Rate limiter para login (mais restritivo)
- * 5 tentativas por 15 minutos
+ * Rate limiter para login (MUITO PERMISSIVO PARA DEBUG)
+ * 100 tentativas por 15 minutos
  */
 export const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 5,
+  max: 100, // AUMENTADO PARA 100 (antes: 5, depois: 20, agora: 100)
   message: 'Too many login attempts, please try again after 15 minutes',
   standardHeaders: true,
   legacyHeaders: false,
-  skipSuccessfulRequests: true, // Não contar requests bem-sucedidos
+  skipSuccessfulRequests: true,
+  keyGenerator: (req: Request) => {
+    const ip = req.ip || req.socket.remoteAddress || 'unknown';
+    return `login:${ip}`;
+  },
 });
 
 /**
@@ -39,7 +44,8 @@ export const createLimiter = rateLimit({
   max: 20,
   message: 'Too many create requests',
   keyGenerator: (req: Request) => {
-    return `${req.tenantId || 'global'}:${req.user?.userId || req.ip}`;
+    const ip = req.ip || req.socket.remoteAddress || 'unknown';
+    return `${req.tenantId || 'global'}:${req.user?.userId || ip}`;
   },
 });
 
