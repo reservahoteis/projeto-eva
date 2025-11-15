@@ -1,0 +1,371 @@
+name: Deploy to Production VPS
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'deploy-backend/**'
+      - '.github/workflows/deploy-production.yml'
+  workflow_dispatch: # Allow manual trigger
+
+env:
+  VPS_HOST: ${{ secrets.VPS_HOST }}
+  VPS_USER: ${{ secrets.VPS_USER }}
+  VPS_PATH: ${{ secrets.VPS_PATH }}
+  DEPLOY_TIMEOUT: 600 # 10 minutes
+  HEALTH_CHECK_URL: https://api.botreserva.com.br/api/health
+
+jobs:
+  deploy:
+    name: Deploy Backend to VPS
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      # ============================================
+      # 1. CHECKOUT CODE
+      # ============================================
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2 # Fetch last 2 commits for rollback
+
+      # ============================================
+      # 2. SETUP SSH
+      # ============================================
+      - name: Setup SSH key
+        run: |
+          echo "::group::Configure SSH"
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+          # Add VPS to known_hosts
+          ssh-keyscan -H ${{ env.VPS_HOST }} >> ~/.ssh/known_hosts
+
+          # Test SSH connection
+          ssh -i ~/.ssh/deploy_key -o ConnectTimeout=10 ${{ env.VPS_USER }}@${{ env.VPS_HOST }} "echo 'SSH connection successful'"
+          echo "::endgroup::"
+
+      # ============================================
+      # 3. PRE-DEPLOYMENT CHECKS
+      # ============================================
+      - name: Pre-deployment checks
+        run: |
+          echo "::group::Pre-deployment checks"
+
+          # Check if VPS is reachable
+          echo "✓ Checking VPS connectivity..."
+          ping -c 3 ${{ env.VPS_HOST }}
+
+          # Check disk space on VPS
+          echo "✓ Checking VPS disk space..."
+          DISK_USAGE=$(ssh -i ~/.ssh/deploy_key ${{ env.VPS_USER }}@${{ env.VPS_HOST }} "df -h ${{ env.VPS_PATH }} | tail -1 | awk '{print \$5}' | sed 's/%//'")
+          echo "Disk usage: ${DISK_USAGE}%"
+
+          if [ "$DISK_USAGE" -gt 90 ]; then
+            echo "::error::Disk usage is above 90%. Aborting deployment."
+            exit 1
+          fi
+
+          # Check if Docker is running
+          echo "✓ Checking Docker status..."
+          ssh -i ~/.ssh/deploy_key ${{ env.VPS_USER }}@${{ env.VPS_HOST }} "docker info > /dev/null 2>&1 || (echo '::error::Docker is not running' && exit 1)"
+
+          echo "::endgroup::"
+
+      # ============================================
+      # 4. CREATE BACKUP
+      # ============================================
+      - name: Create backup before deployment
+        run: |
+          echo "::group::Create backup"
+
+          ssh -i ~/.ssh/deploy_key ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'BACKUP_SCRIPT'
+            set -e
+            cd ${{ env.VPS_PATH }}
+
+            # Create backup directory
+            BACKUP_DIR="backups/pre-deploy-$(date +%Y%m%d-%H%M%S)"
+            mkdir -p "$BACKUP_DIR"
+
+            echo "Creating backup in $BACKUP_DIR..."
+
+            # Backup current deployment
+            if [ -d "dist" ]; then
+              cp -r dist "$BACKUP_DIR/"
+              echo "✓ Backed up dist/"
+            fi
+
+            if [ -f "package.json" ]; then
+              cp package.json "$BACKUP_DIR/"
+              echo "✓ Backed up package.json"
+            fi
+
+            # Backup database (optional - if DB is small)
+            if docker ps | grep -q crm-postgres; then
+              echo "Creating database backup..."
+              docker exec crm-postgres pg_dump -U ${POSTGRES_USER:-crm_user} ${POSTGRES_DB:-crm_whatsapp_saas} > "$BACKUP_DIR/database.sql" || true
+              echo "✓ Database backed up"
+            fi
+
+            # Keep only last 5 backups
+            cd backups
+            ls -t | tail -n +6 | xargs -r rm -rf
+
+            echo "✓ Backup completed: $BACKUP_DIR"
+          BACKUP_SCRIPT
+
+          echo "::endgroup::"
+
+      # ============================================
+      # 5. SYNC FILES TO VPS
+      # ============================================
+      - name: Sync files to VPS
+        run: |
+          echo "::group::Sync files via rsync"
+
+          # Sync deploy-backend/ to VPS
+          rsync -avz --delete \
+            --exclude 'node_modules' \
+            --exclude 'dist' \
+            --exclude '.env' \
+            --exclude '.env.production' \
+            --exclude 'coverage' \
+            --exclude 'backups' \
+            --exclude 'certbot' \
+            --exclude '*.py' \
+            --exclude '*.js' \
+            --exclude 'test-*.ts' \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
+            deploy-backend/ \
+            ${{ env.VPS_USER }}@${{ env.VPS_HOST }}:${{ env.VPS_PATH }}/
+
+          echo "✓ Files synced successfully"
+          echo "::endgroup::"
+
+      # ============================================
+      # 6. INSTALL DEPENDENCIES & BUILD
+      # ============================================
+      - name: Install dependencies and build
+        run: |
+          echo "::group::Install dependencies and build"
+
+          ssh -i ~/.ssh/deploy_key ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'BUILD_SCRIPT'
+            set -e
+            cd ${{ env.VPS_PATH }}
+
+            echo "Installing dependencies..."
+            npm ci --production=false
+
+            echo "Generating Prisma Client..."
+            npx prisma generate
+
+            echo "Building application..."
+            npm run build
+
+            echo "✓ Build completed successfully"
+          BUILD_SCRIPT
+
+          echo "::endgroup::"
+
+      # ============================================
+      # 7. RUN DATABASE MIGRATIONS
+      # ============================================
+      - name: Run database migrations
+        run: |
+          echo "::group::Run database migrations"
+
+          ssh -i ~/.ssh/deploy_key ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'MIGRATE_SCRIPT'
+            set -e
+            cd ${{ env.VPS_PATH }}
+
+            # Wait for postgres to be ready
+            echo "Waiting for PostgreSQL..."
+            timeout 30 bash -c 'until docker exec crm-postgres pg_isready -U ${POSTGRES_USER:-crm_user}; do sleep 2; done' || true
+
+            # Run migrations
+            echo "Running Prisma migrations..."
+            docker-compose -f docker-compose.production.yml exec -T backend npx prisma migrate deploy || {
+              echo "::warning::Failed to run migrations via Docker. Trying directly..."
+              npx prisma migrate deploy
+            }
+
+            echo "✓ Migrations completed"
+          MIGRATE_SCRIPT
+
+          echo "::endgroup::"
+
+      # ============================================
+      # 8. RESTART BACKEND CONTAINER
+      # ============================================
+      - name: Restart backend container
+        run: |
+          echo "::group::Restart backend container"
+
+          ssh -i ~/.ssh/deploy_key ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'RESTART_SCRIPT'
+            set -e
+            cd ${{ env.VPS_PATH }}
+
+            echo "Rebuilding and restarting backend container..."
+            docker-compose -f docker-compose.production.yml up -d --build --force-recreate backend
+
+            echo "✓ Backend container restarted"
+
+            # Show container status
+            echo ""
+            echo "Container status:"
+            docker-compose -f docker-compose.production.yml ps
+          RESTART_SCRIPT
+
+          echo "::endgroup::"
+
+      # ============================================
+      # 9. HEALTH CHECK
+      # ============================================
+      - name: Health check
+        run: |
+          echo "::group::Health check"
+
+          MAX_RETRIES=30
+          RETRY_INTERVAL=5
+
+          echo "Waiting for application to be healthy..."
+          echo "Health check URL: ${{ env.HEALTH_CHECK_URL }}"
+
+          for i in $(seq 1 $MAX_RETRIES); do
+            echo "Attempt $i/$MAX_RETRIES..."
+
+            if curl -f -s -o /dev/null -w "%{http_code}" ${{ env.HEALTH_CHECK_URL }} | grep -q "200"; then
+              echo "✓ Application is healthy!"
+
+              # Get detailed health info
+              echo ""
+              echo "Health details:"
+              curl -s ${{ env.HEALTH_CHECK_URL }} | jq '.' || curl -s ${{ env.HEALTH_CHECK_URL }}
+
+              exit 0
+            fi
+
+            if [ $i -lt $MAX_RETRIES ]; then
+              echo "Not healthy yet, waiting ${RETRY_INTERVAL}s..."
+              sleep $RETRY_INTERVAL
+            fi
+          done
+
+          echo "::error::Health check failed after $MAX_RETRIES attempts"
+
+          # Show container logs for debugging
+          echo ""
+          echo "Backend logs (last 50 lines):"
+          ssh -i ~/.ssh/deploy_key ${{ env.VPS_USER }}@${{ env.VPS_HOST }} \
+            "cd ${{ env.VPS_PATH }} && docker-compose -f docker-compose.production.yml logs --tail=50 backend"
+
+          exit 1
+
+          echo "::endgroup::"
+
+      # ============================================
+      # 10. POST-DEPLOYMENT VERIFICATION
+      # ============================================
+      - name: Post-deployment verification
+        if: success()
+        run: |
+          echo "::group::Post-deployment verification"
+
+          ssh -i ~/.ssh/deploy_key ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'VERIFY_SCRIPT'
+            cd ${{ env.VPS_PATH }}
+
+            echo "Checking all containers..."
+            docker-compose -f docker-compose.production.yml ps
+
+            echo ""
+            echo "Checking container health..."
+            docker ps --filter "name=crm-" --format "table {{.Names}}\t{{.Status}}"
+
+            echo ""
+            echo "Disk usage:"
+            df -h ${{ env.VPS_PATH }}
+          VERIFY_SCRIPT
+
+          echo "::endgroup::"
+
+      # ============================================
+      # 11. CLEANUP
+      # ============================================
+      - name: Cleanup SSH keys
+        if: always()
+        run: |
+          rm -f ~/.ssh/deploy_key
+
+      # ============================================
+      # 12. SEND NOTIFICATION (Optional)
+      # ============================================
+      - name: Deployment summary
+        if: always()
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✓ Deployment successful!"
+            echo "URL: ${{ env.HEALTH_CHECK_URL }}"
+          else
+            echo "✗ Deployment failed!"
+            echo "Check logs above for details"
+          fi
+
+  # ============================================
+  # ROLLBACK JOB (Manual trigger only)
+  # ============================================
+  rollback:
+    name: Rollback Deployment
+    runs-on: ubuntu-latest
+    if: failure() && github.event_name == 'workflow_dispatch'
+    needs: deploy
+
+    steps:
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Rollback to previous backup
+        run: |
+          echo "::group::Rollback deployment"
+
+          ssh -i ~/.ssh/deploy_key ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'ROLLBACK_SCRIPT'
+            set -e
+            cd ${{ secrets.VPS_PATH }}
+
+            # Find most recent backup
+            LATEST_BACKUP=$(ls -t backups/ | head -1)
+
+            if [ -z "$LATEST_BACKUP" ]; then
+              echo "::error::No backup found for rollback"
+              exit 1
+            fi
+
+            echo "Rolling back to: $LATEST_BACKUP"
+
+            # Restore files
+            if [ -d "backups/$LATEST_BACKUP/dist" ]; then
+              rm -rf dist
+              cp -r "backups/$LATEST_BACKUP/dist" .
+            fi
+
+            if [ -f "backups/$LATEST_BACKUP/package.json" ]; then
+              cp "backups/$LATEST_BACKUP/package.json" .
+            fi
+
+            # Restart container
+            docker-compose -f docker-compose.production.yml restart backend
+
+            echo "✓ Rollback completed"
+          ROLLBACK_SCRIPT
+
+          echo "::endgroup::"
+
+      - name: Cleanup
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
