@@ -57,7 +57,7 @@ export async function tenantIsolationMiddleware(
     }
 
     // Se não tem tenant slug, é acesso sem tenant (super-admin)
-    if (!tenantSlug || tenantSlug === 'super-admin' || tenantSlug === 'admin' || tenantSlug === 'api') {
+    if (!tenantSlug || tenantSlug === 'super-admin' || tenantSlug === 'admin' || tenantSlug === 'api' || tenantSlug === 'www') {
       req.tenantId = null;
       logger.debug('No tenant - super admin access');
 
