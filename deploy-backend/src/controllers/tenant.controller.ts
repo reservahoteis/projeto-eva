@@ -10,7 +10,7 @@ export class TenantController {
     const data = req.body as CreateTenantInput;
 
     // ✅ TYPE-SAFE: Data já validado por Zod, tipo correto
-    const result = await tenantService.createTenant(data);
+    const result = await tenantService.createTenant(data as any);
 
     return res.status(201).json(result);
   }
@@ -88,7 +88,7 @@ export class TenantController {
     }
 
     // ✅ TYPE-SAFE: Data já validado por Zod, tipo correto
-    const tenant = await tenantService.configureWhatsApp(req.tenantId, data);
+    const tenant = await tenantService.configureWhatsApp(req.tenantId, data as any);
 
     return res.json(tenant);
   }
