@@ -76,12 +76,16 @@ import tenantRoutes from './routes/tenant.routes';
 import conversationRoutes from './routes/conversation.routes';
 import messageRoutes from './routes/message.routes';
 import webhookRoutes from './routes/webhook.routes';
+import healthRoutes from './routes/health.routes';
 
 // Auth (público - sem tenant isolation)
 app.use('/auth', authRoutes);
 
 // Webhooks (antes do tenant middleware para algumas rotas)
 app.use('/webhooks', webhookRoutes);
+
+// Health check (completo com database/redis)
+app.use('/api', healthRoutes);
 
 // API protegida (com tenant)
 app.use('/api/tenants', tenantRoutes);
