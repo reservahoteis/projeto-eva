@@ -451,7 +451,7 @@ export class MessageServiceV2 {
         data: {
           status: 'FAILED',
           metadata: {
-            ...(message.metadata || {}),
+            ...(message.metadata as Record<string, any> || {}),
             error: {
               message: 'Failed to enqueue message',
               timestamp: new Date().toISOString(),
@@ -592,7 +592,7 @@ export class MessageServiceV2 {
         data: {
           status: 'FAILED',
           metadata: {
-            ...(message.metadata || {}),
+            ...(message.metadata as Record<string, any> || {}),
             error: {
               message: 'Failed to enqueue message',
               timestamp: new Date().toISOString(),

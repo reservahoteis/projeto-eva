@@ -12,7 +12,7 @@ export class TenantController {
     // ✅ TYPE-SAFE: Data já validado por Zod, tipo correto
     const result = await tenantService.createTenant(data);
 
-    res.status(201).json(result);
+    return res.status(201).json(result);
   }
 
   /**
@@ -22,13 +22,13 @@ export class TenantController {
     const { status, search, page, limit } = req.query;
 
     const result = await tenantService.listTenants({
-      status: status as 'ACTIVE' | 'SUSPENDED' | 'INACTIVE' | undefined,
+      status: status as 'TRIAL' | 'ACTIVE' | 'SUSPENDED' | 'CANCELLED' | undefined,
       search: search as string | undefined,
       page: page ? parseInt(page as string) : undefined,
       limit: limit ? parseInt(limit as string) : undefined,
     });
 
-    res.json(result);
+    return res.json(result);
   }
 
   /**
@@ -37,9 +37,13 @@ export class TenantController {
   async getById(req: Request, res: Response) {
     const { id } = req.params;
 
+    if (!id) {
+      return res.status(400).json({ error: 'ID é obrigatório' });
+    }
+
     const tenant = await tenantService.getTenantById(id);
 
-    res.json(tenant);
+    return res.json(tenant);
   }
 
   /**
@@ -49,9 +53,13 @@ export class TenantController {
     const { id } = req.params;
     const data = req.body as UpdateTenantInput;
 
+    if (!id) {
+      return res.status(400).json({ error: 'ID é obrigatório' });
+    }
+
     const tenant = await tenantService.updateTenant(id, data);
 
-    res.json(tenant);
+    return res.json(tenant);
   }
 
   /**
@@ -60,9 +68,13 @@ export class TenantController {
   async delete(req: Request, res: Response) {
     const { id } = req.params;
 
+    if (!id) {
+      return res.status(400).json({ error: 'ID é obrigatório' });
+    }
+
     await tenantService.deleteTenant(id);
 
-    res.status(204).send();
+    return res.status(204).send();
   }
 
   /**
@@ -78,7 +90,7 @@ export class TenantController {
     // ✅ TYPE-SAFE: Data já validado por Zod, tipo correto
     const tenant = await tenantService.configureWhatsApp(req.tenantId, data);
 
-    res.json(tenant);
+    return res.json(tenant);
   }
 
   /**
@@ -91,7 +103,7 @@ export class TenantController {
 
     const config = await tenantService.getWhatsAppConfig(req.tenantId);
 
-    res.json(config);
+    return res.json(config);
   }
 }
 
