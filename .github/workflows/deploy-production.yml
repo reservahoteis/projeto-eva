@@ -70,9 +70,21 @@ jobs:
         run: |
           echo "::group::Pre-deployment checks"
 
-          # Check if VPS is reachable
-          echo "✓ Checking VPS connectivity..."
-          ping -c 3 ${{ env.VPS_HOST }}
+          # Check if VPS is reachable (informative only - many VPS block ICMP)
+          echo "Checking VPS connectivity via ping (informative only)..."
+          if ping -c 3 ${{ env.VPS_HOST }} 2>&1; then
+            echo "✓ VPS responds to ICMP ping"
+          else
+            echo "::warning::VPS does not respond to ping (ICMP may be blocked by firewall)"
+            echo "This is normal for security-hardened servers. SSH connectivity will be verified next."
+          fi
+
+          # Verify SSH connectivity (critical check)
+          echo "✓ Verifying SSH connectivity (critical)..."
+          if ! ssh -i ~/.ssh/deploy_key -o ConnectTimeout=10 ${{ env.VPS_USER }}@${{ env.VPS_HOST }} "echo 'SSH connection verified' && uptime"; then
+            echo "::error::SSH connection failed. Cannot proceed with deployment."
+            exit 1
+          fi
 
           # Check disk space on VPS
           echo "✓ Checking VPS disk space..."
