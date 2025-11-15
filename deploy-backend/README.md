@@ -74,3 +74,7 @@ docker-compose -f docker-compose.production.yml down
 ---
 
 ✅ **Backend pronto para deploy!**
+
+# CI/CD
+
+Deploy automático configurado via GitHub Actions.
