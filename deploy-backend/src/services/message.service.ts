@@ -1,6 +1,6 @@
 import { prisma } from '@/config/database';
 import { NotFoundError, BadRequestError } from '@/utils/errors';
-import { Direction, MessageType } from '@prisma/client';
+import { MessageType } from '@prisma/client';
 import { whatsAppService } from './whatsapp.service';
 import { conversationService } from './conversation.service';
 import logger from '@/config/logger';
