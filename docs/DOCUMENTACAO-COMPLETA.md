@@ -1403,7 +1403,7 @@ curl -k -X GET "https://api.botreserva.com.br/api/conversations" \
 | **Identificação Tenant** | ✅ 100% | Automática via WABA ID |
 | **Logs Estruturados** | ✅ 100% | Implementados |
 
-**PRÓXIMA MILESTONE:** Frontend + Método de Pagamento Meta
+**PRÓXIMA MILESTONE:** Frontend 
 
 ---
 
