@@ -182,7 +182,7 @@ jobs:
             cd ${{ env.VPS_PATH }}
 
             echo "Building backend Docker image..."
-            docker-compose -f docker-compose.production.yml build backend
+            docker compose -f docker-compose.production.yml build backend
 
             echo "✓ Docker image built successfully"
           BUILD_SCRIPT
@@ -201,7 +201,7 @@ jobs:
             cd ${{ env.VPS_PATH }}
 
             echo "Starting backend container..."
-            docker-compose -f docker-compose.production.yml up -d --no-deps --force-recreate backend
+            docker compose -f docker-compose.production.yml up -d --no-deps --force-recreate backend
 
             echo "✓ Backend container started"
 
@@ -214,7 +214,7 @@ jobs:
             # Show container status
             echo ""
             echo "Container status:"
-            docker-compose -f docker-compose.production.yml ps backend
+            docker compose -f docker-compose.production.yml ps backend
           START_SCRIPT
 
           echo "::endgroup::"
@@ -238,10 +238,10 @@ jobs:
 
             # Run migrations inside the backend container
             echo "Running Prisma migrations inside backend container..."
-            docker-compose -f docker-compose.production.yml exec -T backend npx prisma migrate deploy || {
+            docker compose -f docker-compose.production.yml exec -T backend npx prisma migrate deploy || {
               echo "::error::Failed to run migrations"
               echo "Container logs:"
-              docker-compose -f docker-compose.production.yml logs --tail=30 backend
+              docker compose -f docker-compose.production.yml logs --tail=30 backend
               exit 1
             }
 
@@ -289,7 +289,7 @@ jobs:
           echo ""
           echo "Backend logs (last 50 lines):"
           ssh -i ~/.ssh/deploy_key ${{ env.VPS_USER }}@${{ env.VPS_HOST }} \
-            "cd ${{ env.VPS_PATH }} && docker-compose -f docker-compose.production.yml logs --tail=50 backend"
+            "cd ${{ env.VPS_PATH }} && docker compose -f docker-compose.production.yml logs --tail=50 backend"
 
           exit 1
 
@@ -307,7 +307,7 @@ jobs:
             cd ${{ env.VPS_PATH }}
 
             echo "Checking all containers..."
-            docker-compose -f docker-compose.production.yml ps
+            docker compose -f docker-compose.production.yml ps
 
             echo ""
             echo "Checking container health..."
@@ -388,14 +388,14 @@ jobs:
             docker tag "$LATEST_BACKUP_IMAGE" deploy-backend_backend:latest
 
             # Restart backend container with the backup image
-            docker-compose -f docker-compose.production.yml up -d --no-deps --force-recreate backend
+            docker compose -f docker-compose.production.yml up -d --no-deps --force-recreate backend
 
             echo "✓ Rollback completed - backend running with backup image"
 
             # Show container status
             echo ""
             echo "Container status:"
-            docker-compose -f docker-compose.production.yml ps backend
+            docker compose -f docker-compose.production.yml ps backend
           ROLLBACK_SCRIPT
 
           echo "::endgroup::"
