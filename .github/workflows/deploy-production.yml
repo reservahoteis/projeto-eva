@@ -38,11 +38,26 @@ jobs:
         run: |
           echo "::group::Configure SSH"
           mkdir -p ~/.ssh
-          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
+
+          # Handle both base64-encoded and raw SSH keys
+          if echo "${{ secrets.VPS_SSH_KEY }}" | grep -q "BEGIN OPENSSH PRIVATE KEY"; then
+            # Raw key format
+            echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
+          else
+            # Assume base64-encoded
+            echo "${{ secrets.VPS_SSH_KEY }}" | base64 -d > ~/.ssh/deploy_key
+          fi
+
           chmod 600 ~/.ssh/deploy_key
 
           # Add VPS to known_hosts
           ssh-keyscan -H ${{ env.VPS_HOST }} >> ~/.ssh/known_hosts
+
+          # Verify key format
+          if ! ssh-keygen -l -f ~/.ssh/deploy_key > /dev/null 2>&1; then
+            echo "::error::Invalid SSH key format. Please check VPS_SSH_KEY secret."
+            exit 1
+          fi
 
           # Test SSH connection
           ssh -i ~/.ssh/deploy_key -o ConnectTimeout=10 ${{ env.VPS_USER }}@${{ env.VPS_HOST }} "echo 'SSH connection successful'"
@@ -326,7 +341,14 @@ jobs:
       - name: Setup SSH key
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
+
+          # Handle both base64-encoded and raw SSH keys
+          if echo "${{ secrets.VPS_SSH_KEY }}" | grep -q "BEGIN OPENSSH PRIVATE KEY"; then
+            echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
+          else
+            echo "${{ secrets.VPS_SSH_KEY }}" | base64 -d > ~/.ssh/deploy_key
+          fi
+
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
 

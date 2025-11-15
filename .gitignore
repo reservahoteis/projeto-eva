@@ -59,3 +59,10 @@ infra/certbot/www/
 *.crt
 .vercel
 .turbo
+
+# SSH Keys (NEVER commit private keys)
+CHAVE-SSH-PARA-GITHUB.txt
+*.priv
+id_rsa
+id_ed25519
+github_actions_deploy
