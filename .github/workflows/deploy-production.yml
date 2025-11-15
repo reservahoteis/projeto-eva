@@ -119,27 +119,26 @@ jobs:
 
             echo "Creating backup in $BACKUP_DIR..."
 
-            # Backup current deployment
-            if [ -d "dist" ]; then
-              cp -r dist "$BACKUP_DIR/"
-              echo "✓ Backed up dist/"
-            fi
-
-            if [ -f "package.json" ]; then
-              cp package.json "$BACKUP_DIR/"
-              echo "✓ Backed up package.json"
+            # Backup current Docker image (for quick rollback)
+            if docker images | grep -q "deploy-backend[_-]backend"; then
+              echo "Tagging current Docker image for backup..."
+              docker tag deploy-backend_backend:latest deploy-backend_backend:backup-$(date +%Y%m%d-%H%M%S) || true
+              echo "✓ Docker image tagged for backup"
             fi
 
             # Backup database (optional - if DB is small)
             if docker ps | grep -q crm-postgres; then
               echo "Creating database backup..."
-              docker exec crm-postgres pg_dump -U ${POSTGRES_USER:-crm_user} ${POSTGRES_DB:-crm_whatsapp_saas} > "$BACKUP_DIR/database.sql" || true
+              docker exec crm-postgres pg_dump -U crm_user crm_whatsapp_saas > "$BACKUP_DIR/database.sql" 2>/dev/null || true
               echo "✓ Database backed up"
             fi
 
-            # Keep only last 5 backups
+            # Keep only last 5 backup directories
             cd backups
-            ls -t | tail -n +6 | xargs -r rm -rf
+            ls -td pre-deploy-* 2>/dev/null | tail -n +6 | xargs -r rm -rf || true
+
+            # Keep only last 3 Docker backup images
+            docker images --format "{{.Repository}}:{{.Tag}}" | grep "deploy-backend_backend:backup-" | tail -n +4 | xargs -r docker rmi || true
 
             echo "✓ Backup completed: $BACKUP_DIR"
           BACKUP_SCRIPT
@@ -154,6 +153,7 @@ jobs:
           echo "::group::Sync files via rsync"
 
           # Sync deploy-backend/ to VPS
+          # Note: We sync source files because Docker will build inside the container
           rsync -avz --delete \
             --exclude 'node_modules' \
             --exclude 'dist' \
@@ -162,8 +162,6 @@ jobs:
             --exclude 'coverage' \
             --exclude 'backups' \
             --exclude 'certbot' \
-            --exclude '*.py' \
-            --exclude '*.js' \
             --exclude 'test-*.ts' \
             -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
             deploy-backend/ \
@@ -173,32 +171,56 @@ jobs:
           echo "::endgroup::"
 
       # ============================================
-      # 6. INSTALL DEPENDENCIES & BUILD
+      # 6. BUILD DOCKER IMAGE
       # ============================================
-      - name: Install dependencies and build
+      - name: Build Docker image
         run: |
-          echo "::group::Install dependencies and build"
+          echo "::group::Build Docker image"
 
           ssh -i ~/.ssh/deploy_key ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'BUILD_SCRIPT'
             set -e
             cd ${{ env.VPS_PATH }}
 
-            echo "Installing dependencies..."
-            npm ci --production=false
+            echo "Building backend Docker image..."
+            docker-compose -f docker-compose.production.yml build backend
 
-            echo "Generating Prisma Client..."
-            npx prisma generate
-
-            echo "Building application..."
-            npm run build
-
-            echo "✓ Build completed successfully"
+            echo "✓ Docker image built successfully"
           BUILD_SCRIPT
 
           echo "::endgroup::"
 
       # ============================================
-      # 7. RUN DATABASE MIGRATIONS
+      # 7. START BACKEND CONTAINER
+      # ============================================
+      - name: Start backend container
+        run: |
+          echo "::group::Start backend container"
+
+          ssh -i ~/.ssh/deploy_key ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'START_SCRIPT'
+            set -e
+            cd ${{ env.VPS_PATH }}
+
+            echo "Starting backend container..."
+            docker-compose -f docker-compose.production.yml up -d --no-deps --force-recreate backend
+
+            echo "✓ Backend container started"
+
+            # Wait for backend to be healthy
+            echo "Waiting for backend container to be healthy..."
+            timeout 60 bash -c 'until docker inspect --format="{{.State.Health.Status}}" crm-backend | grep -q "healthy"; do echo "Waiting..."; sleep 3; done' || {
+              echo "::warning::Container health check timeout (this is normal if health endpoint takes time to start)"
+            }
+
+            # Show container status
+            echo ""
+            echo "Container status:"
+            docker-compose -f docker-compose.production.yml ps backend
+          START_SCRIPT
+
+          echo "::endgroup::"
+
+      # ============================================
+      # 8. RUN DATABASE MIGRATIONS
       # ============================================
       - name: Run database migrations
         run: |
@@ -210,41 +232,21 @@ jobs:
 
             # Wait for postgres to be ready
             echo "Waiting for PostgreSQL..."
-            timeout 30 bash -c 'until docker exec crm-postgres pg_isready -U ${POSTGRES_USER:-crm_user}; do sleep 2; done' || true
-
-            # Run migrations
-            echo "Running Prisma migrations..."
-            docker-compose -f docker-compose.production.yml exec -T backend npx prisma migrate deploy || {
-              echo "::warning::Failed to run migrations via Docker. Trying directly..."
-              npx prisma migrate deploy
+            timeout 30 bash -c 'until docker exec crm-postgres pg_isready -U crm_user 2>/dev/null; do echo "Waiting for PostgreSQL..."; sleep 2; done' || {
+              echo "::warning::PostgreSQL readiness check timeout"
             }
 
-            echo "✓ Migrations completed"
+            # Run migrations inside the backend container
+            echo "Running Prisma migrations inside backend container..."
+            docker-compose -f docker-compose.production.yml exec -T backend npx prisma migrate deploy || {
+              echo "::error::Failed to run migrations"
+              echo "Container logs:"
+              docker-compose -f docker-compose.production.yml logs --tail=30 backend
+              exit 1
+            }
+
+            echo "✓ Migrations completed successfully"
           MIGRATE_SCRIPT
-
-          echo "::endgroup::"
-
-      # ============================================
-      # 8. RESTART BACKEND CONTAINER
-      # ============================================
-      - name: Restart backend container
-        run: |
-          echo "::group::Restart backend container"
-
-          ssh -i ~/.ssh/deploy_key ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'RESTART_SCRIPT'
-            set -e
-            cd ${{ env.VPS_PATH }}
-
-            echo "Rebuilding and restarting backend container..."
-            docker-compose -f docker-compose.production.yml up -d --build --force-recreate backend
-
-            echo "✓ Backend container restarted"
-
-            # Show container status
-            echo ""
-            echo "Container status:"
-            docker-compose -f docker-compose.production.yml ps
-          RESTART_SCRIPT
 
           echo "::endgroup::"
 
@@ -372,30 +374,28 @@ jobs:
             set -e
             cd ${{ secrets.VPS_PATH }}
 
-            # Find most recent backup
-            LATEST_BACKUP=$(ls -t backups/ | head -1)
+            # Find most recent backup Docker image
+            LATEST_BACKUP_IMAGE=$(docker images --format "{{.Repository}}:{{.Tag}}" | grep "deploy-backend_backend:backup-" | head -1)
 
-            if [ -z "$LATEST_BACKUP" ]; then
-              echo "::error::No backup found for rollback"
+            if [ -z "$LATEST_BACKUP_IMAGE" ]; then
+              echo "::error::No Docker backup image found for rollback"
               exit 1
             fi
 
-            echo "Rolling back to: $LATEST_BACKUP"
+            echo "Rolling back to Docker image: $LATEST_BACKUP_IMAGE"
 
-            # Restore files
-            if [ -d "backups/$LATEST_BACKUP/dist" ]; then
-              rm -rf dist
-              cp -r "backups/$LATEST_BACKUP/dist" .
-            fi
+            # Tag backup image as latest
+            docker tag "$LATEST_BACKUP_IMAGE" deploy-backend_backend:latest
 
-            if [ -f "backups/$LATEST_BACKUP/package.json" ]; then
-              cp "backups/$LATEST_BACKUP/package.json" .
-            fi
+            # Restart backend container with the backup image
+            docker-compose -f docker-compose.production.yml up -d --no-deps --force-recreate backend
 
-            # Restart container
-            docker-compose -f docker-compose.production.yml restart backend
+            echo "✓ Rollback completed - backend running with backup image"
 
-            echo "✓ Rollback completed"
+            # Show container status
+            echo ""
+            echo "Container status:"
+            docker-compose -f docker-compose.production.yml ps backend
           ROLLBACK_SCRIPT
 
           echo "::endgroup::"

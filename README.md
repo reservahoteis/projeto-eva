@@ -182,6 +182,7 @@ Ou veja o [Guia de Deploy Completo](docs/GUIA-DEPLOY.md) para deploy manual.
 | [ARQUITETURA-IDEAL.md](ARQUITETURA-IDEAL.md) | 🏗️ Boas práticas e anti-patterns - O que fazer e o que NÃO fazer |
 | [MODELO-PROJETO-SUCESSO.md](MODELO-PROJETO-SUCESSO.md) | 🎯 Template copy-paste para novos projetos similares |
 | [docs/GUIA-DEPLOY.md](docs/GUIA-DEPLOY.md) | 🚀 Guia completo de deploy para VPS |
+| [docs/DEPLOYMENT-DOCKER-FIX.md](docs/DEPLOYMENT-DOCKER-FIX.md) | 🐳 Fix do workflow de deployment usando Docker Compose |
 | [docs/GUIA-META-WHATSAPP-API.md](docs/GUIA-META-WHATSAPP-API.md) | 💬 Configuração WhatsApp Business API |
 | [docs/FRONTEND-GUIA-RAPIDO.md](docs/FRONTEND-GUIA-RAPIDO.md) | 🎨 Setup e desenvolvimento do frontend |
 
