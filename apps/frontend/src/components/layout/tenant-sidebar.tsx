@@ -67,7 +67,7 @@ export function TenantSidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
 
-  const isAdmin = user?.role === UserRole.TENANT_ADMIN;
+  const isAdmin = user?.role === UserRole.TENANT_ADMIN || user?.role === UserRole.SUPER_ADMIN;
 
   return (
     <div className="flex h-screen w-64 flex-col border-r bg-card">
@@ -116,7 +116,11 @@ export function TenantSidebar() {
               <div className="flex flex-col items-start text-sm">
                 <p className="font-medium">{user?.name}</p>
                 <p className="text-xs text-muted-foreground">
-                  {user?.role === UserRole.TENANT_ADMIN ? 'Administrador' : 'Atendente'}
+                  {user?.role === UserRole.SUPER_ADMIN
+                    ? 'Super Admin'
+                    : user?.role === UserRole.TENANT_ADMIN
+                    ? 'Administrador'
+                    : 'Atendente'}
                 </p>
               </div>
             </Button>

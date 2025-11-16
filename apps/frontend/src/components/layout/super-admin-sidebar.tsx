@@ -14,7 +14,17 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Building2, LogOut, Settings, User } from 'lucide-react';
+import {
+  Building2,
+  LogOut,
+  Settings,
+  User,
+  LayoutDashboard,
+  MessageSquare,
+  Phone,
+  Users,
+  BarChart3,
+} from 'lucide-react';
 import { getInitials } from '@/lib/utils';
 
 const navigation = [
@@ -24,8 +34,43 @@ const navigation = [
     icon: Building2,
   },
   {
-    name: 'Configurações',
+    name: 'Configurações SA',
     href: '/super-admin/settings',
+    icon: Settings,
+  },
+  // Divider - Dashboard Tenant
+  {
+    name: 'divider',
+    label: 'Dashboard Tenant',
+  },
+  {
+    name: 'Dashboard',
+    href: '/dashboard',
+    icon: LayoutDashboard,
+  },
+  {
+    name: 'Conversas',
+    href: '/dashboard/conversations',
+    icon: MessageSquare,
+  },
+  {
+    name: 'Contatos',
+    href: '/dashboard/contacts',
+    icon: Phone,
+  },
+  {
+    name: 'Usuários',
+    href: '/dashboard/users',
+    icon: Users,
+  },
+  {
+    name: 'Relatórios',
+    href: '/dashboard/reports',
+    icon: BarChart3,
+  },
+  {
+    name: 'Configurações',
+    href: '/dashboard/settings',
     icon: Settings,
   },
 ];
@@ -42,13 +87,24 @@ export function SuperAdminSidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-1 px-3 py-4">
-        {navigation.map((item) => {
-          const Icon = item.icon;
+      <nav className="flex-1 space-y-1 px-3 py-4 overflow-y-auto">
+        {navigation.map((item, index) => {
+          // Render divider
+          if (item.name === 'divider') {
+            return (
+              <div key={`divider-${index}`} className="pt-4 pb-2">
+                <p className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  {item.label}
+                </p>
+              </div>
+            );
+          }
+
+          const Icon = item.icon!;
           const isActive = pathname === item.href;
 
           return (
-            <Link key={item.name} href={item.href}>
+            <Link key={item.name} href={item.href!}>
               <div
                 className={cn(
                   'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
