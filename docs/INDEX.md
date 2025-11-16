@@ -49,6 +49,7 @@ Se você é novo no projeto, comece por aqui:
 | Documento | Descrição | Público |
 |-----------|-----------|---------|
 | **[GUIA-META-WHATSAPP-API.md](./GUIA-META-WHATSAPP-API.md)** | **Configuração completa da Meta WhatsApp Cloud API** | Desenvolvedores |
+| **[GUIA-TESTE-MENSAGENS.md](./GUIA-TESTE-MENSAGENS.md)** | **Guia completo para testar envio e recebimento de mensagens** | Desenvolvedores, QA |
 
 ### 🎨 Frontend
 
@@ -60,6 +61,7 @@ Se você é novo no projeto, comece por aqui:
 
 | Documento | Descrição | Público |
 |-----------|-----------|---------|
+| **[CHANGELOG-2025-11-16.md](./CHANGELOG-2025-11-16.md)** | **Login frontend corrigido + permissões Super Admin (16/11/2025)** | Todos |
 | **[CHANGELOG-2025-11-15.md](./CHANGELOG-2025-11-15.md)** | **Resumo completo do dia 15/11/2025 - CI/CD + CORS + Fixes** | Todos |
 | [CHANGELOG-SSL.md](./CHANGELOG-SSL.md) | Configuração SSL (12/11/2025) | DevOps |
 | [CHANGELOG-WEBHOOK-V2.md](./CHANGELOG-WEBHOOK-V2.md) | WhatsApp Webhook v2 (13/11/2025) | Desenvolvedores |
