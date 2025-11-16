@@ -27,14 +27,20 @@ api.interceptors.request.use(
 
       // Get tenant from hostname (subdomain)
       const hostname = window.location.hostname;
-      const subdomain = hostname.split('.')[0];
+      const parts = hostname.split('.');
+      const subdomain = parts[0];
 
-      // Add tenant as query parameter (except for super-admin)
-      if (subdomain !== 'localhost' && subdomain !== 'super-admin') {
-        config.params = {
-          ...config.params,
-          tenant: subdomain,
-        };
+      // Determine tenant slug
+      let tenantSlug = 'super-admin'; // Default para localhost e desenvolvimento
+
+      // Se tiver subdomínio e não for localhost
+      if (parts.length > 1 && subdomain !== 'www') {
+        tenantSlug = subdomain;
+      }
+
+      // Add X-Tenant-Slug header (backend espera este header)
+      if (config.headers) {
+        config.headers['X-Tenant-Slug'] = tenantSlug;
       }
     }
 

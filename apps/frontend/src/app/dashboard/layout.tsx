@@ -6,7 +6,7 @@ import { UserRole } from '@/types';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
-    <ProtectedRoute allowedRoles={[UserRole.TENANT_ADMIN, UserRole.ATTENDANT]}>
+    <ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.TENANT_ADMIN, UserRole.ATTENDANT]}>
       <div className="flex h-screen">
         <TenantSidebar />
         <main className="flex-1 overflow-y-auto bg-background">{children}</main>
