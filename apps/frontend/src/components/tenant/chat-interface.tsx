@@ -46,7 +46,7 @@ export function ChatInterface({ conversation, messages, onMessageSent }: ChatInt
     sendMutation.mutate(messageText.trim());
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -97,7 +97,7 @@ export function ChatInterface({ conversation, messages, onMessageSent }: ChatInt
         <div className="flex items-center gap-2">
           {getStatusBadge()}
           {conversation.assignedTo && (
-            <Badge variant="outline">Atribuído: {conversation.assignedTo.name.split(' ')[0]}</Badge>
+            <Badge variant="outline">Atribuído: {conversation.assignedTo.name?.split(' ')[0] || 'N/A'}</Badge>
           )}
         </div>
       </div>
@@ -173,7 +173,7 @@ export function ChatInterface({ conversation, messages, onMessageSent }: ChatInt
             ref={inputRef}
             value={messageText}
             onChange={(e) => setMessageText(e.target.value)}
-            onKeyPress={handleKeyPress}
+            onKeyDown={handleKeyDown}
             placeholder="Digite sua mensagem..."
             disabled={sendMutation.isPending}
             className="flex-1"

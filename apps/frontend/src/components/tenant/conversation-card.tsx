@@ -95,7 +95,7 @@ export function ConversationCard({ conversation, onUpdate }: ConversationCardPro
             {conversation.assignedTo ? (
               <div className="flex items-center gap-1 text-muted-foreground">
                 <User className="h-3 w-3" />
-                <span>{conversation.assignedTo.name.split(' ')[0]}</span>
+                <span>{conversation.assignedTo.name?.split(' ')[0] || 'N/A'}</span>
               </div>
             ) : (
               <Badge variant="outline" className="text-xs">
