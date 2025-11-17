@@ -104,6 +104,7 @@ import conversationRoutes from './routes/conversation.routes';
 import messageRoutes from './routes/message.routes';
 import webhookRoutes from './routes/webhook.routes';
 import healthRoutes from './routes/health.routes';
+import debugRoutes from './routes/debug.routes';
 
 // Auth (público - sem tenant isolation)
 app.use('/auth', authRoutes);
@@ -113,6 +114,9 @@ app.use('/webhooks', webhookRoutes);
 
 // Health check (completo com database/redis)
 app.use('/api', healthRoutes);
+
+// Debug routes (apenas desenvolvimento)
+app.use('/api/debug', debugRoutes);
 
 // API protegida (com tenant)
 app.use('/api/tenants', tenantRoutes);

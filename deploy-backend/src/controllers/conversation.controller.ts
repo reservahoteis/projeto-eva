@@ -16,8 +16,38 @@ export class ConversationController {
     try {
       const params = req.query as unknown as ListConversationsInput;
 
+      // Log de debug para verificar tenant
+      logger.debug({
+        tenantId: req.tenantId,
+        tenant: req.tenant,
+        user: req.user?.id,
+        headers: {
+          'x-tenant-slug': req.headers['x-tenant-slug'],
+          'host': req.headers.host
+        },
+        query: req.query
+      }, 'list conversations - Verificando tenant');
+
       if (!req.tenantId) {
-        return res.status(400).json({ error: 'Tenant ID não encontrado' });
+        logger.warn({
+          headers: {
+            'x-tenant-slug': req.headers['x-tenant-slug'],
+            'host': req.headers.host
+          },
+          query: req.query
+        }, 'Tenant ID não encontrado em /api/conversations');
+
+        return res.status(400).json({
+          error: 'Tenant ID não encontrado',
+          debug: process.env.NODE_ENV !== 'production' ? {
+            headers: {
+              'x-tenant-slug': req.headers['x-tenant-slug'],
+              'host': req.headers.host
+            },
+            query: req.query,
+            tip: 'Certifique-se de enviar o header X-Tenant-Slug com o slug do tenant'
+          } : undefined
+        });
       }
 
       const result = await conversationService.listConversations({
@@ -172,6 +202,48 @@ export class ConversationController {
       }
 
       return res.status(500).json({ error: 'Erro interno ao fechar conversa' });
+    }
+  }
+
+  /**
+   * GET /api/conversations/stats
+   * Retorna estatísticas das conversas do tenant
+   */
+  async getStats(req: Request, res: Response) {
+    try {
+      // Log de debug para verificar tenant
+      logger.debug({
+        tenantId: req.tenantId,
+        tenant: req.tenant,
+        headers: {
+          'x-tenant-slug': req.headers['x-tenant-slug'],
+          'host': req.headers.host
+        }
+      }, 'getStats - Verificando tenant');
+
+      if (!req.tenantId) {
+        return res.status(400).json({
+          error: 'Tenant ID não encontrado',
+          debug: {
+            headers: {
+              'x-tenant-slug': req.headers['x-tenant-slug'],
+              'host': req.headers.host
+            },
+            query: req.query
+          }
+        });
+      }
+
+      const stats = await conversationService.getConversationStats(
+        req.tenantId,
+        req.user?.id,
+        req.user?.role
+      );
+
+      return res.json(stats);
+    } catch (error) {
+      logger.error({ error }, 'Erro ao buscar estatísticas de conversas');
+      return res.status(500).json({ error: 'Erro interno ao buscar estatísticas' });
     }
   }
 }

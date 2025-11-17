@@ -356,6 +356,179 @@ export class ConversationService {
   async closeConversation(conversationId: string, tenantId: string) {
     return this.updateConversationStatus(conversationId, tenantId, 'CLOSED');
   }
+
+  /**
+   * Obter estatísticas das conversas
+   */
+  async getConversationStats(tenantId: string, userId?: string, userRole?: Role) {
+    try {
+      // Base query
+      const baseWhere: any = {
+        tenantId,
+      };
+
+      // Se não é admin, filtrar apenas conversas do atendente
+      if (userRole === 'ATTENDANT' && userId) {
+        baseWhere.assignedToId = userId;
+      }
+
+      // Buscar estatísticas agregadas
+      const [
+        total,
+        byStatus,
+        byPriority,
+        unassigned,
+        avgResponseTime
+      ] = await Promise.all([
+        // Total de conversas
+        prisma.conversation.count({
+          where: baseWhere,
+        }),
+
+        // Conversas por status
+        prisma.conversation.groupBy({
+          by: ['status'],
+          where: baseWhere,
+          _count: {
+            id: true,
+          },
+        }),
+
+        // Conversas por prioridade
+        prisma.conversation.groupBy({
+          by: ['priority'],
+          where: baseWhere,
+          _count: {
+            id: true,
+          },
+        }),
+
+        // Conversas não atribuídas
+        prisma.conversation.count({
+          where: {
+            ...baseWhere,
+            assignedToId: null,
+            status: {
+              in: ['OPEN', 'IN_PROGRESS', 'WAITING'],
+            },
+          },
+        }),
+
+        // Tempo médio de resposta (últimas 24h)
+        this.calculateAvgResponseTime(tenantId, userId, userRole),
+      ]);
+
+      // Formatar estatísticas por status
+      const statusStats = {
+        OPEN: 0,
+        IN_PROGRESS: 0,
+        WAITING: 0,
+        CLOSED: 0,
+      };
+
+      byStatus.forEach((item) => {
+        statusStats[item.status] = item._count.id;
+      });
+
+      // Formatar estatísticas por prioridade
+      const priorityStats = {
+        LOW: 0,
+        MEDIUM: 0,
+        HIGH: 0,
+        URGENT: 0,
+      };
+
+      byPriority.forEach((item) => {
+        priorityStats[item.priority] = item._count.id;
+      });
+
+      // Calcular conversas ativas
+      const active = statusStats.OPEN + statusStats.IN_PROGRESS + statusStats.WAITING;
+
+      // Mensagens não lidas
+      const unreadMessages = await prisma.message.count({
+        where: {
+          conversation: baseWhere,
+          direction: 'INBOUND',
+          status: { not: 'READ' },
+        },
+      });
+
+      return {
+        total,
+        active,
+        unassigned,
+        unreadMessages,
+        avgResponseTime: avgResponseTime || 0,
+        byStatus: statusStats,
+        byPriority: priorityStats,
+        lastUpdated: new Date().toISOString(),
+      };
+    } catch (error) {
+      logger.error({ error, tenantId }, 'Erro ao calcular estatísticas');
+      throw error;
+    }
+  }
+
+  /**
+   * Calcular tempo médio de resposta
+   */
+  private async calculateAvgResponseTime(tenantId: string, userId?: string, userRole?: Role): Promise<number> {
+    try {
+      // Buscar conversas das últimas 24h
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+      const where: any = {
+        tenantId,
+        createdAt: { gte: since },
+        status: { not: 'OPEN' }, // Apenas conversas que tiveram interação
+      };
+
+      if (userRole === 'ATTENDANT' && userId) {
+        where.assignedToId = userId;
+      }
+
+      const conversations = await prisma.conversation.findMany({
+        where,
+        select: {
+          id: true,
+          createdAt: true,
+          messages: {
+            where: {
+              direction: 'OUTBOUND',
+            },
+            orderBy: {
+              timestamp: 'asc',
+            },
+            take: 1,
+            select: {
+              timestamp: true,
+            },
+          },
+        },
+      });
+
+      if (conversations.length === 0) return 0;
+
+      // Calcular tempo de resposta para cada conversa
+      const responseTimes = conversations
+        .filter((conv) => conv.messages.length > 0)
+        .map((conv) => {
+          const firstResponse = conv.messages[0];
+          const responseTime = firstResponse.timestamp.getTime() - conv.createdAt.getTime();
+          return responseTime;
+        });
+
+      if (responseTimes.length === 0) return 0;
+
+      // Calcular média em segundos
+      const avgMs = responseTimes.reduce((sum, time) => sum + time, 0) / responseTimes.length;
+      return Math.round(avgMs / 1000); // Retornar em segundos
+    } catch (error) {
+      logger.error({ error }, 'Erro ao calcular tempo médio de resposta');
+      return 0;
+    }
+  }
 }
 
 export const conversationService = new ConversationService();

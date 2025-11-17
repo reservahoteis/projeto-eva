@@ -11,6 +11,9 @@ const router = Router();
 router.use(authenticate);
 router.use(requireTenant);
 
+// GET /api/conversations/stats - DEVE VIR ANTES da rota /:id para não conflitar
+router.get('/stats', conversationController.getStats.bind(conversationController));
+
 // GET /api/conversations
 router.get('/', validate(listConversationsSchema, 'query'), conversationController.list.bind(conversationController));
 
