@@ -60,6 +60,9 @@ interface ReceiveMessageData {
 export class MessageServiceV2 {
   /**
    * Listar mensagens de uma conversa com paginação por cursor
+   *  /**
+   * Listar mensagens de uma conversa com paginação por cursor
+   * CORREÇÃO: Removido filtro por tenantId das mensagens
    */
   async listMessages(
     conversationId: string,
@@ -69,9 +72,31 @@ export class MessageServiceV2 {
     // Validar limit (min: 1, max: 100, default: 50)
     const limit = Math.min(Math.max(params?.limit || 50, 1), 100);
 
+    // NOVO: Primeiro validar que a conversa pertence ao tenant
+    const conversation = await prisma.conversation.findFirst({
+      where: {
+        id: conversationId,
+        tenantId: tenantId,
+      },
+    });
+
+    if (!conversation) {
+      logger.warn({
+        conversationId,
+        tenantId,
+        message: 'Conversation not found or does not belong to tenant'
+      });
+      return {
+        data: [],
+        hasMore: false,
+        nextCursor: null,
+      };
+    }
+
+    // CORREÇÃO CRÍTICA: Buscar mensagens apenas pelo conversationId
     const where: any = {
       conversationId,
-      tenantId,
+      // tenantId removido - era a causa do bug!
     };
 
     // Paginação por cursor (ID da mensagem)
@@ -80,6 +105,15 @@ export class MessageServiceV2 {
     } else if (params?.after) {
       where.id = { gt: params.after };
     }
+
+    // NOVO: Adicionar logs para debug
+    logger.info({
+      conversationId,
+      tenantId,
+      where,
+      limit,
+      message: 'Fetching messages for conversation'
+    });
 
     const messages = await prisma.message.findMany({
       where,
@@ -97,6 +131,13 @@ export class MessageServiceV2 {
         timestamp: true,
         createdAt: true,
       },
+    });
+
+    // NOVO: Log do resultado
+    logger.info({
+      conversationId,
+      messagesCount: messages.length,
+      message: 'Messages fetched successfully'
     });
 
     // Reverter para ordem cronológica (mais antiga primeiro)

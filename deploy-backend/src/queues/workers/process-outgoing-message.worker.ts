@@ -4,6 +4,7 @@ import { whatsAppService } from '@/services/whatsapp.service';
 import logger from '@/config/logger';
 import type { SendMessageJobData } from '../whatsapp-webhook.queue';
 import { InternalServerError } from '@/utils/errors';
+import { emitNewMessage, emitMessageStatusUpdate } from '@/config/socket';
 
 /**
  * Worker para enviar mensagens para o WhatsApp
@@ -35,6 +36,11 @@ export async function processOutgoingMessage(job: Job<SendMessageJobData>): Prom
         conversationId: true,
         status: true,
         whatsappMessageId: true,
+        type: true,
+        content: true,
+        metadata: true,
+        timestamp: true,
+        direction: true,
       },
     });
 
@@ -103,14 +109,24 @@ export async function processOutgoingMessage(job: Job<SendMessageJobData>): Prom
       throw new Error('Failed to send message - no WhatsApp message ID returned');
     }
 
-    // 3. ATUALIZAR MENSAGEM COM whatsappMessageId
-    await prisma.message.update({
+    // 3. ATUALIZAR MENSAGEM COM whatsappMessageId E STATUS
+    const updatedMessage = await prisma.message.update({
       where: {
         id: messageId,
       },
       data: {
         whatsappMessageId: result.whatsappMessageId,
         status: 'SENT',
+      },
+      select: {
+        id: true,
+        whatsappMessageId: true,
+        direction: true,
+        type: true,
+        content: true,
+        metadata: true,
+        status: true,
+        timestamp: true,
       },
     });
 
@@ -124,6 +140,46 @@ export async function processOutgoingMessage(job: Job<SendMessageJobData>): Prom
         status: 'IN_PROGRESS', // Conversa agora está em progresso
       },
     });
+
+    // 5. BUSCAR DADOS DO CONTATO PARA EMITIR NO EVENTO
+    const conversation = await prisma.conversation.findUnique({
+      where: { id: conversationId },
+      select: {
+        contact: {
+          select: {
+            id: true,
+            phoneNumber: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    // 6. EMITIR EVENTO WEBSOCKET (TEMPO REAL)
+    if (conversation?.contact) {
+      emitNewMessage(tenantId, conversationId, {
+        id: updatedMessage.id,
+        whatsappMessageId: updatedMessage.whatsappMessageId,
+        direction: updatedMessage.direction,
+        type: updatedMessage.type,
+        content: updatedMessage.content,
+        metadata: updatedMessage.metadata,
+        status: updatedMessage.status,
+        timestamp: updatedMessage.timestamp,
+        contact: conversation.contact,
+      });
+
+      logger.info(
+        {
+          jobId: job.id,
+          tenantId,
+          conversationId,
+          messageId,
+          socketEvent: 'message:new',
+        },
+        'Socket.io event emitted for outgoing message'
+      );
+    }
 
     logger.info(
       {
@@ -153,7 +209,7 @@ export async function processOutgoingMessage(job: Job<SendMessageJobData>): Prom
 
     // Atualizar status da mensagem para FAILED
     try {
-      await prisma.message.update({
+      const failedMessage = await prisma.message.update({
         where: {
           id: messageId,
         },
@@ -167,7 +223,23 @@ export async function processOutgoingMessage(job: Job<SendMessageJobData>): Prom
             },
           },
         },
+        select: {
+          id: true,
+          status: true,
+        },
       });
+
+      // Emitir evento de falha
+      emitMessageStatusUpdate(tenantId, conversationId, messageId, 'FAILED');
+
+      logger.info(
+        {
+          messageId,
+          socketEvent: 'message:status-update',
+          status: 'FAILED',
+        },
+        'Socket.io event emitted for failed message'
+      );
     } catch (updateError) {
       logger.error(
         {

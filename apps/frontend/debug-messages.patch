@@ -1,0 +1,93 @@
+// INSTRUÇÕES DE DEBUG PARA O PROBLEMA DE MENSAGENS NÃO APARECENDO NO CHAT
+// =========================================================================
+
+// 1. ADICIONAR LOGS NO COMPONENTE DA PÁGINA
+// Arquivo: apps/frontend/src/app/dashboard/conversations/[id]/page.tsx
+//
+// Adicionar após o import { useRouter }:
+import { useEffect } from 'react';
+
+// Modificar o useQuery de mensagens para incluir logs:
+const { data: messagesData, isLoading: messagesLoading, error: messagesError } = useQuery({
+  queryKey: ['messages', params.id],
+  queryFn: async () => {
+    console.log('[DEBUG] Buscando mensagens para conversa:', params.id);
+    try {
+      const result = await messageService.list(params.id, { limit: 100 });
+      console.log('[DEBUG] Resposta da API de mensagens:', result);
+      console.log('[DEBUG] Total de mensagens recebidas:', result?.data?.length || 0);
+      return result;
+    } catch (error) {
+      console.error('[DEBUG] Erro ao buscar mensagens:', error);
+      throw error;
+    }
+  },
+  refetchInterval: 5000,
+});
+
+// Adicionar useEffect para monitorar mudanças:
+useEffect(() => {
+  console.log('[DEBUG] Estado atual:', {
+    conversationId: params.id,
+    messagesCount: messagesData?.data?.length || 0,
+    hasError: !!messagesError,
+  });
+}, [params.id, messagesData, messagesError]);
+
+// 2. VERIFICAR NO NAVEGADOR (Console do DevTools)
+// - Abra o Chrome DevTools (F12)
+// - Vá para a aba Console
+// - Navegue até uma conversa
+// - Observe os logs [DEBUG]
+
+// 3. VERIFICAR REQUISIÇÃO DE REDE
+// - No DevTools, vá para aba Network/Rede
+// - Filtre por "Fetch/XHR"
+// - Procure por requisições para "/api/conversations/{id}/messages"
+// - Verifique:
+//   - Status da resposta (deve ser 200)
+//   - Conteúdo da resposta (aba Response)
+//   - Headers enviados (especialmente x-tenant-slug)
+
+// 4. VERIFICAR NO BACKEND
+// - O arquivo deploy-backend/src/services/message.service.v2.ts foi corrigido
+// - A correção remove o filtro por tenantId das mensagens (linha 99)
+// - Certifique-se de que o backend foi reiniciado após a correção
+
+// 5. COMANDOS PARA TESTAR
+// Terminal 1 - Backend:
+cd deploy-backend
+npm run dev
+
+// Terminal 2 - Frontend:
+cd apps/frontend
+npm run dev
+
+// 6. POSSÍVEIS PROBLEMAS E SOLUÇÕES:
+
+// PROBLEMA 1: API retorna array vazio
+// SOLUÇÃO: Verificar se as mensagens estão sendo salvas com o conversationId correto no banco
+
+// PROBLEMA 2: Erro de CORS ou 401/403
+// SOLUÇÃO: Verificar se o token JWT está sendo enviado e se o header x-tenant-slug está correto
+
+// PROBLEMA 3: Mensagens aparecem no log mas não na tela
+// SOLUÇÃO: Verificar o componente ChatInterface para ver se está renderizando corretamente
+
+// 7. QUERY SQL PARA VERIFICAR MENSAGENS NO BANCO
+// Execute no banco de dados PostgreSQL:
+/*
+SELECT
+  m.id,
+  m."conversationId",
+  m.content,
+  m.type,
+  m.direction,
+  m.timestamp,
+  c.id as conv_id,
+  c."tenantId"
+FROM "Message" m
+JOIN "Conversation" c ON c.id = m."conversationId"
+WHERE c.id = 'ID_DA_CONVERSA_AQUI'
+ORDER BY m.timestamp DESC;
+*/
