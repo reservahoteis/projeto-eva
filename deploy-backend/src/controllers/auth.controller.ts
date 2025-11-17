@@ -56,7 +56,7 @@ export class AuthController {
       return res.status(401).json({ error: 'Não autenticado' });
     }
 
-    await authService.changePassword(req.user.userId, oldPassword, newPassword);
+    await authService.changePassword(req.user.id, oldPassword, newPassword);
 
     return res.json({ message: 'Senha alterada com sucesso' });
   }
@@ -73,7 +73,7 @@ export class AuthController {
     const { prisma } = await import('@/config/database');
 
     const user = await prisma.user.findUnique({
-      where: { id: req.user.userId },
+      where: { id: req.user.id },
       select: {
         id: true,
         email: true,

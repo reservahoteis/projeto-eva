@@ -1,10 +1,15 @@
-import { Tenant, User } from '@prisma/client';
+import { Tenant, User, TenantStatus } from '@prisma/client';
 
 declare global {
   namespace Express {
     interface Request {
-      tenant?: Tenant;
-      tenantId?: string;
+      tenant?: {
+        id: string;
+        slug: string;
+        name: string;
+        status: TenantStatus;
+      };
+      tenantId?: string | null;
       user?: User;
       rawBody?: string;
     }

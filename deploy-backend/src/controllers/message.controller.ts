@@ -50,7 +50,7 @@ export class MessageController {
         content: data.content,
         type: data.type,
         metadata: data.metadata,
-        sentById: req.user.userId,
+        sentById: req.user.id,
       };
 
       // Usar messageServiceV2 - enfileira e retorna imediatamente
@@ -133,7 +133,7 @@ export class MessageController {
         conversationId,
         templateName,
         parameters,
-        req.user.userId,
+        req.user.id,
         languageCode || 'pt_BR'
       );
 
@@ -212,7 +212,7 @@ export class MessageController {
         conversationId,
         bodyText,
         buttons,
-        req.user.userId,
+        req.user.id,
         headerText,
         footerText
       );
@@ -271,7 +271,7 @@ export class MessageController {
         bodyText,
         buttonText,
         sections,
-        req.user.userId
+        req.user.id
       );
 
       return res.status(201).json(message);

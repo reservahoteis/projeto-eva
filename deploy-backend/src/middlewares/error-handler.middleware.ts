@@ -21,7 +21,7 @@ export function errorHandler(err: Error, req: Request, res: Response, next: Next
     url: req.url,
     method: req.method,
     tenantId: req.tenantId,
-    userId: req.user?.userId,
+    userId: req.user?.id,
   });
 
   // AppError (nossos erros customizados)

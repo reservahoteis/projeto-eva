@@ -45,7 +45,7 @@ export const createLimiter = rateLimit({
   message: 'Too many create requests',
   keyGenerator: (req: Request) => {
     const ip = req.ip || req.socket.remoteAddress || 'unknown';
-    return `${req.tenantId || 'global'}:${req.user?.userId || ip}`;
+    return `${req.tenantId || 'global'}:${req.user?.id || ip}`;
   },
 });
 

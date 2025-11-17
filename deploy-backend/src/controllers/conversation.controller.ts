@@ -22,7 +22,7 @@ export class ConversationController {
 
       const result = await conversationService.listConversations({
         tenantId: req.tenantId,
-        userId: req.user?.userId,
+        userId: req.user?.id,
         userRole: req.user?.role,
         ...params,
       });
@@ -48,7 +48,7 @@ export class ConversationController {
       const conversation = await conversationService.getConversationById(
         id,
         req.tenantId,
-        req.user?.userId,
+        req.user?.id,
         req.user?.role
       );
 
@@ -88,7 +88,7 @@ export class ConversationController {
           id,
           req.tenantId,
           data.status,
-          req.user?.userId,
+          req.user?.id,
           req.user?.role
         );
       }

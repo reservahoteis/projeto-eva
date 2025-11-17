@@ -15,7 +15,7 @@ interface JWTPayload {
  * Middleware de autenticação JWT
  * Valida o token e adiciona user no request
  */
-export function authenticate(req: Request, res: Response, next: NextFunction) {
+export async function authenticate(req: Request, res: Response, next: NextFunction) {
   try {
     // Extrair token do header Authorization: Bearer <token>
     const authHeader = req.headers.authorization;
@@ -29,12 +29,17 @@ export function authenticate(req: Request, res: Response, next: NextFunction) {
     // Verificar e decodificar token
     const payload = jwt.verify(token, env.JWT_SECRET) as JWTPayload;
 
-    // Adicionar user no request
-    req.user = {
-      userId: payload.userId,
-      role: payload.role,
-      tenantId: payload.tenantId,
-    };
+    // Buscar usuário no banco para ter todos os campos do User
+    const user = await (await import('@/config/database')).prisma.user.findUnique({
+      where: { id: payload.userId },
+    });
+
+    if (!user) {
+      throw new UnauthorizedError('Usuário não encontrado');
+    }
+
+    // Adicionar user completo no request
+    req.user = user;
 
     logger.debug({ userId: payload.userId, role: payload.role }, 'User authenticated');
 
@@ -65,7 +70,7 @@ export function authorize(allowedRoles: Role[]) {
 
     if (!allowedRoles.includes(req.user.role)) {
       logger.warn(
-        { userId: req.user.userId, role: req.user.role, allowedRoles },
+        { userId: req.user.id, role: req.user.role, allowedRoles },
         'Authorization failed'
       );
       return next(new ForbiddenError('Você não tem permissão para acessar este recurso'));
@@ -93,7 +98,7 @@ export function verifyTenantAccess(req: Request, res: Response, next: NextFuncti
   if (req.user.tenantId !== req.tenantId) {
     logger.warn(
       {
-        userId: req.user.userId,
+        userId: req.user.id,
         userTenantId: req.user.tenantId,
         requestTenantId: req.tenantId,
       },
@@ -109,7 +114,7 @@ export function verifyTenantAccess(req: Request, res: Response, next: NextFuncti
  * Middleware opcional de autenticação
  * Tenta autenticar, mas não falha se não tiver token
  */
-export function optionalAuthenticate(req: Request, res: Response, next: NextFunction) {
+export async function optionalAuthenticate(req: Request, res: Response, next: NextFunction) {
   try {
     const authHeader = req.headers.authorization;
 
@@ -120,11 +125,14 @@ export function optionalAuthenticate(req: Request, res: Response, next: NextFunc
     const token = authHeader.substring(7);
     const payload = jwt.verify(token, env.JWT_SECRET) as JWTPayload;
 
-    req.user = {
-      userId: payload.userId,
-      role: payload.role,
-      tenantId: payload.tenantId,
-    };
+    // Buscar usuário no banco
+    const user = await (await import('@/config/database')).prisma.user.findUnique({
+      where: { id: payload.userId },
+    });
+
+    if (user) {
+      req.user = user;
+    }
 
     next();
   } catch (error) {
