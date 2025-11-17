@@ -177,8 +177,12 @@ export class WebhookControllerV2 {
         return;
       }
 
+      // Usar rawBody (preservado pelo middleware) ao invés de JSON.stringify(req.body)
+      // para garantir que a assinatura HMAC seja validada corretamente
+      const payload = req.rawBody || JSON.stringify(req.body);
+
       const isValid = this.validateSignature(
-        JSON.stringify(req.body),
+        payload,
         signature,
         tenant.whatsappAppSecret
       );

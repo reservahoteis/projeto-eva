@@ -36,7 +36,33 @@ app.use(
 );
 
 // Body parsers
-app.use(express.json({ limit: '10mb' }));
+// IMPORTANTE: Para webhooks, precisamos do raw body para validação HMAC
+// Por isso, usamos express.raw() para /webhooks e express.json() para o resto
+app.use((req, res, next) => {
+  if (req.path.startsWith('/webhooks')) {
+    // Para webhooks: capturar raw body
+    express.raw({ type: 'application/json', limit: '10mb' })(req, res, (err) => {
+      if (err) return next(err);
+
+      // Salvar raw body para validação HMAC
+      if (req.body && Buffer.isBuffer(req.body)) {
+        req.rawBody = req.body.toString('utf-8');
+
+        // Parse JSON manualmente
+        try {
+          req.body = JSON.parse(req.rawBody);
+        } catch (e) {
+          // Se falhar parse, deixa como está
+        }
+      }
+
+      next();
+    });
+  } else {
+    // Para outras rotas: parse JSON normal
+    express.json({ limit: '10mb' })(req, res, next);
+  }
+});
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Request logging (development)
