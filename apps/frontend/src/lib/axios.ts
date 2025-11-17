@@ -25,23 +25,46 @@ api.interceptors.request.use(
         config.headers.Authorization = `Bearer ${token}`;
       }
 
-      // Get tenant from hostname (subdomain)
-      const hostname = window.location.hostname;
-      const parts = hostname.split('.');
-      const subdomain = parts[0];
+      // Get tenant from localStorage (set during login) or from hostname
+      let tenantSlug = localStorage.getItem('tenantSlug');
 
-      // Determine tenant slug
-      let tenantSlug = 'super-admin'; // Default para localhost e desenvolvimento
+      if (!tenantSlug) {
+        // Fallback: Get tenant from hostname (subdomain)
+        const hostname = window.location.hostname;
 
-      // Se tiver subdomínio e não for localhost
-      if (parts.length > 1 && subdomain !== 'www') {
-        tenantSlug = subdomain;
+        // Para produção (www.botreserva.com.br)
+        if (hostname === 'www.botreserva.com.br' || hostname === 'botreserva.com.br') {
+          tenantSlug = 'hoteis-reserva'; // Tenant padrão para o domínio principal
+        }
+        // Para desenvolvimento local
+        else if (hostname === 'localhost' || hostname === '127.0.0.1') {
+          tenantSlug = 'hoteis-reserva'; // Tenant padrão para desenvolvimento
+        }
+        // Para subdomínios (ex: tenant.botreserva.com.br)
+        else {
+          const parts = hostname.split('.');
+          if (parts.length > 2 && parts[0] !== 'www') {
+            tenantSlug = parts[0];
+          }
+        }
+
+        // Salva o tenant slug no localStorage para futuras requisições
+        if (tenantSlug) {
+          localStorage.setItem('tenantSlug', tenantSlug);
+        }
       }
 
-      // Add X-Tenant-Slug header (backend espera este header)
-      if (config.headers) {
-        config.headers['X-Tenant-Slug'] = tenantSlug;
+      // Add x-tenant-slug header (MINÚSCULO - backend espera este formato)
+      if (config.headers && tenantSlug) {
+        config.headers['x-tenant-slug'] = tenantSlug;
       }
+
+      // Debug log para verificar headers sendo enviados
+      console.log('Request headers:', {
+        url: config.url,
+        'x-tenant-slug': config.headers['x-tenant-slug'],
+        Authorization: config.headers.Authorization ? 'Bearer [TOKEN]' : 'None'
+      });
     }
 
     return config;
@@ -60,6 +83,11 @@ api.interceptors.response.use(
     const originalRequest = error.config as InternalAxiosRequestConfig & {
       _retry?: boolean;
     };
+
+    // Log de erro para debug
+    if (error.response?.status === 404 && error.response?.data) {
+      console.error('API Error 404:', error.response.data);
+    }
 
     // Token expirado - tenta refresh
     if (error.response?.status === 401 && !originalRequest._retry) {
@@ -88,6 +116,7 @@ api.interceptors.response.use(
             // Refresh falhou - desloga
             localStorage.removeItem('accessToken');
             localStorage.removeItem('refreshToken');
+            localStorage.removeItem('tenantSlug');
             window.location.href = '/login';
             return Promise.reject(refreshError);
           }
