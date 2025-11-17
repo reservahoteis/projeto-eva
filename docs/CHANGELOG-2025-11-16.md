@@ -1,280 +1,335 @@
-# 📝 CHANGELOG - 16/11/2025
+# 📝 Changelog - 16/11/2025
 
-## Login Frontend Corrigido + Permissões Super Admin
-
-**Data:** 16 de novembro de 2025
-**Versão:** 1.2.1
-**Status:** ✅ PROBLEMA CRÍTICO RESOLVIDO
+**Resumo:** Limpeza de dados de teste, criação do tenant de produção "Hoteis Reserva" e configuração de wildcard DNS no Cloudflare.
 
 ---
 
-## 🎯 Resumo do Dia
+## 🎯 Objetivo do Dia
 
-Hoje resolvemos o **problema crítico de login no frontend** que impedia usuários de acessarem o sistema. A investigação revelou dois problemas principais que foram corrigidos.
-
----
-
-## 🐛 PROBLEMA IDENTIFICADO
-
-### **Login não funcionava no frontend**
-
-**Sintomas:**
-- Usuários não conseguiam fazer login
-- Página recarregava sem mensagem de erro clara
-- Backend não recebia requisições de login corretas
-
-**Investigação realizada:**
-
-1. ✅ **Logs do backend** - Nenhuma tentativa de login válida registrada
-2. ✅ **Teste via curl** - Backend funcionando perfeitamente
-3. ✅ **Usuários no banco** - Credenciais corretas identificadas
-4. ✅ **Código do frontend** - Problemas encontrados
+Preparar o sistema para o cliente real "Rede Hoteis Reserva" (rede com 3 hotéis), removendo dados de teste e configurando infraestrutura DNS escalável para futuros clientes.
 
 ---
 
-## ✅ CORREÇÕES APLICADAS
+## ✅ Tarefas Concluídas
 
-### 1. Header X-Tenant-Slug - Frontend enviava query parameter errado
+### 1. Limpeza do Banco de Dados
 
-**Arquivo:** `apps/frontend/src/lib/axios.ts` (linhas 28-44)
+**Agente utilizado:** `data-engineer` (especialista em operações de banco de dados)
 
-**Problema:**
-```typescript
-// ANTES (ERRADO):
-// Frontend enviava tenant como query parameter
-config.params = {
-  ...config.params,
-  tenant: subdomain, // ❌ Backend não reconhece isso
-};
-```
+**Ações executadas:**
 
-**Correção:**
-```typescript
-// DEPOIS (CORRETO):
-// Frontend envia X-Tenant-Slug como header
-const hostname = window.location.hostname;
-const parts = hostname.split('.');
-const subdomain = parts[0];
-
-// Determine tenant slug
-let tenantSlug = 'super-admin'; // Default para localhost
-
-// Se tiver subdomínio e não for localhost/www
-if (parts.length > 1 && subdomain !== 'www') {
-  tenantSlug = subdomain;
-}
-
-// Add X-Tenant-Slug header (backend espera este header)
-if (config.headers) {
-  config.headers['X-Tenant-Slug'] = tenantSlug; // ✅ Correto
-}
-```
-
-**Resultado:**
-- ✅ Backend agora recebe o header `X-Tenant-Slug` corretamente
-- ✅ Tenant é identificado em todas as requisições
-- ✅ Login funciona perfeitamente
-
----
-
-### 2. Permissões do Super Admin - Acesso bloqueado a rotas do dashboard
-
-**Arquivo:** `apps/frontend/src/app/dashboard/layout.tsx` (linha 9)
-
-**Problema:**
-```typescript
-// ANTES (ERRADO):
-// Super Admin NÃO tinha acesso ao dashboard
-<ProtectedRoute allowedRoles={[UserRole.TENANT_ADMIN, UserRole.ATTENDANT]}>
-```
-
-**Correção:**
-```typescript
-// DEPOIS (CORRETO):
-// Super Admin agora tem acesso a TODAS as rotas
-<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.TENANT_ADMIN, UserRole.ATTENDANT]}>
-```
-
-**Resultado:**
-- ✅ Super Admin pode acessar todas as rotas do sistema
-- ✅ Mantém segurança para outros perfis
-- ✅ Funcionamento conforme esperado
-
----
-
-## 📊 CREDENCIAIS CORRETAS
-
-### Super Admin (documentação atualizada)
-
-**Email:** `admin@botreserva.com.br` ❌ ~~`admin@example.com`~~
-**Senha:** `SuperAdmin@123`
-**Tenant Slug:** `super-admin`
-
-### Como testar via curl:
-
+#### 1.1 Backup de Segurança
 ```bash
-curl -X POST "https://api.botreserva.com.br/auth/login" \
-  -H "Content-Type: application/json" \
-  -H "X-Tenant-Slug: super-admin" \
-  -d '{"email":"admin@botreserva.com.br","password":"SuperAdmin@123"}'
+# Backup completo criado antes de qualquer alteração
+Arquivo: /root/backup-pre-cleanup-20251116-203451.sql
+Tamanho: 26KB
+Status: ✅ Backup completo realizado
 ```
 
-**Resposta esperada:**
-```json
-{
-  "user": {
-    "id": "de44c083-59e6-4ef9-abe7-8f7195b58786",
-    "email": "admin@botreserva.com.br",
-    "name": "Super Admin",
-    "role": "SUPER_ADMIN",
-    "tenantId": null
-  },
-  "accessToken": "eyJhbGc...",
-  "refreshToken": "eyJhbGc..."
-}
+#### 1.2 Tenants Deletados
+- `hotel-copacabana` ❌ Removido
+- `hotel-ipanema` ❌ Removido
+
+**Dados relacionados deletados automaticamente (CASCADE):**
+- Usuários vinculados aos tenants
+- Contatos, conversas, mensagens
+- Tags, automações
+- Todos os dados relacionados via foreign key
+
+#### 1.3 Tenant de Produção Criado
+
+**Hoteis Reserva:**
+```
+ID: 916ca70a-0428-47f8-98a3-0f791e42f292
+Slug: hoteis-reserva
+Nome: Hoteis Reserva
+Email: contato@hoteisreserva.com.br
+Status: ACTIVE
+Plano: BASIC
+Limites:
+  - Max Atendentes: 10
+  - Max Mensagens/mês: 50,000
+```
+
+#### 1.4 Usuário Admin Criado
+
+**Administrador:**
+```
+ID: 67875da9-6b10-4ef1-956d-d2b11c061365
+Email: admin@hoteisreserva.com.br
+Senha: Admin@123
+Nome: Administrador Hoteis Reserva
+Role: TENANT_ADMIN
+Status: ACTIVE
 ```
 
 ---
 
-## 🧪 TESTES REALIZADOS
+### 2. Configuração de DNS Wildcard (Cloudflare)
 
-### 1. Build do Frontend
+**Problema identificado:** UOL Host não permite wildcard DNS (`*.botreserva.com.br`)
+
+**Solução implementada:** Migração de DNS para Cloudflare (gratuito)
+
+#### 2.1 Migração de Nameservers
+
+**Nameservers Cloudflare:**
+```
+jamie.ns.cloudflare.com
+roman.ns.cloudflare.com
+```
+
+**Status:** ✅ Nameservers alterados na UOL Host
+
+#### 2.2 Registros DNS Configurados
+
+```dns
+# Wildcard para todos os subdomínios (tenants)
+Type: A
+Name: *
+Content: 72.61.39.235
+Proxy: DNS only (nuvem cinza)
+TTL: Auto
+Status: ✅ Configurado
+
+# API Backend
+Type: A
+Name: api
+Content: 72.61.39.235
+Proxy: DNS only (nuvem cinza)
+TTL: Auto
+Status: ✅ Configurado
+
+# App Backend
+Type: A
+Name: app
+Content: 72.61.39.235
+Proxy: DNS only (nuvem cinza)
+TTL: Auto
+Status: ✅ Configurado
+
+# Frontend (Vercel)
+Type: CNAME
+Name: www
+Content: 99c6b60412431202.vercel-dns-017.com
+Proxy: DNS only (nuvem cinza)
+TTL: Auto
+Status: ✅ Configurado
+```
+
+#### 2.3 Verificação de Propagação
+
+**Teste realizado:**
 ```bash
-cd apps/frontend
-npm run build
+nslookup hoteis-reserva.botreserva.com.br
+# Resultado: 72.61.39.235 ✅
 ```
-**Resultado:** ✅ Build passou sem erros
 
-### 2. Login via curl
+**Status:**
+- ✅ DNS wildcard propagado com sucesso
+- ✅ Qualquer subdomínio agora resolve para VPS
+- ⏳ Aguardando propagação completa global (2-48h)
+
+---
+
+## 📊 Estado Final do Sistema
+
+### Banco de Dados
+```
+Total de tenants ativos: 1
+
+┌─────────────────┬────────────────┬──────────────────────────────────┬──────────────────────────────┬──────────────┐
+│ Slug            │ Nome           │ Email Tenant                     │ Email Usuário                │ Role         │
+├─────────────────┼────────────────┼──────────────────────────────────┼──────────────────────────────┼──────────────┤
+│ hoteis-reserva  │ Hoteis Reserva │ contato@hoteisreserva.com.br     │ admin@hoteisreserva.com.br   │ TENANT_ADMIN │
+└─────────────────┴────────────────┴──────────────────────────────────┴──────────────────────────────┴──────────────┘
+```
+
+### DNS
+- ✅ Wildcard DNS funcionando (`*.botreserva.com.br` → `72.61.39.235`)
+- ✅ API funcionando (`api.botreserva.com.br`)
+- ⏳ Frontend aguardando propagação (`www.botreserva.com.br`)
+
+---
+
+## 🔐 Credenciais de Acesso
+
+### Hoteis Reserva (Tenant Admin)
+```
+URL: https://www.botreserva.com.br/login
+Email: admin@hoteisreserva.com.br
+Senha: Admin@123
+Tenant Slug: hoteis-reserva
+```
+
+### Super Admin (Sistema)
+```
+URL: https://www.botreserva.com.br/login
+Email: admin@botreserva.com.br
+Senha: SuperAdmin@123
+Tenant Slug: super-admin
+```
+
+---
+
+## 🚀 Próximos Passos
+
+### 1. Aguardar Propagação DNS Completa
+- **Tempo estimado:** 2-48 horas (média: 2-6 horas)
+- **Verificar:** `nslookup www.botreserva.com.br`
+- **Teste:** Acessar https://www.botreserva.com.br
+
+### 2. Configurar WhatsApp Business API
+- [ ] Conectar números dos 3 hotéis da rede
+- [ ] Configurar Phone Number ID no tenant
+- [ ] Testar envio de mensagens
+- [ ] Configurar webhooks
+
+### 3. Migrar Automações N8N
+- [ ] Adaptar fluxos da ZAPI para API Oficial
+- [ ] Testar automações existentes
+- [ ] Validar integrações
+
+### 4. Criar Usuários Adicionais
+- [ ] Criar atendentes para cada hotel
+- [ ] Definir permissões e acessos
+- [ ] Configurar tags por hotel
+
+### 5. Testes Completos
+- [ ] Login com credenciais Hoteis Reserva
+- [ ] Envio de mensagem teste
+- [ ] Recepção de mensagem via webhook
+- [ ] Atribuição de conversas
+- [ ] Dashboard e relatórios
+
+---
+
+## 🛠️ Infraestrutura
+
+### Servidores
+- **VPS:** 72.61.39.235 (Hostinger)
+- **Frontend:** Vercel (www.botreserva.com.br)
+- **DNS:** Cloudflare (jamie/roman.ns.cloudflare.com)
+
+### Banco de Dados
+```
+Host: 72.61.39.235
+Port: 5432 (exposta externamente)
+Database: crm_whatsapp_saas
+User: crm_user
+Password: CrmSecurePass2024!
+```
+
+**Acesso via DBeaver:** ✅ Configurado (ver [DBEAVER-SETUP.md](./DBEAVER-SETUP.md))
+
+### Backup Disponível
+```
+Localização: /root/backup-pre-cleanup-20251116-203451.sql
+Tamanho: 26KB
+Data: 16/11/2025 20:34:51
+```
+
+---
+
+## 📚 Documentação Criada/Atualizada
+
+1. **DBEAVER-SETUP.md** - Guia de acesso ao banco via DBeaver
+2. **GUIA-TESTE-MENSAGENS.md** - Guia completo de teste de mensagens WhatsApp
+3. **CHANGELOG-2025-11-16.md** - Este arquivo
+
+---
+
+## 🐛 Problemas Conhecidos
+
+### 1. Frontend não acessível via www.botreserva.com.br
+**Status:** ⏳ Aguardando propagação DNS completa
+
+**Erro atual:** `ERR_QUIC_PROTOCOL_ERROR`
+
+**Causa:** DNS ainda propagando (Cloudflare → Vercel)
+
+**Solução temporária:**
+- Aguardar 2-48h para propagação completa
+- Testar em modo anônimo após propagação
+- Limpar cache DNS: `ipconfig /flushdns` (Windows)
+
+**Configuração aplicada:**
+- Registro CNAME `www` mudado para "DNS only" (nuvem cinza)
+- Proxy Cloudflare desabilitado para evitar conflito com Vercel
+
+### 2. Subdomínios apontam para backend (VPS)
+**Status:** ⚠️ Esperado (não é problema)
+
+**Comportamento:**
+```
+hoteis-reserva.botreserva.com.br → 72.61.39.235 (backend)
+Retorna: {"error": "Route not found", "path": "/", "method": "GET"}
+```
+
+**Explicação:**
+- Frontend está no Vercel (www.botreserva.com.br)
+- Backend está na VPS (api.botreserva.com.br)
+- Wildcard aponta para VPS (necessário para futuros tenants)
+
+**Próximos passos:**
+- Quando adicionar novos clientes, configurar subdomínios no Vercel
+- Ou migrar frontend para VPS com Nginx reverse proxy
+
+---
+
+## 🎯 Contexto do Projeto
+
+### Cliente Inicial: Rede Hoteis Reserva
+- **Quantidade de hotéis:** 3
+- **Automação existente:** N8N (ativo)
+- **Migração:** ZAPI → WhatsApp Business API Oficial
+- **Objetivo:** Sistema CRM WhatsApp dedicado
+
+### Plano de Comercialização
+- **Fase 1:** Implementar para Hoteis Reserva (atual)
+- **Fase 2:** Testar e validar todas funcionalidades
+- **Fase 3:** Comercializar para outras redes de hotéis
+- **Arquitetura:** Multi-tenant com wildcard DNS (escalável)
+
+---
+
+## 📞 Suporte
+
+**Backup disponível em:** `/root/backup-pre-cleanup-20251116-203451.sql`
+
+**Logs do sistema:**
 ```bash
-curl -k -X POST "https://api.botreserva.com.br/auth/login" \
-  -H "Content-Type: application/json" \
-  -H "X-Tenant-Slug: super-admin" \
-  -d '{"email":"admin@botreserva.com.br","password":"SuperAdmin@123"}'
-```
-**Resultado:** ✅ Login bem-sucedido, tokens retornados
+# Backend
+docker logs crm-backend -f
 
-### 3. Usuários no banco
+# PostgreSQL
+docker logs crm-postgres -f
+
+# Todos os serviços
+cd /root/deploy-backend
+docker compose -f docker-compose.production.yml logs -f
+```
+
+**Verificar DNS:**
 ```bash
-docker exec crm-postgres psql -U crm_user -d crm_whatsapp_saas \
-  -c "SELECT id, email, role FROM users;"
-```
-**Resultado:** ✅ 3 usuários encontrados (1 SUPER_ADMIN, 2 TENANT_ADMIN)
-
----
-
-## 📁 ARQUIVOS MODIFICADOS
-
-```
-apps/frontend/src/
-├── lib/
-│   └── axios.ts                          📝 Header X-Tenant-Slug corrigido
-└── app/
-    └── dashboard/
-        └── layout.tsx                    📝 Permissões Super Admin adicionadas
-
-docs/
-└── CHANGELOG-2025-11-16.md               ✅ NOVO (este arquivo)
-
-RESUMO-15-11-2025.md                      📝 Atualizado (problema resolvido)
+nslookup hoteis-reserva.botreserva.com.br
+nslookup www.botreserva.com.br
+nslookup api.botreserva.com.br
 ```
 
 ---
 
-## 🎯 IMPACTO DAS CORREÇÕES
-
-### Antes:
-- ❌ Login não funcionava
-- ❌ Super Admin bloqueado no dashboard
-- ❌ Backend não recebia tenant correto
-- 🔴 **Sistema INUTILIZÁVEL para usuários**
-
-### Depois:
-- ✅ Login funcionando perfeitamente
-- ✅ Super Admin acessa todas as rotas
-- ✅ Backend recebe headers corretos
-- 🟢 **Sistema 100% FUNCIONAL**
+**Data de criação:** 16/11/2025
+**Responsável:** Claude Code + Fred Castro
+**Agentes utilizados:** data-engineer (backend-architect specialist)
 
 ---
 
-## 📊 STATUS ATUAL DO PROJETO
+## ✨ Conquistas do Dia
 
-| Componente | Status | Observação |
-|------------|--------|------------|
-| **Backend API** | ✅ Online | https://api.botreserva.com.br |
-| **Frontend Login** | ✅ Funcionando | Problema resolvido |
-| **Frontend Dashboard** | ✅ Funcionando | Super Admin com acesso total |
-| **Multi-Tenant** | ✅ Funcionando | Header X-Tenant-Slug correto |
-| **WhatsApp API** | ✅ Integrado | Envio/recebimento OK |
-| **SSL/HTTPS** | ✅ Válido | Let's Encrypt |
-| **CI/CD** | ✅ Ativo | GitHub Actions |
-
----
-
-## 🚀 PRÓXIMOS PASSOS
-
-### Prioridade ALTA 🔴
-
-1. ~~**Login Frontend**~~ ✅ **RESOLVIDO**
-2. **Método de Pagamento Meta**
-   - Adicionar cartão de crédito
-   - Necessário para mensagens fora da janela de 24h
-3. **Templates WhatsApp Personalizados**
-   - Criar templates para hotel
-   - Submeter para aprovação Meta
-
-### Prioridade MÉDIA 🟡
-
-4. **Frontend - Interface de Chat aprimorada**
-5. **WebSocket/Socket.IO para tempo real**
-6. **Monitoramento e Alertas**
-
-### Prioridade BAIXA 🟢
-
-7. **Testes Automatizados E2E**
-8. **Documentação API (Swagger)**
-
----
-
-## 🔗 Links Úteis
-
-### Produção
-- **Backend API:** https://api.botreserva.com.br
-- **Frontend:** https://www.botreserva.com.br
-- **Health Check:** https://api.botreserva.com.br/api/health
-
-### Documentação
-- [CHANGELOG-2025-11-15.md](./CHANGELOG-2025-11-15.md) - Dia anterior
-- [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) - Guia de problemas
-- [INDEX.md](./INDEX.md) - Índice geral
-
----
-
-## ✅ Checklist de Verificação
-
-- [x] Problema identificado e documentado
-- [x] Correção aplicada no frontend (axios)
-- [x] Correção aplicada no frontend (permissões)
-- [x] Build testado e funcionando
-- [x] Login testado via curl
-- [x] Usuários verificados no banco
-- [x] Documentação atualizada
-- [x] Changelog criado
-- [ ] Commit criado (pendente)
-- [ ] Deploy no Vercel (pendente)
-
----
-
-## 👥 Equipe
-
-**Desenvolvedor:** Fred Castro
-**AI Assistant:** Claude Code
-**Data:** 16/11/2025
-**Tempo de investigação:** ~1 hora
-**Tempo de correção:** ~15 minutos
-
----
-
-**FIM DO CHANGELOG - 16/11/2025**
-
-**Status Final:** ✅ **LOGIN FUNCIONANDO - SISTEMA 100% OPERACIONAL**
+- ✅ Banco de dados limpo e pronto para produção
+- ✅ Tenant "Hoteis Reserva" criado com sucesso
+- ✅ Wildcard DNS configurado (escalável para futuros clientes)
+- ✅ Backup de segurança criado
+- ✅ Infraestrutura DNS migrada para Cloudflare
+- ✅ Sistema preparado para comercialização futura
