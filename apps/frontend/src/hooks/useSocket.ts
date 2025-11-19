@@ -44,6 +44,13 @@ export function useSocket(options: UseSocketOptions = {}) {
 
   // Função para conectar ao socket
   const connect = useCallback(() => {
+    // ⚠️⚠️⚠️ LOG DE VERSÃO PARA DEBUG - VERSÃO d329972 ⚠️⚠️⚠️
+    console.log('═══════════════════════════════════════════════');
+    console.log('🚀 USESOCKET.TS CARREGADO - VERSÃO: d329972');
+    console.log('📅 Timestamp:', new Date().toISOString());
+    console.log('🌐 Window location:', window.location.href);
+    console.log('═══════════════════════════════════════════════');
+
     if (!enabled || typeof window === 'undefined') {
       return null;
     }
@@ -91,6 +98,12 @@ export function useSocket(options: UseSocketOptions = {}) {
 
     // Connection event handlers
     socket.on('connect', () => {
+      console.log('═══════════════════════════════════════════════');
+      console.log('✅ SOCKET CONECTADO - VERSÃO d329972');
+      console.log('🆔 Socket ID:', socket.id);
+      console.log('📡 Tenant Slug:', tenantSlug);
+      console.log('═══════════════════════════════════════════════');
+
       console.log('✅ Socket connected:', socket.id);
       setIsConnected(true);
       setConnectionStatus('connected');
