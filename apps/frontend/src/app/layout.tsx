@@ -7,7 +7,7 @@ const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'CRM WhatsApp SaaS - Gerenciamento de Conversas',
-  description: 'Sistema Multi-Tenant de CRM para WhatsApp Business API',
+  description: 'Sistema Multi-Tenant de CRM para WhatsApp Business API - Build 20251119',
   icons: {
     icon: '/favicon.ico',
   },

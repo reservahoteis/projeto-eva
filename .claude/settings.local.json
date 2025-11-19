@@ -1,8 +1,8 @@
 {
-  "model": "claude-3-5-sonnet-20241022",
   "env": {
     "ANTHROPIC_SMALL_FAST_MODEL": "claude-3-5-haiku-20241022"
   },
+  "model": "claude-3-5-sonnet-20241022",
   "hooks": {
     "PostToolUse": [
       {
@@ -14,6 +14,13 @@
           }
         ]
       }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ]
   }
 }
