@@ -159,6 +159,7 @@ export async function processOutgoingMessage(job: Job<SendMessageJobData>): Prom
     if (conversation?.contact) {
       emitNewMessage(tenantId, conversationId, {
         id: updatedMessage.id,
+        conversationId: conversationId, // IMPORTANTE: Incluir conversationId!
         whatsappMessageId: updatedMessage.whatsappMessageId,
         direction: updatedMessage.direction,
         type: updatedMessage.type,

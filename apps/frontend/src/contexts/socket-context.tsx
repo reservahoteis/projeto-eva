@@ -98,8 +98,9 @@ export function SocketProvider({ children }: SocketProviderProps) {
       return;
     }
 
-    console.log('Subscribing to conversation:', conversationId);
-    emit('conversation:subscribe', { conversationId });
+    console.log('🔔 Subscribing to conversation:', conversationId);
+    // CORREÇÃO: Usar 'conversation:join' que o backend espera
+    emit('conversation:join', conversationId);
     subscribedConversations.current.add(conversationId);
   }, [emit]);
 
@@ -109,8 +110,9 @@ export function SocketProvider({ children }: SocketProviderProps) {
       return;
     }
 
-    console.log('Unsubscribing from conversation:', conversationId);
-    emit('conversation:unsubscribe', { conversationId });
+    console.log('🔕 Unsubscribing from conversation:', conversationId);
+    // CORREÇÃO: Usar 'conversation:leave' que o backend espera
+    emit('conversation:leave', conversationId);
     subscribedConversations.current.delete(conversationId);
   }, [emit]);
 
@@ -205,7 +207,12 @@ export function SocketProvider({ children }: SocketProviderProps) {
 
     // Listen for new messages
     const handleNewMessage = (data: { message: Message; conversation: Conversation }) => {
-      console.log('🆕 New message received:', data);
+      console.log('🆕 New message received in SocketContext:', {
+        messageId: data.message?.id,
+        conversationId: data.message?.conversationId || data.conversation?.id,
+        content: data.message?.content?.substring(0, 50),
+        timestamp: new Date().toISOString()
+      });
 
       // Show notification for inbound messages
       if (data.message.direction === 'INBOUND') {

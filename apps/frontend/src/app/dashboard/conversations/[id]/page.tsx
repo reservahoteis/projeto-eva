@@ -41,24 +41,48 @@ export default function ConversationPage({ params }: ConversationPageProps) {
     subscribeToConversation(params.id);
 
     // Handle new messages
-    const handleNewMessage = (data: { message: Message; conversationId: string }) => {
-      console.log('New message received in conversation:', data);
+    const handleNewMessage = (data: any) => {
+      console.log('📨 New message received in conversation page:', {
+        dataKeys: Object.keys(data),
+        conversationId: data.conversationId,
+        messageId: data.message?.id,
+        hasMessage: !!data.message,
+        currentConversationId: params.id
+      });
+
+      // O backend pode enviar em diferentes formatos, vamos tratar ambos
+      const message = data.message || data;
+      const conversationId = data.conversationId || message.conversationId || params.id;
 
       // Only process messages for this conversation
-      if (data.conversationId === params.id || data.message.conversationId === params.id) {
+      if (conversationId === params.id) {
+        console.log('✅ Processing message for current conversation');
+
         // Update messages in cache
         queryClient.setQueryData(['messages', params.id], (oldData: any) => {
-          if (!oldData) return oldData;
+          if (!oldData) {
+            console.log('⚠️ No existing message data in cache');
+            return { data: [message] };
+          }
 
           // Check if message already exists
-          const messageExists = oldData.data.some((msg: Message) => msg.id === data.message.id);
-          if (messageExists) return oldData;
+          const messageExists = oldData.data.some((msg: Message) => msg.id === message.id);
+          if (messageExists) {
+            console.log('⚠️ Message already exists in cache:', message.id);
+            return oldData;
+          }
 
+          console.log('✅ Adding new message to cache:', message.id);
           return {
             ...oldData,
-            data: [...oldData.data, data.message]
+            data: [...oldData.data, message]
           };
         });
+
+        // Force re-render by invalidating query
+        queryClient.invalidateQueries({ queryKey: ['conversation', params.id] });
+      } else {
+        console.log('⚠️ Message for different conversation:', conversationId, '!==', params.id);
       }
     };
 

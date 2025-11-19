@@ -80,6 +80,7 @@ export async function processIncomingMessage(job: Job<ProcessMessageJobData>): P
     // 7. EMITIR EVENTO WEBSOCKET (TEMPO REAL)
     emitNewMessage(tenantId, conversation.id, {
       id: savedMessage.id,
+      conversationId: conversation.id, // IMPORTANTE: Incluir conversationId!
       whatsappMessageId: savedMessage.whatsappMessageId,
       direction: savedMessage.direction,
       type: savedMessage.type,
