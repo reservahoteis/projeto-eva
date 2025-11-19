@@ -94,26 +94,58 @@ export function SocketProvider({ children }: SocketProviderProps) {
 
   // Subscribe to a conversation room
   const subscribeToConversation = useCallback((conversationId: string) => {
-    if (!conversationId || subscribedConversations.current.has(conversationId)) {
+    console.log('🔔 SUBSCRIBE INICIADO:', conversationId);
+
+    if (!conversationId) {
+      console.error('❌ conversationId está undefined!');
       return;
     }
 
-    console.log('🔔 Subscribing to conversation:', conversationId);
-    // CORREÇÃO: Usar 'conversation:join' que o backend espera
-    emit('conversation:join', conversationId);
-    subscribedConversations.current.add(conversationId);
+    if (subscribedConversations.current.has(conversationId)) {
+      console.warn('⚠️ Já está subscrito:', conversationId);
+      return;
+    }
+
+    console.log('📤 Emitindo conversation:join com payload:', { conversationId });
+    // CORREÇÃO CRÍTICA: Backend espera objeto { conversationId }, não string!
+    const success = emit('conversation:join', { conversationId });
+    console.log('📡 Resultado do emit:', success ? '✅ Sucesso' : '❌ Falhou');
+
+    if (success) {
+      subscribedConversations.current.add(conversationId);
+      console.log('✅ SUBSCRITO COM SUCESSO:', conversationId);
+      console.log('📊 Total de conversas subscritas:', subscribedConversations.current.size);
+    } else {
+      console.error('❌ FALHA AO SUBSCREVER:', conversationId);
+    }
   }, [emit]);
 
   // Unsubscribe from a conversation room
   const unsubscribeFromConversation = useCallback((conversationId: string) => {
-    if (!conversationId || !subscribedConversations.current.has(conversationId)) {
+    console.log('🔕 UNSUBSCRIBE INICIADO:', conversationId);
+
+    if (!conversationId) {
+      console.error('❌ conversationId está undefined ao fazer unsubscribe!');
       return;
     }
 
-    console.log('🔕 Unsubscribing from conversation:', conversationId);
-    // CORREÇÃO: Usar 'conversation:leave' que o backend espera
-    emit('conversation:leave', conversationId);
-    subscribedConversations.current.delete(conversationId);
+    if (!subscribedConversations.current.has(conversationId)) {
+      console.warn('⚠️ Não estava subscrito:', conversationId);
+      return;
+    }
+
+    console.log('📤 Emitindo conversation:leave com payload:', { conversationId });
+    // CORREÇÃO CRÍTICA: Backend espera objeto { conversationId }, não string!
+    const success = emit('conversation:leave', { conversationId });
+    console.log('📡 Resultado do emit leave:', success ? '✅ Sucesso' : '❌ Falhou');
+
+    if (success) {
+      subscribedConversations.current.delete(conversationId);
+      console.log('✅ DESSUBSCRITO COM SUCESSO:', conversationId);
+      console.log('📊 Total de conversas subscritas restantes:', subscribedConversations.current.size);
+    } else {
+      console.error('❌ FALHA AO DESSUBSCREVER:', conversationId);
+    }
   }, [emit]);
 
   // Send typing status with debounce
@@ -207,11 +239,17 @@ export function SocketProvider({ children }: SocketProviderProps) {
 
     // Listen for new messages
     const handleNewMessage = (data: { message: Message; conversation: Conversation }) => {
-      console.log('🆕 New message received in SocketContext:', {
+      console.log('🔵🔵🔵 EVENTO message:new RECEBIDO NO SOCKET-CONTEXT:', {
+        fullData: data,
         messageId: data.message?.id,
         conversationId: data.message?.conversationId || data.conversation?.id,
         content: data.message?.content?.substring(0, 50),
-        timestamp: new Date().toISOString()
+        hasMessage: !!data.message,
+        hasConversation: !!data.conversation,
+        messageDirection: data.message?.direction,
+        timestamp: new Date().toISOString(),
+        subscribedConversations: Array.from(subscribedConversations.current),
+        isSubscribed: subscribedConversations.current.has(data.message?.conversationId || data.conversation?.id)
       });
 
       // Show notification for inbound messages
@@ -281,12 +319,14 @@ export function SocketProvider({ children }: SocketProviderProps) {
     };
 
     // Register all event listeners
+    console.log('🎯 REGISTRANDO LISTENERS DE EVENTOS DO SOCKET.IO');
     on('message:new', handleNewMessage);
     on('conversation:updated', handleConversationUpdate);
     on('user:typing', handleTyping);
     on('user:online', handleUserOnline);
     on('user:offline', handleUserOffline);
     on('message:status', handleMessageStatus);
+    console.log('✅ TODOS OS LISTENERS REGISTRADOS COM SUCESSO');
 
     // Cleanup
     return () => {
@@ -320,7 +360,8 @@ export function SocketProvider({ children }: SocketProviderProps) {
 
       // Unsubscribe from all conversations
       subscribedConversations.current.forEach(conversationId => {
-        emit('conversation:unsubscribe', { conversationId });
+        // CORREÇÃO: Usar 'conversation:leave' ao invés de 'conversation:unsubscribe'
+        emit('conversation:leave', { conversationId });
       });
       subscribedConversations.current.clear();
     };

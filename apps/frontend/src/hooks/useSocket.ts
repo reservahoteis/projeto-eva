@@ -222,15 +222,28 @@ export function useSocket(options: UseSocketOptions = {}) {
   // Enhanced emit function with connection check
   const emit = useCallback((event: string, data?: any, callback?: (...args: any[]) => void) => {
     if (socketRef.current && socketRef.current.connected) {
-      console.log('📤 Emitting event:', event, data);
+      console.log('📤📤📤 EMIT SOCKET.IO:', {
+        event,
+        data,
+        hasCallback: !!callback,
+        socketId: socketRef.current.id,
+        timestamp: new Date().toISOString()
+      });
+
       if (callback) {
         socketRef.current.emit(event, data, callback);
       } else {
         socketRef.current.emit(event, data);
       }
+      console.log(`✅ Evento ${event} emitido com sucesso`);
       return true;
     } else {
-      console.warn('Socket not connected, cannot emit event:', event);
+      console.error('❌❌❌ Socket não conectado, não pode emitir:', {
+        event,
+        data,
+        socketExists: !!socketRef.current,
+        isConnected: socketRef.current?.connected
+      });
       return false;
     }
   }, []);
@@ -242,7 +255,23 @@ export function useSocket(options: UseSocketOptions = {}) {
   ) => {
     if (socketRef.current) {
       console.log('👂 Adding listener for event:', event);
-      socketRef.current.on(event as string, handler as any);
+
+      // Wrap handler to log when event is received
+      const wrappedHandler = (...args: any[]) => {
+        console.log(`🎯🎯🎯 EVENTO RECEBIDO [${event}]:`, {
+          event,
+          data: args[0],
+          timestamp: new Date().toISOString(),
+          socketId: socketRef.current?.id,
+          isConnected: socketRef.current?.connected
+        });
+        return (handler as any)(...args);
+      };
+
+      socketRef.current.on(event as string, wrappedHandler as any);
+      console.log(`✅ Listener registrado para: ${event}`);
+    } else {
+      console.error(`❌ Não foi possível adicionar listener para ${event} - socket não inicializado`);
     }
   }, []);
 
