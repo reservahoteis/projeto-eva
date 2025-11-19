@@ -34,7 +34,11 @@ export const messageService = {
    * Send message
    */
   async send(payload: SendMessageRequest): Promise<Message> {
-    const { data } = await api.post<Message>('/api/messages', payload);
+    const { conversationId, ...messageData } = payload;
+    const { data } = await api.post<Message>(
+      `/api/conversations/${conversationId}/messages`,
+      messageData
+    );
     return data;
   },
 

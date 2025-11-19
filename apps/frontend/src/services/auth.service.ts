@@ -1,11 +1,6 @@
 import api from '@/lib/axios';
 import { AuthResponse, User } from '@/types';
 
-interface LoginRequest {
-  email: string;
-  password: string;
-}
-
 interface RegisterRequest {
   email: string;
   password: string;

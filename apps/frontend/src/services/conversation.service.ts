@@ -14,10 +14,6 @@ interface UpdateConversationRequest {
   assignedToId?: string;
 }
 
-interface AssignConversationRequest {
-  userId: string;
-}
-
 /**
  * Conversation service (Tenant users)
  */

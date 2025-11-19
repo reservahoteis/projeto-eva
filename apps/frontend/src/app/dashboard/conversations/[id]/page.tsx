@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { conversationService } from '@/services/conversation.service';
 import { messageService } from '@/services/message.service';
 import { ChatInterface } from '@/components/tenant/chat-interface';
@@ -8,6 +8,9 @@ import { ContactSidebar } from '@/components/tenant/contact-sidebar';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useSocketContext } from '@/contexts/socket-context';
+import { useEffect } from 'react';
+import { Message } from '@/types';
 
 interface ConversationPageProps {
   params: {
@@ -17,18 +20,94 @@ interface ConversationPageProps {
 
 export default function ConversationPage({ params }: ConversationPageProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const { on, off, subscribeToConversation, unsubscribeFromConversation, isConnected } = useSocketContext();
 
   const { data: conversation, isLoading: conversationLoading } = useQuery({
     queryKey: ['conversation', params.id],
     queryFn: () => conversationService.getById(params.id),
-    refetchInterval: 5000, // Refetch every 5s for new messages
   });
 
-  const { data: messagesData, isLoading: messagesLoading } = useQuery({
+  const { data: messagesData, isLoading: messagesLoading, refetch: refetchMessages } = useQuery({
     queryKey: ['messages', params.id],
     queryFn: () => messageService.list(params.id, { limit: 100 }),
-    refetchInterval: 5000,
   });
+
+  // Subscribe to real-time events for this conversation
+  useEffect(() => {
+    if (!isConnected || !params.id) return;
+
+    console.log('Subscribing to conversation:', params.id);
+    subscribeToConversation(params.id);
+
+    // Handle new messages
+    const handleNewMessage = (data: { message: Message; conversationId: string }) => {
+      console.log('New message received in conversation:', data);
+
+      // Only process messages for this conversation
+      if (data.conversationId === params.id || data.message.conversationId === params.id) {
+        // Update messages in cache
+        queryClient.setQueryData(['messages', params.id], (oldData: any) => {
+          if (!oldData) return oldData;
+
+          // Check if message already exists
+          const messageExists = oldData.data.some((msg: Message) => msg.id === data.message.id);
+          if (messageExists) return oldData;
+
+          return {
+            ...oldData,
+            data: [...oldData.data, data.message]
+          };
+        });
+      }
+    };
+
+    // Handle conversation updates
+    const handleConversationUpdate = (data: { conversation: any }) => {
+      if (data.conversation.id === params.id) {
+        console.log('Conversation updated:', data);
+        queryClient.setQueryData(['conversation', params.id], data.conversation);
+      }
+    };
+
+    // Handle message status updates
+    const handleMessageStatus = (data: { messageId: string; status: string }) => {
+      console.log('Message status update:', data);
+
+      // Update message status in cache
+      queryClient.setQueryData(['messages', params.id], (oldData: any) => {
+        if (!oldData) return oldData;
+
+        return {
+          ...oldData,
+          data: oldData.data.map((msg: Message) =>
+            msg.id === data.messageId ? { ...msg, status: data.status } : msg
+          )
+        };
+      });
+    };
+
+    // Register event listeners
+    on('message:new', handleNewMessage);
+    on('conversation:updated', handleConversationUpdate);
+    on('message:status', handleMessageStatus);
+
+    // Cleanup
+    return () => {
+      console.log('Unsubscribing from conversation:', params.id);
+      unsubscribeFromConversation(params.id);
+      off('message:new', handleNewMessage);
+      off('conversation:updated', handleConversationUpdate);
+      off('message:status', handleMessageStatus);
+    };
+  }, [isConnected, params.id, on, off, subscribeToConversation, unsubscribeFromConversation, queryClient]);
+
+  // Refetch messages when connection is restored
+  useEffect(() => {
+    if (isConnected) {
+      refetchMessages();
+    }
+  }, [isConnected, refetchMessages]);
 
   if (conversationLoading || messagesLoading) {
     return (
