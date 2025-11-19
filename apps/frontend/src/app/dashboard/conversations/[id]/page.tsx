@@ -40,49 +40,98 @@ export default function ConversationPage({ params }: ConversationPageProps) {
     console.log('Subscribing to conversation:', params.id);
     subscribeToConversation(params.id);
 
-    // Handle new messages
+    // Handle new messages - PADRÃO WHATSAPP WEB
     const handleNewMessage = (data: any) => {
-      console.log('📨 New message received in conversation page:', {
+      console.log('🔵 SOCKET EVENT - message:new:', {
+        fullData: data,
         dataKeys: Object.keys(data),
-        conversationId: data.conversationId,
-        messageId: data.message?.id,
         hasMessage: !!data.message,
-        currentConversationId: params.id
+        hasConversation: !!data.conversation,
+        messageId: data.message?.id,
+        messageConversationId: data.message?.conversationId,
+        conversationId: data.conversation?.id,
+        currentPageId: params.id,
+        timestamp: new Date().toISOString()
       });
 
-      // O backend pode enviar em diferentes formatos, vamos tratar ambos
-      const message = data.message || data;
-      const conversationId = data.conversationId || message.conversationId || params.id;
+      // Backend envia: { message: {...}, conversation: {...} }
+      const message = data.message;
+      const conversation = data.conversation;
+
+      // Determinar o ID da conversa de várias fontes possíveis
+      const messageConversationId =
+        message?.conversationId ||
+        conversation?.id ||
+        data.conversationId ||
+        params.id;
+
+      console.log('📍 Conversation ID resolved to:', messageConversationId, 'vs current:', params.id);
 
       // Only process messages for this conversation
-      if (conversationId === params.id) {
-        console.log('✅ Processing message for current conversation');
+      if (messageConversationId === params.id && message) {
+        console.log('✅ MESSAGE IS FOR THIS CONVERSATION - UPDATING UI NOW!');
 
-        // Update messages in cache
-        queryClient.setQueryData(['messages', params.id], (oldData: any) => {
-          if (!oldData) {
-            console.log('⚠️ No existing message data in cache');
-            return { data: [message] };
+        // PADRÃO WHATSAPP: Atualizar cache IMEDIATAMENTE
+        const cacheUpdated = queryClient.setQueryData(
+          ['messages', params.id],
+          (oldData: any) => {
+            console.log('📦 Current cache state:', {
+              hasOldData: !!oldData,
+              messageCount: oldData?.data?.length || 0
+            });
+
+            if (!oldData) {
+              console.log('🆕 Creating new cache with first message');
+              return {
+                data: [message],
+                pagination: { page: 1, limit: 100, total: 1 }
+              };
+            }
+
+            // Check if message already exists
+            const messageExists = oldData.data?.some((msg: Message) => msg.id === message.id);
+            if (messageExists) {
+              console.log('⚠️ Message already exists, skipping duplicate');
+              return oldData;
+            }
+
+            // Add new message to the END (most recent)
+            const updatedData = {
+              ...oldData,
+              data: [...(oldData.data || []), message]
+            };
+
+            console.log('✅ CACHE UPDATED! Messages:', oldData.data?.length, '→', updatedData.data.length);
+            return updatedData;
           }
+        );
 
-          // Check if message already exists
-          const messageExists = oldData.data.some((msg: Message) => msg.id === message.id);
-          if (messageExists) {
-            console.log('⚠️ Message already exists in cache:', message.id);
-            return oldData;
-          }
-
-          console.log('✅ Adding new message to cache:', message.id);
-          return {
-            ...oldData,
-            data: [...oldData.data, message]
-          };
+        // FORÇAR RE-RENDER: Invalidar query das mensagens (não da conversa!)
+        console.log('🔄 Forcing UI update by invalidating messages query');
+        queryClient.invalidateQueries({
+          queryKey: ['messages', params.id],
+          exact: true
         });
 
-        // Force re-render by invalidating query
-        queryClient.invalidateQueries({ queryKey: ['conversation', params.id] });
+        // Also update conversation's lastMessage
+        if (conversation) {
+          queryClient.setQueryData(['conversation', params.id], (oldData: any) => {
+            if (!oldData) return oldData;
+            return {
+              ...oldData,
+              lastMessage: message,
+              updatedAt: message.createdAt || new Date().toISOString()
+            };
+          });
+        }
+
+        console.log('✅ UI UPDATE COMPLETE - Message should appear now!');
       } else {
-        console.log('⚠️ Message for different conversation:', conversationId, '!==', params.id);
+        console.log('⚠️ Message for different conversation or no message data:', {
+          messageConversationId,
+          currentId: params.id,
+          hasMessage: !!message
+        });
       }
     };
 

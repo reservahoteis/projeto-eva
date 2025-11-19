@@ -97,6 +97,12 @@ export function useSocket(options: UseSocketOptions = {}) {
       setError(null);
       reconnectAttemptsRef.current = 0;
 
+      // EXPOSE SOCKET GLOBALLY FOR DEBUGGING
+      if (typeof window !== 'undefined') {
+        (window as any).socket = socket;
+        console.log('🔧 Socket exposed globally as window.socket for debugging');
+      }
+
       // Join tenant room
       socket.emit('join-tenant', { tenantSlug });
 
