@@ -2,7 +2,9 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import io, { Socket } from 'socket.io-client';
 import { toast } from 'sonner';
 
-const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'https://api.botreserva.com.br';
+// Socket.io URL - remove /api do final se existir
+const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.botreserva.com.br';
+const SOCKET_URL = apiUrl.replace(/\/api\/?$/, '');
 
 export interface UseSocketOptions {
   enabled?: boolean;
