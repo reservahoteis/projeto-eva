@@ -21,6 +21,7 @@ interface SendMessageData {
 
 interface ListMessagesParams {
   limit?: number;
+  page?: number;
   before?: string; // Message ID para paginação
   after?: string;
 }
@@ -28,18 +29,29 @@ interface ListMessagesParams {
 interface ListMessagesResult {
   data: Array<{
     id: string;
+    tenantId: string;
+    conversationId: string;
+    contactId?: string;
+    userId?: string;
     whatsappMessageId: string | null;
     direction: Direction;
     type: MessageType;
     content: string;
+    mediaUrl?: string;
+    mediaType?: string;
     metadata: any;
     status: MessageStatus;
     sentById: string | null;
     timestamp: Date;
     createdAt: Date;
+    updatedAt: Date;
   }>;
-  hasMore: boolean;
-  nextCursor: string | null;
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
 }
 
 interface ReceiveMessageData {
@@ -59,10 +71,8 @@ interface ReceiveMessageData {
 
 export class MessageServiceV2 {
   /**
-   * Listar mensagens de uma conversa com paginação por cursor
-   *  /**
-   * Listar mensagens de uma conversa com paginação por cursor
-   * CORREÇÃO: Removido filtro por tenantId das mensagens
+   * Listar mensagens de uma conversa com paginação
+   * CORREÇÃO: Removido filtro por tenantId das mensagens e ajustado formato de resposta
    */
   async listMessages(
     conversationId: string,
@@ -71,13 +81,18 @@ export class MessageServiceV2 {
   ): Promise<ListMessagesResult> {
     // Validar limit (min: 1, max: 100, default: 50)
     const limit = Math.min(Math.max(params?.limit || 50, 1), 100);
+    const page = Math.max(params?.page || 1, 1);
+    const skip = (page - 1) * limit;
 
-    // NOVO: Primeiro validar que a conversa pertence ao tenant
+    // Primeiro validar que a conversa pertence ao tenant
     const conversation = await prisma.conversation.findFirst({
       where: {
         id: conversationId,
         tenantId: tenantId,
       },
+      include: {
+        contact: true,
+      }
     });
 
     if (!conversation) {
@@ -88,39 +103,45 @@ export class MessageServiceV2 {
       });
       return {
         data: [],
-        hasMore: false,
-        nextCursor: null,
+        pagination: {
+          page,
+          limit,
+          total: 0,
+          totalPages: 0
+        }
       };
     }
 
     // CORREÇÃO CRÍTICA: Buscar mensagens apenas pelo conversationId
     const where: any = {
       conversationId,
-      // tenantId removido - era a causa do bug!
+      // tenantId removido - mensagens não têm tenantId direto, herdam da conversation
     };
 
-    // Paginação por cursor (ID da mensagem)
-    if (params?.before) {
-      where.id = { lt: params.before };
-    } else if (params?.after) {
-      where.id = { gt: params.after };
-    }
-
-    // NOVO: Adicionar logs para debug
+    // Adicionar logs para debug
     logger.info({
       conversationId,
       tenantId,
       where,
       limit,
+      skip,
+      page,
       message: 'Fetching messages for conversation'
     });
 
+    // Contar total de mensagens
+    const total = await prisma.message.count({ where });
+
+    // Buscar mensagens com todos os campos necessários
     const messages = await prisma.message.findMany({
       where,
+      skip,
       take: limit,
       orderBy: { timestamp: 'desc' }, // Mais recente primeiro
       select: {
         id: true,
+        tenantId: true,
+        conversationId: true,
         whatsappMessageId: true,
         direction: true,
         type: true,
@@ -133,20 +154,49 @@ export class MessageServiceV2 {
       },
     });
 
-    // NOVO: Log do resultado
+    // Log do resultado
     logger.info({
       conversationId,
       messagesCount: messages.length,
+      total,
       message: 'Messages fetched successfully'
     });
 
-    // Reverter para ordem cronológica (mais antiga primeiro)
-    const reversedMessages = messages.reverse();
+    // Reverter para ordem cronológica (mais antiga primeiro) e formatar para o frontend
+    const formattedMessages = messages.reverse().map(msg => {
+      // Extrair mediaUrl e mediaType do metadata se existir
+      const mediaUrl = (msg.metadata as any)?.mediaUrl || undefined;
+      const mediaType = (msg.metadata as any)?.mediaType || undefined;
+
+      return {
+        id: msg.id,
+        tenantId: msg.tenantId,
+        conversationId: msg.conversationId,
+        contactId: conversation.contact.id,
+        userId: msg.sentById,
+        whatsappMessageId: msg.whatsappMessageId,
+        direction: msg.direction,
+        type: msg.type,
+        status: msg.status,
+        content: msg.content,
+        mediaUrl,
+        mediaType,
+        metadata: msg.metadata,
+        sentById: msg.sentById,
+        timestamp: msg.timestamp,
+        createdAt: msg.createdAt,
+        updatedAt: msg.createdAt, // Não temos updatedAt nas messages, usando createdAt
+      };
+    });
 
     return {
-      data: reversedMessages,
-      hasMore: messages.length === limit,
-      nextCursor: messages.length > 0 ? (messages[0]?.id ?? null) : null,
+      data: formattedMessages,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
     };
   }
 
