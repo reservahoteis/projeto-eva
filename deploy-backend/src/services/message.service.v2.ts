@@ -42,9 +42,9 @@ interface ListMessagesResult {
     metadata: any;
     status: MessageStatus;
     sentById: string | null;
-    timestamp: Date;
-    createdAt: Date;
-    updatedAt: Date;
+    timestamp: string; // ISO string para compatibilidade com frontend
+    createdAt: string; // ISO string para compatibilidade com frontend
+    updatedAt: string; // ISO string para compatibilidade com frontend
   }>;
   pagination: {
     page: number;
@@ -118,7 +118,7 @@ export class MessageServiceV2 {
       // tenantId removido - mensagens não têm tenantId direto, herdam da conversation
     };
 
-    // Adicionar logs para debug
+    // Adicionar logs para debug DETALHADO
     logger.info({
       conversationId,
       tenantId,
@@ -126,6 +126,8 @@ export class MessageServiceV2 {
       limit,
       skip,
       page,
+      conversationFound: !!conversation,
+      contactPhone: conversation?.contact?.phoneNumber,
       message: 'Fetching messages for conversation'
     });
 
@@ -172,8 +174,8 @@ export class MessageServiceV2 {
         id: msg.id,
         tenantId: msg.tenantId,
         conversationId: msg.conversationId,
-        contactId: conversation.contact.id,
-        userId: msg.sentById,
+        contactId: conversation.contact.id, // Sempre preenchido
+        userId: msg.sentById || undefined, // Converter null para undefined
         whatsappMessageId: msg.whatsappMessageId,
         direction: msg.direction,
         type: msg.type,
@@ -181,11 +183,11 @@ export class MessageServiceV2 {
         content: msg.content,
         mediaUrl,
         mediaType,
-        metadata: msg.metadata,
+        metadata: msg.metadata || null,
         sentById: msg.sentById,
-        timestamp: msg.timestamp,
-        createdAt: msg.createdAt,
-        updatedAt: msg.createdAt, // Não temos updatedAt nas messages, usando createdAt
+        timestamp: msg.timestamp.toISOString(), // Converter para ISO string
+        createdAt: msg.createdAt.toISOString(), // Converter para ISO string
+        updatedAt: msg.createdAt.toISOString(), // Converter para ISO string
       };
     });
 

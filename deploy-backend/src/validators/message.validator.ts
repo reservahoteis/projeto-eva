@@ -8,7 +8,8 @@ export const sendMessageSchema = z.object({
 });
 
 export const listMessagesSchema = z.object({
-  limit: z.number().int().min(1).max(100).optional(),
+  limit: z.string().regex(/^\d+$/).transform((val) => parseInt(val, 10)).pipe(z.number().int().min(1).max(100)).optional(),
+  page: z.string().regex(/^\d+$/).transform((val) => parseInt(val, 10)).pipe(z.number().int().min(1)).optional(),
   before: z.string().uuid().optional(),
   after: z.string().uuid().optional(),
 });
