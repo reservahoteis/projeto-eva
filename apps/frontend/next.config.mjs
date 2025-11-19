@@ -19,7 +19,8 @@ const nextConfig = {
 
   // Otimizações
   compiler: {
-    removeConsole: process.env.NODE_ENV === 'production',
+    // TEMPORARIAMENTE DESABILITADO para debug Socket.io
+    // removeConsole: process.env.NODE_ENV === 'production',
   },
 
   // Images (caso use WhatsApp media)
