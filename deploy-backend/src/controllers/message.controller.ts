@@ -44,9 +44,16 @@ export class MessageController {
         return res.status(400).json({ error: 'Tenant ou user não encontrado' });
       }
 
+      // conversationId vem do route param, injetado na linha 75 de conversation.routes.ts
+      const conversationId = (req.body as any).conversationId || req.params.conversationId;
+
+      if (!conversationId) {
+        return res.status(400).json({ error: 'Conversation ID não encontrado' });
+      }
+
       // ✅ TYPE-SAFE: Criar payload tipado corretamente
       const payload = {
-        conversationId: data.conversationId,
+        conversationId,
         content: data.content,
         type: data.type,
         metadata: data.metadata,
