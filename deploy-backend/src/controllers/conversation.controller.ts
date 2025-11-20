@@ -1,11 +1,12 @@
 import { Request, Response } from 'express';
 import { conversationService } from '@/services/conversation.service';
-import { NotFoundError, ForbiddenError } from '@/utils/errors';
+import { NotFoundError, ForbiddenError, BadRequestError } from '@/utils/errors';
 import logger from '@/config/logger';
 import type {
   ListConversationsInput,
   UpdateConversationInput,
   AssignConversationInput,
+  CreateConversationInput,
 } from '@/validators/conversation.validator';
 
 export class ConversationController {
@@ -202,6 +203,59 @@ export class ConversationController {
       }
 
       return res.status(500).json({ error: 'Erro interno ao fechar conversa' });
+    }
+  }
+
+  /**
+   * POST /api/conversations
+   * Criar nova conversa a partir de phoneNumber (para N8N)
+   */
+  async create(req: Request, res: Response) {
+    try {
+      const data = req.body as CreateConversationInput;
+
+      if (!req.tenantId) {
+        return res.status(400).json({
+          error: 'Tenant ID não encontrado',
+          hint: 'Certifique-se de enviar o header X-Tenant-Slug',
+        });
+      }
+
+      const conversation = await conversationService.createFromPhone({
+        tenantId: req.tenantId,
+        contactPhoneNumber: data.contactPhoneNumber,
+        status: data.status as any,
+        source: data.source,
+        priority: data.priority,
+        metadata: data.metadata,
+        assignedToId: data.assignedToId,
+      });
+
+      logger.info({
+        conversationId: conversation.id,
+        contactPhoneNumber: data.contactPhoneNumber,
+        tenantId: req.tenantId,
+        status: conversation.status,
+        source: data.source,
+      }, 'Conversation created via API');
+
+      return res.status(201).json(conversation);
+    } catch (error) {
+      logger.error({
+        error: error instanceof Error ? error.message : 'Unknown error',
+        body: req.body,
+        tenantId: req.tenantId,
+      }, 'Erro ao criar conversa');
+
+      if (error instanceof BadRequestError) {
+        return res.status(400).json({ error: error.message });
+      }
+
+      if (error instanceof NotFoundError) {
+        return res.status(404).json({ error: error.message });
+      }
+
+      return res.status(500).json({ error: 'Erro interno ao criar conversa' });
     }
   }
 

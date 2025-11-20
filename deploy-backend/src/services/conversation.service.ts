@@ -3,11 +3,14 @@ import { NotFoundError, ForbiddenError } from '@/utils/errors';
 import { ConversationStatus, Priority, Role } from '@prisma/client';
 import logger from '@/config/logger';
 
+// TEMPORARY: Extend ConversationStatus until Prisma migration is applied
+type ExtendedConversationStatus = ConversationStatus | 'BOT_HANDLING';
+
 interface ListConversationsParams {
   tenantId: string;
   userId?: string;
   userRole?: Role;
-  status?: ConversationStatus;
+  status?: ExtendedConversationStatus;
   priority?: Priority;
   assignedToId?: string;
   search?: string;
@@ -28,9 +31,16 @@ export class ConversationService {
       tenantId: params.tenantId,
     };
 
-    // Filtrar por status
+    // Filtrar por status - suportar múltiplos valores com CSV
     if (params.status) {
-      where.status = params.status;
+      // Suportar CSV: "OPEN,IN_PROGRESS,WAITING"
+      if (typeof params.status === 'string' && params.status.includes(',')) {
+        where.status = {
+          in: params.status.split(',') as ExtendedConversationStatus[],
+        };
+      } else {
+        where.status = params.status;
+      }
     }
 
     // Filtrar por priority
@@ -266,7 +276,7 @@ export class ConversationService {
   async updateConversationStatus(
     conversationId: string,
     tenantId: string,
-    status: ConversationStatus,
+    status: ExtendedConversationStatus,
     userId?: string,
     userRole?: Role
   ) {
@@ -289,7 +299,7 @@ export class ConversationService {
     const updated = await prisma.conversation.update({
       where: { id: conversationId },
       data: {
-        status,
+        status: status as ConversationStatus, // Cast until migration
         closedAt: status === 'CLOSED' ? new Date() : null,
       },
     });
@@ -515,9 +525,11 @@ export class ConversationService {
         .filter((conv) => conv.messages.length > 0)
         .map((conv) => {
           const firstResponse = conv.messages[0];
+          if (!firstResponse) return 0; // Type guard
           const responseTime = firstResponse.timestamp.getTime() - conv.createdAt.getTime();
           return responseTime;
-        });
+        })
+        .filter((time) => time > 0); // Remover zeros
 
       if (responseTimes.length === 0) return 0;
 
@@ -528,6 +540,123 @@ export class ConversationService {
       logger.error({ error }, 'Erro ao calcular tempo médio de resposta');
       return 0;
     }
+  }
+
+  /**
+   * Criar conversa a partir de phoneNumber (para N8N)
+   * Busca ou cria Contact automaticamente
+   */
+  async createFromPhone(data: {
+    tenantId: string;
+    contactPhoneNumber: string;
+    status?: ExtendedConversationStatus;
+    source?: string;
+    priority?: Priority;
+    metadata?: any;
+    assignedToId?: string;
+  }) {
+    // 1. Buscar Contact por phoneNumber + tenantId
+    let contact = await prisma.contact.findFirst({
+      where: {
+        tenantId: data.tenantId,
+        phoneNumber: data.contactPhoneNumber,
+      },
+    });
+
+    // 2. Se não existir, criar Contact
+    if (!contact) {
+      contact = await prisma.contact.create({
+        data: {
+          tenantId: data.tenantId,
+          phoneNumber: data.contactPhoneNumber,
+        },
+      });
+
+      logger.info({
+        contactId: contact.id,
+        phoneNumber: data.contactPhoneNumber,
+        tenantId: data.tenantId,
+      }, 'Contact created automatically from phone number');
+    }
+
+    // 3. Validar assignedToId se fornecido
+    if (data.assignedToId) {
+      const user = await prisma.user.findFirst({
+        where: {
+          id: data.assignedToId,
+          tenantId: data.tenantId,
+          status: 'ACTIVE',
+        },
+      });
+
+      if (!user) {
+        throw new NotFoundError('Atendente não encontrado ou não pertence ao tenant');
+      }
+    }
+
+    // 4. Criar Conversation
+    const conversation = await prisma.conversation.create({
+      data: {
+        tenantId: data.tenantId,
+        contactId: contact.id,
+        status: (data.status || 'OPEN') as ConversationStatus,
+        priority: data.priority || 'MEDIUM',
+        // @ts-ignore - Campo source pode não existir ainda no Prisma schema
+        source: data.source,
+        metadata: data.metadata,
+        assignedToId: data.assignedToId,
+        lastMessageAt: new Date(),
+      },
+      include: {
+        contact: {
+          select: {
+            id: true,
+            phoneNumber: true,
+            name: true,
+            profilePictureUrl: true,
+          },
+        },
+        assignedTo: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        tags: {
+          select: {
+            id: true,
+            name: true,
+            color: true,
+          },
+        },
+      },
+    });
+
+    logger.info({
+      conversationId: conversation.id,
+      contactId: contact.id,
+      contactPhoneNumber: data.contactPhoneNumber,
+      status: conversation.status,
+      source: data.source,
+      tenantId: data.tenantId,
+    }, 'Conversation created from phone number');
+
+    // 5. Emitir evento Socket.io (apenas se status != BOT_HANDLING)
+    // Conversas BOT_HANDLING não devem notificar atendentes
+    // @ts-ignore - BOT_HANDLING será adicionado após migration
+    if (conversation.status !== 'BOT_HANDLING') {
+      try {
+        const { emitNewConversation } = await import('@/config/socket');
+        emitNewConversation(data.tenantId, conversation);
+        logger.debug({ conversationId: conversation.id }, 'Socket.io event emitted for new conversation');
+      } catch (error) {
+        // Não falhar se Socket.io não estiver disponível
+        logger.warn({ error, conversationId: conversation.id }, 'Failed to emit Socket.io event');
+      }
+    }
+
+    return conversation;
   }
 }
 

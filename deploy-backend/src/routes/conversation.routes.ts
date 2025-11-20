@@ -4,7 +4,12 @@ import { messageController } from '@/controllers/message.controller';
 import { validate } from '@/middlewares/validate.middleware';
 import { authenticate } from '@/middlewares/auth.middleware';
 import { requireTenant } from '@/middlewares/tenant.middleware';
-import { listConversationsSchema, updateConversationSchema, assignConversationSchema } from '@/validators/conversation.validator';
+import {
+  listConversationsSchema,
+  updateConversationSchema,
+  assignConversationSchema,
+  createConversationSchema,
+} from '@/validators/conversation.validator';
 import { sendMessageSchema, listMessagesSchema } from '@/validators/message.validator';
 import { createLimiter } from '@/middlewares/rate-limit.middleware';
 
@@ -23,6 +28,14 @@ router.get('/stats', conversationController.getStats.bind(conversationController
 
 // GET /api/conversations
 router.get('/', validate(listConversationsSchema, 'query'), conversationController.list.bind(conversationController));
+
+// POST /api/conversations
+// Criar nova conversa (N8N integration)
+router.post(
+  '/',
+  validate(createConversationSchema),
+  conversationController.create.bind(conversationController)
+);
 
 // GET /api/conversations/:id
 router.get('/:id', conversationController.getById.bind(conversationController));
