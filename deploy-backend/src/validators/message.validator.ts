@@ -1,7 +1,8 @@
 import { z } from 'zod';
 
-// conversationId vem do route param /:conversationId/messages, não do body
+// conversationId pode vir do route param OU do body (para POST /api/messages)
 export const sendMessageSchema = z.object({
+  conversationId: z.string().uuid('conversationId deve ser um UUID válido'),
   content: z.string().min(1, 'Conteúdo é obrigatório').max(4096, 'Conteúdo muito longo'),
   type: z.enum(['TEXT', 'IMAGE', 'VIDEO', 'AUDIO', 'DOCUMENT']).optional(),
   metadata: z.record(z.any()).optional(),

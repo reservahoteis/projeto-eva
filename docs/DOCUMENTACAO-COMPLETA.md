@@ -2,9 +2,9 @@
 ## CRM WhatsApp SaaS Multi-Tenant - Backend API
 
 **Data de criação:** 10/11/2025
-**Última atualização:** 13/11/2025
-**Versão:** 1.1.0
-**Status:** ✅ PRODUÇÃO - WHATSAPP BUSINESS API INTEGRADO E FUNCIONANDO
+**Última atualização:** 19/11/2025
+**Versão:** 1.2.0
+**Status:** ✅ PRODUÇÃO - SOCKET.IO TEMPO REAL IMPLEMENTADO
 
 ---
 
@@ -1403,10 +1403,61 @@ curl -k -X GET "https://api.botreserva.com.br/api/conversations" \
 | **Identificação Tenant** | ✅ 100% | Automática via WABA ID |
 | **Logs Estruturados** | ✅ 100% | Implementados |
 
-**PRÓXIMA MILESTONE:** Frontend 
+**PRÓXIMA MILESTONE:** Corrigir erro 400 ao enviar mensagem
 
 ---
 
-**Última atualização:** 13/11/2025 02:30 UTC
+## 🔄 ATUALIZAÇÕES RECENTES (19/11/2025)
+
+### Socket.io Tempo Real - IMPLEMENTADO ✅
+
+#### Problema Resolvido: Vercel Cache + removeConsole
+- **Bug Crítico:** `removeConsole: true` no `next.config.mjs` removia todos os console.logs em produção
+- **Impacto:** Impossível debugar Socket.io em produção
+- **Solução:** Desabilitado temporariamente (linha 22-24)
+- **Commit:** `c463b8b`
+
+#### Correção Backend Socket.io
+- **Arquivo:** `deploy-backend/src/config/socket.ts`
+- **Bug:** Event handlers esperavam `string`, frontend enviava `{ conversationId: string }`
+- **Correção:** Aceitar ambos formatos (linhas 130, 149)
+```typescript
+socket.on('conversation:join', (data: { conversationId: string } | string) => {
+  const conversationId = typeof data === 'string' ? data : data.conversationId;
+});
+```
+
+#### Status Atual Socket.io
+✅ **Conexão:** Estabelecida e autenticada
+✅ **Subscription:** Funcionando (conversation:join/leave)
+✅ **Listeners:** Todos registrados (message:new, conversation:updated, user:typing)
+✅ **Logs:** Detalhados em produção
+⚠️ **Mensagens:** Erro 400 ao enviar via API (investigar)
+
+#### Evidência
+```
+✅ SOCKET CONECTADO - VERSÃO d329972
+🆔 Socket ID: 4yv3dTJa3JRTnbHBAABz
+✅ SUBSCRITO COM SUCESSO: c220fbae-a594-4c03-994d-a116fa9a917d
+✅ TODOS OS LISTENERS REGISTRADOS COM SUCESSO
+```
+
+#### Arquivos Modificados
+- `apps/frontend/next.config.mjs` - Desabilitado removeConsole
+- `apps/frontend/src/contexts/socket-context.tsx` - Payload objeto correto
+- `deploy-backend/src/config/socket.ts` - Event handlers flexíveis
+
+#### Próximos Passos
+1. 🔥 Investigar erro 400 POST `/api/conversations/:id/messages`
+2. 🔥 Testar mensagem em tempo real completo
+3. 📋 Reabilitar removeConsole após testes
+4. 📋 Configurar webhook WhatsApp
+
+#### Documentação Detalhada
+Ver: `WORK_LOG_2025-11-19.md` para análise completa
+
+---
+
+**Última atualização:** 19/11/2025 21:00 UTC
 **Autor:** Claude Code
-**Status do Sistema:** ✅ WHATSAPP BUSINESS API 100% INTEGRADO E OPERACIONAL
+**Status do Sistema:** ✅ SOCKET.IO TEMPO REAL 90% FUNCIONAL

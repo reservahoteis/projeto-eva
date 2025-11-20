@@ -15,7 +15,7 @@ interface JWTPayload {
  * Middleware de autenticação JWT
  * Valida o token e adiciona user no request
  */
-export async function authenticate(req: Request, res: Response, next: NextFunction) {
+export async function authenticate(req: Request, _res: Response, next: NextFunction) {
   try {
     // Extrair token do header Authorization: Bearer <token>
     const authHeader = req.headers.authorization;
@@ -63,7 +63,7 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
  * router.get('/admin', authenticate, authorize(['SUPER_ADMIN', 'TENANT_ADMIN']), handler)
  */
 export function authorize(allowedRoles: Role[]) {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return (req: Request, _res: Response, next: NextFunction) => {
     if (!req.user) {
       return next(new UnauthorizedError('Usuário não autenticado'));
     }
@@ -84,7 +84,7 @@ export function authorize(allowedRoles: Role[]) {
  * Middleware para verificar se user pertence ao tenant correto
  * Use depois de authenticate e tenantIsolationMiddleware
  */
-export function verifyTenantAccess(req: Request, res: Response, next: NextFunction) {
+export function verifyTenantAccess(req: Request, _res: Response, next: NextFunction) {
   if (!req.user) {
     return next(new UnauthorizedError());
   }
@@ -114,7 +114,7 @@ export function verifyTenantAccess(req: Request, res: Response, next: NextFuncti
  * Middleware opcional de autenticação
  * Tenta autenticar, mas não falha se não tiver token
  */
-export async function optionalAuthenticate(req: Request, res: Response, next: NextFunction) {
+export async function optionalAuthenticate(req: Request, _res: Response, next: NextFunction) {
   try {
     const authHeader = req.headers.authorization;
 

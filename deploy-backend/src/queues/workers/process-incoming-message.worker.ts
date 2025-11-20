@@ -78,22 +78,33 @@ export async function processIncomingMessage(job: Job<ProcessMessageJobData>): P
     }
 
     // 7. EMITIR EVENTO WEBSOCKET (TEMPO REAL)
-    emitNewMessage(tenantId, conversation.id, {
-      id: savedMessage.id,
-      conversationId: conversation.id, // IMPORTANTE: Incluir conversationId!
-      whatsappMessageId: savedMessage.whatsappMessageId,
-      direction: savedMessage.direction,
-      type: savedMessage.type,
-      content: savedMessage.content,
-      metadata: savedMessage.metadata,
-      status: savedMessage.status,
-      timestamp: savedMessage.timestamp,
-      contact: {
-        id: contact.id,
-        phoneNumber: contact.phoneNumber,
-        name: contact.name,
+    // CORREÇÃO: Passar conversation completo como 4º parâmetro
+    emitNewMessage(
+      tenantId,
+      conversation.id,
+      {
+        id: savedMessage.id,
+        conversationId: conversation.id,
+        whatsappMessageId: savedMessage.whatsappMessageId,
+        direction: savedMessage.direction,
+        type: savedMessage.type,
+        content: savedMessage.content,
+        metadata: savedMessage.metadata,
+        status: savedMessage.status,
+        timestamp: savedMessage.timestamp,
+        contactId: contact.id,
       },
-    });
+      {
+        // Objeto conversation completo esperado pelo frontend
+        id: conversation.id,
+        status: conversation.status,
+        contact: {
+          id: contact.id,
+          phoneNumber: contact.phoneNumber,
+          name: contact.name,
+        },
+      }
+    );
 
     logger.info(
       {

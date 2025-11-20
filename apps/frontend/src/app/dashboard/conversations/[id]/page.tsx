@@ -1,16 +1,20 @@
 'use client';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { conversationService } from '@/services/conversation.service';
 import { messageService } from '@/services/message.service';
-import { ChatInterface } from '@/components/tenant/chat-interface';
 import { ContactSidebar } from '@/components/tenant/contact-sidebar';
+import { ChatHeader } from '@/components/chat/chat-header';
+import { MessageList } from '@/components/chat/message-list';
+import { ChatInput } from '@/components/chat/chat-input';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useSocketContext } from '@/contexts/socket-context';
-import { useEffect } from 'react';
-import { Message } from '@/types';
+import { useEffect, useState, useRef } from 'react';
+import { Message, MessageType } from '@/types';
+import { toast } from 'sonner';
 
 interface ConversationPageProps {
   params: {
@@ -21,7 +25,9 @@ interface ConversationPageProps {
 export default function ConversationPage({ params }: ConversationPageProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { on, off, subscribeToConversation, unsubscribeFromConversation, isConnected } = useSocketContext();
+  const { on, off, subscribeToConversation, unsubscribeFromConversation, isConnected, sendTypingStatus, isUserTyping } = useSocketContext();
+  const [isTyping, setIsTyping] = useState(false);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const { data: conversation, isLoading: conversationLoading } = useQuery({
     queryKey: ['conversation', params.id],
@@ -31,6 +37,22 @@ export default function ConversationPage({ params }: ConversationPageProps) {
   const { data: messagesData, isLoading: messagesLoading, refetch: refetchMessages } = useQuery({
     queryKey: ['messages', params.id],
     queryFn: () => messageService.list(params.id, { limit: 100 }),
+  });
+
+  // Send message mutation
+  const sendMutation = useMutation({
+    mutationFn: (content: string) =>
+      messageService.send({
+        conversationId: params.id,
+        type: MessageType.TEXT,
+        content,
+      }),
+    onSuccess: () => {
+      toast.success('Mensagem enviada!');
+    },
+    onError: () => {
+      toast.error('Erro ao enviar mensagem');
+    },
   });
 
   // Subscribe to real-time events for this conversation
@@ -72,7 +94,7 @@ export default function ConversationPage({ params }: ConversationPageProps) {
         console.log('✅ MESSAGE IS FOR THIS CONVERSATION - UPDATING UI NOW!');
 
         // PADRÃO WHATSAPP: Atualizar cache IMEDIATAMENTE
-        const cacheUpdated = queryClient.setQueryData(
+        queryClient.setQueryData(
           ['messages', params.id],
           (oldData: any) => {
             console.log('📦 Current cache state:', {
@@ -182,6 +204,38 @@ export default function ConversationPage({ params }: ConversationPageProps) {
     }
   }, [isConnected, refetchMessages]);
 
+  // Handle sending messages
+  const handleSendMessage = (content: string) => {
+    // Stop typing indicator
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
+    sendTypingStatus(params.id, false);
+    setIsTyping(false);
+
+    sendMutation.mutate(content);
+  };
+
+  // Handle typing indicator
+  const handleTypingChange = (typing: boolean) => {
+    setIsTyping(typing);
+    sendTypingStatus(params.id, typing);
+  };
+
+  // Cleanup typing on unmount
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      if (isTyping) {
+        sendTypingStatus(params.id, false);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   if (conversationLoading || messagesLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -204,7 +258,7 @@ export default function ConversationPage({ params }: ConversationPageProps) {
   }
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen overflow-hidden">
       {/* Back Button (Mobile) */}
       <div className="lg:hidden absolute top-4 left-4 z-10">
         <Button variant="ghost" size="sm" onClick={() => router.back()}>
@@ -212,14 +266,30 @@ export default function ConversationPage({ params }: ConversationPageProps) {
         </Button>
       </div>
 
-      {/* Chat Interface */}
-      <div className="flex-1">
-        <ChatInterface
+      {/* WhatsApp-Style Chat Interface */}
+      <div className="flex-1 flex flex-col h-screen">
+        {/* Chat Header */}
+        <ChatHeader
           conversation={conversation}
+          isOnline={false}
+          isTyping={isUserTyping(params.id)}
+          isConnected={isConnected}
+        />
+
+        {/* Message List */}
+        <MessageList
           messages={messagesData?.data || []}
-          onMessageSent={() => {
-            // Messages will be refetched automatically
-          }}
+          isTyping={isUserTyping(params.id)}
+          contactName={conversation.contact.name || conversation.contact.phone}
+          contactAvatar={conversation.contact.avatar}
+        />
+
+        {/* Chat Input */}
+        <ChatInput
+          onSendMessage={handleSendMessage}
+          onTypingChange={handleTypingChange}
+          disabled={!isConnected}
+          isLoading={sendMutation.isPending}
         />
       </div>
 

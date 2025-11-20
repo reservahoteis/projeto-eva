@@ -17,7 +17,7 @@ import logger from '@/config/logger';
  */
 export async function tenantIsolationMiddleware(
   req: Request,
-  res: Response,
+  _res: Response,
   next: NextFunction
 ) {
   try {
@@ -44,10 +44,11 @@ export async function tenantIsolationMiddleware(
       // Em desenvolvimento (localhost:3000), pode não ter subdomínio
       if (host.includes('localhost') || host.includes('127.0.0.1')) {
         // Aceitar query param ?tenant=slug para testes
-        tenantSlug = (req.query.tenant as string) || null;
+        const queryTenant = req.query.tenant as string | undefined;
+        tenantSlug = queryTenant ? queryTenant : null;
       } else if (parts.length >= 3) {
         // api.botreserva.com.br ou hotel1.botreserva.com.br
-        tenantSlug = parts[0];
+        tenantSlug = parts[0] || null;
       } else {
         // botreserva.com.br (sem subdomínio) = sem tenant
         tenantSlug = null;
@@ -58,7 +59,7 @@ export async function tenantIsolationMiddleware(
 
     // Se não tem tenant slug, é acesso sem tenant (super-admin)
     if (!tenantSlug || tenantSlug === 'super-admin' || tenantSlug === 'admin' || tenantSlug === 'api' || tenantSlug === 'www') {
-      req.tenantId = null;
+      req.tenantId = null as string | null;
       logger.debug('No tenant - super admin access');
 
       // Se é rota pública, permite continuar
@@ -117,7 +118,7 @@ export async function tenantIsolationMiddleware(
  * Middleware para rotas que DEVEM ter tenant
  * Use depois do tenantIsolationMiddleware
  */
-export function requireTenant(req: Request, res: Response, next: NextFunction) {
+export function requireTenant(req: Request, _res: Response, next: NextFunction) {
   if (!req.tenantId) {
     return next(new TenantNotFoundError());
   }
@@ -127,11 +128,12 @@ export function requireTenant(req: Request, res: Response, next: NextFunction) {
 /**
  * Middleware para rotas que NÃO DEVEM ter tenant (super admin only)
  */
-export function requireNoTenant(req: Request, res: Response, next: NextFunction) {
+export function requireNoTenant(req: Request, res: Response, next: NextFunction): void {
   if (req.tenantId !== null && req.tenantId !== undefined) {
-    return res.status(403).json({
+    res.status(403).json({
       error: 'This endpoint is only accessible by super admin',
     });
+    return;
   }
   next();
 }

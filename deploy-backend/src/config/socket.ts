@@ -10,14 +10,14 @@ import jwt from 'jsonwebtoken';
 
 export interface SocketUser {
   userId: string;
-  tenantId: string;
+  tenantId: string | null; // Pode ser null para SUPER_ADMIN
   name?: string;
   email?: string;
 }
 
 export interface AuthenticatedSocket extends Socket {
   user?: SocketUser;
-  tenantId?: string;
+  tenantId?: string | null; // Pode ser null para SUPER_ADMIN
 }
 
 // ============================================
@@ -78,14 +78,14 @@ export function initializeSocketIO(httpServer: HTTPServer): SocketIOServer {
         return next(new Error('User not found'));
       }
 
-      // Adicionar user ao socket
+      // Adicionar user ao socket (type-safe)
       socket.user = {
         userId: user.id,
-        tenantId: user.tenantId,
+        tenantId: user.tenantId, // Aceita null para SUPER_ADMIN
         name: user.name || undefined,
         email: user.email,
       };
-      socket.tenantId = user.tenantId;
+      socket.tenantId = user.tenantId; // Aceita null para SUPER_ADMIN
 
       logger.info(
         {
@@ -127,9 +127,13 @@ export function initializeSocketIO(httpServer: HTTPServer): SocketIOServer {
     }
 
     // Event: Entrar em uma conversa específica
-    socket.on('conversation:join', (conversationId: string) => {
+    socket.on('conversation:join', (data: { conversationId: string } | string): void => {
+      // CORREÇÃO: Aceitar tanto objeto quanto string para backward compatibility
+      const conversationId = typeof data === 'string' ? data : data.conversationId;
+
       if (!conversationId) {
-        return socket.emit('error', { message: 'conversationId is required' });
+        socket.emit('error', { message: 'conversationId is required' });
+        return;
       }
 
       socket.join(`conversation:${conversationId}`);
@@ -146,9 +150,13 @@ export function initializeSocketIO(httpServer: HTTPServer): SocketIOServer {
     });
 
     // Event: Sair de uma conversa específica
-    socket.on('conversation:leave', (conversationId: string) => {
+    socket.on('conversation:leave', (data: { conversationId: string } | string): void => {
+      // CORREÇÃO: Aceitar tanto objeto quanto string para backward compatibility
+      const conversationId = typeof data === 'string' ? data : data.conversationId;
+
       if (!conversationId) {
-        return socket.emit('error', { message: 'conversationId is required' });
+        socket.emit('error', { message: 'conversationId is required' });
+        return;
       }
 
       socket.leave(`conversation:${conversationId}`);
@@ -165,9 +173,10 @@ export function initializeSocketIO(httpServer: HTTPServer): SocketIOServer {
     });
 
     // Event: Typing indicator (cliente está digitando)
-    socket.on('conversation:typing', (data: { conversationId: string; isTyping: boolean }) => {
+    socket.on('conversation:typing', (data: { conversationId: string; isTyping: boolean }): void => {
       if (!data.conversationId) {
-        return socket.emit('error', { message: 'conversationId is required' });
+        socket.emit('error', { message: 'conversationId is required' });
+        return;
       }
 
       // Broadcast para outros usuários na mesma conversa
@@ -189,10 +198,11 @@ export function initializeSocketIO(httpServer: HTTPServer): SocketIOServer {
     });
 
     // Event: Marcar mensagens como lidas
-    socket.on('messages:mark-read', async (data: { messageIds: string[] }) => {
+    socket.on('messages:mark-read', async (data: { messageIds: string[] }): Promise<void> => {
       try {
         if (!data.messageIds || data.messageIds.length === 0) {
-          return socket.emit('error', { message: 'messageIds is required' });
+          socket.emit('error', { message: 'messageIds is required' });
+          return;
         }
 
         logger.debug(
@@ -261,14 +271,22 @@ export function getSocketIO(): SocketIOServer {
 
 /**
  * Emitir evento de nova mensagem
+ * CORREÇÃO: Adicionar conversation como parâmetro para payload completo
  */
-export function emitNewMessage(tenantId: string, conversationId: string, message: any): void {
+export function emitNewMessage(
+  tenantId: string,
+  conversationId: string,
+  message: any,
+  conversation?: any
+): void {
   if (!io) return;
 
-  // Emitir para todos na conversa
+  // CORREÇÃO: Emitir payload completo esperado pelo frontend
+  // Frontend espera: { message: {...}, conversation: {...}, conversationId }
   io.to(`conversation:${conversationId}`).emit('message:new', {
-    conversationId,
-    message,
+    message,           // data.message
+    conversation,      // data.conversation
+    conversationId,    // data.conversationId (fallback)
   });
 
   // Emitir para todos do tenant (para atualizar lista de conversas)
@@ -283,6 +301,7 @@ export function emitNewMessage(tenantId: string, conversationId: string, message
       tenantId,
       conversationId,
       messageId: message.id,
+      hasConversation: !!conversation,
     },
     'New message event emitted'
   );

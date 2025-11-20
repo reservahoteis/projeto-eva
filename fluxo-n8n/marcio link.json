@@ -1,0 +1,515 @@
+{
+  "name": "marcio link",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "memoria"
+            },
+            {
+              "name": "unidade"
+            }
+          ]
+        }
+      },
+      "id": "c055762a-8fe7-4141-a639-df2372f30060",
+      "typeVersion": 1.1,
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "position": [
+        -1184,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.messages.map((m, i) => `[#${i + 1}]\\nHUMAN:\\n${m.human}\\n\\nAI:\\n${m.ai}`).join('\\n---\\n') }}",
+        "options": {
+          "systemMessage": "=### Se o cliente não informar o ano, verifique se ainda há esse mês no ano atual; se sim, use o ano atual. Caso contrário, use o próximo ano.\n\n<hoje>\nHoje é {{ $now.setLocale('pt').weekdayLong }}.\ndia = {{ $now.format('dd/MM/yyyy - HH:mm') }}.\nMes = {{ $now.format('MMMM') }} (Se o cliente pedir algum mes antes desse, é porque ele quer ano que vem)\n<\\hoje>\n\n<objetivo>\nVocê deve montar um link de reserva com base nas informações fornecidas pelo cliente.\n\nA estrutura base do link é: {{ $('Edit Fields').item.json.unidade }}\n\n\nAs variáveis que devem ser acrescentadas são:\n\n- checkin → Data no formato DD/MM/YYYY\n- checkout → Data no formato DD/MM/YYYY\n- adults → Quantidade de adultos\n- children (opcional) → Quantidade de crianças\n- childrenage (opcional) → Idade de cada criança, **uma entrada por idade**\n\nExemplo com 2 adultos e sem crianças:\nhttps://hbook.hsystem.com.br/Booking?companyId=5f15f591ab41d43ac0fed67e&checkin=23/08/2025&checkout=30/08/2025&adults=2\n\nExemplo com 2 adultos, 2 crianças (idades 15 e 4):\nhttps://hbook.hsystem.com.br/Booking?companyId=5f15f591ab41d43ac0fed67e&checkin=23/08/2025&checkout=30/08/2025&adults=2&children=2&childrenage=15&childrenage=4\n\n<regras>\n1. Sempre inclua `adults`, `checkin` e `checkout`.\n2. Só adicione `children` e `childrenage` se houver crianças.\n3. Para cada idade, adicione `&childrenage=idade` separadamente.\n4. Nunca envie campos vazios ou desnecessários.\n5. A ordem dos parâmetros deve ser: checkin, checkout, adults, children, childrenage(s).\n6. Retorne apenas o link finalizado, sem explicações adicionais.\n</regras>\n</objetivo>\n\nEXEMPLO DE USO:\nInput da conversa:\n\nCheck-in: 10/09/2025\n\nCheck-out: 15/09/2025\n\nAdultos: 2\n\nCrianças: 3\n\nIdades: 12, 7, 3\n\nOutput esperado da IA:\n{{ $('Edit Fields').item.json.unidade }}&checkin=10/09/2025&checkout=15/09/2025&adults=2&children=3&childrenage=12&childrenage=7&childrenage=3"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        -256,
+        352
+      ],
+      "id": "8f281184-2388-4efe-8c0a-e68d529ecaaa",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "gpt-4o"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -256,
+        544
+      ],
+      "id": "f0407639-f647-4f3f-9c61-916f4ab1d00b",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "KOT2Hf8hg3OIevZG",
+          "name": "MARCIO HOTEL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('When Executed by Another Workflow').item.json.memoria }}",
+        "contextWindowLength": 1000
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryRedisChat",
+      "typeVersion": 1.5,
+      "position": [
+        -560,
+        544
+      ],
+      "id": "6a86adef-30d9-4e6c-8193-55d8913149f9",
+      "name": "Redis Chat Memory",
+      "credentials": {
+        "redis": {
+          "id": "jui80Gim2A5frf81",
+          "name": "3IAN - REDIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "key": "555197673534marcioHotel",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        992,
+        16
+      ],
+      "id": "74e85b02-68be-4353-82c9-0cf8d04ca5e6",
+      "name": "Redis",
+      "credentials": {
+        "redis": {
+          "id": "jui80Gim2A5frf81",
+          "name": "3IAN - REDIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryManager",
+      "typeVersion": 1.1,
+      "position": [
+        -560,
+        352
+      ],
+      "id": "784c67b3-0713-4afe-a1db-ff142f8f722f",
+      "name": "Chat Memory Manager"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "31ec9cef-9f74-4d72-8523-c436da905cca",
+              "name": "unidade",
+              "value": "={{ \n  $json.unidade == 'CAMPOS' ? 'https://hbook.hsystem.com.br/Booking?companyId=67bcbe2ca5788fa175aa8b38' :\n  $json.unidade == 'ILHABELA' ? 'https://hbook.hsystem.com.br/Booking?companyId=5f15f591ab41d43ac0fed67e' :\n  $json.unidade == 'CAMBURI' ? 'https://hbook.hsystem.com.br/Booking?companyId=6750b19f496b9fcb0e105ccb' :\n  $json.unidade == 'SANTO ANTONIO' ? 'https://hbook.hsystem.com.br/Booking?companyId=662ff573ca37a716229fe257' :\n  ''\n}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -736,
+        352
+      ],
+      "id": "ddd8bd35-703f-4f44-ae7a-6e7e742e34af",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "j0mirlCn4web9Saj",
+          "mode": "list",
+          "cachedResultName": "marcio link"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "memoria": "|MARCIO-5551997673534",
+            "unidade": "CAMPOS"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "memoria",
+              "displayName": "memoria",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "unidade",
+              "displayName": "unidade",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        -960,
+        928
+      ],
+      "id": "aa30d5d4-554b-402e-adc4-ddfba00129b0",
+      "name": "Execute Workflow"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c0d272ae-973a-40ac-98fe-1078892496e7",
+              "name": "output",
+              "value": "={{ $json.output }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -768,
+        928
+      ],
+      "id": "254f71bd-070f-4075-88ae-cffa12e05d67",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c0d272ae-973a-40ac-98fe-1078892496e7",
+              "name": "output",
+              "value": "={{ $json.output }}{{ $('Execute Workflow').item.json.output }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -576,
+        928
+      ],
+      "id": "c16e86fc-6b2f-47bc-9490-a3ef24e7f715",
+      "name": "Edit Fields2"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('CREDECIAMENTO').first().json.urlSemBarraFinal }}/send-carousel",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Client-Token",
+              "value": "={{ $('CREDECIAMENTO').first().json.token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"phone\": \"{{ $('Webhook').first().json.body.phone }}\",\n  \"message\": \"Veja detalhes abaixo:\",\n  \"carousel\": [\n    {\n      \"text\": \"{{ $json['Nome Exibição'] }}\",\n      \"image\": \"{{ $json.Foto_1 }}\",\n      \"buttons\": [\n        {\n          \"id\": \"1\",\n          \"label\": \"Reservar Agora\",\n          \"url\": \"{{ $('Execute Workflow').item.json.output }}\",\n          \"type\": \"URL\"\n        },\n        {\n          \"id\": \"menu_inicial\",\n          \"label\": \"Voltar ao Menu 🔙\",\n          \"type\": \"REPLY\"\n        }\n      ]\n    },\n    {\n      \"text\": \"{{ $json['Nome Exibição'] }}\",\n      \"image\": \"{{ $json.Foto_2 }}\",\n      \"buttons\": [\n        {\n          \"id\": \"2\",\n          \"label\": \"Reservar Agora\",\n          \"url\": \"{{ $('Execute Workflow').item.json.output }}\",\n          \"type\": \"URL\"\n        },\n        {\n          \"id\": \"menu_inicial\",\n          \"label\": \"Voltar ao Menu 🔙\",\n          \"type\": \"REPLY\"\n        }\n      ]\n    },\n    {\n      \"text\": \"{{ $json['Nome Exibição'] }}\",\n      \"image\": \"{{ $json.Foto_3 }}\",\n      \"buttons\": [\n        {\n          \"id\": \"3\",\n          \"label\": \"Reservar Agora\",\n          \"url\": \"{{ $('Execute Workflow').item.json.output }}\",\n          \"type\": \"URL\"\n        },\n        {\n          \"id\": \"menu_inicial\",\n          \"label\": \"Voltar ao Menu 🔙\",\n          \"type\": \"REPLY\"\n        }\n      ]\n    },\n    {\n      \"text\": \"{{ $json['Nome Exibição'] }}\",\n      \"image\": \"{{ $json.Foto_4 }}\",\n      \"buttons\": [\n        {\n          \"id\": \"4\",\n          \"label\": \"Reservar Agora\",\n          \"url\": \"{{ $('Execute Workflow').item.json.output }}\",\n          \"type\": \"URL\"\n        },\n        {\n          \"id\": \"menu_inicial\",\n          \"label\": \"Voltar ao Menu 🔙\",\n          \"type\": \"REPLY\"\n        }\n      ]\n    },\n    {\n      \"text\": \"{{ $json['Nome Exibição'] }}\",\n      \"image\": \"{{ $json.Foto_5 }}\",\n      \"buttons\": [\n        {\n          \"id\": \"5\",\n          \"label\": \"Reservar Agora\",\n          \"url\": \"{{ $('Execute Workflow').item.json.output }}\",\n          \"type\": \"URL\"\n        },\n        {\n          \"id\": \"menu_inicial\",\n          \"label\": \"Voltar ao Menu 🔙\",\n          \"type\": \"REPLY\"\n        }\n      ]\n    }\n  ]\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        592,
+        448
+      ],
+      "id": "352830d8-7e18-4e3d-9478-bac60da619d4",
+      "name": "CARROSSEL INDIVIDUAL"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        448,
+        352
+      ],
+      "id": "de00c65e-28c4-4940-821d-330488064238",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        768,
+        448
+      ],
+      "id": "3ac7a7ae-f5ee-45a3-baf3-d77d4c16b238",
+      "name": "Wait",
+      "webhookId": "d2fd0b3c-c5b7-4386-b9ee-325a08c49df8"
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "table": {
+          "__rl": true,
+          "value": "carroseis_individuais",
+          "mode": "list",
+          "cachedResultName": "carroseis_individuais"
+        },
+        "returnAll": true,
+        "where": {
+          "values": [
+            {
+              "column": "Categoria",
+              "value": "={{ $('When Executed by Another Workflow').item.json.unidade }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [
+        288,
+        352
+      ],
+      "id": "a057565c-2b97-4ada-b271-f54338074b40",
+      "name": "BUSCA OS LINKS DO CARROSSEL",
+      "credentials": {
+        "mySql": {
+          "id": "A112kZvtWASH5sMG",
+          "name": "MARCIO_HOTEL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "31ec9cef-9f74-4d72-8523-c436da905cca",
+              "name": "unidade",
+              "value": "={{ $json.unidade .trim()}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -976,
+        352
+      ],
+      "id": "ec277f4b-e70d-47cc-9fa1-d86ce0ad399b",
+      "name": "Edit Fields3"
+    }
+  ],
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "memoria": "|MARCIO-5511987144676",
+          "unidade": "ILHABELA\n"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Chat Memory Manager",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chat Memory Manager": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Chat Memory Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Workflow": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        []
+      ]
+    },
+    "CARROSSEL INDIVIDUAL": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "CARROSSEL INDIVIDUAL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BUSCA OS LINKS DO CARROSSEL": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields3": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "a46ad0e8-2fd3-4d98-809e-149491ce7c65",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "33032ef6031266b8bc0d76b06793a6cdb5fab704b174a9882769b60050692f00"
+  },
+  "id": "j0mirlCn4web9Saj",
+  "tags": []
+}
