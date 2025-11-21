@@ -9,6 +9,11 @@ interface DateDividerProps {
 
 export function DateDivider({ date }: DateDividerProps) {
   const getDateLabel = () => {
+    // Validar se a data é válida
+    if (!date || isNaN(date.getTime())) {
+      return 'DATA INVÁLIDA';
+    }
+
     if (isToday(date)) {
       return 'HOJE';
     }
