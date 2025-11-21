@@ -33,7 +33,9 @@ interface ContactStats {
 }
 
 class ContactService {
-  private readonly baseUrl = '/api/contacts';
+  private get baseUrl(): string {
+    return '/api/contacts';
+  }
 
   /**
    * Listar contatos com paginação e busca
@@ -84,6 +86,13 @@ class ContactService {
    */
   async create(contactData: CreateContactData): Promise<Contact> {
     try {
+      // DEBUG: Diagnosticar problema de URL
+      console.log('=== CREATE CONTACT DEBUG ===');
+      console.log('this.baseUrl:', this.baseUrl);
+      console.log('typeof this.baseUrl:', typeof this.baseUrl);
+      console.log('apiClient.defaults.baseURL:', apiClient.defaults.baseURL);
+      console.log('URL final será:', `${apiClient.defaults.baseURL}${this.baseUrl}`);
+
       // Validação local antes de enviar
       if (!contactData.phoneNumber) {
         throw new Error('Número de telefone é obrigatório');
