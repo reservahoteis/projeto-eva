@@ -296,14 +296,15 @@ export function emitNewMessage(
     lastMessageAt: message.timestamp,
   });
 
-  logger.debug(
+  logger.info(
     {
       tenantId,
       conversationId,
       messageId: message.id,
       hasConversation: !!conversation,
+      direction: message.direction,
     },
-    'New message event emitted'
+    '✅ Socket.io event [message:new] emitted to conversation room'
   );
 }
 

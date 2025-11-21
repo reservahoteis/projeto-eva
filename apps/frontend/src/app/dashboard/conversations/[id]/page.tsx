@@ -159,6 +159,12 @@ export default function ConversationPage({ params }: ConversationPageProps) {
 
     // Handle conversation updates
     const handleConversationUpdate = (data: { conversation: any }) => {
+      // Validar se conversation existe e tem id
+      if (!data?.conversation?.id) {
+        console.warn('Invalid conversation update data:', data);
+        return;
+      }
+
       if (data.conversation.id === params.id) {
         console.log('Conversation updated:', data);
         queryClient.setQueryData(['conversation', params.id], data.conversation);
