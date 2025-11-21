@@ -33,7 +33,7 @@ interface ContactStats {
 }
 
 class ContactService {
-  private readonly baseUrl = '/contacts';
+  private readonly baseUrl = '/api/contacts';
 
   /**
    * Listar contatos com paginação e busca
