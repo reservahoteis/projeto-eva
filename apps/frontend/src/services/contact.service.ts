@@ -32,9 +32,12 @@ interface ContactStats {
   lastUpdated: string;
 }
 
+// Constante fora da classe para evitar minificação
+const CONTACT_API_BASE_URL = '/api/contacts' as const;
+
 class ContactService {
   private get baseUrl(): string {
-    return '/api/contacts';
+    return CONTACT_API_BASE_URL;
   }
 
   /**
