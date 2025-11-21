@@ -195,7 +195,7 @@ export default function ConversationPage({ params }: ConversationPageProps) {
       off('conversation:updated', handleConversationUpdate);
       off('message:status', handleMessageStatus);
     };
-  }, [isConnected, params.id, on, off, subscribeToConversation, unsubscribeFromConversation, queryClient]);
+  }, [isConnected, params.id, on, off, subscribeToConversation, unsubscribeFromConversation]);
 
   // Refetch messages when connection is restored
   useEffect(() => {

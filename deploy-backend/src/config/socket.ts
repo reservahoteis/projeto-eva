@@ -137,13 +137,13 @@ export function initializeSocketIO(httpServer: HTTPServer): SocketIOServer {
       }
 
       socket.join(`conversation:${conversationId}`);
-      logger.debug(
+      logger.info(
         {
           socketId: socket.id,
           conversationId,
           userId: socket.user?.userId,
         },
-        'Socket joined conversation room'
+        '✅ Socket joined conversation room - FRONTEND IS NOW SUBSCRIBED'
       );
 
       socket.emit('conversation:joined', { conversationId });

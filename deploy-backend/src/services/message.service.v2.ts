@@ -6,6 +6,7 @@ import { conversationService } from './conversation.service';
 import { enqueueOutgoingMessage } from '@/queues/whatsapp-webhook.queue';
 import logger from '@/config/logger';
 import { validateMediaUrl } from '@/utils/url-validator';
+import { emitNewMessage } from '@/config/socket';
 
 // ============================================
 // Types & Interfaces
@@ -288,7 +289,55 @@ export class MessageServiceV2 {
       'Message created in database'
     );
 
-    // 5. ENFILEIRAR PARA ENVIO (ASSÍNCRONO)
+    // 5. ✅ EMITIR SOCKET.IO IMEDIATAMENTE (ANTES DE ENFILEIRAR)
+    // Isso garante que o frontend vê a mensagem instantaneamente, mesmo que o worker falhe
+    try {
+      emitNewMessage(
+        tenantId,
+        data.conversationId,
+        {
+          id: message.id,
+          conversationId: data.conversationId,
+          whatsappMessageId: message.whatsappMessageId,
+          direction: message.direction,
+          type: message.type,
+          content: message.content,
+          metadata: message.metadata,
+          status: message.status,
+          timestamp: message.timestamp,
+          sentById: message.sentById,
+        },
+        {
+          id: conversation.id,
+          contact: {
+            id: conversation.contact.id,
+            phoneNumber: conversation.contact.phoneNumber,
+            name: conversation.contact.name,
+          },
+        }
+      );
+
+      logger.info(
+        {
+          messageId: message.id,
+          conversationId: data.conversationId,
+          socketEvent: 'message:new',
+        },
+        '✅ Socket.io event emitted IMMEDIATELY (before queue)'
+      );
+    } catch (socketError) {
+      logger.error(
+        {
+          error: socketError instanceof Error ? socketError.message : 'Unknown error',
+          messageId: message.id,
+          conversationId: data.conversationId,
+        },
+        'Failed to emit Socket.io event (non-fatal)'
+      );
+      // Não falhar a requisição por causa de erro no Socket.io
+    }
+
+    // 6. ENFILEIRAR PARA ENVIO (ASSÍNCRONO)
     try {
       await enqueueOutgoingMessage({
         tenantId,
@@ -305,7 +354,7 @@ export class MessageServiceV2 {
           messageId: message.id,
           conversationId: data.conversationId,
         },
-        'Message enqueued for sending'
+        'Message enqueued for sending to WhatsApp'
       );
     } catch (error) {
       // Se falhar ao enfileirar, marcar como FAILED
@@ -334,7 +383,7 @@ export class MessageServiceV2 {
       throw new BadRequestError('Falha ao enfileirar mensagem para envio');
     }
 
-    // 6. ATUALIZAR CONVERSA (lastMessageAt e status)
+    // 7. ATUALIZAR CONVERSA (lastMessageAt e status)
     await prisma.conversation.update({
       where: { id: data.conversationId },
       data: {
@@ -351,8 +400,10 @@ export class MessageServiceV2 {
       'Message sent successfully (queued)'
     );
 
-    // Retornar mensagem imediatamente (não esperar envio)
-    // Status será atualizado pelo worker quando enviar
+    // 8. RETORNAR MENSAGEM IMEDIATAMENTE
+    // Frontend já recebeu via Socket.io
+    // Worker irá enviar para WhatsApp em background
+    // Status será atualizado via Socket.io quando worker processar
     return message;
   }
 
