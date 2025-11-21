@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useDebounce } from '@/hooks/use-debounce';
 import { contactService } from '@/services/contact.service';
-import { useSocket } from '@/contexts/socket-context';
+import { useSocketContext } from '@/contexts/socket-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -74,7 +74,7 @@ import type { Contact } from '@/types';
 
 export default function ContactsPage() {
   const queryClient = useQueryClient();
-  const socket = useSocket();
+  const socket = useSocketContext();
 
   // Estados locais
   const [searchTerm, setSearchTerm] = useState('');
