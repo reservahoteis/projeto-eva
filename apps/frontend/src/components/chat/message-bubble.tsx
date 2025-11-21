@@ -171,7 +171,10 @@ export function MessageBubble({
             className="text-[11px] text-[#667781]"
             style={{ fontFamily: 'Segoe UI, Helvetica Neue, sans-serif' }}
           >
-            {format(new Date(message.createdAt), 'HH:mm', { locale: ptBR })}
+            {(() => {
+              const date = new Date(message.createdAt);
+              return !date || isNaN(date.getTime()) ? '--:--' : format(date, 'HH:mm', { locale: ptBR });
+            })()}
           </span>
           <StatusIcon />
         </div>
