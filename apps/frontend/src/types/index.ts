@@ -94,12 +94,18 @@ export interface Contact {
 // CONVERSATION
 // ============================================
 
+/**
+ * Status de conversas - DEVE estar sincronizado com backend Prisma schema
+ * @see deploy-backend/prisma/schema.prisma (linhas 205-211)
+ *
+ * IMPORTANTE: NÃO adicionar/remover status sem atualizar backend primeiro
+ */
 export enum ConversationStatus {
-  OPEN = 'OPEN',
-  PENDING = 'PENDING',
-  IN_PROGRESS = 'IN_PROGRESS',
-  RESOLVED = 'RESOLVED',
-  CLOSED = 'CLOSED',
+  BOT_HANDLING = 'BOT_HANDLING', // Sendo atendida pela IA (não aparece no Kanban)
+  OPEN = 'OPEN',                 // Nova conversa, aguardando atendimento humano
+  IN_PROGRESS = 'IN_PROGRESS',   // Atendente está conversando ativamente
+  WAITING = 'WAITING',           // Aguardando resposta do cliente
+  CLOSED = 'CLOSED',             // Conversa finalizada
 }
 
 export interface Conversation {

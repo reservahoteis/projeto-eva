@@ -14,12 +14,16 @@ interface KanbanBoardProps {
   onUpdate: () => void;
 }
 
+/**
+ * Colunas do Kanban - Sincronizadas com backend Prisma schema
+ * Não inclui BOT_HANDLING pois essas conversas não aparecem no Kanban
+ */
 const columns = [
-  { id: ConversationStatus.OPEN, title: 'Abertas', color: 'border-yellow-500' },
-  { id: ConversationStatus.PENDING, title: 'Pendentes', color: 'border-orange-500' },
-  { id: ConversationStatus.IN_PROGRESS, title: 'Em Andamento', color: 'border-blue-500' },
-  { id: ConversationStatus.RESOLVED, title: 'Resolvidas', color: 'border-green-500' },
-];
+  { id: ConversationStatus.OPEN, title: 'Novas', color: 'border-yellow-500' },
+  { id: ConversationStatus.IN_PROGRESS, title: 'Em Atendimento', color: 'border-blue-500' },
+  { id: ConversationStatus.WAITING, title: 'Aguardando Cliente', color: 'border-orange-500' },
+  { id: ConversationStatus.CLOSED, title: 'Finalizadas', color: 'border-green-500' },
+] as const;
 
 export function KanbanBoard({ conversations, onUpdate }: KanbanBoardProps) {
   const [optimisticConversations, setOptimisticConversations] = useState(conversations);
@@ -27,13 +31,31 @@ export function KanbanBoard({ conversations, onUpdate }: KanbanBoardProps) {
   const updateMutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: ConversationStatus }) =>
       conversationService.update(id, { status }),
-    onSuccess: () => {
-      toast.success('Conversa atualizada com sucesso!');
+    retry: 3, // Retry até 3 vezes
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000), // Exponential backoff
+    onSuccess: (_, variables) => {
+      const statusLabels = {
+        [ConversationStatus.OPEN]: 'Novas',
+        [ConversationStatus.IN_PROGRESS]: 'Em Atendimento',
+        [ConversationStatus.WAITING]: 'Aguardando Cliente',
+        [ConversationStatus.CLOSED]: 'Finalizadas',
+        [ConversationStatus.BOT_HANDLING]: 'Bot',
+      };
+      toast.success(`Conversa movida para "${statusLabels[variables.status]}"`);
       onUpdate();
     },
-    onError: () => {
-      toast.error('Erro ao atualizar conversa');
+    onError: (error: any, variables) => {
+      const errorMessage = error?.response?.data?.message || error?.message || 'Erro desconhecido';
+      toast.error(`Falha ao atualizar conversa: ${errorMessage}`, {
+        duration: 5000,
+        action: {
+          label: 'Tentar novamente',
+          onClick: () => updateMutation.mutate(variables),
+        },
+      });
+      // Rollback optimistic update
       setOptimisticConversations(conversations);
+      console.error('Kanban update error:', { error, variables });
     },
   });
 
@@ -50,6 +72,20 @@ export function KanbanBoard({ conversations, onUpdate }: KanbanBoardProps) {
       return;
     }
 
+    // Type-safe validation: ensure destination is a valid ConversationStatus
+    const validStatuses: readonly string[] = [
+      ConversationStatus.OPEN,
+      ConversationStatus.IN_PROGRESS,
+      ConversationStatus.WAITING,
+      ConversationStatus.CLOSED,
+    ];
+
+    if (!validStatuses.includes(destination.droppableId)) {
+      console.error('Invalid destination status:', destination.droppableId);
+      toast.error('Status de destino inválido');
+      return;
+    }
+
     const newStatus = destination.droppableId as ConversationStatus;
 
     // Optimistic update
@@ -58,7 +94,7 @@ export function KanbanBoard({ conversations, onUpdate }: KanbanBoardProps) {
     );
     setOptimisticConversations(updated);
 
-    // Server update
+    // Server update with retry
     updateMutation.mutate({ id: draggableId, status: newStatus });
   };
 
