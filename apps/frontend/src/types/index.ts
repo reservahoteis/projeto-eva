@@ -78,16 +78,23 @@ export interface Tenant {
 export interface Contact {
   id: string;
   tenantId: string;
-  name: string;
-  phone: string;
+  phoneNumber: string;       // Corrigido: era "phone"
+  name?: string;             // Corrigido: agora opcional
   email?: string;
-  avatar?: string;
-  notes?: string;
-  tags: Tag[];
-  customFields?: Record<string, any>;
-  lastInteractionAt?: string;
+  profilePictureUrl?: string; // Corrigido: era "avatar"
+  metadata?: Record<string, any>; // Corrigido: era "customFields"
   createdAt: string;
   updatedAt: string;
+  // Campos computados do backend:
+  _count?: {
+    conversations: number;
+  };
+  lastConversation?: {
+    id: string;
+    lastMessageAt: string;
+  };
+  conversationsCount?: number;
+  lastConversationAt?: string | null;
 }
 
 // ============================================

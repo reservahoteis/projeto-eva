@@ -9,10 +9,14 @@ export class ContactService {
     search?: string;
     page?: number;
     limit?: number;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
   }) {
     const page = params?.page || 1;
     const limit = Math.min(params?.limit || 20, 100);
     const skip = (page - 1) * limit;
+    const sortBy = params?.sortBy || 'createdAt';
+    const sortOrder = params?.sortOrder || 'desc';
 
     const where: any = { tenantId };
 
@@ -29,14 +33,16 @@ export class ContactService {
         where,
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { [sortBy]: sortOrder },
         select: {
           id: true,
           phoneNumber: true,
           name: true,
           email: true,
           profilePictureUrl: true,
+          metadata: true,
           createdAt: true,
+          updatedAt: true,
           _count: {
             select: {
               conversations: true,
@@ -93,25 +99,32 @@ export class ContactService {
         tenantId,
       },
       include: {
+        _count: {
+          select: {
+            conversations: true,
+          },
+        },
         conversations: {
-          orderBy: { createdAt: 'desc' },
-          take: 10,
+          orderBy: { lastMessageAt: 'desc' },
+          take: 1,
           select: {
             id: true,
-            status: true,
-            priority: true,
-            createdAt: true,
-            closedAt: true,
+            lastMessageAt: true,
           },
         },
       },
     });
 
     if (!contact) {
-      throw new NotFoundError('Contato não encontrado');
+      return null;
     }
 
-    return contact;
+    // Formatar resposta
+    return {
+      ...contact,
+      lastConversation: contact.conversations[0] || null,
+      conversations: undefined,
+    };
   }
 
   /**
@@ -133,6 +146,8 @@ export class ContactService {
     phoneNumber: string;
     name?: string;
     email?: string;
+    profilePictureUrl?: string;
+    metadata?: any;
     tenantId: string;
   }) {
     return prisma.contact.create({
@@ -140,7 +155,16 @@ export class ContactService {
         phoneNumber: data.phoneNumber,
         name: data.name || null,
         email: data.email || null,
+        profilePictureUrl: data.profilePictureUrl || null,
+        metadata: data.metadata || {},
         tenantId: data.tenantId,
+      },
+      include: {
+        _count: {
+          select: {
+            conversations: true,
+          },
+        },
       },
     });
   }
@@ -154,7 +178,8 @@ export class ContactService {
     data: {
       name?: string;
       email?: string;
-      metadata?: any;
+      profilePictureUrl?: string | null;
+      metadata?: any | null;
     }
   ) {
     const contact = await prisma.contact.findFirst({
@@ -173,6 +198,137 @@ export class ContactService {
       data: {
         ...data,
         updatedAt: new Date(),
+      },
+      include: {
+        _count: {
+          select: {
+            conversations: true,
+          },
+        },
+      },
+    });
+  }
+
+  /**
+   * Deletar contato
+   */
+  async deleteContact(contactId: string, tenantId: string): Promise<void> {
+    const contact = await prisma.contact.findFirst({
+      where: {
+        id: contactId,
+        tenantId,
+      },
+    });
+
+    if (!contact) {
+      throw new NotFoundError('Contato não encontrado');
+    }
+
+    await prisma.contact.delete({
+      where: { id: contactId },
+    });
+  }
+
+  /**
+   * Buscar contatos com base em query
+   */
+  async searchContacts(
+    tenantId: string,
+    query: string,
+    params?: {
+      page?: number;
+      limit?: number;
+    }
+  ) {
+    const page = params?.page || 1;
+    const limit = Math.min(params?.limit || 10, 50);
+    const skip = (page - 1) * limit;
+
+    const where = {
+      tenantId,
+      OR: [
+        { name: { contains: query, mode: 'insensitive' as const } },
+        { phoneNumber: { contains: query } },
+        { email: { contains: query, mode: 'insensitive' as const } },
+      ],
+    };
+
+    const [contacts, total] = await Promise.all([
+      prisma.contact.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: [
+          { name: 'asc' },
+          { createdAt: 'desc' },
+        ],
+        select: {
+          id: true,
+          phoneNumber: true,
+          name: true,
+          email: true,
+          profilePictureUrl: true,
+          metadata: true,
+        },
+      }),
+      prisma.contact.count({ where }),
+    ]);
+
+    return {
+      data: contacts,
+      total,
+      page,
+      limit,
+      pages: Math.ceil(total / limit),
+    };
+  }
+
+  /**
+   * Contar total de contatos
+   */
+  async countContacts(tenantId: string): Promise<number> {
+    return prisma.contact.count({
+      where: { tenantId },
+    });
+  }
+
+  /**
+   * Contar contatos com conversas
+   */
+  async countContactsWithConversations(tenantId: string): Promise<number> {
+    const result = await prisma.contact.findMany({
+      where: {
+        tenantId,
+        conversations: {
+          some: {},
+        },
+      },
+      select: { id: true },
+    });
+
+    return result.length;
+  }
+
+  /**
+   * Obter contatos recentes
+   */
+  async getRecentContacts(tenantId: string, limit: number = 10) {
+    return prisma.contact.findMany({
+      where: { tenantId },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      select: {
+        id: true,
+        phoneNumber: true,
+        name: true,
+        email: true,
+        profilePictureUrl: true,
+        createdAt: true,
+        _count: {
+          select: {
+            conversations: true,
+          },
+        },
       },
     });
   }

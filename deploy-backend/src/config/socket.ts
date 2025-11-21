@@ -398,6 +398,61 @@ export function emitUserNotification(userId: string, notification: any): void {
 }
 
 /**
+ * Emitir evento de contato criado
+ */
+export function emitContactCreated(tenantId: string, contact: any): void {
+  if (!io) return;
+
+  // Emitir para todos do tenant
+  io.to(`tenant:${tenantId}`).emit('contact:created', { contact });
+
+  logger.debug(
+    {
+      tenantId,
+      contactId: contact.id,
+      phoneNumber: contact.phoneNumber,
+    },
+    'Contact created event emitted'
+  );
+}
+
+/**
+ * Emitir evento de contato atualizado
+ */
+export function emitContactUpdated(tenantId: string, contact: any): void {
+  if (!io) return;
+
+  // Emitir para todos do tenant
+  io.to(`tenant:${tenantId}`).emit('contact:updated', { contact });
+
+  logger.debug(
+    {
+      tenantId,
+      contactId: contact.id,
+    },
+    'Contact updated event emitted'
+  );
+}
+
+/**
+ * Emitir evento de contato deletado
+ */
+export function emitContactDeleted(tenantId: string, contactId: string): void {
+  if (!io) return;
+
+  // Emitir para todos do tenant
+  io.to(`tenant:${tenantId}`).emit('contact:deleted', { contactId });
+
+  logger.debug(
+    {
+      tenantId,
+      contactId,
+    },
+    'Contact deleted event emitted'
+  );
+}
+
+/**
  * Obter estatísticas de conexões
  */
 export async function getSocketStats(): Promise<{

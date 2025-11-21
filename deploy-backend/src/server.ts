@@ -102,6 +102,7 @@ import authRoutes from './routes/auth.routes';
 import tenantRoutes from './routes/tenant.routes';
 import conversationRoutes from './routes/conversation.routes';
 import messageRoutes from './routes/message.routes';
+import contactRoutes from './routes/contact.routes';
 import webhookRoutes from './routes/webhook.routes';
 import healthRoutes from './routes/health.routes';
 import debugRoutes from './routes/debug.routes';
@@ -122,6 +123,7 @@ app.use('/api/debug', debugRoutes);
 app.use('/api/tenants', tenantRoutes);
 app.use('/api/conversations', conversationRoutes);
 app.use('/api/messages', messageRoutes);
+app.use('/api/contacts', contactRoutes);
 
 // Root API info
 app.get('/api', (req, res) => {

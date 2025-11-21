@@ -83,12 +83,12 @@ export function ContactSidebar({ conversation }: ContactSidebarProps) {
         <div className="text-center space-y-4">
           <Avatar className="h-24 w-24 mx-auto">
             <AvatarFallback className="bg-whatsapp-green text-white text-2xl">
-              {getInitials(conversation.contact.name)}
+              {getInitials(conversation.contact.name || conversation.contact.phoneNumber)}
             </AvatarFallback>
           </Avatar>
           <div>
-            <h2 className="text-xl font-bold">{conversation.contact.name}</h2>
-            <p className="text-sm text-muted-foreground">{formatPhoneNumber(conversation.contact.phone)}</p>
+            <h2 className="text-xl font-bold">{conversation.contact.name || 'Sem nome'}</h2>
+            <p className="text-sm text-muted-foreground">{formatPhoneNumber(conversation.contact.phoneNumber)}</p>
           </div>
         </div>
 
@@ -140,9 +140,9 @@ export function ContactSidebar({ conversation }: ContactSidebarProps) {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={ConversationStatus.OPEN}>Aberta</SelectItem>
-                    <SelectItem value={ConversationStatus.PENDING}>Pendente</SelectItem>
+                    <SelectItem value={ConversationStatus.WAITING}>Aguardando</SelectItem>
                     <SelectItem value={ConversationStatus.IN_PROGRESS}>Em Andamento</SelectItem>
-                    <SelectItem value={ConversationStatus.RESOLVED}>Resolvida</SelectItem>
+                    <SelectItem value={ConversationStatus.CLOSED}>Fechada</SelectItem>
                   </SelectContent>
                 </Select>
               </CardContent>
@@ -175,7 +175,7 @@ export function ContactSidebar({ conversation }: ContactSidebarProps) {
               <CardContent className="space-y-3">
                 <div className="flex items-center gap-2 text-sm">
                   <Phone className="h-4 w-4 text-muted-foreground" />
-                  <span>{formatPhoneNumber(conversation.contact.phone)}</span>
+                  <span>{formatPhoneNumber(conversation.contact.phoneNumber)}</span>
                 </div>
                 {conversation.contact.email && (
                   <div className="flex items-center gap-2 text-sm">
@@ -212,13 +212,13 @@ export function ContactSidebar({ conversation }: ContactSidebarProps) {
             )}
 
             {/* Notes */}
-            {conversation.contact.notes && (
+            {conversation.contact.metadata?.notes && (
               <Card>
                 <CardHeader>
                   <CardTitle className="text-sm">Observações</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-muted-foreground">{conversation.contact.notes}</p>
+                  <p className="text-sm text-muted-foreground">{conversation.contact.metadata.notes}</p>
                 </CardContent>
               </Card>
             )}

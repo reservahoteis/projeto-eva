@@ -24,6 +24,9 @@ export interface SocketEvents {
   'user:online': (data: { userId: string }) => void;
   'user:offline': (data: { userId: string }) => void;
   'queue:updated': (data: any) => void;
+  'contact:created': (data: { contact: any }) => void;
+  'contact:updated': (data: { contact: any }) => void;
+  'contact:deleted': (data: { contactId: string }) => void;
   'error': (data: { message: string; code?: string }) => void;
 }
 
