@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ssh root@72.61.39.235 \"cat /root/deploy-backend/src/validators/contact.validator.ts\")"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
