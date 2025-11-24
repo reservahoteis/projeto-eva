@@ -9,6 +9,23 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -17,17 +34,68 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Plus, MoreVertical, Users, Shield, UserCheck, RefreshCw } from 'lucide-react';
-import { UserRole, UserStatus } from '@/types';
+import { UserRole, UserStatus, type User } from '@/types';
 import { toast } from 'sonner';
+import { UserForm } from '@/components/tenant/user-form';
+import { ResetPasswordForm } from '@/components/tenant/reset-password-form';
 
 export default function UsersPage() {
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
 
+  // Estados dos dialogs
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [resetPasswordUser, setResetPasswordUser] = useState<User | null>(null);
+  const [deletingUser, setDeletingUser] = useState<User | null>(null);
+
   // Query para listar usuários
   const { data: usersData, isLoading, error, refetch } = useQuery({
     queryKey: ['users', page],
     queryFn: () => userService.list({ page, limit: 50 }),
+  });
+
+  // Mutation para criar usuário
+  const createMutation = useMutation({
+    mutationFn: userService.create,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      setIsCreateOpen(false);
+      toast.success('Usuário criado com sucesso');
+    },
+    onError: (error: any) => {
+      const message = error.response?.data?.message || 'Erro ao criar usuário';
+      toast.error(message);
+    },
+  });
+
+  // Mutation para atualizar usuário
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) =>
+      userService.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      setEditingUser(null);
+      toast.success('Usuário atualizado com sucesso');
+    },
+    onError: (error: any) => {
+      const message = error.response?.data?.message || 'Erro ao atualizar usuário';
+      toast.error(message);
+    },
+  });
+
+  // Mutation para redefinir senha
+  const resetPasswordMutation = useMutation({
+    mutationFn: ({ id, password }: { id: string; password: string }) =>
+      userService.update(id, { password }),
+    onSuccess: () => {
+      setResetPasswordUser(null);
+      toast.success('Senha redefinida com sucesso');
+    },
+    onError: (error: any) => {
+      const message = error.response?.data?.message || 'Erro ao redefinir senha';
+      toast.error(message);
+    },
   });
 
   // Mutation para atualizar status
@@ -49,6 +117,7 @@ export default function UsersPage() {
     mutationFn: userService.delete,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
+      setDeletingUser(null);
       toast.success('Usuário removido com sucesso');
     },
     onError: (error: any) => {
@@ -56,6 +125,31 @@ export default function UsersPage() {
       toast.error(message);
     },
   });
+
+  // Handlers
+  const handleCreateUser = async (data: any) => {
+    await createMutation.mutateAsync(data);
+  };
+
+  const handleUpdateUser = async (data: any) => {
+    if (!editingUser) return;
+    await updateMutation.mutateAsync({ id: editingUser.id, data });
+  };
+
+  const handleResetPassword = async (password: string) => {
+    if (!resetPasswordUser) return;
+    await resetPasswordMutation.mutateAsync({ id: resetPasswordUser.id, password });
+  };
+
+  const handleToggleStatus = (user: User) => {
+    const newStatus = user.status === UserStatus.ACTIVE ? UserStatus.SUSPENDED : UserStatus.ACTIVE;
+    updateStatusMutation.mutate({ id: user.id, status: newStatus });
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingUser) return;
+    await deleteMutation.mutateAsync(deletingUser.id);
+  };
 
   const getRoleBadge = (role: UserRole) => {
     if (role === UserRole.TENANT_ADMIN) {
@@ -75,17 +169,6 @@ export default function UsersPage() {
       return <Badge variant="destructive">Suspenso</Badge>;
     }
     return <Badge variant="secondary">Inativo</Badge>;
-  };
-
-  const handleToggleStatus = (id: string, currentStatus: UserStatus) => {
-    const newStatus = currentStatus === UserStatus.ACTIVE ? UserStatus.SUSPENDED : UserStatus.ACTIVE;
-    updateStatusMutation.mutate({ id, status: newStatus });
-  };
-
-  const handleDelete = (id: string) => {
-    if (confirm('Tem certeza que deseja remover este usuário?')) {
-      deleteMutation.mutate(id);
-    }
   };
 
   // Loading skeleton
@@ -157,7 +240,7 @@ export default function UsersPage() {
           >
             <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
           </Button>
-          <Button>
+          <Button onClick={() => setIsCreateOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Novo Usuário
           </Button>
@@ -211,7 +294,11 @@ export default function UsersPage() {
       {users.length === 0 ? (
         <Card>
           <CardContent className="p-12 text-center">
-            <p className="text-muted-foreground">Nenhum usuário encontrado</p>
+            <p className="text-muted-foreground mb-4">Nenhum usuário encontrado</p>
+            <Button onClick={() => setIsCreateOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Criar Primeiro Usuário
+            </Button>
           </CardContent>
         </Card>
       ) : (
@@ -256,17 +343,19 @@ export default function UsersPage() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Ações</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem>Editar</DropdownMenuItem>
-                        <DropdownMenuItem>Redefinir senha</DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => handleToggleStatus(user.id, user.status)}
-                        >
+                        <DropdownMenuItem onClick={() => setEditingUser(user)}>
+                          Editar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setResetPasswordUser(user)}>
+                          Redefinir senha
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleToggleStatus(user)}>
                           {user.status === UserStatus.ACTIVE ? 'Suspender' : 'Ativar'}
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                           className="text-destructive"
-                          onClick={() => handleDelete(user.id)}
+                          onClick={() => setDeletingUser(user)}
                         >
                           Excluir
                         </DropdownMenuItem>
@@ -279,6 +368,91 @@ export default function UsersPage() {
           ))}
         </div>
       )}
+
+      {/* Dialog de criação */}
+      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Novo Usuário</DialogTitle>
+            <DialogDescription>
+              Crie um novo usuário para o sistema
+            </DialogDescription>
+          </DialogHeader>
+          <UserForm
+            onSubmit={handleCreateUser}
+            onCancel={() => setIsCreateOpen(false)}
+            isLoading={createMutation.isPending}
+            submitLabel="Criar Usuário"
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de edição */}
+      <Dialog open={!!editingUser} onOpenChange={(open) => !open && setEditingUser(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Editar Usuário</DialogTitle>
+            <DialogDescription>
+              Atualize as informações do usuário
+            </DialogDescription>
+          </DialogHeader>
+          {editingUser && (
+            <UserForm
+              user={editingUser}
+              onSubmit={handleUpdateUser}
+              onCancel={() => setEditingUser(null)}
+              isLoading={updateMutation.isPending}
+              submitLabel="Salvar Alterações"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de redefinir senha */}
+      <Dialog open={!!resetPasswordUser} onOpenChange={(open) => !open && setResetPasswordUser(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Redefinir Senha</DialogTitle>
+            <DialogDescription>
+              Digite a nova senha para o usuário
+            </DialogDescription>
+          </DialogHeader>
+          {resetPasswordUser && (
+            <ResetPasswordForm
+              userName={resetPasswordUser.name}
+              onSubmit={handleResetPassword}
+              onCancel={() => setResetPasswordUser(null)}
+              isLoading={resetPasswordMutation.isPending}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Alert de confirmação de delete */}
+      <AlertDialog
+        open={!!deletingUser}
+        onOpenChange={(open) => !open && setDeletingUser(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja remover o usuário{' '}
+              <strong>{deletingUser?.name}</strong>?
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Remover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

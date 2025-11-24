@@ -1,0 +1,184 @@
+'use client';
+
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { UserRole, type User } from '@/types';
+
+const userFormSchema = z.object({
+  name: z.string().min(1, 'Nome é obrigatório').max(100),
+  email: z.string().email('Email inválido'),
+  role: z.nativeEnum(UserRole),
+  password: z.string().min(8, 'Senha deve ter no mínimo 8 caracteres').optional().or(z.literal('')),
+  avatarUrl: z.string().url('URL inválida').optional().or(z.literal('')),
+});
+
+type UserFormData = z.infer<typeof userFormSchema>;
+
+interface UserFormProps {
+  user?: User;
+  onSubmit: (data: UserFormData) => Promise<void>;
+  onCancel: () => void;
+  isLoading?: boolean;
+  submitLabel?: string;
+}
+
+export function UserForm({
+  user,
+  onSubmit,
+  onCancel,
+  isLoading,
+  submitLabel = 'Salvar',
+}: UserFormProps) {
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    setValue,
+    watch,
+  } = useForm<UserFormData>({
+    resolver: zodResolver(userFormSchema),
+    defaultValues: {
+      name: user?.name || '',
+      email: user?.email || '',
+      role: user?.role || UserRole.ATTENDANT,
+      password: '',
+      avatarUrl: user?.avatarUrl || '',
+    },
+  });
+
+  const selectedRole = watch('role');
+
+  const handleFormSubmit = async (data: UserFormData) => {
+    // Se está editando e não preencheu senha, remover do payload
+    const payload = { ...data };
+    if (user && !payload.password) {
+      delete payload.password;
+    }
+    // Se avatarUrl vazio, remover
+    if (!payload.avatarUrl) {
+      delete payload.avatarUrl;
+    }
+    await onSubmit(payload);
+  };
+
+  return (
+    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
+      {/* Nome */}
+      <div className="space-y-2">
+        <Label htmlFor="name">
+          Nome <span className="text-destructive">*</span>
+        </Label>
+        <Input
+          id="name"
+          {...register('name')}
+          placeholder="Nome completo"
+          disabled={isLoading}
+        />
+        {errors.name && (
+          <p className="text-sm text-destructive">{errors.name.message}</p>
+        )}
+      </div>
+
+      {/* Email */}
+      <div className="space-y-2">
+        <Label htmlFor="email">
+          Email <span className="text-destructive">*</span>
+        </Label>
+        <Input
+          id="email"
+          type="email"
+          {...register('email')}
+          placeholder="email@example.com"
+          disabled={isLoading}
+        />
+        {errors.email && (
+          <p className="text-sm text-destructive">{errors.email.message}</p>
+        )}
+      </div>
+
+      {/* Perfil/Role */}
+      <div className="space-y-2">
+        <Label htmlFor="role">
+          Perfil <span className="text-destructive">*</span>
+        </Label>
+        <Select
+          value={selectedRole}
+          onValueChange={(value) => setValue('role', value as UserRole)}
+          disabled={isLoading}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Selecione o perfil" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={UserRole.ATTENDANT}>Atendente</SelectItem>
+            <SelectItem value={UserRole.TENANT_ADMIN}>Administrador</SelectItem>
+          </SelectContent>
+        </Select>
+        {errors.role && (
+          <p className="text-sm text-destructive">{errors.role.message}</p>
+        )}
+      </div>
+
+      {/* Senha */}
+      <div className="space-y-2">
+        <Label htmlFor="password">
+          Senha {!user && <span className="text-destructive">*</span>}
+          {user && <span className="text-muted-foreground text-xs"> (deixe vazio para manter)</span>}
+        </Label>
+        <Input
+          id="password"
+          type="password"
+          {...register('password')}
+          placeholder={user ? 'Digite para alterar a senha' : 'Mínimo 8 caracteres'}
+          disabled={isLoading}
+        />
+        {errors.password && (
+          <p className="text-sm text-destructive">{errors.password.message}</p>
+        )}
+      </div>
+
+      {/* Avatar URL (opcional) */}
+      <div className="space-y-2">
+        <Label htmlFor="avatarUrl">
+          URL do Avatar <span className="text-muted-foreground text-xs">(opcional)</span>
+        </Label>
+        <Input
+          id="avatarUrl"
+          type="url"
+          {...register('avatarUrl')}
+          placeholder="https://example.com/avatar.jpg"
+          disabled={isLoading}
+        />
+        {errors.avatarUrl && (
+          <p className="text-sm text-destructive">{errors.avatarUrl.message}</p>
+        )}
+      </div>
+
+      {/* Botões */}
+      <div className="flex justify-end gap-3 pt-4">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
+          disabled={isLoading}
+        >
+          Cancelar
+        </Button>
+        <Button type="submit" disabled={isLoading}>
+          {isLoading ? 'Salvando...' : submitLabel}
+        </Button>
+      </div>
+    </form>
+  );
+}
