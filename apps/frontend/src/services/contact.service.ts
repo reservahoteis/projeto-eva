@@ -85,13 +85,6 @@ class ContactService {
    */
   async create(contactData: CreateContactData): Promise<Contact> {
     try {
-      // DEBUG: Diagnosticar problema de URL
-      console.log('=== CREATE CONTACT DEBUG ===');
-      console.log('CONTACT_API_BASE_URL:', CONTACT_API_BASE_URL);
-      console.log('typeof CONTACT_API_BASE_URL:', typeof CONTACT_API_BASE_URL);
-      console.log('apiClient.defaults.baseURL:', apiClient.defaults.baseURL);
-      console.log('URL final será:', `${apiClient.defaults.baseURL}${CONTACT_API_BASE_URL}`);
-
       // Validação local antes de enviar
       if (!contactData.phoneNumber) {
         throw new Error('Número de telefone é obrigatório');
