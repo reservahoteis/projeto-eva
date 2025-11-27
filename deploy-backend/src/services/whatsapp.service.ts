@@ -3,6 +3,7 @@ import { prisma } from '@/config/database';
 import { env } from '@/config/env';
 import { BadRequestError, InternalServerError } from '@/utils/errors';
 import logger from '@/config/logger';
+import { decrypt } from '@/utils/encryption';
 
 interface SendMessageResult {
   whatsappMessageId: string;
@@ -34,10 +35,19 @@ export class WhatsAppService {
       throw new BadRequestError('Tenant não tem WhatsApp configurado');
     }
 
+    // Descriptografar access token
+    let accessToken: string;
+    try {
+      accessToken = decrypt(tenant.whatsappAccessToken);
+    } catch (error) {
+      logger.error({ tenantId, error }, 'Failed to decrypt WhatsApp access token');
+      throw new BadRequestError('Configuração WhatsApp inválida');
+    }
+
     return axios.create({
       baseURL: this.baseUrl,
       headers: {
-        'Authorization': `Bearer ${tenant.whatsappAccessToken}`,
+        'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
       timeout: 30000,

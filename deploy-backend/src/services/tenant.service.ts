@@ -3,6 +3,7 @@ import { BadRequestError, NotFoundError } from '@/utils/errors';
 import { TenantStatus, Plan } from '@prisma/client';
 import { authService } from './auth.service';
 import { generateToken } from '@/utils/crypto';
+import { encrypt } from '@/utils/encryption';
 import logger from '@/config/logger';
 
 interface CreateTenantData {
@@ -273,13 +274,17 @@ export class TenantService {
   ) {
     // TODO: Validar credenciais fazendo request test pra Meta API
 
+    // Criptografar tokens sensíveis antes de salvar no banco
+    const encryptedAccessToken = encrypt(config.whatsappAccessToken);
+    const encryptedAppSecret = encrypt(config.whatsappAppSecret);
+
     const updated = await prisma.tenant.update({
       where: { id: tenantId },
       data: {
         whatsappPhoneNumberId: config.whatsappPhoneNumberId,
-        whatsappAccessToken: config.whatsappAccessToken, // TODO: Criptografar!
+        whatsappAccessToken: encryptedAccessToken,
         whatsappBusinessAccountId: config.whatsappBusinessAccountId,
-        whatsappAppSecret: config.whatsappAppSecret, // TODO: Criptografar!
+        whatsappAppSecret: encryptedAppSecret,
       },
     });
 

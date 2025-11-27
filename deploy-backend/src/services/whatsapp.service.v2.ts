@@ -4,6 +4,7 @@ import { env } from '@/config/env';
 import { BadRequestError, InternalServerError } from '@/utils/errors';
 import logger from '@/config/logger';
 import { validateMediaUrl } from '@/utils/url-validator';
+import { decrypt } from '@/utils/encryption';
 
 // ============================================
 // Types & Interfaces
@@ -117,11 +118,20 @@ export class WhatsAppServiceV2 {
       throw new BadRequestError('Tenant não tem WhatsApp configurado');
     }
 
+    // Descriptografar access token
+    let accessToken: string;
+    try {
+      accessToken = decrypt(tenant.whatsappAccessToken);
+    } catch (error) {
+      logger.error({ tenantId, error }, 'Failed to decrypt WhatsApp access token');
+      throw new BadRequestError('Configuração WhatsApp inválida');
+    }
+
     // Criar nova instância
     const instance = axios.create({
       baseURL: this.baseUrl,
       headers: {
-        'Authorization': `Bearer ${tenant.whatsappAccessToken}`,
+        'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
       timeout: 30000, // 30 segundos

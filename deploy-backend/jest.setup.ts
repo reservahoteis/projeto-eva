@@ -15,6 +15,8 @@ process.env.WHATSAPP_API_VERSION = 'v21.0';
 process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN = 'test-webhook-verify-token';
 process.env.FRONTEND_URL = 'http://localhost:3000';
 process.env.N8N_API_KEY = 'test-n8n-api-key';
+// Encryption key for WhatsApp tokens (32 bytes = 64 hex chars)
+process.env.ENCRYPTION_KEY = 'a'.repeat(64); // Test-only key
 
 // Aumentar timeout para testes de integração
 jest.setTimeout(10000);

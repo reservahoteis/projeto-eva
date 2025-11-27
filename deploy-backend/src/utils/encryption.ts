@@ -11,8 +11,12 @@ import { env } from '@/config/env';
 
 // Validate encryption key exists and is proper length
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || '';
-if (!ENCRYPTION_KEY || ENCRYPTION_KEY.length !== 64) {
-  throw new Error('ENCRYPTION_KEY must be 32 bytes (64 hex characters). Generate with: openssl rand -hex 32');
+const isKeyValid = ENCRYPTION_KEY && ENCRYPTION_KEY.length === 64;
+
+// Log warning but don't crash - allows app to start for non-crypto operations
+if (!isKeyValid && process.env.NODE_ENV !== 'test') {
+  console.warn('[WARN] ENCRYPTION_KEY not configured or invalid. WhatsApp token encryption will fail.');
+  console.warn('[WARN] Generate a key with: openssl rand -hex 32');
 }
 
 const IV_LENGTH = 16; // For AES, this is always 16
@@ -26,6 +30,10 @@ const ALGORITHM = 'aes-256-cbc';
 export function encrypt(text: string): string {
   if (!text) {
     throw new Error('Cannot encrypt empty text');
+  }
+
+  if (!isKeyValid) {
+    throw new Error('ENCRYPTION_KEY not configured. Generate with: openssl rand -hex 32');
   }
 
   try {
@@ -53,6 +61,10 @@ export function encrypt(text: string): string {
 export function decrypt(text: string): string {
   if (!text) {
     throw new Error('Cannot decrypt empty text');
+  }
+
+  if (!isKeyValid) {
+    throw new Error('ENCRYPTION_KEY not configured. Generate with: openssl rand -hex 32');
   }
 
   try {

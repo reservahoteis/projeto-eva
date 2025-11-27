@@ -3,6 +3,7 @@ import { messageController } from '@/controllers/message.controller';
 import { validate } from '@/middlewares/validate.middleware';
 import { authenticate } from '@/middlewares/auth.middleware';
 import { requireTenant } from '@/middlewares/tenant.middleware';
+import logger from '@/config/logger';
 
 const router = Router();
 
@@ -35,11 +36,12 @@ router.post('/:id/read', messageController.markAsRead.bind(messageController));
 // DEPRECATED: Use GET /api/conversations/:conversationId/messages instead
 router.get(
   '/conversations/:conversationId/messages',
-  (_req, _res, next) => {
-    console.warn(
-      `DEPRECATED: GET /api/messages/conversations/:conversationId/messages is deprecated. ` +
-      `Use GET /api/conversations/:conversationId/messages instead`
-    );
+  (req, _res, next) => {
+    logger.warn({
+      deprecatedRoute: 'GET /api/messages/conversations/:conversationId/messages',
+      newRoute: 'GET /api/conversations/:conversationId/messages',
+      ip: req.ip,
+    }, 'Deprecated route accessed');
     next();
   },
   validate(require('@/validators/message.validator').listMessagesSchema, 'query'),
@@ -49,11 +51,12 @@ router.get(
 // DEPRECATED: Use GET /api/conversations/:conversationId/messages/stats instead
 router.get(
   '/conversations/:conversationId/stats',
-  (_req, _res, next) => {
-    console.warn(
-      `DEPRECATED: GET /api/messages/conversations/:conversationId/stats is deprecated. ` +
-      `Use GET /api/conversations/:conversationId/messages/stats instead`
-    );
+  (req, _res, next) => {
+    logger.warn({
+      deprecatedRoute: 'GET /api/messages/conversations/:conversationId/stats',
+      newRoute: 'GET /api/conversations/:conversationId/messages/stats',
+      ip: req.ip,
+    }, 'Deprecated route accessed');
     next();
   },
   messageController.getStats.bind(messageController)
@@ -62,11 +65,12 @@ router.get(
 // DEPRECATED: Use POST /api/conversations/:conversationId/messages instead
 router.post(
   '/',
-  (_req, _res, next) => {
-    console.warn(
-      `DEPRECATED: POST /api/messages is deprecated. ` +
-      `Use POST /api/conversations/:conversationId/messages instead`
-    );
+  (req, _res, next) => {
+    logger.warn({
+      deprecatedRoute: 'POST /api/messages',
+      newRoute: 'POST /api/conversations/:conversationId/messages',
+      ip: req.ip,
+    }, 'Deprecated route accessed');
     next();
   },
   require('@/middlewares/rate-limit.middleware').createLimiter,
@@ -77,11 +81,12 @@ router.post(
 // DEPRECATED: Use POST /api/conversations/:conversationId/messages/template instead
 router.post(
   '/template',
-  (_req, _res, next) => {
-    console.warn(
-      `DEPRECATED: POST /api/messages/template is deprecated. ` +
-      `Use POST /api/conversations/:conversationId/messages/template instead`
-    );
+  (req, _res, next) => {
+    logger.warn({
+      deprecatedRoute: 'POST /api/messages/template',
+      newRoute: 'POST /api/conversations/:conversationId/messages/template',
+      ip: req.ip,
+    }, 'Deprecated route accessed');
     next();
   },
   require('@/middlewares/rate-limit.middleware').createLimiter,
@@ -91,11 +96,12 @@ router.post(
 // DEPRECATED: Use POST /api/conversations/:conversationId/messages/buttons instead
 router.post(
   '/buttons',
-  (_req, _res, next) => {
-    console.warn(
-      `DEPRECATED: POST /api/messages/buttons is deprecated. ` +
-      `Use POST /api/conversations/:conversationId/messages/buttons instead`
-    );
+  (req, _res, next) => {
+    logger.warn({
+      deprecatedRoute: 'POST /api/messages/buttons',
+      newRoute: 'POST /api/conversations/:conversationId/messages/buttons',
+      ip: req.ip,
+    }, 'Deprecated route accessed');
     next();
   },
   require('@/middlewares/rate-limit.middleware').createLimiter,
@@ -105,11 +111,12 @@ router.post(
 // DEPRECATED: Use POST /api/conversations/:conversationId/messages/list instead
 router.post(
   '/list',
-  (_req, _res, next) => {
-    console.warn(
-      `DEPRECATED: POST /api/messages/list is deprecated. ` +
-      `Use POST /api/conversations/:conversationId/messages/list instead`
-    );
+  (req, _res, next) => {
+    logger.warn({
+      deprecatedRoute: 'POST /api/messages/list',
+      newRoute: 'POST /api/conversations/:conversationId/messages/list',
+      ip: req.ip,
+    }, 'Deprecated route accessed');
     next();
   },
   require('@/middlewares/rate-limit.middleware').createLimiter,

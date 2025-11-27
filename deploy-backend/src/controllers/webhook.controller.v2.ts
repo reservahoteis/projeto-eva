@@ -12,6 +12,7 @@ import {
   enqueueIncomingMessage,
   enqueueStatusUpdate,
 } from '@/queues/whatsapp-webhook.queue';
+import { decrypt } from '@/utils/encryption';
 
 /**
  * WhatsApp Webhook Controller - Versão 2 (Refatorada)
@@ -177,6 +178,16 @@ export class WebhookControllerV2 {
         return;
       }
 
+      // Descriptografar app secret antes de validar
+      let appSecret: string;
+      try {
+        appSecret = decrypt(tenant.whatsappAppSecret);
+      } catch (error) {
+        logger.error({ tenantId: tenant.id, error }, 'Failed to decrypt WhatsApp app secret');
+        res.status(200).send('EVENT_RECEIVED');
+        return;
+      }
+
       // Usar rawBody (preservado pelo middleware) ao invés de JSON.stringify(req.body)
       // para garantir que a assinatura HMAC seja validada corretamente
       const payload = req.rawBody || JSON.stringify(req.body);
@@ -184,7 +195,7 @@ export class WebhookControllerV2 {
       const isValid = this.validateSignature(
         payload,
         signature,
-        tenant.whatsappAppSecret
+        appSecret
       );
 
       if (!isValid) {

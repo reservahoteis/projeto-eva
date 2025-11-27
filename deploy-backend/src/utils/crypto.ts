@@ -3,7 +3,13 @@ import { env } from '@/config/env';
 
 // Algoritmo de criptografia
 const ALGORITHM = 'aes-256-gcm';
-const KEY = crypto.scryptSync(env.JWT_SECRET, 'salt', 32);
+
+// Derivar salt único do JWT_SECRET (primeiros 16 bytes do hash SHA256)
+// Isso garante que cada instalação tem um salt único baseado na sua chave
+const DERIVED_SALT = crypto.createHash('sha256').update(env.JWT_SECRET).digest().slice(0, 16);
+
+// Derivar chave de criptografia usando scrypt com salt derivado
+const KEY = crypto.scryptSync(env.JWT_SECRET, DERIVED_SALT, 32);
 
 /**
  * Criptografar dados sensíveis (ex: WhatsApp Access Token)

@@ -30,16 +30,30 @@ export async function authenticate(req: Request, _res: Response, next: NextFunct
     const payload = jwt.verify(token, env.JWT_SECRET) as JWTPayload;
 
     // Buscar usuário no banco para ter todos os campos do User
+    // IMPORTANTE: Não inclui password hash por segurança
     const user = await (await import('@/config/database')).prisma.user.findUnique({
       where: { id: payload.userId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        status: true,
+        tenantId: true,
+        avatarUrl: true,
+        createdAt: true,
+        updatedAt: true,
+        lastLogin: true,
+        // password: false - Não incluir password hash no req.user!
+      },
     });
 
     if (!user) {
       throw new UnauthorizedError('Usuário não encontrado');
     }
 
-    // Adicionar user completo no request
-    req.user = user;
+    // Adicionar user (sem password) no request
+    req.user = user as any;
 
     logger.debug({ userId: payload.userId, role: payload.role }, 'User authenticated');
 
@@ -125,13 +139,25 @@ export async function optionalAuthenticate(req: Request, _res: Response, next: N
     const token = authHeader.substring(7);
     const payload = jwt.verify(token, env.JWT_SECRET) as JWTPayload;
 
-    // Buscar usuário no banco
+    // Buscar usuário no banco (sem password hash)
     const user = await (await import('@/config/database')).prisma.user.findUnique({
       where: { id: payload.userId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        status: true,
+        tenantId: true,
+        avatarUrl: true,
+        createdAt: true,
+        updatedAt: true,
+        lastLogin: true,
+      },
     });
 
     if (user) {
-      req.user = user;
+      req.user = user as any;
     }
 
     next();

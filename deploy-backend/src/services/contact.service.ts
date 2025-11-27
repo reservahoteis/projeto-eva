@@ -28,6 +28,7 @@ export class ContactService {
       ];
     }
 
+    // Buscar contatos com última conversa em uma única query (evita N+1)
     const [contacts, total] = await Promise.all([
       prisma.contact.findMany({
         where,
@@ -48,38 +49,37 @@ export class ContactService {
               conversations: true,
             },
           },
+          // Incluir última conversa diretamente (ordenada por lastMessageAt)
+          conversations: {
+            orderBy: { lastMessageAt: 'desc' },
+            take: 1,
+            select: {
+              id: true,
+              status: true,
+              lastMessageAt: true,
+            },
+          },
         },
       }),
       prisma.contact.count({ where }),
     ]);
 
-    // Pegar última conversa de cada contato
-    const contactsWithLastConversation = await Promise.all(
-      contacts.map(async (contact) => {
-        const lastConversation = await prisma.conversation.findFirst({
-          where: {
-            tenantId,
-            contactId: contact.id,
-          },
-          orderBy: { lastMessageAt: 'desc' },
-          select: {
-            id: true,
-            status: true,
-            lastMessageAt: true,
-          },
-        });
-
-        return {
-          ...contact,
-          conversationsCount: contact._count.conversations,
-          _count: undefined,
-          lastConversationAt: lastConversation?.lastMessageAt || null,
-        };
-      })
-    );
+    // Formatar resposta (sem N+1 - dados já vieram na query)
+    const contactsFormatted = contacts.map((contact) => ({
+      id: contact.id,
+      phoneNumber: contact.phoneNumber,
+      name: contact.name,
+      email: contact.email,
+      profilePictureUrl: contact.profilePictureUrl,
+      metadata: contact.metadata,
+      createdAt: contact.createdAt,
+      updatedAt: contact.updatedAt,
+      conversationsCount: contact._count.conversations,
+      lastConversationAt: contact.conversations[0]?.lastMessageAt || null,
+    }));
 
     return {
-      data: contactsWithLastConversation,
+      data: contactsFormatted,
       pagination: {
         page,
         limit,
@@ -296,17 +296,15 @@ export class ContactService {
    * Contar contatos com conversas
    */
   async countContactsWithConversations(tenantId: string): Promise<number> {
-    const result = await prisma.contact.findMany({
+    // Usar count ao invés de findMany para evitar carregar dados desnecessários
+    return prisma.contact.count({
       where: {
         tenantId,
         conversations: {
           some: {},
         },
       },
-      select: { id: true },
     });
-
-    return result.length;
   }
 
   /**

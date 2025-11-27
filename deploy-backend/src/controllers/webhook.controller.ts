@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { prisma } from '@/config/database';
 import { messageService } from '@/services/message.service';
 import logger from '@/config/logger';
+import { decrypt } from '@/utils/encryption';
 
 export class WebhookController {
   /**
@@ -89,10 +90,19 @@ export class WebhookController {
         return res.status(200).send('EVENT_RECEIVED');
       }
 
+      // Descriptografar app secret antes de validar
+      let appSecret: string;
+      try {
+        appSecret = decrypt(tenant.whatsappAppSecret);
+      } catch (error) {
+        logger.error({ tenantId, error }, 'Failed to decrypt WhatsApp app secret');
+        return res.status(200).send('EVENT_RECEIVED');
+      }
+
       const isValid = this.validateSignature(
         JSON.stringify(req.body),
         signature,
-        tenant.whatsappAppSecret
+        appSecret
       );
 
       if (!isValid) {

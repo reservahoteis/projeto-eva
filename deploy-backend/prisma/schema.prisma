@@ -254,6 +254,8 @@ model Message {
   @@index([conversationId, timestamp])
   @@index([tenantId, timestamp])
   @@index([whatsappMessageId])
+  // Índice para contagem de mensagens não lidas (usado em listConversations)
+  @@index([conversationId, direction, status])
   @@map("messages")
 }
 

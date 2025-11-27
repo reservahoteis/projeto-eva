@@ -68,6 +68,7 @@ export class ConversationService {
       };
     }
 
+    // Buscar conversas
     const [conversations, total] = await Promise.all([
       prisma.conversation.findMany({
         where,
@@ -113,28 +114,35 @@ export class ConversationService {
       prisma.conversation.count({ where }),
     ]);
 
-    // Contar mensagens não lidas por conversa
-    const conversationsWithUnread = await Promise.all(
-      conversations.map(async (conv) => {
-        const unreadCount = await prisma.message.count({
-          where: {
-            conversationId: conv.id,
-            direction: 'INBOUND',
-            status: { not: 'READ' },
-          },
-        });
+    // Buscar contagem de mensagens não lidas em batch (evita N+1)
+    const conversationIds = conversations.map((c) => c.id);
+    const unreadCounts = await prisma.message.groupBy({
+      by: ['conversationId'],
+      where: {
+        conversationId: { in: conversationIds },
+        direction: 'INBOUND',
+        status: { not: 'READ' },
+      },
+      _count: {
+        id: true,
+      },
+    });
 
-        return {
-          ...conv,
-          lastMessage: conv.messages[0] || null,
-          messages: undefined, // Remover array de messages
-          unreadCount,
-        };
-      })
+    // Criar mapa para lookup rápido
+    const unreadMap = new Map(
+      unreadCounts.map((uc) => [uc.conversationId, uc._count.id])
     );
 
+    // Formatar resposta (sem N+1 - usamos batch query)
+    const conversationsFormatted = conversations.map((conv) => ({
+      ...conv,
+      lastMessage: conv.messages[0] || null,
+      messages: undefined, // Remover array de messages
+      unreadCount: unreadMap.get(conv.id) || 0,
+    }));
+
     return {
-      data: conversationsWithUnread,
+      data: conversationsFormatted,
       pagination: {
         page,
         limit,
