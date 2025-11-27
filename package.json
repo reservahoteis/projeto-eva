@@ -16,12 +16,11 @@
     "lint": "pnpm -r lint",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "clean": "pnpm -r clean && rm -rf node_modules",
-    "backend:dev": "pnpm --filter @crm/backend dev",
     "frontend:dev": "pnpm --filter @crm/frontend dev",
+    "backend:dev": "cd deploy-backend && npm run dev",
+    "backend:test": "cd deploy-backend && npm run test",
     "docker:up": "docker-compose up -d",
-    "docker:down": "docker-compose down",
-    "prisma:studio": "pnpm --filter @crm/backend prisma:studio",
-    "prisma:migrate": "pnpm --filter @crm/backend prisma:migrate"
+    "docker:down": "docker-compose down"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",

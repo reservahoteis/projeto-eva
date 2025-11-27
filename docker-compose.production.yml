@@ -51,8 +51,8 @@ services:
   # Backend Application
   backend:
     build:
-      context: .
-      dockerfile: apps/backend/Dockerfile
+      context: ./deploy-backend
+      dockerfile: Dockerfile.standalone
     container_name: crm-backend
     restart: always
     environment:
