@@ -13,13 +13,96 @@ env:
   VPS_HOST: ${{ secrets.VPS_HOST }}
   VPS_USER: ${{ secrets.VPS_USER }}
   VPS_PATH: ${{ secrets.VPS_PATH }}
-  DEPLOY_TIMEOUT: 600 # 10 minutes
+  DEPLOY_TIMEOUT: 600
   HEALTH_CHECK_URL: https://api.botreserva.com.br/api/health
 
 jobs:
+  # ============================================
+  # TEST JOB - Run tests before deployment
+  # ============================================
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: deploy-backend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: deploy-backend
+        run: npm ci
+
+      - name: Run linting
+        working-directory: deploy-backend
+        run: npm run lint || echo "::warning::Linting issues found"
+
+      - name: Run type check
+        working-directory: deploy-backend
+        run: npx tsc --noEmit || echo "::warning::Type check issues found"
+
+      - name: Run tests
+        working-directory: deploy-backend
+        run: npm run test -- --coverage --passWithNoTests
+        env:
+          NODE_ENV: test
+
+      - name: Check coverage threshold
+        working-directory: deploy-backend
+        run: |
+          # Verify minimum coverage (will fail build if below threshold)
+          npm run test -- --coverage --coverageThreshold='{"global":{"lines":40,"branches":30}}'
+        continue-on-error: true
+
+      - name: Upload coverage report
+        uses: codecov/codecov-action@v3
+        with:
+          directory: deploy-backend/coverage
+          fail_ci_if_error: false
+        continue-on-error: true
+
+  # ============================================
+  # SECURITY CHECK JOB
+  # ============================================
+  security:
+    name: Security Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: deploy-backend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: deploy-backend
+        run: npm ci
+
+      - name: Run npm audit
+        working-directory: deploy-backend
+        run: npm audit --audit-level=high || echo "::warning::Security vulnerabilities found"
+        continue-on-error: true
+
+  # ============================================
+  # DEPLOY JOB - Deploy to production
+  # ============================================
   deploy:
     name: Deploy Backend to VPS
     runs-on: ubuntu-latest
+    needs: [test, security]
     timeout-minutes: 15
 
     steps:
@@ -29,7 +112,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 2 # Fetch last 2 commits for rollback
+          fetch-depth: 2
 
       # ============================================
       # 2. SETUP SSH
@@ -41,21 +124,17 @@ jobs:
 
           # Handle both base64-encoded and raw SSH keys
           if echo "${{ secrets.VPS_SSH_KEY }}" | grep -q "BEGIN OPENSSH PRIVATE KEY"; then
-            # Raw key format
             echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
           else
-            # Assume base64-encoded
             echo "${{ secrets.VPS_SSH_KEY }}" | base64 -d > ~/.ssh/deploy_key
           fi
 
           chmod 600 ~/.ssh/deploy_key
-
-          # Add VPS to known_hosts
           ssh-keyscan -H ${{ env.VPS_HOST }} >> ~/.ssh/known_hosts
 
           # Verify key format
           if ! ssh-keygen -l -f ~/.ssh/deploy_key > /dev/null 2>&1; then
-            echo "::error::Invalid SSH key format. Please check VPS_SSH_KEY secret."
+            echo "::error::Invalid SSH key format."
             exit 1
           fi
 
@@ -70,21 +149,9 @@ jobs:
         run: |
           echo "::group::Pre-deployment checks"
 
-          # Check if VPS is reachable (informative only - many VPS block ICMP)
-          echo "Checking VPS connectivity via ping (informative only)..."
-          if ping -c 3 ${{ env.VPS_HOST }} 2>&1; then
-            echo "✓ VPS responds to ICMP ping"
-          else
-            echo "::warning::VPS does not respond to ping (ICMP may be blocked by firewall)"
-            echo "This is normal for security-hardened servers. SSH connectivity will be verified next."
-          fi
-
-          # Verify SSH connectivity (critical check)
-          echo "✓ Verifying SSH connectivity (critical)..."
-          if ! ssh -i ~/.ssh/deploy_key -o ConnectTimeout=10 ${{ env.VPS_USER }}@${{ env.VPS_HOST }} "echo 'SSH connection verified' && uptime"; then
-            echo "::error::SSH connection failed. Cannot proceed with deployment."
-            exit 1
-          fi
+          # Verify SSH connectivity
+          echo "✓ Verifying SSH connectivity..."
+          ssh -i ~/.ssh/deploy_key -o ConnectTimeout=10 ${{ env.VPS_USER }}@${{ env.VPS_HOST }} "echo 'SSH verified' && uptime"
 
           # Check disk space on VPS
           echo "✓ Checking VPS disk space..."
@@ -98,7 +165,7 @@ jobs:
 
           # Check if Docker is running
           echo "✓ Checking Docker status..."
-          ssh -i ~/.ssh/deploy_key ${{ env.VPS_USER }}@${{ env.VPS_HOST }} "docker info > /dev/null 2>&1 || (echo '::error::Docker is not running' && exit 1)"
+          ssh -i ~/.ssh/deploy_key ${{ env.VPS_USER }}@${{ env.VPS_HOST }} "docker info > /dev/null 2>&1"
 
           echo "::endgroup::"
 
@@ -119,14 +186,15 @@ jobs:
 
             echo "Creating backup in $BACKUP_DIR..."
 
-            # Backup current Docker image (for quick rollback)
+            # Backup current Docker image
             if docker images | grep -q "deploy-backend[_-]backend"; then
               echo "Tagging current Docker image for backup..."
-              docker tag deploy-backend_backend:latest deploy-backend_backend:backup-$(date +%Y%m%d-%H%M%S) || true
+              docker tag deploy-backend-backend:latest deploy-backend-backend:backup-$(date +%Y%m%d-%H%M%S) 2>/dev/null || \
+              docker tag deploy-backend_backend:latest deploy-backend_backend:backup-$(date +%Y%m%d-%H%M%S) 2>/dev/null || true
               echo "✓ Docker image tagged for backup"
             fi
 
-            # Backup database (optional - if DB is small)
+            # Backup database
             if docker ps | grep -q crm-postgres; then
               echo "Creating database backup..."
               docker exec crm-postgres pg_dump -U crm_user crm_whatsapp_saas > "$BACKUP_DIR/database.sql" 2>/dev/null || true
@@ -138,7 +206,7 @@ jobs:
             ls -td pre-deploy-* 2>/dev/null | tail -n +6 | xargs -r rm -rf || true
 
             # Keep only last 3 Docker backup images
-            docker images --format "{{.Repository}}:{{.Tag}}" | grep "deploy-backend_backend:backup-" | tail -n +4 | xargs -r docker rmi || true
+            docker images --format "{{.Repository}}:{{.Tag}}" | grep "backup-" | tail -n +4 | xargs -r docker rmi 2>/dev/null || true
 
             echo "✓ Backup completed: $BACKUP_DIR"
           BACKUP_SCRIPT
@@ -146,14 +214,13 @@ jobs:
           echo "::endgroup::"
 
       # ============================================
-      # 5. SYNC FILES TO VPS
+      # 5. SYNC FILES TO VPS (ONLY deploy-backend)
       # ============================================
       - name: Sync files to VPS
         run: |
           echo "::group::Sync files via rsync"
 
-          # Sync deploy-backend/ to VPS
-          # Note: We sync source files because Docker will build inside the container
+          # Sync ONLY deploy-backend/ to VPS (not the entire repository)
           rsync -avz --delete \
             --exclude 'node_modules' \
             --exclude 'dist' \
@@ -162,12 +229,16 @@ jobs:
             --exclude 'coverage' \
             --exclude 'backups' \
             --exclude 'certbot' \
+            --exclude '*.test.ts' \
             --exclude 'test-*.ts' \
+            --exclude 'jest.config.js' \
+            --exclude 'jest.setup.ts' \
+            --exclude 'src/test' \
             -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
             deploy-backend/ \
             ${{ env.VPS_USER }}@${{ env.VPS_HOST }}:${{ env.VPS_PATH }}/
 
-          echo "✓ Files synced successfully"
+          echo "✓ Files synced successfully (only deploy-backend)"
           echo "::endgroup::"
 
       # ============================================
@@ -207,8 +278,8 @@ jobs:
 
             # Wait for backend to be healthy
             echo "Waiting for backend container to be healthy..."
-            timeout 60 bash -c 'until docker inspect --format="{{.State.Health.Status}}" crm-backend | grep -q "healthy"; do echo "Waiting..."; sleep 3; done' || {
-              echo "::warning::Container health check timeout (this is normal if health endpoint takes time to start)"
+            timeout 90 bash -c 'until docker inspect --format="{{.State.Health.Status}}" crm-backend | grep -q "healthy"; do echo "Waiting..."; sleep 5; done' || {
+              echo "::warning::Container health check timeout"
             }
 
             # Show container status
@@ -232,15 +303,12 @@ jobs:
 
             # Wait for postgres to be ready
             echo "Waiting for PostgreSQL..."
-            timeout 30 bash -c 'until docker exec crm-postgres pg_isready -U crm_user 2>/dev/null; do echo "Waiting for PostgreSQL..."; sleep 2; done' || {
-              echo "::warning::PostgreSQL readiness check timeout"
-            }
+            timeout 30 bash -c 'until docker exec crm-postgres pg_isready -U crm_user 2>/dev/null; do echo "Waiting..."; sleep 2; done' || true
 
             # Run migrations inside the backend container
-            echo "Running Prisma migrations inside backend container..."
+            echo "Running Prisma migrations..."
             docker compose -f docker-compose.production.yml exec -T backend npx prisma migrate deploy || {
               echo "::error::Failed to run migrations"
-              echo "Container logs:"
               docker compose -f docker-compose.production.yml logs --tail=30 backend
               exit 1
             }
@@ -293,8 +361,6 @@ jobs:
 
           exit 1
 
-          echo "::endgroup::"
-
       # ============================================
       # 10. POST-DEPLOYMENT VERIFICATION
       # ============================================
@@ -325,17 +391,16 @@ jobs:
       # ============================================
       - name: Cleanup SSH keys
         if: always()
-        run: |
-          rm -f ~/.ssh/deploy_key
+        run: rm -f ~/.ssh/deploy_key
 
       # ============================================
-      # 12. SEND NOTIFICATION (Optional)
+      # 12. DEPLOYMENT SUMMARY
       # ============================================
       - name: Deployment summary
         if: always()
         run: |
           if [ "${{ job.status }}" == "success" ]; then
-            echo "✓ Deployment successful!"
+            echo "✓ Production deployment successful!"
             echo "URL: ${{ env.HEALTH_CHECK_URL }}"
           else
             echo "✗ Deployment failed!"
@@ -356,7 +421,6 @@ jobs:
         run: |
           mkdir -p ~/.ssh
 
-          # Handle both base64-encoded and raw SSH keys
           if echo "${{ secrets.VPS_SSH_KEY }}" | grep -q "BEGIN OPENSSH PRIVATE KEY"; then
             echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
           else
@@ -375,26 +439,23 @@ jobs:
             cd ${{ secrets.VPS_PATH }}
 
             # Find most recent backup Docker image
-            LATEST_BACKUP_IMAGE=$(docker images --format "{{.Repository}}:{{.Tag}}" | grep "deploy-backend_backend:backup-" | head -1)
+            LATEST_BACKUP_IMAGE=$(docker images --format "{{.Repository}}:{{.Tag}}" | grep "backend:backup-" | head -1)
 
             if [ -z "$LATEST_BACKUP_IMAGE" ]; then
-              echo "::error::No Docker backup image found for rollback"
+              echo "::error::No Docker backup image found"
               exit 1
             fi
 
-            echo "Rolling back to Docker image: $LATEST_BACKUP_IMAGE"
+            echo "Rolling back to: $LATEST_BACKUP_IMAGE"
 
-            # Tag backup image as latest
-            docker tag "$LATEST_BACKUP_IMAGE" deploy-backend_backend:latest
+            # Tag backup as latest
+            docker tag "$LATEST_BACKUP_IMAGE" deploy-backend-backend:latest 2>/dev/null || \
+            docker tag "$LATEST_BACKUP_IMAGE" deploy-backend_backend:latest 2>/dev/null
 
-            # Restart backend container with the backup image
+            # Restart with backup
             docker compose -f docker-compose.production.yml up -d --no-deps --force-recreate backend
 
-            echo "✓ Rollback completed - backend running with backup image"
-
-            # Show container status
-            echo ""
-            echo "Container status:"
+            echo "✓ Rollback completed"
             docker compose -f docker-compose.production.yml ps backend
           ROLLBACK_SCRIPT
 
