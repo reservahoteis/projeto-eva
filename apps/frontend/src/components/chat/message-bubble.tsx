@@ -4,7 +4,8 @@ import { Message, MessageStatus, MessageType } from '@/types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Check, CheckCheck, Paperclip } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, getInitials } from '@/lib/utils';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface MessageBubbleProps {
   message: Message;
@@ -71,11 +72,14 @@ export function MessageBubble({
       {!isOwnMessage && (
         <>
           {showAvatar ? (
-            <img
-              src={contactAvatar || '/avatar-placeholder.png'}
-              alt={contactName || 'Contact'}
-              className="w-8 h-8 rounded-full flex-shrink-0"
-            />
+            <Avatar className="w-8 h-8 flex-shrink-0">
+              {contactAvatar && (
+                <AvatarImage src={contactAvatar} alt={contactName || 'Contato'} />
+              )}
+              <AvatarFallback className="bg-[#00a884] text-white text-xs font-medium">
+                {getInitials(contactName || '')}
+              </AvatarFallback>
+            </Avatar>
           ) : (
             <div className="w-8 flex-shrink-0" />
           )}
