@@ -48,13 +48,13 @@ export default function LoginPage() {
         <div className="glass-card p-8">
           {/* Logo Header - Style like ERP Angelus */}
           <div className="flex flex-col items-center mb-8">
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg mb-4 overflow-hidden">
+            <div className="w-24 h-24 rounded-2xl bg-white flex items-center justify-center shadow-lg mb-4 overflow-hidden border border-[var(--glass-border)]">
               <Image
                 src="/logo.png"
                 alt="Hotéis Reserva"
-                width={52}
-                height={52}
-                className="object-contain brightness-0 invert"
+                width={80}
+                height={80}
+                className="object-contain"
                 priority
               />
             </div>
