@@ -83,7 +83,7 @@ export function SuperAdminSidebar() {
     <div className="flex h-screen w-64 flex-col border-r bg-card">
       {/* Logo */}
       <div className="flex h-16 items-center border-b px-6">
-        <h1 className="text-xl font-bold text-primary">CRM WhatsApp</h1>
+        <h1 className="text-xl font-bold text-primary">Bot Reserva Hotéis</h1>
       </div>
 
       {/* Navigation */}

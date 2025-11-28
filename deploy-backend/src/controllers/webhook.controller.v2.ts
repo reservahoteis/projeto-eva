@@ -339,7 +339,16 @@ export class WebhookControllerV2 {
       }
 
       // MESSAGE STATUS UPDATES (delivered, read, failed)
-      if (field === 'message_status' && value.statuses && value.statuses.length > 0) {
+      // NOTA: Status updates vêm com field='messages' junto com value.statuses (não field='message_status')
+      if (field === 'messages' && value.statuses && value.statuses.length > 0) {
+        logger.info(
+          {
+            tenantId,
+            statusCount: value.statuses.length,
+          },
+          'Processing status updates from webhook'
+        );
+
         for (const status of value.statuses) {
           await enqueueStatusUpdate({
             tenantId,

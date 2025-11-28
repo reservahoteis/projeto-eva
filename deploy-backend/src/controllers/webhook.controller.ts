@@ -128,11 +128,17 @@ export class WebhookController {
         for (const entry of body.entry || []) {
           for (const change of entry.changes || []) {
             if (change.field === 'messages') {
+              // Processar mensagens recebidas
               await this.processMessages(change.value, tenantId);
-            }
 
-            if (change.field === 'message_status') {
-              await this.processStatusUpdates(change.value);
+              // Processar status updates (também vêm dentro de field='messages')
+              if (change.value.statuses && change.value.statuses.length > 0) {
+                logger.info({
+                  tenantId,
+                  statusCount: change.value.statuses.length
+                }, 'Processing status updates from webhook');
+                await this.processStatusUpdates(change.value);
+              }
             }
           }
         }

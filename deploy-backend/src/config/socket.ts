@@ -317,7 +317,10 @@ export function emitMessageStatusUpdate(
   messageId: string,
   status: string
 ): void {
-  if (!io) return;
+  if (!io) {
+    logger.warn({ tenantId, conversationId, messageId, status }, 'Socket.io not initialized, cannot emit status update');
+    return;
+  }
 
   // Emitir para todos na conversa
   io.to(`conversation:${conversationId}`).emit('message:status', {
@@ -326,14 +329,14 @@ export function emitMessageStatusUpdate(
     status,
   });
 
-  logger.debug(
+  logger.info(
     {
       tenantId,
       conversationId,
       messageId,
       status,
     },
-    'Message status update event emitted'
+    '✅ Socket.io event [message:status] emitted to conversation room'
   );
 }
 

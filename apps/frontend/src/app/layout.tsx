@@ -6,8 +6,8 @@ import { Providers } from './providers';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'CRM WhatsApp SaaS - Gerenciamento de Conversas',
-  description: 'Sistema Multi-Tenant de CRM para WhatsApp Business API - Build 20251119',
+  title: 'Bot Reserva Hotéis - Gerenciamento de Conversas',
+  description: 'Sistema de Atendimento WhatsApp para Hotéis - Build 20251128',
   icons: {
     icon: '/favicon.ico',
   },

@@ -74,7 +74,7 @@ export default function ReportsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Relatórios</h1>
-          <p className="text-muted-foreground">Análises e métricas do seu CRM</p>
+          <p className="text-muted-foreground">Análises e métricas do sistema</p>
         </div>
         <div className="flex items-center gap-2">
           <Select value={period} onValueChange={(value) => setPeriod(value as Period)}>

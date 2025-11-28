@@ -132,7 +132,7 @@ app.use('/api/reports', reportRoutes);
 // Root API info
 app.get('/api', (req, res) => {
   res.json({
-    message: 'CRM WhatsApp SaaS API',
+    message: 'Bot Reserva Hotéis API',
     version: '1.0.0',
     tenant: req.tenant?.slug || 'No tenant',
     timestamp: new Date().toISOString(),
@@ -181,7 +181,7 @@ async function startServer() {
     httpServer.listen(PORT, () => {
       logger.info(`
       ╔════════════════════════════════════════╗
-      ║  🚀 CRM WhatsApp SaaS - Backend API   ║
+      ║  🏨 Bot Reserva Hotéis - Backend API  ║
       ║                                        ║
       ║  Environment: ${env.NODE_ENV.padEnd(24)}║
       ║  Port: ${PORT.toString().padEnd(31)}║

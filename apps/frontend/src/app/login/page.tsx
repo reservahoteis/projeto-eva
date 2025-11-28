@@ -50,7 +50,7 @@ export default function LoginPage() {
               <MessageSquare className="h-8 w-8 text-white" />
             </div>
           </div>
-          <CardTitle className="text-2xl text-center">CRM WhatsApp SaaS</CardTitle>
+          <CardTitle className="text-2xl text-center">Bot Reserva Hotéis</CardTitle>
           <CardDescription className="text-center">
             Entre com suas credenciais para acessar o sistema
           </CardDescription>
@@ -88,7 +88,7 @@ export default function LoginPage() {
         </form>
         <div className="px-6 pb-6">
           <p className="text-center text-sm text-muted-foreground">
-            Sistema Multi-Tenant de CRM para WhatsApp Business
+            Sistema de Atendimento WhatsApp para Hotéis
           </p>
         </div>
       </Card>

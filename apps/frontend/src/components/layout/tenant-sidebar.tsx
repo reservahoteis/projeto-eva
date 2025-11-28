@@ -74,7 +74,7 @@ export function TenantSidebar() {
       {/* Logo */}
       <div className="flex h-16 items-center border-b px-6">
         <MessageSquare className="h-6 w-6 text-whatsapp-green mr-2" />
-        <h1 className="text-xl font-bold text-primary">CRM WhatsApp</h1>
+        <h1 className="text-xl font-bold text-primary">Bot Reserva Hotéis</h1>
       </div>
 
       {/* Navigation */}

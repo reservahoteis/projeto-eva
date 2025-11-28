@@ -86,7 +86,7 @@ export default function SettingsPage() {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold">Configurações</h1>
-        <p className="text-muted-foreground">Gerencie as configurações do seu CRM</p>
+        <p className="text-muted-foreground">Gerencie as configurações do sistema</p>
       </div>
 
       <Tabs defaultValue="whatsapp" className="space-y-6">
