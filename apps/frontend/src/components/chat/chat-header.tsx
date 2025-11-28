@@ -5,7 +5,8 @@ import { Search, MoreVertical, Phone, Video } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { cn, getInitials } from '@/lib/utils';
 
 interface ChatHeaderProps {
   conversation: Conversation;
@@ -45,11 +46,17 @@ export function ChatHeader({ conversation, isOnline, isTyping, isConnected }: Ch
     <div className="h-[59px] bg-[#f0f2f5] border-b border-[#d1d7db] px-4 flex items-center justify-between">
       <div className="flex items-center gap-3 flex-1 min-w-0">
         <div className="relative flex-shrink-0">
-          <img
-            src={conversation.contact.profilePictureUrl || '/avatar-placeholder.png'}
-            alt={conversation.contact.name}
-            className="w-10 h-10 rounded-full object-cover"
-          />
+          <Avatar className="w-10 h-10">
+            {conversation.contact.profilePictureUrl && (
+              <AvatarImage
+                src={conversation.contact.profilePictureUrl}
+                alt={conversation.contact.name || 'Contato'}
+              />
+            )}
+            <AvatarFallback className="bg-[#00a884] text-white font-medium">
+              {getInitials(conversation.contact.name || conversation.contact.phoneNumber)}
+            </AvatarFallback>
+          </Avatar>
           {isOnline && (
             <div className="absolute bottom-0 right-0 w-3 h-3 bg-[#25d366] border-2 border-[#f0f2f5] rounded-full" />
           )}
