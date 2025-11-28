@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { settingsService } from '@/services/settings.service';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -81,224 +80,229 @@ export default function SettingsPage() {
     setIsConfigDialogOpen(true);
   };
 
+  const settingsTabs = [
+    { value: 'whatsapp', label: 'WhatsApp', icon: MessageSquare, iconBoxClass: 'icon-box icon-box-green' },
+    { value: 'notifications', label: 'Notificações', icon: Bell, iconBoxClass: 'icon-box icon-box-blue' },
+    { value: 'team', label: 'Equipe', icon: Users, iconBoxClass: 'icon-box icon-box-purple' },
+    { value: 'security', label: 'Segurança', icon: Shield, iconBoxClass: 'icon-box icon-box-rose' },
+  ];
+
   return (
-    <div className="p-8 space-y-6">
+    <div className="p-8 space-y-6 liquid-bg min-h-screen">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold">Configurações</h1>
-        <p className="text-muted-foreground">Gerencie as configurações do sistema</p>
+      <div className="animate-fadeIn">
+        <h1 className="text-3xl font-bold text-[var(--text-primary)]">Configurações</h1>
+        <p className="text-[var(--text-muted)]">Gerencie as configurações do sistema</p>
       </div>
 
       <Tabs defaultValue="whatsapp" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>
-          <TabsTrigger value="notifications">Notificações</TabsTrigger>
-          <TabsTrigger value="team">Equipe</TabsTrigger>
-          <TabsTrigger value="security">Segurança</TabsTrigger>
+        <TabsList className="glass-card p-1 h-auto flex-wrap">
+          {settingsTabs.map((tab) => (
+            <TabsTrigger
+              key={tab.value}
+              value={tab.value}
+              className="data-[state=active]:bg-[var(--glass-bg-strong)] data-[state=active]:shadow-lg rounded-ios-xs px-4 py-2"
+            >
+              {tab.label}
+            </TabsTrigger>
+          ))}
         </TabsList>
 
         {/* WhatsApp Settings */}
         <TabsContent value="whatsapp" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="rounded-full bg-whatsapp-green/10 p-2">
-                    <MessageSquare className="h-5 w-5 text-whatsapp-green" />
-                  </div>
-                  <div>
-                    <CardTitle>Conexão WhatsApp Business</CardTitle>
-                    <CardDescription>Configure sua integração com a API do WhatsApp</CardDescription>
-                  </div>
+          <div className="glass-card p-6 animate-slideUp">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-4">
+                <div className="icon-box icon-box-green">
+                  <MessageSquare className="w-6 h-6 text-white" />
                 </div>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => refetchConfig()}
-                  disabled={isLoadingConfig}
-                >
-                  <RefreshCw className={`h-4 w-4 ${isLoadingConfig ? 'animate-spin' : ''}`} />
-                </Button>
+                <div>
+                  <h2 className="text-lg font-semibold text-[var(--text-primary)]">Conexão WhatsApp Business</h2>
+                  <p className="text-sm text-[var(--text-muted)]">Configure sua integração com a API do WhatsApp</p>
+                </div>
               </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {isLoadingConfig ? (
-                <div className="space-y-4">
-                  <Skeleton className="h-20 w-full" />
-                  <Skeleton className="h-10 w-full" />
-                  <Skeleton className="h-10 w-full" />
-                </div>
-              ) : (
-                <>
-                  {whatsappConfig?.isConnected ? (
-                    <div className="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-lg">
-                      <div className="h-3 w-3 rounded-full bg-green-500" />
-                      <div className="flex-1">
-                        <p className="font-medium text-green-900">WhatsApp Conectado</p>
-                        <p className="text-sm text-green-700">Sua conta está conectada e funcionando</p>
-                      </div>
-                      <Badge className="bg-green-600">Ativo</Badge>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => refetchConfig()}
+                disabled={isLoadingConfig}
+                className="glass-btn"
+              >
+                <RefreshCw className={`h-4 w-4 ${isLoadingConfig ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
+
+            {isLoadingConfig ? (
+              <div className="space-y-4">
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ) : (
+              <>
+                {whatsappConfig?.isConnected ? (
+                  <div className="flex items-center gap-3 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-ios-xs mb-4">
+                    <div className="h-3 w-3 rounded-full bg-emerald-500 animate-pulse shadow-lg shadow-emerald-500/50" />
+                    <div className="flex-1">
+                      <p className="font-medium text-emerald-600">WhatsApp Conectado</p>
+                      <p className="text-sm text-emerald-500/80">Sua conta está conectada e funcionando</p>
                     </div>
-                  ) : (
-                    <div className="flex items-center gap-3 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                      <div className="h-3 w-3 rounded-full bg-yellow-500" />
-                      <div className="flex-1">
-                        <p className="font-medium text-yellow-900">WhatsApp Não Configurado</p>
-                        <p className="text-sm text-yellow-700">
-                          Configure suas credenciais do WhatsApp Business API
-                        </p>
-                      </div>
-                      <Badge variant="secondary">Inativo</Badge>
-                    </div>
-                  )}
-
-                  {whatsappConfig?.whatsappPhoneNumberId && (
-                    <>
-                      <div className="space-y-2">
-                        <Label>Phone Number ID</Label>
-                        <Input value={whatsappConfig.whatsappPhoneNumberId} disabled />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Business Account ID</Label>
-                        <Input
-                          value={whatsappConfig.whatsappBusinessAccountId || 'Não configurado'}
-                          disabled
-                        />
-                      </div>
-
-                      {whatsappConfig.phoneNumber && (
-                        <div className="space-y-2">
-                          <Label>Número do WhatsApp</Label>
-                          <Input value={whatsappConfig.phoneNumber} disabled />
-                        </div>
-                      )}
-                    </>
-                  )}
-
-                  <div className="pt-4 border-t flex gap-2">
-                    <Button onClick={handleOpenConfigDialog}>
-                      {whatsappConfig?.isConnected ? 'Atualizar Configuração' : 'Configurar WhatsApp'}
-                    </Button>
+                    <Badge className="bg-gradient-to-r from-emerald-500 to-green-600 text-white border-0">Ativo</Badge>
                   </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
+                ) : (
+                  <div className="flex items-center gap-3 p-4 bg-amber-500/10 border border-amber-500/20 rounded-ios-xs mb-4">
+                    <div className="h-3 w-3 rounded-full bg-amber-500" />
+                    <div className="flex-1">
+                      <p className="font-medium text-amber-600">WhatsApp Não Configurado</p>
+                      <p className="text-sm text-amber-500/80">
+                        Configure suas credenciais do WhatsApp Business API
+                      </p>
+                    </div>
+                    <Badge variant="secondary">Inativo</Badge>
+                  </div>
+                )}
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Mensagens Automáticas</CardTitle>
-              <CardDescription>Configure respostas automáticas (em breve)</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Funcionalidade de mensagens automáticas em desenvolvimento...
-              </p>
-            </CardContent>
-          </Card>
+                {whatsappConfig?.whatsappPhoneNumberId && (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label className="text-[var(--text-secondary)]">Phone Number ID</Label>
+                      <Input value={whatsappConfig.whatsappPhoneNumberId} disabled className="glass-input" />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-[var(--text-secondary)]">Business Account ID</Label>
+                      <Input
+                        value={whatsappConfig.whatsappBusinessAccountId || 'Não configurado'}
+                        disabled
+                        className="glass-input"
+                      />
+                    </div>
+
+                    {whatsappConfig.phoneNumber && (
+                      <div className="space-y-2">
+                        <Label className="text-[var(--text-secondary)]">Número do WhatsApp</Label>
+                        <Input value={whatsappConfig.phoneNumber} disabled className="glass-input" />
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="pt-4 border-t border-[var(--glass-border)] mt-4">
+                  <Button onClick={handleOpenConfigDialog} className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg">
+                    {whatsappConfig?.isConnected ? 'Atualizar Configuração' : 'Configurar WhatsApp'}
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="glass-card p-6 animate-slideUp" style={{ animationDelay: '0.1s' }}>
+            <div className="flex items-center gap-4 mb-4">
+              <div className="icon-box icon-box-amber">
+                <MessageSquare className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-[var(--text-primary)]">Mensagens Automáticas</h2>
+                <p className="text-sm text-[var(--text-muted)]">Configure respostas automáticas (em breve)</p>
+              </div>
+            </div>
+            <p className="text-sm text-[var(--text-muted)]">
+              Funcionalidade de mensagens automáticas em desenvolvimento...
+            </p>
+          </div>
         </TabsContent>
 
         {/* Notifications */}
         <TabsContent value="notifications" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="rounded-full bg-blue-100 p-2">
-                  <Bell className="h-5 w-5 text-blue-600" />
-                </div>
-                <div>
-                  <CardTitle>Notificações</CardTitle>
-                  <CardDescription>Escolha como deseja ser notificado</CardDescription>
-                </div>
+          <div className="glass-card p-6 animate-slideUp">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="icon-box icon-box-blue">
+                <Bell className="w-6 h-6 text-white" />
               </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">Configurações de notificação em desenvolvimento...</p>
-            </CardContent>
-          </Card>
+              <div>
+                <h2 className="text-lg font-semibold text-[var(--text-primary)]">Notificações</h2>
+                <p className="text-sm text-[var(--text-muted)]">Escolha como deseja ser notificado</p>
+              </div>
+            </div>
+            <p className="text-sm text-[var(--text-muted)]">Configurações de notificação em desenvolvimento...</p>
+          </div>
         </TabsContent>
 
         {/* Team */}
         <TabsContent value="team" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="rounded-full bg-purple-100 p-2">
-                  <Users className="h-5 w-5 text-purple-600" />
-                </div>
-                <div>
-                  <CardTitle>Configurações da Equipe</CardTitle>
-                  <CardDescription>Gerencie sua equipe de atendimento</CardDescription>
-                </div>
+          <div className="glass-card p-6 animate-slideUp">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="icon-box icon-box-purple">
+                <Users className="w-6 h-6 text-white" />
               </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Acesse a página de{' '}
-                <Link href="/dashboard/users" className="text-primary underline font-medium">
-                  Usuários
-                </Link>{' '}
-                para gerenciar sua equipe.
-              </p>
-            </CardContent>
-          </Card>
+              <div>
+                <h2 className="text-lg font-semibold text-[var(--text-primary)]">Configurações da Equipe</h2>
+                <p className="text-sm text-[var(--text-muted)]">Gerencie sua equipe de atendimento</p>
+              </div>
+            </div>
+            <p className="text-sm text-[var(--text-muted)]">
+              Acesse a página de{' '}
+              <Link href="/dashboard/users" className="text-blue-500 underline font-medium hover:text-blue-600">
+                Usuários
+              </Link>{' '}
+              para gerenciar sua equipe.
+            </p>
+          </div>
         </TabsContent>
 
         {/* Security */}
         <TabsContent value="security" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="rounded-full bg-red-100 p-2">
-                  <Shield className="h-5 w-5 text-red-600" />
-                </div>
-                <div>
-                  <CardTitle>Segurança</CardTitle>
-                  <CardDescription>Configurações de segurança da conta</CardDescription>
-                </div>
+          <div className="glass-card p-6 animate-slideUp">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="icon-box icon-box-rose">
+                <Shield className="w-6 h-6 text-white" />
               </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Senha</Label>
-                <p className="text-sm text-muted-foreground mb-2">
+              <div>
+                <h2 className="text-lg font-semibold text-[var(--text-primary)]">Segurança</h2>
+                <p className="text-sm text-[var(--text-muted)]">Configurações de segurança da conta</p>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <div className="p-4 rounded-ios-xs bg-[var(--glass-bg-hover)]">
+                <Label className="text-[var(--text-primary)] font-medium">Senha</Label>
+                <p className="text-sm text-[var(--text-muted)] mb-3">
                   Altere sua senha de acesso ao sistema
                 </p>
-                <Button variant="outline" disabled>
+                <Button variant="outline" disabled className="glass-btn">
                   Alterar Senha (em breve)
                 </Button>
               </div>
 
-              <div className="space-y-2">
-                <Label>Autenticação de Dois Fatores</Label>
-                <p className="text-sm text-muted-foreground mb-2">
+              <div className="p-4 rounded-ios-xs bg-[var(--glass-bg-hover)]">
+                <Label className="text-[var(--text-primary)] font-medium">Autenticação de Dois Fatores</Label>
+                <p className="text-sm text-[var(--text-muted)] mb-3">
                   Adicione uma camada extra de segurança à sua conta
                 </p>
                 <div className="flex items-center gap-2">
                   <Badge variant="secondary">Desativado</Badge>
-                  <Button variant="outline" size="sm" disabled>
+                  <Button variant="outline" size="sm" disabled className="glass-btn">
                     Ativar 2FA (em breve)
                   </Button>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
 
       {/* Dialog de Configuração do WhatsApp */}
       <Dialog open={isConfigDialogOpen} onOpenChange={setIsConfigDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl glass-card">
           <DialogHeader>
-            <DialogTitle>Configurar WhatsApp Business API</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-[var(--text-primary)]">Configurar WhatsApp Business API</DialogTitle>
+            <DialogDescription className="text-[var(--text-muted)]">
               Insira as credenciais da sua conta do WhatsApp Business API. Você pode obter essas informações no{' '}
               <a
                 href="https://developers.facebook.com/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-primary underline"
+                className="text-blue-500 underline"
               >
                 Meta for Developers
               </a>
@@ -308,23 +312,24 @@ export default function SettingsPage() {
 
           <form onSubmit={handleSubmit(handleConfigSubmit)} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="whatsappPhoneNumberId">
-                Phone Number ID <span className="text-destructive">*</span>
+              <Label htmlFor="whatsappPhoneNumberId" className="text-[var(--text-secondary)]">
+                Phone Number ID <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="whatsappPhoneNumberId"
                 {...register('whatsappPhoneNumberId')}
                 placeholder="123456789012345"
                 disabled={updateConfigMutation.isPending}
+                className="glass-input"
               />
               {errors.whatsappPhoneNumberId && (
-                <p className="text-sm text-destructive">{errors.whatsappPhoneNumberId.message}</p>
+                <p className="text-sm text-red-500">{errors.whatsappPhoneNumberId.message}</p>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="whatsappAccessToken">
-                Access Token <span className="text-destructive">*</span>
+              <Label htmlFor="whatsappAccessToken" className="text-[var(--text-secondary)]">
+                Access Token <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="whatsappAccessToken"
@@ -332,42 +337,45 @@ export default function SettingsPage() {
                 {...register('whatsappAccessToken')}
                 placeholder="EAAxxxxxxxxxx..."
                 disabled={updateConfigMutation.isPending}
+                className="glass-input"
               />
               {errors.whatsappAccessToken && (
-                <p className="text-sm text-destructive">{errors.whatsappAccessToken.message}</p>
+                <p className="text-sm text-red-500">{errors.whatsappAccessToken.message}</p>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="whatsappBusinessAccountId">
-                Business Account ID <span className="text-destructive">*</span>
+              <Label htmlFor="whatsappBusinessAccountId" className="text-[var(--text-secondary)]">
+                Business Account ID <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="whatsappBusinessAccountId"
                 {...register('whatsappBusinessAccountId')}
                 placeholder="987654321098765"
                 disabled={updateConfigMutation.isPending}
+                className="glass-input"
               />
               {errors.whatsappBusinessAccountId && (
-                <p className="text-sm text-destructive">{errors.whatsappBusinessAccountId.message}</p>
+                <p className="text-sm text-red-500">{errors.whatsappBusinessAccountId.message}</p>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="whatsappWebhookVerifyToken">
-                Webhook Verify Token <span className="text-muted-foreground">(opcional)</span>
+              <Label htmlFor="whatsappWebhookVerifyToken" className="text-[var(--text-secondary)]">
+                Webhook Verify Token <span className="text-[var(--text-muted)]">(opcional)</span>
               </Label>
               <Input
                 id="whatsappWebhookVerifyToken"
                 {...register('whatsappWebhookVerifyToken')}
                 placeholder="seu_token_de_verificacao"
                 disabled={updateConfigMutation.isPending}
+                className="glass-input"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="whatsappAppSecret">
-                App Secret <span className="text-muted-foreground">(opcional)</span>
+              <Label htmlFor="whatsappAppSecret" className="text-[var(--text-secondary)]">
+                App Secret <span className="text-[var(--text-muted)]">(opcional)</span>
               </Label>
               <Input
                 id="whatsappAppSecret"
@@ -375,6 +383,7 @@ export default function SettingsPage() {
                 {...register('whatsappAppSecret')}
                 placeholder="app_secret_key"
                 disabled={updateConfigMutation.isPending}
+                className="glass-input"
               />
             </div>
 
@@ -384,10 +393,11 @@ export default function SettingsPage() {
                 variant="outline"
                 onClick={() => setIsConfigDialogOpen(false)}
                 disabled={updateConfigMutation.isPending}
+                className="glass-btn"
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={updateConfigMutation.isPending}>
+              <Button type="submit" disabled={updateConfigMutation.isPending} className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white">
                 {updateConfigMutation.isPending ? 'Salvando...' : 'Salvar Configuração'}
               </Button>
             </DialogFooter>

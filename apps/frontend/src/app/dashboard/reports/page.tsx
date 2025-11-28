@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { reportService } from '@/services/report.service';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -68,20 +67,53 @@ export default function ReportsPage() {
 
   const isLoading = isLoadingOverview || isLoadingAttendants || isLoadingHourly;
 
+  const statsCards = [
+    {
+      title: `CONVERSAS (${getPeriodLabel(period).toUpperCase()})`,
+      value: overviewData?.overview.totalConversations || 0,
+      icon: MessageSquare,
+      iconBoxClass: 'icon-box icon-box-blue',
+      change: overviewData?.overview.conversationsChange,
+    },
+    {
+      title: 'TEMPO MÉDIO DE RESPOSTA',
+      value: overviewData
+        ? reportService.formatResponseTime(overviewData.overview.averageResponseTime)
+        : '0min',
+      icon: Clock,
+      iconBoxClass: 'icon-box icon-box-orange',
+      subtitle: 'Média do período',
+    },
+    {
+      title: 'TAXA DE RESOLUÇÃO',
+      value: `${overviewData?.overview.resolutionRate || 0}%`,
+      icon: BarChart3,
+      iconBoxClass: 'icon-box icon-box-green',
+      subtitle: 'Conversas fechadas',
+    },
+    {
+      title: 'ATENDENTES ATIVOS',
+      value: overviewData?.overview.activeAttendants || 0,
+      icon: Users,
+      iconBoxClass: 'icon-box icon-box-purple',
+      subtitle: `De ${overviewData?.overview.totalAttendants || 0} total`,
+    },
+  ];
+
   return (
-    <div className="p-8 space-y-6">
+    <div className="p-8 space-y-6 liquid-bg min-h-screen">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between animate-fadeIn">
         <div>
-          <h1 className="text-3xl font-bold">Relatórios</h1>
-          <p className="text-muted-foreground">Análises e métricas do sistema</p>
+          <h1 className="text-3xl font-bold text-[var(--text-primary)]">Relatórios</h1>
+          <p className="text-[var(--text-muted)]">Análises e métricas do sistema</p>
         </div>
         <div className="flex items-center gap-2">
           <Select value={period} onValueChange={(value) => setPeriod(value as Period)}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-[180px] glass-input">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="glass-card border-[var(--glass-border)]">
               <SelectItem value="7d">Últimos 7 dias</SelectItem>
               <SelectItem value="30d">Últimos 30 dias</SelectItem>
               <SelectItem value="90d">Últimos 90 dias</SelectItem>
@@ -93,6 +125,7 @@ export default function ReportsPage() {
             size="icon"
             onClick={() => refetchOverview()}
             disabled={isLoading}
+            className="glass-btn"
           >
             <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
           </Button>
@@ -100,231 +133,163 @@ export default function ReportsPage() {
       </div>
 
       {/* Quick Stats */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {/* Total de Conversas */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Conversas ({getPeriodLabel(period)})
-            </CardTitle>
-            <MessageSquare className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {isLoadingOverview ? (
-              <Skeleton className="h-10 w-20" />
-            ) : (
-              <>
-                <div className="text-2xl font-bold">
-                  {overviewData?.overview.totalConversations || 0}
-                </div>
-                {overviewData && overviewData.overview.conversationsChange !== 0 && (
-                  <p
-                    className={`text-xs flex items-center gap-1 ${
-                      overviewData.overview.conversationsChange > 0
-                        ? 'text-green-600'
-                        : 'text-red-600'
-                    }`}
-                  >
-                    {overviewData.overview.conversationsChange > 0 ? (
-                      <TrendingUp className="h-3 w-3" />
-                    ) : (
-                      <TrendingDown className="h-3 w-3" />
-                    )}
-                    {overviewData.overview.conversationsChange > 0 ? '+' : ''}
-                    {overviewData.overview.conversationsChange}% vs período anterior
+      <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+        {statsCards.map((stat, index) => {
+          const Icon = stat.icon;
+          return (
+            <div
+              key={stat.title}
+              className="glass-card glass-kpi p-6 animate-slideUp"
+              style={{ animationDelay: `${index * 0.1}s` }}
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-[10px] font-semibold text-[var(--text-muted)] tracking-wider mb-2">
+                    {stat.title}
                   </p>
-                )}
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Tempo Médio de Resposta */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Tempo Médio de Resposta</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {isLoadingOverview ? (
-              <Skeleton className="h-10 w-20" />
-            ) : (
-              <>
-                <div className="text-2xl font-bold">
-                  {overviewData
-                    ? reportService.formatResponseTime(overviewData.overview.averageResponseTime)
-                    : '0min'}
+                  {isLoadingOverview ? (
+                    <Skeleton className="h-10 w-20" />
+                  ) : (
+                    <>
+                      <p className="text-3xl font-bold text-[var(--text-primary)]">
+                        {stat.value}
+                      </p>
+                      {stat.change !== undefined && stat.change !== 0 && (
+                        <div className="flex items-center gap-1 mt-2">
+                          {stat.change > 0 ? (
+                            <TrendingUp className="w-3 h-3 text-emerald-500" />
+                          ) : (
+                            <TrendingDown className="w-3 h-3 text-red-500" />
+                          )}
+                          <span className={`text-xs font-medium ${stat.change > 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                            {stat.change > 0 ? '+' : ''}{stat.change}% vs período anterior
+                          </span>
+                        </div>
+                      )}
+                      {stat.subtitle && (
+                        <p className="text-xs text-[var(--text-muted)] mt-1">{stat.subtitle}</p>
+                      )}
+                    </>
+                  )}
                 </div>
-                <p className="text-xs text-muted-foreground">Média do período</p>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Taxa de Resolução */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Taxa de Resolução</CardTitle>
-            <BarChart3 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {isLoadingOverview ? (
-              <Skeleton className="h-10 w-20" />
-            ) : (
-              <>
-                <div className="text-2xl font-bold">
-                  {overviewData?.overview.resolutionRate || 0}%
+                <div className={stat.iconBoxClass}>
+                  <Icon className="w-6 h-6 text-white" />
                 </div>
-                <p className="text-xs text-muted-foreground">Conversas fechadas</p>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Atendentes Ativos */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Atendentes Ativos</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {isLoadingOverview ? (
-              <Skeleton className="h-10 w-20" />
-            ) : (
-              <>
-                <div className="text-2xl font-bold">
-                  {overviewData?.overview.activeAttendants || 0}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  De {overviewData?.overview.totalAttendants || 0} total
-                </p>
-              </>
-            )}
-          </CardContent>
-        </Card>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Detailed Reports */}
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-5 md:grid-cols-2">
         {/* Conversas por Status */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Conversas por Status</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoadingOverview ? (
-              <div className="space-y-4">
-                {[1, 2, 3].map((i) => (
-                  <Skeleton key={i} className="h-8 w-full" />
-                ))}
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {overviewData?.statusBreakdown.map((item) => (
-                  <div key={item.status} className="flex items-center justify-between">
-                    <span className="text-sm">{reportService.getStatusLabel(item.status)}</span>
-                    <div className="flex items-center gap-2">
-                      <div className="w-32 h-2 bg-muted rounded-full overflow-hidden">
-                        <div
-                          className={`h-full ${reportService.getStatusColor(item.status)}`}
-                          style={{ width: `${item.percentage}%` }}
-                        />
-                      </div>
-                      <span className="text-sm font-medium w-12 text-right">
-                        {item.percentage}%
-                      </span>
+        <div className="glass-card p-6 animate-slideUp" style={{ animationDelay: '0.4s' }}>
+          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4">Conversas por Status</h2>
+          {isLoadingOverview ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-8 w-full" />
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {overviewData?.statusBreakdown.map((item) => (
+                <div key={item.status} className="flex items-center justify-between">
+                  <span className="text-sm text-[var(--text-secondary)]">{reportService.getStatusLabel(item.status)}</span>
+                  <div className="flex items-center gap-2">
+                    <div className="w-32 h-2 bg-[var(--glass-bg-strong)] rounded-full overflow-hidden">
+                      <div
+                        className={`h-full ${reportService.getStatusColor(item.status)}`}
+                        style={{ width: `${item.percentage}%` }}
+                      />
                     </div>
+                    <span className="text-sm font-medium w-12 text-right text-[var(--text-primary)]">
+                      {item.percentage}%
+                    </span>
                   </div>
-                )) || <p className="text-sm text-muted-foreground">Nenhum dado disponível</p>}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                </div>
+              )) || <p className="text-sm text-[var(--text-muted)]">Nenhum dado disponível</p>}
+            </div>
+          )}
+        </div>
 
         {/* Performance por Atendente */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Performance por Atendente</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoadingAttendants ? (
-              <div className="space-y-4">
-                {[1, 2, 3].map((i) => (
-                  <Skeleton key={i} className="h-16 w-full" />
-                ))}
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {attendantsData && attendantsData.attendants.length > 0 ? (
-                  attendantsData.attendants.slice(0, 5).map((attendant) => (
-                    <div key={attendant.id} className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium">{attendant.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {attendant.conversationsCount} conversas
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p
-                          className={`text-sm font-bold ${
-                            attendant.satisfactionRate >= 80
-                              ? 'text-green-600'
-                              : attendant.satisfactionRate >= 60
-                              ? 'text-yellow-600'
-                              : 'text-red-600'
-                          }`}
-                        >
-                          {attendant.satisfactionRate}%
-                        </p>
-                        <p className="text-xs text-muted-foreground">resolução</p>
-                      </div>
+        <div className="glass-card p-6 animate-slideUp" style={{ animationDelay: '0.5s' }}>
+          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4">Performance por Atendente</h2>
+          {isLoadingAttendants ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-16 w-full" />
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {attendantsData && attendantsData.attendants.length > 0 ? (
+                attendantsData.attendants.slice(0, 5).map((attendant) => (
+                  <div key={attendant.id} className="flex items-center justify-between p-3 rounded-ios-xs bg-[var(--glass-bg-hover)]">
+                    <div>
+                      <p className="text-sm font-medium text-[var(--text-primary)]">{attendant.name}</p>
+                      <p className="text-xs text-[var(--text-muted)]">
+                        {attendant.conversationsCount} conversas
+                      </p>
                     </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-muted-foreground">Nenhum atendente com conversas no período</p>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                    <div className="text-right">
+                      <p
+                        className={`text-sm font-bold ${
+                          attendant.satisfactionRate >= 80
+                            ? 'text-emerald-500'
+                            : attendant.satisfactionRate >= 60
+                            ? 'text-amber-500'
+                            : 'text-red-500'
+                        }`}
+                      >
+                        {attendant.satisfactionRate}%
+                      </p>
+                      <p className="text-xs text-[var(--text-muted)]">resolução</p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-[var(--text-muted)]">Nenhum atendente com conversas no período</p>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Horários de Pico */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Horários de Pico</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoadingHourly ? (
-            <Skeleton className="h-40 w-full" />
-          ) : (
-            <>
-              <p className="text-sm text-muted-foreground mb-4">Volume de conversas por hora</p>
-              <div className="flex items-end justify-between gap-2 h-40">
-                {hourlyData?.hourlyVolume
-                  .filter((item) => item.hour >= 8 && item.hour <= 19)
-                  .map((item) => {
-                    const maxCount = Math.max(
-                      ...hourlyData.hourlyVolume.map((h) => h.count),
-                      1
-                    );
-                    const height = maxCount > 0 ? (item.count / maxCount) * 100 : 0;
-                    return (
-                      <div key={item.hour} className="flex-1 flex flex-col items-center gap-2">
-                        <div
-                          className="w-full bg-primary rounded-t"
-                          style={{ height: `${height}%` }}
-                          title={`${item.count} conversas às ${item.hour}h`}
-                        />
-                        <span className="text-xs text-muted-foreground">{item.hour}h</span>
-                      </div>
-                    );
-                  })}
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
+      <div className="glass-card p-6 animate-slideUp" style={{ animationDelay: '0.6s' }}>
+        <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4">Horários de Pico</h2>
+        {isLoadingHourly ? (
+          <Skeleton className="h-40 w-full" />
+        ) : (
+          <>
+            <p className="text-sm text-[var(--text-muted)] mb-4">Volume de conversas por hora</p>
+            <div className="flex items-end justify-between gap-2 h-40">
+              {hourlyData?.hourlyVolume
+                .filter((item) => item.hour >= 8 && item.hour <= 19)
+                .map((item) => {
+                  const maxCount = Math.max(
+                    ...hourlyData.hourlyVolume.map((h) => h.count),
+                    1
+                  );
+                  const height = maxCount > 0 ? (item.count / maxCount) * 100 : 0;
+                  return (
+                    <div key={item.hour} className="flex-1 flex flex-col items-center gap-2">
+                      <div
+                        className="w-full bg-gradient-to-t from-blue-500 to-indigo-500 rounded-t-lg shadow-lg"
+                        style={{ height: `${height}%`, minHeight: height > 0 ? '4px' : '0' }}
+                        title={`${item.count} conversas às ${item.hour}h`}
+                      />
+                      <span className="text-xs text-[var(--text-muted)]">{item.hour}h</span>
+                    </div>
+                  );
+                })}
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }

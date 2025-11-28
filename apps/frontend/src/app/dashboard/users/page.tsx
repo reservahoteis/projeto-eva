@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { userService } from '@/services/user.service';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -153,20 +152,20 @@ export default function UsersPage() {
 
   const getRoleBadge = (role: UserRole) => {
     if (role === UserRole.TENANT_ADMIN) {
-      return <Badge variant="destructive">Admin</Badge>;
+      return <Badge className="bg-gradient-to-r from-rose-500 to-red-600 text-white border-0">Admin</Badge>;
     }
     if (role === UserRole.SUPER_ADMIN) {
-      return <Badge className="bg-purple-600">Super Admin</Badge>;
+      return <Badge className="bg-gradient-to-r from-purple-500 to-violet-600 text-white border-0">Super Admin</Badge>;
     }
     return <Badge variant="secondary">Atendente</Badge>;
   };
 
   const getStatusBadge = (status: UserStatus) => {
     if (status === UserStatus.ACTIVE) {
-      return <Badge variant="default" className="bg-green-600">Ativo</Badge>;
+      return <Badge className="bg-gradient-to-r from-emerald-500 to-green-600 text-white border-0">Ativo</Badge>;
     }
     if (status === UserStatus.SUSPENDED) {
-      return <Badge variant="destructive">Suspenso</Badge>;
+      return <Badge className="bg-gradient-to-r from-rose-500 to-red-600 text-white border-0">Suspenso</Badge>;
     }
     return <Badge variant="secondary">Inativo</Badge>;
   };
@@ -174,7 +173,7 @@ export default function UsersPage() {
   // Loading skeleton
   if (isLoading) {
     return (
-      <div className="p-8 space-y-6">
+      <div className="p-8 space-y-6 liquid-bg min-h-screen">
         <div className="flex items-center justify-between">
           <div>
             <Skeleton className="h-10 w-48 mb-2" />
@@ -183,23 +182,19 @@ export default function UsersPage() {
           <Skeleton className="h-10 w-32" />
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-5 md:grid-cols-3">
           {[1, 2, 3].map((i) => (
-            <Card key={i}>
-              <CardContent className="p-6">
-                <Skeleton className="h-20 w-full" />
-              </CardContent>
-            </Card>
+            <div key={i} className="glass-card p-6">
+              <Skeleton className="h-20 w-full" />
+            </div>
           ))}
         </div>
 
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
-            <Card key={i}>
-              <CardContent className="p-6">
-                <Skeleton className="h-16 w-full" />
-              </CardContent>
-            </Card>
+            <div key={i} className="glass-card p-6">
+              <Skeleton className="h-16 w-full" />
+            </div>
           ))}
         </div>
       </div>
@@ -209,9 +204,9 @@ export default function UsersPage() {
   // Error state
   if (error) {
     return (
-      <div className="p-8 space-y-6">
+      <div className="p-8 space-y-6 liquid-bg min-h-screen">
         <div className="text-center py-12">
-          <p className="text-muted-foreground mb-4">Erro ao carregar usuários</p>
+          <p className="text-[var(--text-muted)] mb-4">Erro ao carregar usuários</p>
           <Button onClick={() => refetch()}>Tentar novamente</Button>
         </div>
       </div>
@@ -223,13 +218,34 @@ export default function UsersPage() {
   const adminCount = users.filter((u) => u.role === UserRole.TENANT_ADMIN).length;
   const attendantCount = users.filter((u) => u.role === UserRole.ATTENDANT).length;
 
+  const statsCards = [
+    {
+      title: 'TOTAL DE USUÁRIOS',
+      value: totalUsers,
+      icon: Users,
+      iconBoxClass: 'icon-box icon-box-blue',
+    },
+    {
+      title: 'ADMINISTRADORES',
+      value: adminCount,
+      icon: Shield,
+      iconBoxClass: 'icon-box icon-box-rose',
+    },
+    {
+      title: 'ATENDENTES',
+      value: attendantCount,
+      icon: UserCheck,
+      iconBoxClass: 'icon-box icon-box-green',
+    },
+  ];
+
   return (
-    <div className="p-8 space-y-6">
+    <div className="p-8 space-y-6 liquid-bg min-h-screen">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between animate-fadeIn">
         <div>
-          <h1 className="text-3xl font-bold">Usuários</h1>
-          <p className="text-muted-foreground">Gerencie os usuários do sistema</p>
+          <h1 className="text-3xl font-bold text-[var(--text-primary)]">Usuários</h1>
+          <p className="text-[var(--text-muted)]">Gerencie os usuários do sistema</p>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -237,10 +253,11 @@ export default function UsersPage() {
             size="icon"
             onClick={() => refetch()}
             disabled={isLoading}
+            className="glass-btn"
           >
             <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
           </Button>
-          <Button onClick={() => setIsCreateOpen(true)}>
+          <Button onClick={() => setIsCreateOpen(true)} className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg">
             <Plus className="h-4 w-4 mr-2" />
             Novo Usuário
           </Button>
@@ -248,133 +265,118 @@ export default function UsersPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="rounded-full bg-blue-100 p-3">
-                <Users className="h-6 w-6 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Total de Usuários</p>
-                <p className="text-2xl font-bold">{totalUsers}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="rounded-full bg-red-100 p-3">
-                <Shield className="h-6 w-6 text-red-600" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Administradores</p>
-                <p className="text-2xl font-bold">{adminCount}</p>
+      <div className="grid gap-5 md:grid-cols-3">
+        {statsCards.map((stat, index) => {
+          const Icon = stat.icon;
+          return (
+            <div
+              key={stat.title}
+              className="glass-card glass-kpi p-6 animate-slideUp"
+              style={{ animationDelay: `${index * 0.1}s` }}
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-[10px] font-semibold text-[var(--text-muted)] tracking-wider mb-2">
+                    {stat.title}
+                  </p>
+                  <p className="text-3xl font-bold text-[var(--text-primary)]">
+                    {stat.value}
+                  </p>
+                </div>
+                <div className={stat.iconBoxClass}>
+                  <Icon className="w-6 h-6 text-white" />
+                </div>
               </div>
             </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="rounded-full bg-green-100 p-3">
-                <UserCheck className="h-6 w-6 text-green-600" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Atendentes</p>
-                <p className="text-2xl font-bold">{attendantCount}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+          );
+        })}
       </div>
 
       {/* User List */}
       {users.length === 0 ? (
-        <Card>
-          <CardContent className="p-12 text-center">
-            <p className="text-muted-foreground mb-4">Nenhum usuário encontrado</p>
-            <Button onClick={() => setIsCreateOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Criar Primeiro Usuário
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="glass-card p-12 text-center animate-slideUp" style={{ animationDelay: '0.3s' }}>
+          <p className="text-[var(--text-muted)] mb-4">Nenhum usuário encontrado</p>
+          <Button onClick={() => setIsCreateOpen(true)} className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white">
+            <Plus className="h-4 w-4 mr-2" />
+            Criar Primeiro Usuário
+          </Button>
+        </div>
       ) : (
         <div className="space-y-4">
-          {users.map((user) => (
-            <Card key={user.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4 flex-1">
-                    <Avatar className="h-12 w-12">
-                      <AvatarFallback
-                        style={{
-                          backgroundColor: userService.getAvatarColor(user.id),
-                          color: 'white',
-                        }}
-                      >
-                        {userService.getInitials(user.name)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold">{user.name}</h3>
-                        {getRoleBadge(user.role)}
-                        {getStatusBadge(user.status)}
-                      </div>
-                      <p className="text-sm text-muted-foreground">{user.email}</p>
+          {users.map((user, index) => (
+            <div
+              key={user.id}
+              className="glass-card glass-kpi p-6 animate-slideUp"
+              style={{ animationDelay: `${(index + 3) * 0.05}s` }}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4 flex-1">
+                  <Avatar className="h-12 w-12 shadow-lg">
+                    <AvatarFallback
+                      style={{
+                        background: `linear-gradient(135deg, ${userService.getAvatarColor(user.id)} 0%, ${userService.getAvatarColor(user.id + '1')} 100%)`,
+                        color: 'white',
+                      }}
+                    >
+                      {userService.getInitials(user.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold text-[var(--text-primary)]">{user.name}</h3>
+                      {getRoleBadge(user.role)}
+                      {getStatusBadge(user.status)}
                     </div>
-                  </div>
-
-                  <div className="flex items-center gap-6">
-                    <div className="text-center">
-                      <p className="text-2xl font-bold">{user.conversationsCount || 0}</p>
-                      <p className="text-xs text-muted-foreground">Conversas</p>
-                    </div>
-
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => setEditingUser(user)}>
-                          Editar
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setResetPasswordUser(user)}>
-                          Redefinir senha
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleToggleStatus(user)}>
-                          {user.status === UserStatus.ACTIVE ? 'Suspender' : 'Ativar'}
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          className="text-destructive"
-                          onClick={() => setDeletingUser(user)}
-                        >
-                          Excluir
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <p className="text-sm text-[var(--text-muted)]">{user.email}</p>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+
+                <div className="flex items-center gap-6">
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-[var(--text-primary)]">{user.conversationsCount || 0}</p>
+                    <p className="text-xs text-[var(--text-muted)]">Conversas</p>
+                  </div>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="glass-card border-[var(--glass-border)]">
+                      <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => setEditingUser(user)}>
+                        Editar
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setResetPasswordUser(user)}>
+                        Redefinir senha
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleToggleStatus(user)}>
+                        {user.status === UserStatus.ACTIVE ? 'Suspender' : 'Ativar'}
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        className="text-destructive"
+                        onClick={() => setDeletingUser(user)}
+                      >
+                        Excluir
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
+            </div>
           ))}
         </div>
       )}
 
       {/* Dialog de criação */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg glass-card">
           <DialogHeader>
-            <DialogTitle>Novo Usuário</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-[var(--text-primary)]">Novo Usuário</DialogTitle>
+            <DialogDescription className="text-[var(--text-muted)]">
               Crie um novo usuário para o sistema
             </DialogDescription>
           </DialogHeader>
@@ -389,10 +391,10 @@ export default function UsersPage() {
 
       {/* Dialog de edição */}
       <Dialog open={!!editingUser} onOpenChange={(open) => !open && setEditingUser(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg glass-card">
           <DialogHeader>
-            <DialogTitle>Editar Usuário</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-[var(--text-primary)]">Editar Usuário</DialogTitle>
+            <DialogDescription className="text-[var(--text-muted)]">
               Atualize as informações do usuário
             </DialogDescription>
           </DialogHeader>
@@ -410,10 +412,10 @@ export default function UsersPage() {
 
       {/* Dialog de redefinir senha */}
       <Dialog open={!!resetPasswordUser} onOpenChange={(open) => !open && setResetPasswordUser(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md glass-card">
           <DialogHeader>
-            <DialogTitle>Redefinir Senha</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-[var(--text-primary)]">Redefinir Senha</DialogTitle>
+            <DialogDescription className="text-[var(--text-muted)]">
               Digite a nova senha para o usuário
             </DialogDescription>
           </DialogHeader>
@@ -433,17 +435,17 @@ export default function UsersPage() {
         open={!!deletingUser}
         onOpenChange={(open) => !open && setDeletingUser(null)}
       >
-        <AlertDialogContent>
+        <AlertDialogContent className="glass-card">
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogTitle className="text-[var(--text-primary)]">Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription className="text-[var(--text-muted)]">
               Tem certeza que deseja remover o usuário{' '}
               <strong>{deletingUser?.name}</strong>?
               Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel className="glass-btn">Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteConfirm}
               className="bg-red-600 hover:bg-red-700"

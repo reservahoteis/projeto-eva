@@ -1,19 +1,12 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useDebounce } from '@/hooks/use-debounce';
 import { contactService } from '@/services/contact.service';
 import { useSocketContext } from '@/contexts/socket-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -104,13 +97,13 @@ export default function ContactsPage() {
   const { data: stats } = useQuery({
     queryKey: ['contact-stats'],
     queryFn: () => contactService.getStats(),
-    refetchInterval: 60000, // Atualizar a cada minuto
+    refetchInterval: 60000,
   });
 
   // Mutation para criar contato
   const createMutation = useMutation({
     mutationFn: contactService.create,
-    onSuccess: (newContact) => {
+    onSuccess: () => {
       queryClient.invalidateQueries(['contacts']);
       queryClient.invalidateQueries(['contact-stats']);
       setIsCreateOpen(false);
@@ -251,317 +244,293 @@ export default function ContactsPage() {
     </div>
   );
 
+  const statsCards = [
+    {
+      title: 'TOTAL DE CONTATOS',
+      value: stats?.total || 0,
+      icon: Users,
+      iconBoxClass: 'icon-box icon-box-blue',
+    },
+    {
+      title: 'COM CONVERSAS',
+      value: stats?.withConversations || 0,
+      icon: UserCheck,
+      iconBoxClass: 'icon-box icon-box-green',
+    },
+    {
+      title: 'SEM CONVERSAS',
+      value: stats?.withoutConversations || 0,
+      icon: UserX,
+      iconBoxClass: 'icon-box icon-box-orange',
+    },
+    {
+      title: 'ADICIONADOS HOJE',
+      value: stats?.recentContacts?.filter(
+        (c) => new Date(c.createdAt).toDateString() === new Date().toDateString()
+      ).length || 0,
+      icon: Plus,
+      iconBoxClass: 'icon-box icon-box-purple',
+    },
+  ];
+
   // Renderização
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      {/* Header com estatísticas */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total de Contatos
-            </CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats?.total || 0}</div>
-            <p className="text-xs text-muted-foreground">
-              Todos os contatos cadastrados
-            </p>
-          </CardContent>
-        </Card>
+    <div className="p-8 space-y-6 liquid-bg min-h-screen">
+      {/* Header */}
+      <div className="flex items-center justify-between animate-fadeIn">
+        <div>
+          <h1 className="text-3xl font-bold text-[var(--text-primary)]">Contatos</h1>
+          <p className="text-[var(--text-muted)]">Gerencie os contatos do seu WhatsApp</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => refetch()}
+            disabled={isLoading}
+            className="glass-btn"
+          >
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            disabled
+            className="glass-btn"
+          >
+            <Upload className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            disabled
+            className="glass-btn"
+          >
+            <Download className="h-4 w-4" />
+          </Button>
+          <Button onClick={() => setIsCreateOpen(true)} className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg">
+            <Plus className="mr-2 h-4 w-4" />
+            Novo Contato
+          </Button>
+        </div>
+      </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Com Conversas
-            </CardTitle>
-            <UserCheck className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {stats?.withConversations || 0}
+      {/* Stats Cards */}
+      <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+        {statsCards.map((stat, index) => {
+          const Icon = stat.icon;
+          return (
+            <div
+              key={stat.title}
+              className="glass-card glass-kpi p-6 animate-slideUp"
+              style={{ animationDelay: `${index * 0.1}s` }}
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-[10px] font-semibold text-[var(--text-muted)] tracking-wider mb-2">
+                    {stat.title}
+                  </p>
+                  <p className="text-3xl font-bold text-[var(--text-primary)]">
+                    {stat.value}
+                  </p>
+                </div>
+                <div className={stat.iconBoxClass}>
+                  <Icon className="w-6 h-6 text-white" />
+                </div>
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Contatos com histórico
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Sem Conversas
-            </CardTitle>
-            <UserX className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {stats?.withoutConversations || 0}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Contatos sem histórico
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Adicionados Hoje
-            </CardTitle>
-            <Plus className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {stats?.recentContacts?.filter(
-                (c) => new Date(c.createdAt).toDateString() === new Date().toDateString()
-              ).length || 0}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Novos contatos hoje
-            </p>
-          </CardContent>
-        </Card>
+          );
+        })}
       </div>
 
       {/* Card principal */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Contatos</CardTitle>
-              <CardDescription>
-                Gerencie os contatos do seu WhatsApp
-              </CardDescription>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => refetch()}
-                disabled={isLoading}
-                aria-label="Atualizar lista"
-              >
-                <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                aria-label="Importar contatos"
-                disabled
-              >
-                <Upload className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                aria-label="Exportar contatos"
-                disabled
-              >
-                <Download className="h-4 w-4" />
-              </Button>
-              <Button onClick={() => setIsCreateOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Novo Contato
-              </Button>
-            </div>
+      <div className="glass-card p-6 animate-slideUp" style={{ animationDelay: '0.4s' }}>
+        {/* Barra de busca */}
+        <div className="mb-6">
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-[var(--text-muted)] h-4 w-4" />
+            <Input
+              type="search"
+              placeholder="Buscar por nome, telefone ou email..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="glass-input pl-12 h-12"
+            />
           </div>
-        </CardHeader>
+        </div>
 
-        <CardContent>
-          {/* Barra de busca */}
-          <div className="mb-6">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-              <Input
-                type="search"
-                placeholder="Buscar por nome, telefone ou email..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-                aria-label="Buscar contatos"
-              />
-            </div>
+        {/* Lista de contatos */}
+        {isLoading ? (
+          <ContactsSkeleton />
+        ) : error ? (
+          <div className="text-center py-8 text-[var(--text-muted)]">
+            <p>Erro ao carregar contatos</p>
+            <Button variant="link" onClick={() => refetch()}>
+              Tentar novamente
+            </Button>
           </div>
-
-          {/* Lista de contatos */}
-          {isLoading ? (
-            <ContactsSkeleton />
-          ) : error ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <p>Erro ao carregar contatos</p>
-              <Button variant="link" onClick={() => refetch()}>
-                Tentar novamente
-              </Button>
-            </div>
-          ) : !contactsData?.data.length ? (
-            <div className="text-center py-8 text-muted-foreground">
-              {debouncedSearch ? (
-                <p>Nenhum contato encontrado para "{debouncedSearch}"</p>
-              ) : (
-                <>
-                  <p>Nenhum contato cadastrado ainda</p>
-                  <Button
-                    variant="link"
-                    onClick={() => setIsCreateOpen(true)}
-                    className="mt-2"
-                  >
-                    Adicionar primeiro contato
-                  </Button>
-                </>
-              )}
-            </div>
-          ) : (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Contato</TableHead>
-                    <TableHead>Telefone</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Conversas</TableHead>
-                    <TableHead>Última Interação</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {contactsData.data.map((contact) => (
-                    <TableRow key={contact.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <Avatar>
-                            <AvatarImage src={contact.profilePictureUrl} />
-                            <AvatarFallback
-                              style={{
-                                backgroundColor: contactService.getAvatarColor(contact.id),
-                              }}
-                            >
-                              {contactService.getInitials(contact.name)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="font-medium">
-                              {contact.name || 'Sem nome'}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              ID: {contact.id.slice(0, 8)}...
-                            </p>
-                          </div>
+        ) : !contactsData?.data.length ? (
+          <div className="text-center py-8 text-[var(--text-muted)]">
+            {debouncedSearch ? (
+              <p>Nenhum contato encontrado para "{debouncedSearch}"</p>
+            ) : (
+              <>
+                <p>Nenhum contato cadastrado ainda</p>
+                <Button
+                  variant="link"
+                  onClick={() => setIsCreateOpen(true)}
+                  className="mt-2"
+                >
+                  Adicionar primeiro contato
+                </Button>
+              </>
+            )}
+          </div>
+        ) : (
+          <div className="rounded-ios-xs overflow-hidden border border-[var(--glass-border)]">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-[var(--glass-bg-hover)]">
+                  <TableHead className="text-[var(--text-secondary)]">Contato</TableHead>
+                  <TableHead className="text-[var(--text-secondary)]">Telefone</TableHead>
+                  <TableHead className="text-[var(--text-secondary)]">Email</TableHead>
+                  <TableHead className="text-[var(--text-secondary)]">Conversas</TableHead>
+                  <TableHead className="text-[var(--text-secondary)]">Última Interação</TableHead>
+                  <TableHead className="text-right text-[var(--text-secondary)]">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {contactsData.data.map((contact) => (
+                  <TableRow key={contact.id} className="hover:bg-[var(--glass-bg-hover)] transition-colors">
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <Avatar>
+                          <AvatarImage src={contact.profilePictureUrl} />
+                          <AvatarFallback
+                            style={{
+                              backgroundColor: contactService.getAvatarColor(contact.id),
+                            }}
+                          >
+                            {contactService.getInitials(contact.name)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium text-[var(--text-primary)]">
+                            {contact.name || 'Sem nome'}
+                          </p>
+                          <p className="text-sm text-[var(--text-muted)]">
+                            ID: {contact.id.slice(0, 8)}...
+                          </p>
                         </div>
-                      </TableCell>
-                      <TableCell>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <Phone className="h-3 w-3 text-[var(--text-muted)]" />
+                        <span className="font-mono text-sm text-[var(--text-secondary)]">
+                          {contactService.formatPhoneNumber(contact.phoneNumber)}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {contact.email ? (
                         <div className="flex items-center gap-1">
-                          <Phone className="h-3 w-3 text-muted-foreground" />
-                          <span className="font-mono text-sm">
-                            {contactService.formatPhoneNumber(contact.phoneNumber)}
-                          </span>
+                          <Mail className="h-3 w-3 text-[var(--text-muted)]" />
+                          <span className="text-sm text-[var(--text-secondary)]">{contact.email}</span>
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        {contact.email ? (
-                          <div className="flex items-center gap-1">
-                            <Mail className="h-3 w-3 text-muted-foreground" />
-                            <span className="text-sm">{contact.email}</span>
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className="gap-1">
-                          <MessageSquare className="h-3 w-3" />
-                          {contact.conversationsCount || contact._count?.conversations || 0}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {contact.lastConversationAt ? (
-                          <span className="text-sm text-muted-foreground">
-                            {formatDistanceToNow(
-                              new Date(contact.lastConversationAt),
-                              { addSuffix: true, locale: ptBR }
-                            )}
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground">Nunca</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              aria-label="Menu de ações"
-                            >
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={() => setEditingContact(contact)}
-                            >
-                              <Edit className="mr-2 h-4 w-4" />
-                              Editar
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="text-red-600"
-                              onClick={() => setDeletingContact(contact)}
-                              disabled={
-                                (contact.conversationsCount ||
-                                 contact._count?.conversations || 0) > 0
-                              }
-                            >
-                              <Trash className="mr-2 h-4 w-4" />
-                              Remover
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
+                      ) : (
+                        <span className="text-[var(--text-muted)]">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className="gap-1 bg-[var(--glass-bg-strong)]">
+                        <MessageSquare className="h-3 w-3" />
+                        {contact.conversationsCount || contact._count?.conversations || 0}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {contact.lastConversationAt ? (
+                        <span className="text-sm text-[var(--text-muted)]">
+                          {formatDistanceToNow(
+                            new Date(contact.lastConversationAt),
+                            { addSuffix: true, locale: ptBR }
+                          )}
+                        </span>
+                      ) : (
+                        <span className="text-[var(--text-muted)]">Nunca</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="glass-card border-[var(--glass-border)]">
+                          <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => setEditingContact(contact)}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            Editar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-red-600"
+                            onClick={() => setDeletingContact(contact)}
+                            disabled={
+                              (contact.conversationsCount ||
+                               contact._count?.conversations || 0) > 0
+                            }
+                          >
+                            <Trash className="mr-2 h-4 w-4" />
+                            Remover
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
 
-          {/* Paginação */}
-          {contactsData && contactsData.pagination.pages > 1 && (
-            <div className="flex items-center justify-between mt-4">
-              <p className="text-sm text-muted-foreground">
-                Mostrando {contactsData.data.length} de {contactsData.total} contatos
-              </p>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(currentPage - 1)}
-                  disabled={currentPage === 1}
-                >
-                  Anterior
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(currentPage + 1)}
-                  disabled={currentPage === contactsData.pagination.pages}
-                >
-                  Próximo
-                </Button>
-              </div>
+        {/* Paginação */}
+        {contactsData && contactsData.pagination.pages > 1 && (
+          <div className="flex items-center justify-between mt-4">
+            <p className="text-sm text-[var(--text-muted)]">
+              Mostrando {contactsData.data.length} de {contactsData.total} contatos
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="glass-btn"
+              >
+                Anterior
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(currentPage + 1)}
+                disabled={currentPage === contactsData.pagination.pages}
+                className="glass-btn"
+              >
+                Próximo
+              </Button>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </div>
+        )}
+      </div>
 
       {/* Dialog de criação */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg glass-card">
           <DialogHeader>
-            <DialogTitle>Novo Contato</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-[var(--text-primary)]">Novo Contato</DialogTitle>
+            <DialogDescription className="text-[var(--text-muted)]">
               Adicione um novo contato ao sistema
             </DialogDescription>
           </DialogHeader>
@@ -579,10 +548,10 @@ export default function ContactsPage() {
         open={!!editingContact}
         onOpenChange={(open) => !open && setEditingContact(null)}
       >
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg glass-card">
           <DialogHeader>
-            <DialogTitle>Editar Contato</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-[var(--text-primary)]">Editar Contato</DialogTitle>
+            <DialogDescription className="text-[var(--text-muted)]">
               Atualize as informações do contato
             </DialogDescription>
           </DialogHeader>
@@ -601,17 +570,17 @@ export default function ContactsPage() {
         open={!!deletingContact}
         onOpenChange={(open) => !open && setDeletingContact(null)}
       >
-        <AlertDialogContent>
+        <AlertDialogContent className="glass-card">
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogTitle className="text-[var(--text-primary)]">Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription className="text-[var(--text-muted)]">
               Tem certeza que deseja remover o contato{' '}
               <strong>{deletingContact?.name || deletingContact?.phoneNumber}</strong>?
               Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel className="glass-btn">Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteConfirm}
               className="bg-red-600 hover:bg-red-700"
