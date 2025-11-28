@@ -6,12 +6,10 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/auth-context';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
@@ -38,6 +36,8 @@ const navigation = [
     name: 'Conversas',
     href: '/dashboard/conversations',
     icon: MessageSquare,
+    badge: 3,
+    badgeColor: 'bg-rose-500',
   },
   {
     name: 'Contatos',
@@ -72,20 +72,26 @@ export function TenantSidebar() {
 
   return (
     <div className="flex h-screen w-64 flex-col glass-sidebar">
-      {/* Logo - iOS 26 Style */}
-      <div className="flex h-20 items-center justify-center border-b border-black/5 px-4">
-        <Image
-          src="/logo.png"
-          alt="Hotéis Reserva"
-          width={160}
-          height={50}
-          className="object-contain"
-          priority
-        />
+      {/* Logo Header - Style like ERP Angelus */}
+      <div className="flex items-center gap-3 px-5 py-5 border-b border-white/5">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg overflow-hidden">
+          <Image
+            src="/logo.png"
+            alt="Hotéis Reserva"
+            width={28}
+            height={28}
+            className="object-contain brightness-0 invert"
+            priority
+          />
+        </div>
+        <div className="flex flex-col">
+          <span className="text-white font-semibold text-sm">Hotéis Reserva</span>
+          <span className="text-slate-400 text-xs">Sistema de Atendimento</span>
+        </div>
       </div>
 
-      {/* Navigation - iOS 26 Style */}
-      <nav className="flex-1 space-y-2 px-3 py-4">
+      {/* Navigation */}
+      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {navigation
           .filter((item) => !item.adminOnly || isAdmin)
           .map((item) => {
@@ -96,58 +102,79 @@ export function TenantSidebar() {
               <Link key={item.name} href={item.href}>
                 <div
                   className={cn(
-                    'flex items-center gap-3 rounded-ios-sm px-4 py-3 text-sm font-medium transition-all duration-200',
-                    isActive
-                      ? 'bg-black text-white shadow-ios'
-                      : 'text-gray-600 hover:bg-black/5'
+                    'sidebar-item group',
+                    isActive && 'active'
                   )}
                 >
-                  <Icon className={cn('h-5 w-5', isActive ? 'text-white' : 'text-gray-500')} />
-                  {item.name}
+                  <Icon className={cn(
+                    'h-5 w-5 transition-colors',
+                    isActive ? 'text-white' : 'text-slate-400 group-hover:text-white'
+                  )} />
+                  <span className={cn(
+                    'flex-1 text-sm font-medium transition-colors',
+                    isActive ? 'text-white' : 'text-slate-300 group-hover:text-white'
+                  )}>
+                    {item.name}
+                  </span>
+                  {item.badge && (
+                    <span className={cn(
+                      'badge-count text-white',
+                      item.badgeColor || 'bg-blue-500'
+                    )}>
+                      {item.badge}
+                    </span>
+                  )}
                 </div>
               </Link>
             );
           })}
       </nav>
 
-      {/* User Menu - iOS 26 Style */}
-      <div className="border-t border-black/5 p-4">
+      {/* User Menu */}
+      <div className="border-t border-white/5 p-3">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              className="w-full justify-start gap-3 rounded-ios-sm hover:bg-black/5 transition-all duration-200"
+              className="w-full justify-start gap-3 px-3 py-6 hover:bg-white/5 rounded-xl transition-all"
             >
-              <Avatar className="h-9 w-9 ring-2 ring-black/10">
-                <AvatarFallback className="bg-black text-white font-medium">
-                  {user ? getInitials(user.name) : 'U'}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex flex-col items-start text-sm">
-                <p className="font-semibold text-gray-900">{user?.name}</p>
-                <p className="text-xs text-gray-500">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white font-semibold text-sm shadow-lg">
+                {user ? getInitials(user.name) : 'U'}
+              </div>
+              <div className="flex flex-col items-start text-left">
+                <span className="text-white font-medium text-sm">{user?.name}</span>
+                <span className="text-slate-400 text-xs">
                   {user?.role === UserRole.SUPER_ADMIN
                     ? 'Super Admin'
                     : user?.role === UserRole.TENANT_ADMIN
                     ? 'Administrador'
                     : 'Atendente'}
-                </p>
+                </span>
               </div>
+              <LogOut className="ml-auto h-4 w-4 text-slate-400" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56 rounded-ios-sm glass-card border-0">
-            <DropdownMenuLabel className="text-gray-500 font-normal">{user?.email}</DropdownMenuLabel>
-            <DropdownMenuSeparator className="bg-black/5" />
-            <DropdownMenuItem className="rounded-lg focus:bg-black/5">
-              <User className="mr-2 h-4 w-4 text-gray-500" />
+          <DropdownMenuContent
+            align="end"
+            side="top"
+            className="w-56 mb-2 rounded-ios-sm border-white/10 bg-slate-900/95 backdrop-blur-xl"
+          >
+            <div className="px-3 py-2 border-b border-white/5">
+              <p className="text-xs text-slate-400">{user?.email}</p>
+            </div>
+            <DropdownMenuItem className="text-slate-300 focus:bg-white/5 focus:text-white cursor-pointer">
+              <User className="mr-2 h-4 w-4" />
               Perfil
             </DropdownMenuItem>
-            <DropdownMenuItem className="rounded-lg focus:bg-black/5">
-              <Settings className="mr-2 h-4 w-4 text-gray-500" />
+            <DropdownMenuItem className="text-slate-300 focus:bg-white/5 focus:text-white cursor-pointer">
+              <Settings className="mr-2 h-4 w-4" />
               Configurações
             </DropdownMenuItem>
-            <DropdownMenuSeparator className="bg-black/5" />
-            <DropdownMenuItem onClick={logout} className="rounded-lg text-red-600 focus:bg-red-50 focus:text-red-600">
+            <DropdownMenuSeparator className="bg-white/5" />
+            <DropdownMenuItem
+              onClick={logout}
+              className="text-red-400 focus:bg-red-500/10 focus:text-red-400 cursor-pointer"
+            >
               <LogOut className="mr-2 h-4 w-4" />
               Sair
             </DropdownMenuItem>

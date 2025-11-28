@@ -2,51 +2,117 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 142 76% 36%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 142 76% 36%;
-    --radius: 0.5rem;
-  }
+/* ============================================
+   LIQUID GLASS - iOS 26 Inspired Design
+   (Based on ERP Angelus POC)
+   ============================================ */
 
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 142 76% 36%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 142 76% 36%;
-  }
+:root {
+  /* Light Theme - Liquid Glass */
+  --bg-gradient-1: #f8fafc;
+  --bg-gradient-2: #f1f5f9;
+  --bg-gradient-3: #e2e8f0;
+  --bg-gradient-4: #f8fafc;
+  --bg-gradient-5: #ffffff;
+
+  --glass-bg: rgba(255, 255, 255, 0.35);
+  --glass-bg-hover: rgba(255, 255, 255, 0.5);
+  --glass-bg-strong: rgba(255, 255, 255, 0.55);
+  --glass-border: rgba(255, 255, 255, 0.6);
+  --glass-border-glow: rgba(255, 255, 255, 0.9);
+  --glass-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.12),
+    0 2px 8px rgba(0, 0, 0, 0.08),
+    inset 0 2px 2px rgba(255, 255, 255, 0.8),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.05);
+  --glass-blur: 28px;
+  --card-radius: 32px;
+  --card-radius-sm: 24px;
+  --card-radius-xs: 18px;
+
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+
+  --sidebar-bg: rgba(15, 23, 42, 0.95);
+  --sidebar-text: #f8fafc;
+  --sidebar-text-muted: #94a3b8;
+  --sidebar-hover: rgba(255, 255, 255, 0.08);
+  --sidebar-active: rgba(255, 255, 255, 0.12);
+
+  --input-bg: rgba(255, 255, 255, 0.5);
+  --overlay-bg: rgba(0, 0, 0, 0.25);
+
+  /* shadcn/ui variables */
+  --background: 0 0% 100%;
+  --foreground: 222.2 84% 4.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 84% 4.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222.2 84% 4.9%;
+  --primary: 142 76% 36%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 210 40% 96.1%;
+  --secondary-foreground: 222.2 47.4% 11.2%;
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --accent: 210 40% 96.1%;
+  --accent-foreground: 222.2 47.4% 11.2%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --ring: 142 76% 36%;
+  --radius: 0.5rem;
+}
+
+.dark {
+  /* Dark Theme - Liquid Glass */
+  --bg-gradient-1: #0c1929;
+  --bg-gradient-2: #0f2744;
+  --bg-gradient-3: #1a3657;
+  --bg-gradient-4: #0d2847;
+  --bg-gradient-5: #081525;
+
+  --glass-bg: rgba(255, 255, 255, 0.08);
+  --glass-bg-hover: rgba(255, 255, 255, 0.12);
+  --glass-bg-strong: rgba(255, 255, 255, 0.14);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --glass-border-glow: rgba(255, 255, 255, 0.25);
+  --glass-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.35),
+    0 2px 8px rgba(0, 0, 0, 0.25),
+    inset 0 1px 1px rgba(255, 255, 255, 0.1),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.2);
+
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+
+  --sidebar-bg: rgba(8, 15, 30, 0.98);
+  --input-bg: rgba(255, 255, 255, 0.08);
+  --overlay-bg: rgba(0, 0, 0, 0.5);
+
+  /* shadcn/ui dark variables */
+  --background: 222.2 84% 4.9%;
+  --foreground: 210 40% 98%;
+  --card: 222.2 84% 4.9%;
+  --card-foreground: 210 40% 98%;
+  --popover: 222.2 84% 4.9%;
+  --popover-foreground: 210 40% 98%;
+  --primary: 142 76% 36%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 217.2 32.6% 17.5%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 217.2 32.6% 17.5%;
+  --muted-foreground: 215 20.2% 65.1%;
+  --accent: 217.2 32.6% 17.5%;
+  --accent-foreground: 210 40% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 217.2 32.6% 17.5%;
+  --input: 217.2 32.6% 17.5%;
+  --ring: 142 76% 36%;
 }
 
 @layer base {
@@ -55,28 +121,294 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    letter-spacing: -0.01em;
   }
 }
 
-/* Custom scrollbar */
+/* ============================================
+   LIQUID ANIMATED BACKGROUND
+   ============================================ */
+.liquid-bg {
+  background:
+    radial-gradient(ellipse at 20% 20%, var(--bg-gradient-1) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, var(--bg-gradient-2) 0%, transparent 50%),
+    radial-gradient(ellipse at 40% 60%, var(--bg-gradient-3) 0%, transparent 50%),
+    radial-gradient(ellipse at 70% 80%, var(--bg-gradient-4) 0%, transparent 50%),
+    linear-gradient(180deg, var(--bg-gradient-5) 0%, var(--bg-gradient-1) 100%);
+  background-size: 200% 200%;
+  animation: liquidFlow 20s ease-in-out infinite;
+}
+
+@keyframes liquidFlow {
+  0%, 100% {
+    background-position: 0% 0%, 100% 0%, 0% 100%, 100% 100%, 50% 50%;
+  }
+  25% {
+    background-position: 100% 50%, 0% 50%, 100% 0%, 0% 100%, 50% 50%;
+  }
+  50% {
+    background-position: 50% 100%, 50% 0%, 100% 50%, 0% 50%, 50% 50%;
+  }
+  75% {
+    background-position: 0% 50%, 100% 50%, 0% 100%, 100% 0%, 50% 50%;
+  }
+}
+
+/* ============================================
+   GLASS CARD - iOS 26 Style
+   ============================================ */
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(200%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(200%);
+  border-radius: var(--card-radius);
+  border: 1.5px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Glow effect on top/left border */
+.glass-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 50%;
+  height: 1px;
+  background: linear-gradient(90deg,
+    var(--glass-border-glow) 0%,
+    transparent 100%);
+  border-radius: var(--card-radius) var(--card-radius) 0 0;
+}
+
+.glass-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  bottom: 50%;
+  background: linear-gradient(180deg,
+    var(--glass-border-glow) 0%,
+    transparent 100%);
+  border-radius: var(--card-radius) 0 0 var(--card-radius);
+}
+
+.glass-card-sm {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(200%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(200%);
+  border-radius: var(--card-radius-sm);
+  border: 1.5px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+
+/* ============================================
+   GLASS SIDEBAR - Dark Theme
+   ============================================ */
+.glass-sidebar {
+  background: var(--sidebar-bg);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.15);
+}
+
+/* ============================================
+   GLASS HEADER
+   ============================================ */
+.glass-header {
+  background: var(--glass-bg-strong);
+  backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  border-bottom: 1px solid var(--glass-border);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+/* ============================================
+   GLASS INPUT
+   ============================================ */
+.glass-input {
+  background: var(--input-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--card-radius-xs);
+  transition: all 0.2s ease;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+}
+
+.glass-input:focus {
+  background: var(--glass-bg-hover);
+  border-color: var(--glass-border-glow);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06), 0 0 0 3px rgba(59, 130, 246, 0.15);
+  outline: none;
+}
+
+/* ============================================
+   GLASS BUTTON
+   ============================================ */
+.glass-btn {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--card-radius-xs);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-btn:hover {
+  background: var(--glass-bg-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+}
+
+/* ============================================
+   KPI CARD HOVER EFFECT
+   ============================================ */
+.glass-kpi {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-kpi:hover {
+  transform: translateY(-6px) scale(1.02);
+  box-shadow:
+    0 20px 40px rgba(0, 0, 0, 0.15),
+    0 8px 16px rgba(0, 0, 0, 0.1),
+    inset 0 2px 2px rgba(255, 255, 255, 0.8);
+}
+
+/* ============================================
+   THEME TOGGLE - Sun/Moon
+   ============================================ */
+.theme-toggle {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  box-shadow:
+    0 4px 12px rgba(251, 191, 36, 0.4),
+    inset 0 2px 4px rgba(255, 255, 255, 0.3);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.theme-toggle:hover {
+  transform: rotate(20deg) scale(1.1);
+}
+
+/* ============================================
+   SIDEBAR MENU ITEM
+   ============================================ */
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  color: var(--sidebar-text-muted);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.sidebar-item:hover {
+  background: var(--sidebar-hover);
+  color: var(--sidebar-text);
+}
+
+.sidebar-item.active {
+  background: var(--sidebar-active);
+  color: var(--sidebar-text);
+}
+
+/* ============================================
+   BADGE STYLES
+   ============================================ */
+.badge-count {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ============================================
+   ICON BOX - Colored Icons in Cards
+   ============================================ */
+.icon-box {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-box-lg {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+}
+
+/* ============================================
+   CUSTOM SCROLLBAR
+   ============================================ */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-muted;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-muted-foreground/30 rounded-md;
+  background: rgba(148, 163, 184, 0.4);
+  border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-muted-foreground/50;
+  background: rgba(148, 163, 184, 0.6);
 }
 
-/* WhatsApp-like chat styles */
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(24px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.92); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.animate-fadeIn { animation: fadeIn 0.3s ease-out; }
+.animate-slideUp { animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+.animate-scaleIn { animation: scaleIn 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+
+/* ============================================
+   WhatsApp-like chat styles
+   (Preserving WhatsApp colors for chat area)
+   ============================================ */
 .chat-bubble {
   @apply rounded-lg px-4 py-2 max-w-[70%] break-words;
 }
@@ -89,144 +421,29 @@
   @apply bg-white mr-auto;
 }
 
-/* Animations */
-.fade-in {
-  animation: fade-in 0.2s ease-out;
-}
-
-.slide-in {
-  animation: slide-in-right 0.3s ease-out;
-}
-
 /* ============================================
-   iOS 26 Liquid Glass Design System
+   ROUNDED CORNERS - iOS Style
    ============================================ */
-
-/* Liquid Glass Effect - Base */
-.glass {
-  background: rgba(255, 255, 255, 0.25);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4);
-}
-
-/* Liquid Glass - Dark variant */
-.glass-dark {
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
-}
-
-/* Liquid Glass - Sidebar variant (more opaque) */
-.glass-sidebar {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(30px) saturate(180%);
-  -webkit-backdrop-filter: blur(30px) saturate(180%);
-  border-right: 1px solid rgba(0, 0, 0, 0.08);
-  box-shadow:
-    4px 0 24px rgba(0, 0, 0, 0.06),
-    inset -1px 0 0 rgba(255, 255, 255, 0.5);
-}
-
-/* Liquid Glass - Card variant */
-.glass-card {
-  background: rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  border-radius: 20px;
-  box-shadow:
-    0 4px 24px rgba(0, 0, 0, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.8);
-}
-
-/* Liquid Glass - Button variant */
-.glass-button {
-  background: rgba(255, 255, 255, 0.3);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  border-radius: 14px;
-  box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.6);
-  transition: all 0.2s ease;
-}
-
-.glass-button:hover {
-  background: rgba(255, 255, 255, 0.5);
-  box-shadow:
-    0 4px 16px rgba(0, 0, 0, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.8);
-  transform: translateY(-1px);
-}
-
-.glass-button:active {
-  transform: translateY(0);
-  box-shadow:
-    0 2px 4px rgba(0, 0, 0, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4);
-}
-
-/* Liquid Glass - Input variant */
-.glass-input {
-  background: rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: 12px;
-  box-shadow:
-    inset 0 2px 4px rgba(0, 0, 0, 0.06),
-    0 1px 0 rgba(255, 255, 255, 0.8);
-  transition: all 0.2s ease;
-}
-
-.glass-input:focus {
-  background: rgba(255, 255, 255, 0.7);
-  border-color: rgba(0, 0, 0, 0.2);
-  box-shadow:
-    inset 0 2px 4px rgba(0, 0, 0, 0.04),
-    0 0 0 3px rgba(0, 0, 0, 0.08);
-}
-
-/* Gradient backgrounds for liquid glass effect */
-.bg-gradient-glass {
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.9) 0%,
-    rgba(245, 245, 247, 0.8) 100%
-  );
-}
-
-/* iOS-style rounded corners */
 .rounded-ios {
-  border-radius: 20px;
+  border-radius: var(--card-radius);
 }
 
 .rounded-ios-sm {
-  border-radius: 14px;
+  border-radius: var(--card-radius-sm);
 }
 
-.rounded-ios-lg {
-  border-radius: 28px;
+.rounded-ios-xs {
+  border-radius: var(--card-radius-xs);
 }
 
-/* Subtle shadow for depth */
-.shadow-ios {
-  box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.08),
-    0 8px 24px rgba(0, 0, 0, 0.06);
-}
-
-.shadow-ios-lg {
-  box-shadow:
-    0 4px 16px rgba(0, 0, 0, 0.1),
-    0 16px 48px rgba(0, 0, 0, 0.08);
+/* ============================================
+   RESPONSIVE ADJUSTMENTS
+   ============================================ */
+@media (max-width: 640px) {
+  :root {
+    --card-radius: 24px;
+    --card-radius-sm: 20px;
+    --card-radius-xs: 14px;
+    --glass-blur: 20px;
+  }
 }

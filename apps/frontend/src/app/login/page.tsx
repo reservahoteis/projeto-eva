@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Lock, Mail } from 'lucide-react';
 
 const loginSchema = z.object({
   email: z.string().email('Email inválido'),
@@ -41,62 +42,67 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-50 via-white to-gray-100 p-4">
-      {/* Background decoration */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-black/5 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-black/5 rounded-full blur-3xl" />
-      </div>
-
+    <div className="flex min-h-screen items-center justify-center liquid-bg p-4">
       {/* Login Card - iOS 26 Liquid Glass Style */}
-      <div className="relative w-full max-w-md">
-        <div className="glass-card p-8 shadow-ios-lg">
-          {/* Logo */}
+      <div className="relative w-full max-w-md animate-scaleIn">
+        <div className="glass-card p-8">
+          {/* Logo Header - Style like ERP Angelus */}
           <div className="flex flex-col items-center mb-8">
-            <Image
-              src="/logo.png"
-              alt="Hotéis Reserva"
-              width={180}
-              height={60}
-              className="object-contain mb-4"
-              priority
-            />
-            <p className="text-gray-500 text-sm">
-              Entre com suas credenciais para acessar
+            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg mb-4 overflow-hidden">
+              <Image
+                src="/logo.png"
+                alt="Hotéis Reserva"
+                width={52}
+                height={52}
+                className="object-contain brightness-0 invert"
+                priority
+              />
+            </div>
+            <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-1">
+              Hotéis Reserva
+            </h1>
+            <p className="text-[var(--text-muted)] text-sm">
+              Sistema de Atendimento WhatsApp
             </p>
           </div>
 
           {/* Form */}
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-gray-700 font-medium">
+              <Label htmlFor="email" className="text-[var(--text-secondary)] font-medium text-sm">
                 Email
               </Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="seu@email.com"
-                className="glass-input h-12 px-4 text-gray-900 placeholder:text-gray-400"
-                {...register('email')}
-                disabled={isLoading}
-              />
+              <div className="relative">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--text-muted)]" />
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="seu@email.com"
+                  className="glass-input h-12 pl-12 pr-4 text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+                  {...register('email')}
+                  disabled={isLoading}
+                />
+              </div>
               {errors.email && (
                 <p className="text-sm text-red-500 mt-1">{errors.email.message}</p>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-gray-700 font-medium">
+              <Label htmlFor="password" className="text-[var(--text-secondary)] font-medium text-sm">
                 Senha
               </Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                className="glass-input h-12 px-4 text-gray-900 placeholder:text-gray-400"
-                {...register('password')}
-                disabled={isLoading}
-              />
+              <div className="relative">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--text-muted)]" />
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  className="glass-input h-12 pl-12 pr-4 text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+                  {...register('password')}
+                  disabled={isLoading}
+                />
+              </div>
               {errors.password && (
                 <p className="text-sm text-red-500 mt-1">{errors.password.message}</p>
               )}
@@ -104,7 +110,7 @@ export default function LoginPage() {
 
             <Button
               type="submit"
-              className="w-full h-12 bg-black hover:bg-gray-800 text-white font-semibold rounded-ios-sm shadow-ios transition-all duration-200 hover:shadow-ios-lg"
+              className="w-full h-12 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold rounded-ios-xs shadow-lg transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5"
               disabled={isLoading}
             >
               {isLoading ? (
@@ -134,9 +140,9 @@ export default function LoginPage() {
           </form>
 
           {/* Footer */}
-          <div className="mt-8 pt-6 border-t border-black/5">
-            <p className="text-center text-xs text-gray-400">
-              Sistema de Atendimento WhatsApp para Hotéis
+          <div className="mt-8 pt-6 border-t border-[var(--glass-border)]">
+            <p className="text-center text-xs text-[var(--text-muted)]">
+              Desenvolvido para gestão de atendimento via WhatsApp
             </p>
           </div>
         </div>
