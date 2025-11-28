@@ -6,7 +6,7 @@ import { messageService } from '@/services/message.service';
 import { Conversation, Message, MessageDirection, MessageType } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Send, Paperclip, Image as ImageIcon, Phone, MoreHorizontal } from 'lucide-react';
 import { getInitials, formatTime, formatPhoneNumber } from '@/lib/utils';
@@ -137,6 +137,9 @@ export function ChatInterface({ conversation, messages, onMessageSent }: ChatInt
       <div className="flex items-center justify-between p-4 border-b bg-card">
         <div className="flex items-center gap-3">
           <Avatar className="h-10 w-10">
+            {conversation.contact.profilePictureUrl && (
+              <AvatarImage src={conversation.contact.profilePictureUrl} alt={conversation.contact.name || 'Contato'} />
+            )}
             <AvatarFallback className="bg-whatsapp-green text-white">
               {getInitials(conversation.contact.name)}
             </AvatarFallback>
@@ -145,7 +148,7 @@ export function ChatInterface({ conversation, messages, onMessageSent }: ChatInt
             <p className="font-medium">{conversation.contact.name}</p>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Phone className="h-3 w-3" />
-              <span>{formatPhoneNumber(conversation.contact.phone)}</span>
+              <span>{formatPhoneNumber(conversation.contact.phoneNumber)}</span>
             </div>
           </div>
         </div>

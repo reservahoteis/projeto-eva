@@ -300,6 +300,76 @@ export class WhatsAppService {
   }
 
   /**
+   * Buscar foto de perfil do contato no WhatsApp
+   * @param tenantId - ID do tenant
+   * @param phoneNumber - Número do contato (formato: 5511999999999)
+   * @returns URL da foto de perfil ou null se não disponível
+   */
+  async getProfilePicture(tenantId: string, phoneNumber: string): Promise<string | null> {
+    try {
+      const axiosInstance = await this.getAxiosForTenant(tenantId);
+
+      // A API do WhatsApp Business usa o endpoint /{phone_number_id}/contacts
+      // para buscar informações do contato, incluindo a foto de perfil
+      const tenant = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { whatsappPhoneNumberId: true },
+      });
+
+      if (!tenant?.whatsappPhoneNumberId) {
+        return null;
+      }
+
+      // Buscar foto de perfil via API do WhatsApp
+      // Endpoint: GET /{phone-number-id}/contacts/{contact-phone}
+      const response = await axiosInstance.get(
+        `/${tenant.whatsappPhoneNumberId}`,
+        {
+          params: {
+            fields: 'profile_picture_url',
+          },
+        }
+      );
+
+      // A foto pode estar no campo profile_picture_url
+      if (response.data?.profile_picture_url) {
+        return response.data.profile_picture_url;
+      }
+
+      // Tentar via endpoint alternativo - buscar diretamente pelo número do contato
+      // Documentação da Meta: https://developers.facebook.com/docs/whatsapp/cloud-api/reference/contacts
+      try {
+        const contactResponse = await axiosInstance.post(
+          `/${tenant.whatsappPhoneNumberId}/contacts`,
+          {
+            blocking: 'wait',
+            contacts: [phoneNumber],
+            force_check: true,
+          }
+        );
+
+        // Buscar a URL da foto do contato
+        const contacts = contactResponse.data?.contacts;
+        if (contacts && contacts.length > 0 && contacts[0].profile?.photo) {
+          return contacts[0].profile.photo;
+        }
+      } catch (contactError) {
+        // Se o endpoint de contacts não funcionar, tentar o endpoint de perfil
+        logger.debug({ tenantId, phoneNumber, error: contactError }, 'Contacts endpoint not available');
+      }
+
+      return null;
+    } catch (error: any) {
+      // Não é crítico - apenas logar e retornar null
+      logger.debug(
+        { error: error.message, tenantId, phoneNumber },
+        'Could not fetch profile picture'
+      );
+      return null;
+    }
+  }
+
+  /**
    * Enviar mensagem com botões de resposta rápida
    */
   async sendInteractiveButtons(

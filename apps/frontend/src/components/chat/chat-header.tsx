@@ -46,7 +46,7 @@ export function ChatHeader({ conversation, isOnline, isTyping, isConnected }: Ch
       <div className="flex items-center gap-3 flex-1 min-w-0">
         <div className="relative flex-shrink-0">
           <img
-            src={conversation.contact.avatar || '/avatar-placeholder.png'}
+            src={conversation.contact.profilePictureUrl || '/avatar-placeholder.png'}
             alt={conversation.contact.name}
             className="w-10 h-10 rounded-full object-cover"
           />
@@ -60,7 +60,7 @@ export function ChatHeader({ conversation, isOnline, isTyping, isConnected }: Ch
             className="text-[16px] font-medium text-[#111b21] truncate"
             style={{ fontFamily: 'Segoe UI, Helvetica Neue, sans-serif' }}
           >
-            {conversation.contact.name || conversation.contact.phone}
+            {conversation.contact.name || conversation.contact.phoneNumber}
           </h2>
           <p
             className={cn(

@@ -286,8 +286,8 @@ export default function ConversationPage({ params }: ConversationPageProps) {
         <MessageList
           messages={messagesData?.data || []}
           isTyping={isUserTyping(params.id)}
-          contactName={conversation.contact.name || conversation.contact.phone}
-          contactAvatar={conversation.contact.avatar}
+          contactName={conversation.contact.name || conversation.contact.phoneNumber}
+          contactAvatar={conversation.contact.profilePictureUrl}
         />
 
         {/* Chat Input */}

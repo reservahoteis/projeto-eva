@@ -14,6 +14,7 @@ import {
 } from '@/validators/whatsapp-webhook.validator';
 import { enqueueMediaDownload } from '../whatsapp-webhook.queue';
 import { emitNewMessage } from '@/config/socket';
+import { whatsAppService } from '@/services/whatsapp.service';
 
 /**
  * Worker para processar mensagens recebidas do WhatsApp
@@ -102,6 +103,7 @@ export async function processIncomingMessage(job: Job<ProcessMessageJobData>): P
           id: contact.id,
           phoneNumber: contact.phoneNumber,
           name: contact.name,
+          profilePictureUrl: contact.profilePictureUrl,
         },
       }
     );
@@ -140,7 +142,7 @@ async function findOrCreateContact(
   tenantId: string,
   phoneNumber: string,
   name?: string
-): Promise<{ id: string; phoneNumber: string; name: string | null }> {
+): Promise<{ id: string; phoneNumber: string; name: string | null; profilePictureUrl: string | null }> {
   // Buscar contato existente
   let contact = await prisma.contact.findUnique({
     where: {
@@ -153,39 +155,68 @@ async function findOrCreateContact(
       id: true,
       phoneNumber: true,
       name: true,
+      profilePictureUrl: true,
     },
   });
 
   // Se não existe, criar
   if (!contact) {
+    // Buscar foto de perfil do WhatsApp (não bloqueia criação se falhar)
+    let profilePictureUrl: string | null = null;
+    try {
+      profilePictureUrl = await whatsAppService.getProfilePicture(tenantId, phoneNumber);
+    } catch (error) {
+      logger.debug({ tenantId, phoneNumber, error }, 'Could not fetch profile picture for new contact');
+    }
+
     contact = await prisma.contact.create({
       data: {
         tenantId,
         phoneNumber,
         name: name || null,
+        profilePictureUrl,
       },
       select: {
         id: true,
         phoneNumber: true,
         name: true,
+        profilePictureUrl: true,
       },
     });
 
-    logger.info({ tenantId, contactId: contact.id, phoneNumber }, 'New contact created');
+    logger.info({ tenantId, contactId: contact.id, phoneNumber, hasProfilePicture: !!profilePictureUrl }, 'New contact created');
   }
-  // Se existe mas nome mudou, atualizar
-  else if (name && name !== contact.name) {
-    contact = await prisma.contact.update({
-      where: { id: contact.id },
-      data: { name },
-      select: {
-        id: true,
-        phoneNumber: true,
-        name: true,
-      },
-    });
+  // Se existe mas nome mudou ou não tem foto, atualizar
+  else {
+    const needsUpdate = (name && name !== contact.name) || !contact.profilePictureUrl;
 
-    logger.debug({ tenantId, contactId: contact.id, oldName: contact.name, newName: name }, 'Contact name updated');
+    if (needsUpdate) {
+      // Buscar foto de perfil se não tem
+      let profilePictureUrl = contact.profilePictureUrl;
+      if (!profilePictureUrl) {
+        try {
+          profilePictureUrl = await whatsAppService.getProfilePicture(tenantId, phoneNumber);
+        } catch (error) {
+          logger.debug({ tenantId, phoneNumber, error }, 'Could not fetch profile picture for existing contact');
+        }
+      }
+
+      contact = await prisma.contact.update({
+        where: { id: contact.id },
+        data: {
+          ...(name && name !== contact.name && { name }),
+          ...(profilePictureUrl && !contact.profilePictureUrl && { profilePictureUrl }),
+        },
+        select: {
+          id: true,
+          phoneNumber: true,
+          name: true,
+          profilePictureUrl: true,
+        },
+      });
+
+      logger.debug({ tenantId, contactId: contact.id, hasProfilePicture: !!contact.profilePictureUrl }, 'Contact updated');
+    }
   }
 
   return contact;

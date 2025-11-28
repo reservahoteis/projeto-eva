@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Conversation } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -52,13 +52,16 @@ export function ConversationCard({ conversation, onUpdate }: ConversationCardPro
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3 flex-1 min-w-0">
             <Avatar className="h-10 w-10 flex-shrink-0">
+              {conversation.contact.profilePictureUrl && (
+                <AvatarImage src={conversation.contact.profilePictureUrl} alt={conversation.contact.name || 'Contato'} />
+              )}
               <AvatarFallback className="bg-whatsapp-green text-white">
                 {getInitials(conversation.contact.name)}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
               <p className="font-medium truncate">{conversation.contact.name}</p>
-              <p className="text-sm text-muted-foreground truncate">{conversation.contact.phone}</p>
+              <p className="text-sm text-muted-foreground truncate">{conversation.contact.phoneNumber}</p>
             </div>
           </div>
 
