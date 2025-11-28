@@ -101,16 +101,16 @@ export default function ReportsPage() {
   ];
 
   return (
-    <div className="p-8 space-y-6 liquid-bg min-h-screen">
+    <div className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6 liquid-bg min-h-screen">
       {/* Header */}
-      <div className="flex items-center justify-between animate-fadeIn">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-fadeIn">
         <div>
-          <h1 className="text-3xl font-bold text-[var(--text-primary)]">Relatórios</h1>
-          <p className="text-[var(--text-muted)]">Análises e métricas do sistema</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-[var(--text-primary)]">Relatórios</h1>
+          <p className="text-sm md:text-base text-[var(--text-muted)]">Análises e métricas do sistema</p>
         </div>
         <div className="flex items-center gap-2">
           <Select value={period} onValueChange={(value) => setPeriod(value as Period)}>
-            <SelectTrigger className="w-[180px] glass-input">
+            <SelectTrigger className="w-[140px] sm:w-[180px] glass-input">
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="glass-card border-[var(--glass-border)]">
@@ -133,7 +133,7 @@ export default function ReportsPage() {
       </div>
 
       {/* Quick Stats */}
-      <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:gap-5 lg:grid-cols-4">
         {statsCards.map((stat, index) => {
           const Icon = stat.icon;
           return (
@@ -182,7 +182,7 @@ export default function ReportsPage() {
       </div>
 
       {/* Detailed Reports */}
-      <div className="grid gap-5 md:grid-cols-2">
+      <div className="grid gap-3 md:gap-5 md:grid-cols-2">
         {/* Conversas por Status */}
         <div className="glass-card p-6 animate-slideUp" style={{ animationDelay: '0.4s' }}>
           <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4">Conversas por Status</h2>

@@ -35,14 +35,14 @@ export default function ConversationsPage() {
   });
 
   return (
-    <div className="h-screen flex flex-col">
+    <div className="h-screen flex flex-col liquid-bg">
       {/* Header */}
-      <div className="border-b bg-card">
-        <div className="p-6 space-y-4">
-          <div className="flex items-center justify-between">
+      <div className="border-b border-[var(--glass-border)] glass-card rounded-none">
+        <div className="p-4 md:p-6 space-y-3 md:space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h1 className="text-3xl font-bold">Conversas</h1>
-              <p className="text-muted-foreground">Gerencie todas as conversas do WhatsApp</p>
+              <h1 className="text-2xl md:text-3xl font-bold text-[var(--text-primary)]">Conversas</h1>
+              <p className="text-sm md:text-base text-[var(--text-muted)]">Gerencie todas as conversas do WhatsApp</p>
             </div>
 
             {/* View Mode Toggle */}
@@ -51,29 +51,31 @@ export default function ConversationsPage() {
                 variant={viewMode === 'kanban' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setViewMode('kanban')}
+                className={viewMode === 'kanban' ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white' : 'glass-btn'}
               >
-                <LayoutGrid className="h-4 w-4 mr-2" />
-                Kanban
+                <LayoutGrid className="h-4 w-4 mr-1 md:mr-2" />
+                <span className="hidden sm:inline">Kanban</span>
               </Button>
               <Button
                 variant={viewMode === 'list' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setViewMode('list')}
+                className={viewMode === 'list' ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white' : 'glass-btn'}
               >
-                <List className="h-4 w-4 mr-2" />
-                Lista
+                <List className="h-4 w-4 mr-1 md:mr-2" />
+                <span className="hidden sm:inline">Lista</span>
               </Button>
             </div>
           </div>
 
           {/* Filters */}
           <Tabs value={selectedStatus} onValueChange={(v) => setSelectedStatus(v as any)}>
-            <TabsList>
-              <TabsTrigger value="all">Todas</TabsTrigger>
-              <TabsTrigger value={ConversationStatus.OPEN}>Novas</TabsTrigger>
-              <TabsTrigger value={ConversationStatus.IN_PROGRESS}>Em Atendimento</TabsTrigger>
-              <TabsTrigger value={ConversationStatus.WAITING}>Aguardando Cliente</TabsTrigger>
-              <TabsTrigger value={ConversationStatus.CLOSED}>Finalizadas</TabsTrigger>
+            <TabsList className="glass-card p-1 h-auto flex-wrap w-full sm:w-auto">
+              <TabsTrigger value="all" className="text-xs sm:text-sm">Todas</TabsTrigger>
+              <TabsTrigger value={ConversationStatus.OPEN} className="text-xs sm:text-sm">Novas</TabsTrigger>
+              <TabsTrigger value={ConversationStatus.IN_PROGRESS} className="text-xs sm:text-sm">Em Atendimento</TabsTrigger>
+              <TabsTrigger value={ConversationStatus.WAITING} className="text-xs sm:text-sm hidden sm:inline-flex">Aguardando</TabsTrigger>
+              <TabsTrigger value={ConversationStatus.CLOSED} className="text-xs sm:text-sm">Finalizadas</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>

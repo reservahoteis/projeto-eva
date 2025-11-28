@@ -69,11 +69,11 @@ export function ChatInput({ onSendMessage, onTypingChange, disabled, isLoading }
   };
 
   return (
-    <div className="h-[62px] bg-[#f0f2f5] px-4 flex items-center gap-2">
-      {/* Emoji Button */}
+    <div className="h-[62px] bg-[#f0f2f5] px-2 sm:px-4 flex items-center gap-1 sm:gap-2">
+      {/* Emoji Button - Hidden on very small screens */}
       <button
         type="button"
-        className="text-[#54656f] hover:text-[#111b21] transition-colors p-2"
+        className="hidden sm:block text-[#54656f] hover:text-[#111b21] transition-colors p-2"
         title="Emoji"
         disabled={disabled}
       >
@@ -87,11 +87,11 @@ export function ChatInput({ onSendMessage, onTypingChange, disabled, isLoading }
         title="Anexar arquivo"
         disabled={disabled}
       >
-        <Paperclip className="w-6 h-6" />
+        <Paperclip className="w-5 h-5 sm:w-6 sm:h-6" />
       </button>
 
       {/* Input Form */}
-      <form onSubmit={handleSubmit} className="flex-1 flex items-center gap-2">
+      <form onSubmit={handleSubmit} className="flex-1 flex items-center gap-1 sm:gap-2">
         <input
           ref={inputRef}
           type="text"
@@ -101,7 +101,7 @@ export function ChatInput({ onSendMessage, onTypingChange, disabled, isLoading }
           placeholder="Digite uma mensagem"
           disabled={disabled || isLoading}
           className={cn(
-            "flex-1 h-10 px-4 py-2 bg-white rounded-lg text-[15px] text-[#111b21] placeholder:text-[#667781]",
+            "flex-1 h-10 px-3 sm:px-4 py-2 bg-white rounded-lg text-[14px] sm:text-[15px] text-[#111b21] placeholder:text-[#667781]",
             "border-none outline-none focus:outline-none",
             "disabled:bg-gray-100 disabled:cursor-not-allowed"
           )}
@@ -118,7 +118,7 @@ export function ChatInput({ onSendMessage, onTypingChange, disabled, isLoading }
             )}
             title="Enviar"
           >
-            <Send className="w-6 h-6" />
+            <Send className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
         ) : (
           <button
@@ -127,7 +127,7 @@ export function ChatInput({ onSendMessage, onTypingChange, disabled, isLoading }
             title="Mensagem de voz"
             disabled={disabled}
           >
-            <Mic className="w-6 h-6" />
+            <Mic className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
         )}
       </form>

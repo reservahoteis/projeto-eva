@@ -173,16 +173,16 @@ export default function UsersPage() {
   // Loading skeleton
   if (isLoading) {
     return (
-      <div className="p-8 space-y-6 liquid-bg min-h-screen">
-        <div className="flex items-center justify-between">
+      <div className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6 liquid-bg min-h-screen">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <Skeleton className="h-10 w-48 mb-2" />
-            <Skeleton className="h-5 w-64" />
+            <Skeleton className="h-8 md:h-10 w-40 md:w-48 mb-2" />
+            <Skeleton className="h-4 md:h-5 w-48 md:w-64" />
           </div>
           <Skeleton className="h-10 w-32" />
         </div>
 
-        <div className="grid gap-5 md:grid-cols-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-5">
           {[1, 2, 3].map((i) => (
             <div key={i} className="glass-card p-6">
               <Skeleton className="h-20 w-full" />
@@ -204,7 +204,7 @@ export default function UsersPage() {
   // Error state
   if (error) {
     return (
-      <div className="p-8 space-y-6 liquid-bg min-h-screen">
+      <div className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6 liquid-bg min-h-screen">
         <div className="text-center py-12">
           <p className="text-[var(--text-muted)] mb-4">Erro ao carregar usuários</p>
           <Button onClick={() => refetch()}>Tentar novamente</Button>
@@ -240,12 +240,12 @@ export default function UsersPage() {
   ];
 
   return (
-    <div className="p-8 space-y-6 liquid-bg min-h-screen">
+    <div className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6 liquid-bg min-h-screen">
       {/* Header */}
-      <div className="flex items-center justify-between animate-fadeIn">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-fadeIn">
         <div>
-          <h1 className="text-3xl font-bold text-[var(--text-primary)]">Usuários</h1>
-          <p className="text-[var(--text-muted)]">Gerencie os usuários do sistema</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-[var(--text-primary)]">Usuários</h1>
+          <p className="text-sm md:text-base text-[var(--text-muted)]">Gerencie os usuários do sistema</p>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -259,13 +259,14 @@ export default function UsersPage() {
           </Button>
           <Button onClick={() => setIsCreateOpen(true)} className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg">
             <Plus className="h-4 w-4 mr-2" />
-            Novo Usuário
+            <span className="hidden sm:inline">Novo Usuário</span>
+            <span className="sm:hidden">Novo</span>
           </Button>
         </div>
       </div>
 
       {/* Stats */}
-      <div className="grid gap-5 md:grid-cols-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-5">
         {statsCards.map((stat, index) => {
           const Icon = stat.icon;
           return (
@@ -309,9 +310,9 @@ export default function UsersPage() {
               className="glass-card glass-kpi p-6 animate-slideUp"
               style={{ animationDelay: `${(index + 3) * 0.05}s` }}
             >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4 flex-1">
-                  <Avatar className="h-12 w-12 shadow-lg">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3 sm:gap-4 flex-1">
+                  <Avatar className="h-10 w-10 sm:h-12 sm:w-12 shadow-lg flex-shrink-0">
                     <AvatarFallback
                       style={{
                         background: `linear-gradient(135deg, ${userService.getAvatarColor(user.id)} 0%, ${userService.getAvatarColor(user.id + '1')} 100%)`,
@@ -321,19 +322,19 @@ export default function UsersPage() {
                       {userService.getInitials(user.name)}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-[var(--text-primary)]">{user.name}</h3>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-1 sm:gap-2">
+                      <h3 className="font-semibold text-[var(--text-primary)] truncate">{user.name}</h3>
                       {getRoleBadge(user.role)}
                       {getStatusBadge(user.status)}
                     </div>
-                    <p className="text-sm text-[var(--text-muted)]">{user.email}</p>
+                    <p className="text-sm text-[var(--text-muted)] truncate">{user.email}</p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-6">
+                <div className="flex items-center justify-between sm:justify-end gap-4 sm:gap-6 pl-13 sm:pl-0">
                   <div className="text-center">
-                    <p className="text-2xl font-bold text-[var(--text-primary)]">{user.conversationsCount || 0}</p>
+                    <p className="text-xl sm:text-2xl font-bold text-[var(--text-primary)]">{user.conversationsCount || 0}</p>
                     <p className="text-xs text-[var(--text-muted)]">Conversas</p>
                   </div>
 

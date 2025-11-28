@@ -1,7 +1,7 @@
 'use client';
 
 import { Conversation, ConversationStatus } from '@/types';
-import { Search, MoreVertical, Phone, Video } from 'lucide-react';
+import { Search, MoreVertical, Phone, Video, ArrowLeft } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
@@ -13,9 +13,10 @@ interface ChatHeaderProps {
   isOnline?: boolean;
   isTyping?: boolean;
   isConnected?: boolean;
+  onBack?: () => void;
 }
 
-export function ChatHeader({ conversation, isOnline, isTyping, isConnected }: ChatHeaderProps) {
+export function ChatHeader({ conversation, isOnline, isTyping, isConnected, onBack }: ChatHeaderProps) {
   const getStatusBadge = () => {
     const variants: Record<string, { label: string; className: string }> = {
       [ConversationStatus.OPEN]: { label: 'Aberta', className: 'bg-yellow-100 text-yellow-800' },
@@ -44,8 +45,18 @@ export function ChatHeader({ conversation, isOnline, isTyping, isConnected }: Ch
   };
 
   return (
-    <div className="h-[59px] bg-[#f0f2f5] border-b border-[#d1d7db] px-4 flex items-center justify-between">
-      <div className="flex items-center gap-3 flex-1 min-w-0">
+    <div className="h-[59px] bg-[#f0f2f5] border-b border-[#d1d7db] px-2 sm:px-4 flex items-center justify-between">
+      <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+        {/* Back button for mobile */}
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="lg:hidden p-2 -ml-1 text-[#54656f] hover:text-[#111b21] transition-colors"
+            title="Voltar"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+        )}
         <div className="relative flex-shrink-0">
           <Avatar className="w-10 h-10">
             {conversation.contact.profilePictureUrl && (
@@ -82,41 +93,43 @@ export function ChatHeader({ conversation, isOnline, isTyping, isConnected }: Ch
         </div>
       </div>
 
-      <div className="flex items-center gap-2 ml-4">
+      <div className="flex items-center gap-1 sm:gap-2 ml-2 sm:ml-4">
         {/* Connection Status */}
-        <div className="flex items-center gap-1 mr-2">
+        <div className="flex items-center gap-1 mr-1 sm:mr-2">
           <div className={cn(
             "w-2 h-2 rounded-full",
             isConnected ? "bg-green-500" : "bg-red-500"
           )} />
         </div>
 
-        {/* Status Badge */}
-        {getStatusBadge()}
+        {/* Status Badge - Hidden on very small screens */}
+        <div className="hidden xs:block">
+          {getStatusBadge()}
+        </div>
 
-        {/* Assigned User */}
+        {/* Assigned User - Hidden on mobile */}
         {conversation.assignedTo && (
-          <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
+          <Badge variant="outline" className="hidden sm:inline-flex text-xs bg-blue-50 text-blue-700">
             {conversation.assignedTo.name?.split(' ')[0] || 'N/A'}
           </Badge>
         )}
 
-        {/* Action Buttons */}
-        <div className="flex items-center gap-5 ml-3">
+        {/* Action Buttons - Condensed on mobile */}
+        <div className="flex items-center gap-3 sm:gap-5 ml-1 sm:ml-3">
           <button
-            className="text-[#54656f] hover:text-[#111b21] transition-colors"
+            className="hidden sm:block text-[#54656f] hover:text-[#111b21] transition-colors"
             title="Chamada de vídeo"
           >
             <Video className="w-5 h-5" />
           </button>
           <button
-            className="text-[#54656f] hover:text-[#111b21] transition-colors"
+            className="hidden sm:block text-[#54656f] hover:text-[#111b21] transition-colors"
             title="Ligar"
           >
             <Phone className="w-5 h-5" />
           </button>
           <button
-            className="text-[#54656f] hover:text-[#111b21] transition-colors"
+            className="hidden sm:block text-[#54656f] hover:text-[#111b21] transition-colors"
             title="Pesquisar"
           >
             <Search className="w-5 h-5" />

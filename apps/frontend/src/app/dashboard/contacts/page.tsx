@@ -275,12 +275,12 @@ export default function ContactsPage() {
 
   // Renderização
   return (
-    <div className="p-8 space-y-6 liquid-bg min-h-screen">
+    <div className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6 liquid-bg min-h-screen">
       {/* Header */}
-      <div className="flex items-center justify-between animate-fadeIn">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-fadeIn">
         <div>
-          <h1 className="text-3xl font-bold text-[var(--text-primary)]">Contatos</h1>
-          <p className="text-[var(--text-muted)]">Gerencie os contatos do seu WhatsApp</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-[var(--text-primary)]">Contatos</h1>
+          <p className="text-sm md:text-base text-[var(--text-muted)]">Gerencie os contatos do seu WhatsApp</p>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -296,7 +296,7 @@ export default function ContactsPage() {
             variant="outline"
             size="icon"
             disabled
-            className="glass-btn"
+            className="glass-btn hidden sm:flex"
           >
             <Upload className="h-4 w-4" />
           </Button>
@@ -304,19 +304,20 @@ export default function ContactsPage() {
             variant="outline"
             size="icon"
             disabled
-            className="glass-btn"
+            className="glass-btn hidden sm:flex"
           >
             <Download className="h-4 w-4" />
           </Button>
           <Button onClick={() => setIsCreateOpen(true)} className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg">
             <Plus className="mr-2 h-4 w-4" />
-            Novo Contato
+            <span className="hidden sm:inline">Novo Contato</span>
+            <span className="sm:hidden">Novo</span>
           </Button>
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:gap-5 lg:grid-cols-4">
         {statsCards.map((stat, index) => {
           const Icon = stat.icon;
           return (

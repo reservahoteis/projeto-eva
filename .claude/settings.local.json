@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(ssh root@72.61.39.235 \"cat /root/deploy-backend/src/validators/contact.validator.ts\")"
+      "Bash(ssh root@72.61.39.235 \"cat /root/deploy-backend/src/validators/contact.validator.ts\")",
+      "Bash(ssh root@72.61.39.235 \"source ~/.bashrc && pm2 restart whatsapp-crm-api\")",
+      "Bash(ssh root@72.61.39.235:*)"
     ],
     "deny": [],
     "ask": []

@@ -88,11 +88,11 @@ export default function SettingsPage() {
   ];
 
   return (
-    <div className="p-8 space-y-6 liquid-bg min-h-screen">
+    <div className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6 liquid-bg min-h-screen">
       {/* Header */}
       <div className="animate-fadeIn">
-        <h1 className="text-3xl font-bold text-[var(--text-primary)]">Configurações</h1>
-        <p className="text-[var(--text-muted)]">Gerencie as configurações do sistema</p>
+        <h1 className="text-2xl md:text-3xl font-bold text-[var(--text-primary)]">Configurações</h1>
+        <p className="text-sm md:text-base text-[var(--text-muted)]">Gerencie as configurações do sistema</p>
       </div>
 
       <Tabs defaultValue="whatsapp" className="space-y-6">

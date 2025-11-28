@@ -264,22 +264,16 @@ export default function ConversationPage({ params }: ConversationPageProps) {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      {/* Back Button (Mobile) */}
-      <div className="lg:hidden absolute top-4 left-4 z-10">
-        <Button variant="ghost" size="sm" onClick={() => router.back()}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-      </div>
-
+    <div className="flex h-screen overflow-hidden liquid-bg">
       {/* WhatsApp-Style Chat Interface */}
-      <div className="flex-1 flex flex-col h-screen">
+      <div className="flex-1 flex flex-col h-screen w-full">
         {/* Chat Header */}
         <ChatHeader
           conversation={conversation}
           isOnline={false}
           isTyping={isUserTyping(params.id)}
           isConnected={isConnected}
+          onBack={() => router.back()}
         />
 
         {/* Message List */}
@@ -299,8 +293,10 @@ export default function ConversationPage({ params }: ConversationPageProps) {
         />
       </div>
 
-      {/* Contact Sidebar */}
-      <ContactSidebar conversation={conversation} />
+      {/* Contact Sidebar - Hidden on mobile */}
+      <div className="hidden lg:block">
+        <ContactSidebar conversation={conversation} />
+      </div>
     </div>
   );
 }
