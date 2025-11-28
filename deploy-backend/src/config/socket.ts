@@ -320,7 +320,7 @@ export function emitMessageStatusUpdate(
   if (!io) return;
 
   // Emitir para todos na conversa
-  io.to(`conversation:${conversationId}`).emit('message:status-update', {
+  io.to(`conversation:${conversationId}`).emit('message:status', {
     conversationId,
     messageId,
     status,
