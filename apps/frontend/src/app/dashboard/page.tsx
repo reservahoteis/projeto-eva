@@ -2,8 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { conversationService } from '@/services/conversation.service';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { MessageSquare, Users, Clock, CheckCircle2, AlertCircle } from 'lucide-react';
+import { MessageSquare, Users, Clock, CheckCircle2, AlertCircle, TrendingUp, Phone } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 
 export default function DashboardPage() {
@@ -16,126 +15,136 @@ export default function DashboardPage() {
 
   const statsCards = [
     {
-      title: 'Total de Conversas',
+      title: 'TOTAL CONVERSAS',
       value: stats?.total || 0,
       icon: MessageSquare,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-100',
+      iconBoxClass: 'icon-box icon-box-blue',
+      trend: '+5.2%',
+      trendUp: true,
     },
     {
-      title: 'Em Aberto',
+      title: 'EM ABERTO',
       value: stats?.open || 0,
       icon: AlertCircle,
-      color: 'text-yellow-600',
-      bgColor: 'bg-yellow-100',
+      iconBoxClass: 'icon-box icon-box-amber',
+      trend: '+3',
+      trendUp: true,
     },
     {
-      title: 'Em Andamento',
+      title: 'EM ANDAMENTO',
       value: stats?.inProgress || 0,
       icon: Clock,
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-100',
+      iconBoxClass: 'icon-box icon-box-orange',
+      trend: '+12%',
+      trendUp: true,
     },
     {
-      title: 'Resolvidas',
+      title: 'RESOLVIDAS',
       value: stats?.resolved || 0,
       icon: CheckCircle2,
-      color: 'text-green-600',
-      bgColor: 'bg-green-100',
+      iconBoxClass: 'icon-box icon-box-green',
+      trend: '+8%',
+      trendUp: true,
     },
   ];
 
   return (
-    <div className="p-8 space-y-6">
+    <div className="p-8 space-y-6 liquid-bg min-h-screen">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground">
+      <div className="animate-fadeIn">
+        <h1 className="text-3xl font-bold text-[var(--text-primary)]">Dashboard</h1>
+        <p className="text-[var(--text-muted)]">
           Bem-vindo, {user?.name}! Aqui está um resumo das suas conversas.
         </p>
       </div>
 
-      {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {statsCards.map((stat) => {
+      {/* Stats Cards - ERP Angelus Style */}
+      <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+        {statsCards.map((stat, index) => {
           const Icon = stat.icon;
           return (
-            <Card key={stat.title}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-                <div className={`rounded-full p-2 ${stat.bgColor}`}>
-                  <Icon className={`h-4 w-4 ${stat.color}`} />
+            <div
+              key={stat.title}
+              className="glass-card glass-kpi p-6 animate-slideUp"
+              style={{ animationDelay: `${index * 0.1}s` }}
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-[10px] font-semibold text-[var(--text-muted)] tracking-wider mb-2">
+                    {stat.title}
+                  </p>
+                  <p className="text-3xl font-bold text-[var(--text-primary)]">
+                    {stat.value}
+                  </p>
+                  <div className="flex items-center gap-1 mt-2">
+                    <TrendingUp className={`w-3 h-3 ${stat.trendUp ? 'text-emerald-500' : 'text-red-500'}`} />
+                    <span className={`text-xs font-medium ${stat.trendUp ? 'text-emerald-500' : 'text-red-500'}`}>
+                      {stat.trend}
+                    </span>
+                  </div>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stat.value}</div>
-              </CardContent>
-            </Card>
+                <div className={stat.iconBoxClass}>
+                  <Icon className="w-6 h-6 text-white" />
+                </div>
+              </div>
+            </div>
           );
         })}
       </div>
 
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Ações Rápidas</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
-            <a
-              href="/dashboard/conversations?status=OPEN"
-              className="flex items-center gap-3 p-4 rounded-lg border hover:bg-accent transition-colors"
-            >
-              <div className="rounded-full bg-yellow-100 p-2">
-                <AlertCircle className="h-5 w-5 text-yellow-600" />
-              </div>
-              <div>
-                <p className="font-medium">Conversas Pendentes</p>
-                <p className="text-sm text-muted-foreground">Ver todas abertas</p>
-              </div>
-            </a>
+      {/* Quick Actions - Glass Style */}
+      <div className="glass-card p-6 animate-slideUp" style={{ animationDelay: '0.4s' }}>
+        <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4">Ações Rápidas</h2>
+        <div className="grid gap-4 md:grid-cols-3">
+          <a
+            href="/dashboard/conversations?status=OPEN"
+            className="flex items-center gap-4 p-4 rounded-ios-xs bg-[var(--glass-bg-hover)] hover:bg-[var(--glass-bg-strong)] transition-all duration-200 hover:-translate-y-1"
+          >
+            <div className="icon-box icon-box-amber">
+              <AlertCircle className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <p className="font-semibold text-[var(--text-primary)]">Conversas Pendentes</p>
+              <p className="text-sm text-[var(--text-muted)]">Ver todas abertas</p>
+            </div>
+          </a>
 
-            <a
-              href="/dashboard/conversations?assignedToMe=true"
-              className="flex items-center gap-3 p-4 rounded-lg border hover:bg-accent transition-colors"
-            >
-              <div className="rounded-full bg-blue-100 p-2">
-                <Users className="h-5 w-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="font-medium">Minhas Conversas</p>
-                <p className="text-sm text-muted-foreground">Atribuídas a mim</p>
-              </div>
-            </a>
+          <a
+            href="/dashboard/conversations?assignedToMe=true"
+            className="flex items-center gap-4 p-4 rounded-ios-xs bg-[var(--glass-bg-hover)] hover:bg-[var(--glass-bg-strong)] transition-all duration-200 hover:-translate-y-1"
+          >
+            <div className="icon-box icon-box-blue">
+              <Users className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <p className="font-semibold text-[var(--text-primary)]">Minhas Conversas</p>
+              <p className="text-sm text-[var(--text-muted)]">Atribuídas a mim</p>
+            </div>
+          </a>
 
-            <a
-              href="/dashboard/contacts"
-              className="flex items-center gap-3 p-4 rounded-lg border hover:bg-accent transition-colors"
-            >
-              <div className="rounded-full bg-green-100 p-2">
-                <MessageSquare className="h-5 w-5 text-green-600" />
-              </div>
-              <div>
-                <p className="font-medium">Contatos</p>
-                <p className="text-sm text-muted-foreground">Gerenciar contatos</p>
-              </div>
-            </a>
-          </div>
-        </CardContent>
-      </Card>
+          <a
+            href="/dashboard/contacts"
+            className="flex items-center gap-4 p-4 rounded-ios-xs bg-[var(--glass-bg-hover)] hover:bg-[var(--glass-bg-strong)] transition-all duration-200 hover:-translate-y-1"
+          >
+            <div className="icon-box icon-box-green">
+              <Phone className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <p className="font-semibold text-[var(--text-primary)]">Contatos</p>
+              <p className="text-sm text-[var(--text-muted)]">Gerenciar contatos</p>
+            </div>
+          </a>
+        </div>
+      </div>
 
-      {/* WhatsApp Status */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Status do WhatsApp</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-3">
-            <div className="h-3 w-3 rounded-full bg-green-500 animate-pulse" />
-            <p className="text-sm">WhatsApp conectado e funcionando</p>
-          </div>
-        </CardContent>
-      </Card>
+      {/* WhatsApp Status - Glass Style */}
+      <div className="glass-card p-6 animate-slideUp" style={{ animationDelay: '0.5s' }}>
+        <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4">Status do WhatsApp</h2>
+        <div className="flex items-center gap-3">
+          <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse shadow-lg shadow-emerald-500/50" />
+          <p className="text-sm text-[var(--text-secondary)]">WhatsApp conectado e funcionando</p>
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/auth-context';
@@ -73,8 +74,15 @@ export function TenantSidebar() {
     <div className="flex h-screen w-64 flex-col glass-sidebar">
       {/* Logo Header - Style like ERP Angelus */}
       <div className="flex items-center gap-3 px-5 py-5 border-b border-white/5">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
-          <MessageSquare className="w-5 h-5 text-white" />
+        <div className="w-11 h-11 rounded-2xl bg-white flex items-center justify-center shadow-lg overflow-hidden">
+          <Image
+            src="/logo.png"
+            alt="Hotéis Reserva"
+            width={36}
+            height={36}
+            className="object-contain"
+            priority
+          />
         </div>
         <div className="flex flex-col">
           <span className="text-white font-semibold text-sm">Hotéis Reserva</span>
