@@ -1,9 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import { Message, MessageStatus, MessageType } from '@/types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Check, CheckCheck, Paperclip } from 'lucide-react';
+import { Check, CheckCheck, Paperclip, X, Download, ZoomIn, ZoomOut } from 'lucide-react';
 import { cn, getInitials } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
@@ -24,12 +25,29 @@ export function MessageBubble({
   contactName,
   contactAvatar
 }: MessageBubbleProps) {
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [zoom, setZoom] = useState(1);
+
   const bubbleColor = isOwnMessage ? 'bg-[#d9fdd3]' : 'bg-white';
   const alignment = isOwnMessage ? 'ml-auto' : 'mr-auto';
 
   // Obter mediaUrl do campo direto ou do metadata
   const mediaUrl = message.mediaUrl || (message.metadata as any)?.mediaUrl;
   const caption = (message.metadata as any)?.caption;
+
+  const handleDownload = () => {
+    if (!mediaUrl) return;
+    const link = document.createElement('a');
+    link.href = mediaUrl;
+    link.download = `imagem_${message.id}.jpg`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.5, 3));
+  const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.5, 0.5));
+  const resetZoom = () => setZoom(1);
 
   // Border radius dinâmico para criar efeito de agrupamento
   const getBorderRadius = () => {
@@ -117,6 +135,10 @@ export function MessageBubble({
                 src={mediaUrl}
                 alt="Imagem"
                 className="rounded-lg max-w-full max-h-[300px] mb-1 cursor-pointer hover:opacity-90 transition-opacity"
+                onClick={() => {
+                  setLightboxOpen(true);
+                  resetZoom();
+                }}
               />
             ) : (
               <div className="bg-[#f0f2f5] p-4 rounded-lg text-center text-[#667781]">
@@ -207,6 +229,80 @@ export function MessageBubble({
           <StatusIcon />
         </div>
       </div>
+
+      {/* Lightbox Modal para Imagens */}
+      {lightboxOpen && mediaUrl && message.type === MessageType.IMAGE && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
+          onClick={() => setLightboxOpen(false)}
+        >
+          {/* Toolbar */}
+          <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleZoomOut();
+              }}
+              className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+              title="Diminuir zoom"
+            >
+              <ZoomOut className="w-5 h-5 text-white" />
+            </button>
+            <span className="text-white text-sm min-w-[50px] text-center">{Math.round(zoom * 100)}%</span>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleZoomIn();
+              }}
+              className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+              title="Aumentar zoom"
+            >
+              <ZoomIn className="w-5 h-5 text-white" />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDownload();
+              }}
+              className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors ml-2"
+              title="Baixar imagem"
+            >
+              <Download className="w-5 h-5 text-white" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setLightboxOpen(false)}
+              className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors ml-2"
+              title="Fechar"
+            >
+              <X className="w-5 h-5 text-white" />
+            </button>
+          </div>
+
+          {/* Imagem */}
+          <div
+            className="max-w-[90vw] max-h-[90vh] overflow-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={mediaUrl}
+              alt="Imagem ampliada"
+              className="transition-transform duration-200"
+              style={{ transform: `scale(${zoom})`, transformOrigin: 'center center' }}
+            />
+          </div>
+
+          {/* Caption */}
+          {caption && (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/70 px-4 py-2 rounded-lg max-w-[80vw]">
+              <p className="text-white text-sm text-center">{caption}</p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
