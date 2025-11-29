@@ -266,35 +266,41 @@ export default function ConversationPage({ params }: ConversationPageProps) {
   return (
     <div className="flex h-screen overflow-hidden liquid-bg">
       {/* WhatsApp-Style Chat Interface */}
-      <div className="flex-1 flex flex-col h-screen w-full">
-        {/* Chat Header */}
-        <ChatHeader
-          conversation={conversation}
-          isOnline={false}
-          isTyping={isUserTyping(params.id)}
-          isConnected={isConnected}
-          onBack={() => router.back()}
-        />
+      <div className="flex-1 flex flex-col h-screen w-full relative">
+        {/* Chat Header - Fixed at top */}
+        <div className="flex-shrink-0">
+          <ChatHeader
+            conversation={conversation}
+            isOnline={false}
+            isTyping={isUserTyping(params.id)}
+            isConnected={isConnected}
+            onBack={() => router.back()}
+          />
+        </div>
 
-        {/* Message List */}
-        <MessageList
-          messages={messagesData?.data || []}
-          isTyping={isUserTyping(params.id)}
-          contactName={conversation.contact.name || conversation.contact.phoneNumber}
-          contactAvatar={conversation.contact.profilePictureUrl}
-        />
+        {/* Message List - Takes remaining space */}
+        <div className="flex-1 overflow-hidden">
+          <MessageList
+            messages={messagesData?.data || []}
+            isTyping={isUserTyping(params.id)}
+            contactName={conversation.contact.name || conversation.contact.phoneNumber}
+            contactAvatar={conversation.contact.profilePictureUrl}
+          />
+        </div>
 
-        {/* Chat Input */}
-        <ChatInput
-          onSendMessage={handleSendMessage}
-          onTypingChange={handleTypingChange}
-          disabled={!isConnected}
-          isLoading={sendMutation.isPending}
-        />
+        {/* Chat Input - Fixed at bottom */}
+        <div className="flex-shrink-0 sticky bottom-0 z-10">
+          <ChatInput
+            onSendMessage={handleSendMessage}
+            onTypingChange={handleTypingChange}
+            disabled={!isConnected}
+            isLoading={sendMutation.isPending}
+          />
+        </div>
       </div>
 
       {/* Contact Sidebar - Hidden on mobile */}
-      <div className="hidden lg:block">
+      <div className="hidden lg:block flex-shrink-0">
         <ContactSidebar conversation={conversation} />
       </div>
     </div>

@@ -89,7 +89,7 @@ export function MessageList({ messages, isTyping, contactName, contactAvatar }: 
     <div
       ref={containerRef}
       onScroll={handleScroll}
-      className="flex-1 overflow-y-auto px-4 py-3"
+      className="h-full overflow-y-auto px-4 py-3"
       style={{
         backgroundColor: '#e5ddd5',
         backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23d1d7db' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
@@ -144,7 +144,7 @@ export function MessageList({ messages, isTyping, contactName, contactAvatar }: 
         <button
           onClick={() => scrollToBottom('smooth')}
           className={cn(
-            "fixed bottom-24 right-8 w-11 h-11 rounded-full",
+            "sticky bottom-4 left-full -translate-x-16 w-11 h-11 rounded-full",
             "bg-white shadow-lg flex items-center justify-center",
             "text-[#54656f] hover:text-[#111b21]",
             "transition-all duration-300 hover:scale-110",
