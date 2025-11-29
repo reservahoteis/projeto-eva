@@ -3,15 +3,12 @@ import { prisma } from '@/config/database';
 import { whatsAppService } from '@/services/whatsapp.service';
 import logger from '@/config/logger';
 import type { DownloadMediaJobData } from '../whatsapp-webhook.queue';
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import { env } from '@/config/env';
 
 /**
  * Worker para baixar mídias do WhatsApp
- * Baixa e armazena localmente (ou pode integrar com S3/Cloudinary)
+ * Converte para base64 data URL para evitar problemas de filesystem no Docker
  */
-export async function processMediaDownload(job: Job<DownloadMediaJobData>): Promise<{ size: number; path: string }> {
+export async function processMediaDownload(job: Job<DownloadMediaJobData>): Promise<{ size: number; mediaUrl: string }> {
   const { tenantId, messageId, mediaId, mediaType, mimeType } = job.data;
 
   logger.info(
@@ -49,63 +46,50 @@ export async function processMediaDownload(job: Job<DownloadMediaJobData>): Prom
       throw new Error(`Tenant mismatch: expected ${tenantId}, got ${message.tenantId}`);
     }
 
-    // Verificar se já foi baixada
-    if ((message.metadata as any)?.localPath) {
+    // Verificar se já foi baixada (verificar mediaUrl no metadata)
+    if ((message.metadata as any)?.mediaUrl) {
       logger.info(
         {
           jobId: job.id,
           messageId,
-          localPath: (message.metadata as any).localPath,
         },
         'Media already downloaded, skipping'
       );
       return {
         size: (message.metadata as any).fileSize || 0,
-        path: (message.metadata as any).localPath,
+        mediaUrl: (message.metadata as any).mediaUrl,
       };
     }
 
-    // 2. BAIXAR MÍDIA DO WHATSAPP
-    const buffer = await whatsAppService.downloadMedia(tenantId, mediaId);
+    // 2. BAIXAR MÍDIA DO WHATSAPP COMO DATA URL (base64)
+    // Normalizar o mimeType removendo parâmetros extras (ex: "audio/ogg; codecs=opus" -> "audio/ogg")
+    const cleanMimeType = mimeType.split(';')[0].trim();
+
+    const mediaUrl = await whatsAppService.downloadMediaAsDataUrl(tenantId, mediaId, cleanMimeType);
+
+    if (!mediaUrl) {
+      throw new Error(`Failed to download media ${mediaId}`);
+    }
+
+    // Calcular tamanho aproximado do arquivo (base64 é ~33% maior que o binário)
+    const base64Data = mediaUrl.split(',')[1] || '';
+    const fileSize = Math.round(base64Data.length * 0.75);
 
     logger.debug(
       {
         jobId: job.id,
         messageId,
         mediaId,
-        bufferSize: buffer.length,
+        fileSize,
       },
-      'Media downloaded from WhatsApp'
+      'Media downloaded as data URL'
     );
 
-    // 3. SALVAR NO SISTEMA DE ARQUIVOS
-    // IMPORTANTE: Em produção, considere usar S3, Cloudinary, ou similar
-    const uploadDir = path.join(process.cwd(), 'uploads', 'media', tenantId);
-    await fs.mkdir(uploadDir, { recursive: true });
-
-    // Gerar nome de arquivo único
-    const extension = getFileExtension(mimeType);
-    const fileName = `${mediaId}_${Date.now()}${extension}`;
-    const filePath = path.join(uploadDir, fileName);
-
-    await fs.writeFile(filePath, buffer);
-
-    logger.info(
-      {
-        jobId: job.id,
-        messageId,
-        mediaId,
-        filePath,
-        fileSize: buffer.length,
-      },
-      'Media saved to disk'
-    );
-
-    // 4. ATUALIZAR METADATA DA MENSAGEM COM O PATH LOCAL
+    // 3. ATUALIZAR METADATA DA MENSAGEM COM O DATA URL
     const updatedMetadata = {
       ...(message.metadata as any),
-      localPath: filePath,
-      fileSize: buffer.length,
+      mediaUrl, // Data URL base64
+      fileSize,
       downloadedAt: new Date().toISOString(),
     };
 
@@ -124,15 +108,14 @@ export async function processMediaDownload(job: Job<DownloadMediaJobData>): Prom
         tenantId,
         messageId,
         mediaId,
-        filePath,
-        fileSize: buffer.length,
+        fileSize,
       },
       'Media download completed successfully'
     );
 
     return {
-      size: buffer.length,
-      path: filePath,
+      size: fileSize,
+      mediaUrl,
     };
   } catch (error) {
     logger.error(
