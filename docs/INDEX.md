@@ -1,287 +1,229 @@
-# 📚 Índice Geral da Documentação
+# GitHub Actions Deploy - Documentation Index
 
-**Projeto:** CRM WhatsApp SaaS Multi-Tenant
-**Última atualização:** 16/11/2025
-**Versão:** 1.3.0
+Índice completo da documentação de deploy automático via GitHub Actions.
 
 ---
 
-## 🎯 Início Rápido
+## Início Rápido
 
-Se você é novo no projeto, comece por aqui:
+**Novo usuário? Comece aqui:**
 
-1. **[README.md](../README.md)** - Visão geral e quick start
-2. **[DOCUMENTACAO-COMPLETA.md](./DOCUMENTACAO-COMPLETA.md)** - Documentação técnica completa
-3. **[DEPLOY-PRODUCTION.md](./DEPLOY-PRODUCTION.md)** - Como fazer deploy
+1. [QUICKSTART.md](QUICKSTART.md) - Guia de 5 minutos para configurar deploy automático
 
 ---
 
-## 📖 Documentação por Categoria
+## Documentação Completa
 
-### 🏗️ Arquitetura e Conceitos
+### Setup e Configuração
 
-| Documento | Descrição | Público |
-|-----------|-----------|---------|
-| [DOCUMENTACAO-COMPLETA.md](./DOCUMENTACAO-COMPLETA.md) | Documentação técnica completa - História, arquitetura, problemas e soluções | Desenvolvedores |
-| [ARQUITETURA-IDEAL.md](./ARQUITETURA-IDEAL.md) | Boas práticas e anti-patterns - O que fazer e o que NÃO fazer | Desenvolvedores |
-| [MODELO-PROJETO-SUCESSO.md](./MODELO-PROJETO-SUCESSO.md) | Template copy-paste para novos projetos similares | Tech Leads |
+| Documento | Descrição | Quando Usar |
+|-----------|-----------|-------------|
+| [QUICKSTART.md](QUICKSTART.md) | Guia rápido de 5 minutos | Primeira configuração |
+| [DEPLOY-SETUP.md](DEPLOY-SETUP.md) | Guia completo passo-a-passo | Setup detalhado e referência |
+| [SECRETS-EXAMPLE.md](SECRETS-EXAMPLE.md) | Configuração de GitHub Secrets | Configurar variáveis sensíveis |
+| [README.md](README.md) | Visão geral da estrutura | Entender a arquitetura |
 
-### 🚀 Deploy e DevOps
+### Operação e Manutenção
 
-| Documento | Descrição | Público |
-|-----------|-----------|---------|
-| **[DEPLOY-PRODUCTION.md](./DEPLOY-PRODUCTION.md)** | **Guia completo de CI/CD e deploy em produção** | DevOps, Desenvolvedores |
-| [GUIA-DEPLOY.md](./GUIA-DEPLOY.md) | Guia de deploy manual (versão antiga) | DevOps |
-| [DEPLOYMENT-DOCKER-FIX.md](./DEPLOYMENT-DOCKER-FIX.md) | Fix do workflow de deployment usando Docker Compose | DevOps |
-| [SSH-KEY-SETUP-GUIDE.md](./SSH-KEY-SETUP-GUIDE.md) | Configuração de chaves SSH para deploy | DevOps |
+| Documento | Descrição | Quando Usar |
+|-----------|-----------|-------------|
+| [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | Solução de problemas | Quando algo falhar |
+| [MAINTENANCE.md](MAINTENANCE.md) | Comandos úteis e manutenção | Operação diária |
 
-### 🔧 Troubleshooting e Fixes
+### Arquivos Técnicos
 
-| Documento | Descrição | Público |
-|-----------|-----------|---------|
-| **[TROUBLESHOOTING.md](./TROUBLESHOOTING.md)** | **Guia completo de soluções para todos os erros** | Todos |
-| **[CORS-FIX-2025-11-15.md](./CORS-FIX-2025-11-15.md)** | **Fix de CORS para múltiplas origens + problema .env** | Desenvolvedores |
-| [CHANGELOG-SSL.md](./CHANGELOG-SSL.md) | Configuração de SSL/HTTPS com Let's Encrypt | DevOps |
-| [CHANGELOG-WEBHOOK-V2.md](./CHANGELOG-WEBHOOK-V2.md) | Atualização do webhook WhatsApp para v2 | Desenvolvedores |
-
-### 💬 WhatsApp Business API
-
-| Documento | Descrição | Público |
-|-----------|-----------|---------|
-| **[GUIA-META-WHATSAPP-API.md](./GUIA-META-WHATSAPP-API.md)** | **Configuração completa da Meta WhatsApp Cloud API** | Desenvolvedores |
-| **[GUIA-TESTE-MENSAGENS.md](./GUIA-TESTE-MENSAGENS.md)** | **Guia completo para testar envio e recebimento de mensagens** | Desenvolvedores, QA |
-
-### 🗄️ Banco de Dados
-
-| Documento | Descrição | Público |
-|-----------|-----------|---------|
-| **[DBEAVER-SETUP.md](./DBEAVER-SETUP.md)** | **Configuração de acesso ao banco via DBeaver** | Desenvolvedores, DevOps |
-
-### 🎨 Frontend
-
-| Documento | Descrição | Público |
-|-----------|-----------|---------|
-| [FRONTEND-GUIA-RAPIDO.md](./FRONTEND-GUIA-RAPIDO.md) | Setup e desenvolvimento do frontend Next.js | Frontend Devs |
-
-### 📝 Changelogs e Histórico
-
-| Documento | Descrição | Público |
-|-----------|-----------|---------|
-| **[CHANGELOG-2025-11-16.md](./CHANGELOG-2025-11-16.md)** | **Limpeza DB + Tenant Hoteis Reserva + DNS Wildcard (16/11/2025)** | Todos |
-| **[CHANGELOG-2025-11-15.md](./CHANGELOG-2025-11-15.md)** | **Resumo completo do dia 15/11/2025 - CI/CD + CORS + Fixes** | Todos |
-| [CHANGELOG-SSL.md](./CHANGELOG-SSL.md) | Configuração SSL (12/11/2025) | DevOps |
-| [CHANGELOG-WEBHOOK-V2.md](./CHANGELOG-WEBHOOK-V2.md) | WhatsApp Webhook v2 (13/11/2025) | Desenvolvedores |
-
-### 👥 Equipe e Processos
-
-| Documento | Descrição | Público |
-|-----------|-----------|---------|
-| [AGENTES-EQUIPE.md](./AGENTES-EQUIPE.md) | Descrição da equipe e agentes do projeto | Gestores |
-| [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md) | Código de conduta do projeto | Todos |
-| [DOCUMENTACAO-DEFINITIVA.md](./DOCUMENTACAO-DEFINITIVA.md) | Versão antiga da documentação (deprecated) | Histórico |
+| Arquivo | Descrição | Tipo |
+|---------|-----------|------|
+| [workflows/deploy-production.yml](workflows/deploy-production.yml) | Workflow de deploy | YAML |
+| [scripts/setup-deploy-keys.sh](scripts/setup-deploy-keys.sh) | Script de setup SSH | Shell |
 
 ---
 
-## 🗂️ Documentação por Fluxo de Trabalho
+## Fluxo de Uso
 
-### 1️⃣ Novo Desenvolvedor no Projeto
+### 1. Primeira Configuração
 
-1. **[README.md](../README.md)** - Entenda o projeto
-2. **[DOCUMENTACAO-COMPLETA.md](./DOCUMENTACAO-COMPLETA.md)** - Leia a documentação técnica completa
-3. **[ARQUITETURA-IDEAL.md](./ARQUITETURA-IDEAL.md)** - Aprenda as boas práticas
-4. **[FRONTEND-GUIA-RAPIDO.md](./FRONTEND-GUIA-RAPIDO.md)** (se frontend) - Setup do ambiente
+```
+QUICKSTART.md
+    ↓
+[Configurar SSH Keys no VPS]
+    ↓
+[Configurar GitHub Secrets]
+    ↓
+[Testar primeiro deploy]
+    ↓
+DEPLOY-SETUP.md (para detalhes)
+```
 
-### 2️⃣ Fazer Deploy em Produção
+### 2. Operação Diária
 
-1. **[DEPLOY-PRODUCTION.md](./DEPLOY-PRODUCTION.md)** - Guia completo de CI/CD
-2. **[SSH-KEY-SETUP-GUIDE.md](./SSH-KEY-SETUP-GUIDE.md)** - Configurar chaves SSH
-3. **[TROUBLESHOOTING.md](./TROUBLESHOOTING.md)** - Se algo der errado
+```
+[Fazer mudanças no código]
+    ↓
+git push origin master
+    ↓
+[Deploy automático]
+    ↓
+[Se falhar] → TROUBLESHOOTING.md
+    ↓
+[Se sucesso] → Monitorar via MAINTENANCE.md
+```
 
-### 3️⃣ Configurar WhatsApp Business API
+### 3. Troubleshooting
 
-1. **[GUIA-META-WHATSAPP-API.md](./GUIA-META-WHATSAPP-API.md)** - Passo a passo completo
-2. **[CHANGELOG-WEBHOOK-V2.md](./CHANGELOG-WEBHOOK-V2.md)** - Entender webhook v2
-
-### 4️⃣ Resolver Problemas
-
-1. **[TROUBLESHOOTING.md](./TROUBLESHOOTING.md)** - Busque o erro aqui
-2. **[CORS-FIX-2025-11-15.md](./CORS-FIX-2025-11-15.md)** - Se for problema de CORS
-3. **[DEPLOYMENT-DOCKER-FIX.md](./DEPLOYMENT-DOCKER-FIX.md)** - Se for problema de deploy
-4. **[DOCUMENTACAO-COMPLETA.md](./DOCUMENTACAO-COMPLETA.md)** - Seção de troubleshooting
-
-### 5️⃣ Criar Projeto Novo Similar
-
-1. **[MODELO-PROJETO-SUCESSO.md](./MODELO-PROJETO-SUCESSO.md)** - Template completo
-2. **[ARQUITETURA-IDEAL.md](./ARQUITETURA-IDEAL.md)** - Boas práticas
-
----
-
-## 📊 Status dos Documentos
-
-| Documento | Status | Última Atualização |
-|-----------|--------|-------------------|
-| CHANGELOG-2025-11-16.md | ✅ Completo | 16/11/2025 |
-| DBEAVER-SETUP.md | ✅ Completo | 16/11/2025 |
-| GUIA-TESTE-MENSAGENS.md | ✅ Completo | 16/11/2025 |
-| DEPLOY-PRODUCTION.md | ✅ Completo | 15/11/2025 |
-| TROUBLESHOOTING.md | ✅ Completo | 15/11/2025 |
-| CHANGELOG-2025-11-15.md | ✅ Completo | 15/11/2025 |
-| CORS-FIX-2025-11-15.md | ✅ Completo | 15/11/2025 |
-| DOCUMENTACAO-COMPLETA.md | ✅ Completo | 15/11/2025 |
-| GUIA-META-WHATSAPP-API.md | ✅ Completo | 13/11/2025 |
-| CHANGELOG-SSL.md | ✅ Completo | 12/11/2025 |
-| CHANGELOG-WEBHOOK-V2.md | ✅ Completo | 13/11/2025 |
-| ARQUITETURA-IDEAL.md | ✅ Completo | 10/11/2025 |
-| MODELO-PROJETO-SUCESSO.md | ✅ Completo | 10/11/2025 |
-| FRONTEND-GUIA-RAPIDO.md | ✅ Completo | 10/11/2025 |
-| GUIA-DEPLOY.md | ⚠️ Deprecated | 10/11/2025 |
-| DOCUMENTACAO-DEFINITIVA.md | ⚠️ Deprecated | 10/11/2025 |
-
-**Legenda:**
-- ✅ Completo e atualizado
-- ⚠️ Deprecated (usar versão mais nova)
-- 🔄 Em atualização
-
----
-
-## 🔍 Busca Rápida por Tópico
-
-### A
-- **Arquitetura:** [DOCUMENTACAO-COMPLETA.md](./DOCUMENTACAO-COMPLETA.md), [ARQUITETURA-IDEAL.md](./ARQUITETURA-IDEAL.md)
-- **Autenticação:** [DOCUMENTACAO-COMPLETA.md](./DOCUMENTACAO-COMPLETA.md) - Seção Autenticação
-- **API Endpoints:** [DOCUMENTACAO-COMPLETA.md](./DOCUMENTACAO-COMPLETA.md) - Seção API
-
-### B
-- **Backups:** [DEPLOY-PRODUCTION.md](./DEPLOY-PRODUCTION.md) - Seção Backups
-- **Build Docker:** [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) - Erros de Build
-
-### C
-- **CI/CD:** [DEPLOY-PRODUCTION.md](./DEPLOY-PRODUCTION.md)
-- **CORS:** [CORS-FIX-2025-11-15.md](./CORS-FIX-2025-11-15.md), [TROUBLESHOOTING.md](./TROUBLESHOOTING.md)
-- **Containers:** [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) - Erros de Docker
-
-### D
-- **Deploy:** [DEPLOY-PRODUCTION.md](./DEPLOY-PRODUCTION.md)
-- **Docker:** [DEPLOYMENT-DOCKER-FIX.md](./DEPLOYMENT-DOCKER-FIX.md), [TROUBLESHOOTING.md](./TROUBLESHOOTING.md)
-- **Database:** [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) - Erros de Banco de Dados
-
-### E
-- **Erros:** [TROUBLESHOOTING.md](./TROUBLESHOOTING.md)
-- **Environment Variables:** [CORS-FIX-2025-11-15.md](./CORS-FIX-2025-11-15.md)
-
-### F
-- **Frontend:** [FRONTEND-GUIA-RAPIDO.md](./FRONTEND-GUIA-RAPIDO.md)
-- **Fixes:** [CHANGELOG-2025-11-15.md](./CHANGELOG-2025-11-15.md)
-
-### G
-- **GitHub Actions:** [DEPLOY-PRODUCTION.md](./DEPLOY-PRODUCTION.md)
-
-### M
-- **Migrations:** [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) - Erros de Banco de Dados
-- **Multi-Tenant:** [DOCUMENTACAO-COMPLETA.md](./DOCUMENTACAO-COMPLETA.md) - Seção Multi-Tenancy
-
-### N
-- **Nginx:** [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) - Erros de Nginx
-
-### P
-- **PostgreSQL:** [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) - Erros de Banco de Dados
-- **Performance:** [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) - Problemas de Performance
-
-### R
-- **Rate Limiting:** [CHANGELOG-2025-11-15.md](./CHANGELOG-2025-11-15.md), [TROUBLESHOOTING.md](./TROUBLESHOOTING.md)
-- **Redis:** [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) - Erros de Docker
-- **Rollback:** [DEPLOY-PRODUCTION.md](./DEPLOY-PRODUCTION.md) - Seção Rollback
-
-### S
-- **SSH:** [SSH-KEY-SETUP-GUIDE.md](./SSH-KEY-SETUP-GUIDE.md)
-- **SSL/HTTPS:** [CHANGELOG-SSL.md](./CHANGELOG-SSL.md)
-- **Secrets:** [DEPLOY-PRODUCTION.md](./DEPLOY-PRODUCTION.md) - Seção Secrets
-
-### T
-- **Tenant:** [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) - Erros de Tenant
-- **TypeScript:** [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) - Erros de Build
-
-### W
-- **WhatsApp:** [GUIA-META-WHATSAPP-API.md](./GUIA-META-WHATSAPP-API.md)
-- **Webhook:** [CHANGELOG-WEBHOOK-V2.md](./CHANGELOG-WEBHOOK-V2.md)
-- **Workflow:** [DEPLOY-PRODUCTION.md](./DEPLOY-PRODUCTION.md)
-
----
-
-## 📱 Contato e Suporte
-
-- **Issues:** https://github.com/fredcast/projeto-eva/issues
-- **Discussões:** https://github.com/fredcast/projeto-eva/discussions
-- **Email:** Criar issue no GitHub
-
----
-
-## 📝 Contribuindo com a Documentação
-
-### Como Atualizar Documentos
-
-1. Sempre adicionar data de atualização no topo
-2. Usar markdown formatado (tabelas, code blocks, etc.)
-3. Adicionar exemplos práticos
-4. Linkar documentos relacionados
-5. Atualizar este INDEX.md
-
-### Estrutura de um Bom Documento
-
-```markdown
-# Título do Documento
-
-**Última atualização:** DD/MM/YYYY
-**Versão:** X.Y.Z
-**Status:** Completo/Em atualização/Deprecated
-
----
-
-## Índice
-
-1. [Seção 1](#seção-1)
-2. [Seção 2](#seção-2)
-
----
-
-## Seção 1
-
-Conteúdo...
-
----
-
-## Seção 2
-
-Conteúdo...
-
----
-
-## Links Relacionados
-
-- [Doc relacionado 1](./doc1.md)
-- [Doc relacionado 2](./doc2.md)
+```
+[Erro ocorreu]
+    ↓
+TROUBLESHOOTING.md
+    ↓
+[Encontrar erro específico]
+    ↓
+[Aplicar solução]
+    ↓
+[Se não resolver] → DEPLOY-SETUP.md
 ```
 
 ---
 
-## 🎯 Roadmap da Documentação
+## Por Caso de Uso
 
-### Próximos Documentos
+### Sou novo e quero configurar deploy automático
+→ **[QUICKSTART.md](QUICKSTART.md)**
 
-- [ ] **API-REFERENCE.md** - Referência completa de endpoints
-- [ ] **TESTING-GUIDE.md** - Guia de testes (unit, integration, e2e)
-- [ ] **MONITORING-SETUP.md** - Configuração de logs e métricas
-- [ ] **SECURITY-BEST-PRACTICES.md** - Segurança do projeto
+### Preciso de instruções detalhadas de setup
+→ **[DEPLOY-SETUP.md](DEPLOY-SETUP.md)**
 
-### Melhorias Planejadas
+### O deploy falhou
+→ **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)**
 
-- [ ] Adicionar diagramas de arquitetura
-- [ ] Vídeos tutoriais
-- [ ] FAQ consolidado
-- [ ] Glossário de termos técnicos
+### Preciso configurar secrets
+→ **[SECRETS-EXAMPLE.md](SECRETS-EXAMPLE.md)**
+
+### Quero comandos úteis para o dia-a-dia
+→ **[MAINTENANCE.md](MAINTENANCE.md)**
+
+### Quero entender a estrutura do projeto
+→ **[README.md](README.md)**
+
+### Preciso modificar o workflow
+→ **[workflows/deploy-production.yml](workflows/deploy-production.yml)**
 
 ---
 
-**Última atualização:** 16/11/2025
-**Versão do Índice:** 1.3.0
-**Status:** ✅ Completo e atualizado
+## Checklist Geral
+
+Use este checklist para garantir que configurou tudo:
+
+### Setup Inicial
+
+- [ ] Leu [QUICKSTART.md](QUICKSTART.md)
+- [ ] SSH key gerada no VPS
+- [ ] GitHub Secrets configurados (4 secrets)
+- [ ] Diretório `/root/deploy-backend` criado
+- [ ] Arquivo `.env.production` criado
+- [ ] Docker rodando no VPS
+- [ ] Primeiro deploy testado
+- [ ] Health check retornando 200
+
+### Pós-Setup
+
+- [ ] Leu [TROUBLESHOOTING.md](TROUBLESHOOTING.md) (para referência)
+- [ ] Marcou [MAINTENANCE.md](MAINTENANCE.md) para consulta futura
+- [ ] Configurou backups automáticos
+- [ ] Documentou credenciais em local seguro
+- [ ] Configurou monitoramento (opcional)
+
+### Operação Diária
+
+- [ ] Deploy automático funcionando (push → deploy)
+- [ ] Sabe onde ver logs (GitHub Actions)
+- [ ] Sabe como fazer rollback (TROUBLESHOOTING.md)
+- [ ] Tem comandos úteis salvos (MAINTENANCE.md)
+
+---
+
+## Estrutura de Pastas
+
+```
+.github/
+├── workflows/
+│   └── deploy-production.yml       # Workflow principal de deploy
+├── scripts/
+│   └── setup-deploy-keys.sh        # Helper para gerar SSH keys
+├── INDEX.md                        # Este arquivo (índice)
+├── QUICKSTART.md                   # Guia rápido (5 min)
+├── DEPLOY-SETUP.md                 # Guia completo (detalhado)
+├── SECRETS-EXAMPLE.md              # Configuração de secrets
+├── TROUBLESHOOTING.md              # Solução de problemas
+├── MAINTENANCE.md                  # Comandos úteis
+└── README.md                       # Visão geral
+```
+
+---
+
+## Glossário
+
+| Termo | Significado |
+|-------|-------------|
+| **VPS** | Virtual Private Server (seu servidor de produção) |
+| **GitHub Actions** | Serviço de CI/CD do GitHub |
+| **Workflow** | Arquivo YAML que define o pipeline de deploy |
+| **Secret** | Variável sensível armazenada de forma segura no GitHub |
+| **SSH Key** | Chave criptográfica para autenticação SSH |
+| **rsync** | Ferramenta para sincronizar arquivos via SSH |
+| **Health Check** | Endpoint para verificar se aplicação está saudável |
+| **Rollback** | Reverter para versão anterior |
+| **Docker Compose** | Ferramenta para orquestrar múltiplos containers |
+
+---
+
+## Referências Externas
+
+- [GitHub Actions Documentation](https://docs.github.com/en/actions)
+- [Docker Documentation](https://docs.docker.com/)
+- [Prisma Documentation](https://www.prisma.io/docs/)
+- [SSH Key Management](https://www.ssh.com/academy/ssh/key)
+- [Nginx Documentation](https://nginx.org/en/docs/)
+
+---
+
+## Versões
+
+| Versão | Data | Mudanças |
+|--------|------|----------|
+| 1.0.0 | 2025-11-15 | Release inicial |
+
+---
+
+## Suporte
+
+Se você não encontrar a resposta na documentação:
+
+1. Verifique [TROUBLESHOOTING.md](TROUBLESHOOTING.md) para erros específicos
+2. Revise [DEPLOY-SETUP.md](DEPLOY-SETUP.md) para configuração completa
+3. Consulte [MAINTENANCE.md](MAINTENANCE.md) para comandos úteis
+4. Abra uma issue no repositório com detalhes do problema
+
+---
+
+## Navegação Rápida
+
+**Por Nível de Experiência:**
+
+- **Iniciante**: QUICKSTART.md → DEPLOY-SETUP.md
+- **Intermediário**: README.md → MAINTENANCE.md
+- **Avançado**: workflows/deploy-production.yml → TROUBLESHOOTING.md
+
+**Por Objetivo:**
+
+- **Configurar**: QUICKSTART.md
+- **Entender**: README.md + DEPLOY-SETUP.md
+- **Resolver**: TROUBLESHOOTING.md
+- **Operar**: MAINTENANCE.md
+- **Securizar**: SECRETS-EXAMPLE.md
+
+---
+
+**Última atualização**: 2025-11-15
+
+**Próximos passos sugeridos**: Leia [QUICKSTART.md](QUICKSTART.md) para começar!
