@@ -183,14 +183,14 @@ export function KanbanBoardRealtime({ initialConversations, onUpdate }: KanbanBo
           </div>
         )}
 
-        <div className="flex gap-4 p-6 h-full min-w-max" role="region" aria-label="Colunas do Kanban">
+        <div className="flex gap-3 sm:gap-4 p-4 sm:p-6 h-full min-w-max" role="region" aria-label="Colunas do Kanban">
           {columns.map((column) => {
             const columnConversations = getConversationsForColumn(column.id);
 
             return (
               <div
                 key={column.id}
-                className="flex flex-col w-80 flex-shrink-0"
+                className="flex flex-col w-72 sm:w-80 flex-shrink-0"
                 role="region"
                 aria-label={`Coluna ${column.title}`}
               >
@@ -231,7 +231,7 @@ export function KanbanBoardRealtime({ initialConversations, onUpdate }: KanbanBo
                               {...provided.draggableProps}
                               {...provided.dragHandleProps}
                               className={cn(snapshot.isDragging && 'opacity-50')}
-                              aria-label={`Conversa com ${conversation.contact?.name || conversation.contact?.phone || 'contato'}`}
+                              aria-label={`Conversa com ${conversation.contact?.name || conversation.contact?.phoneNumber || 'contato'}`}
                             >
                               <ConversationCard conversation={conversation} onUpdate={onUpdate} />
                             </div>

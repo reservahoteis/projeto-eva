@@ -68,7 +68,7 @@ export function MessageBubble({
   };
 
   return (
-    <div className={cn('flex items-end gap-2 max-w-[65%] mb-1', alignment)}>
+    <div className={cn('flex items-end gap-2 max-w-[85%] sm:max-w-[75%] md:max-w-[65%] mb-1', alignment)}>
       {!isOwnMessage && (
         <>
           {showAvatar ? (
@@ -143,7 +143,7 @@ export function MessageBubble({
         )}
 
         {message.type === MessageType.AUDIO && (
-          <div className="flex items-center gap-2 min-w-[200px]">
+          <div className="flex items-center gap-2 min-w-[150px] sm:min-w-[200px]">
             <audio controls className="w-full h-8" style={{ maxWidth: '100%' }}>
               <source src={message.mediaUrl} type="audio/mpeg" />
             </audio>

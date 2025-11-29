@@ -77,18 +77,18 @@ export function ContactSidebar({ conversation }: ContactSidebarProps) {
   };
 
   return (
-    <div className="w-80 border-l bg-card overflow-y-auto">
-      <div className="p-6 space-y-6">
+    <div className="w-72 lg:w-80 xl:w-96 border-l bg-card overflow-y-auto h-full">
+      <div className="p-4 lg:p-6 space-y-4 lg:space-y-6">
         {/* Contact Info */}
-        <div className="text-center space-y-4">
-          <Avatar className="h-24 w-24 mx-auto">
-            <AvatarFallback className="bg-whatsapp-green text-white text-2xl">
+        <div className="text-center space-y-3 lg:space-y-4">
+          <Avatar className="h-20 w-20 lg:h-24 lg:w-24 mx-auto">
+            <AvatarFallback className="bg-whatsapp-green text-white text-xl lg:text-2xl">
               {getInitials(conversation.contact.name || conversation.contact.phoneNumber)}
             </AvatarFallback>
           </Avatar>
           <div>
-            <h2 className="text-xl font-bold">{conversation.contact.name || 'Sem nome'}</h2>
-            <p className="text-sm text-muted-foreground">{formatPhoneNumber(conversation.contact.phoneNumber)}</p>
+            <h2 className="text-lg lg:text-xl font-bold truncate px-2">{conversation.contact.name || 'Sem nome'}</h2>
+            <p className="text-xs lg:text-sm text-muted-foreground">{formatPhoneNumber(conversation.contact.phoneNumber)}</p>
           </div>
         </div>
 

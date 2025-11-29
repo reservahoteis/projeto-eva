@@ -388,112 +388,182 @@ export default function ContactsPage() {
             )}
           </div>
         ) : (
-          <div className="rounded-ios-xs overflow-hidden border border-[var(--glass-border)]">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-[var(--glass-bg-hover)]">
-                  <TableHead className="text-[var(--text-secondary)]">Contato</TableHead>
-                  <TableHead className="text-[var(--text-secondary)]">Telefone</TableHead>
-                  <TableHead className="text-[var(--text-secondary)]">Email</TableHead>
-                  <TableHead className="text-[var(--text-secondary)]">Conversas</TableHead>
-                  <TableHead className="text-[var(--text-secondary)]">Última Interação</TableHead>
-                  <TableHead className="text-right text-[var(--text-secondary)]">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {contactsData.data.map((contact) => (
-                  <TableRow key={contact.id} className="hover:bg-[var(--glass-bg-hover)] transition-colors">
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar>
-                          <AvatarImage src={contact.profilePictureUrl} />
-                          <AvatarFallback
-                            style={{
-                              backgroundColor: contactService.getAvatarColor(contact.id),
-                            }}
-                          >
-                            {contactService.getInitials(contact.name)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium text-[var(--text-primary)]">
-                            {contact.name || 'Sem nome'}
-                          </p>
-                          <p className="text-sm text-[var(--text-muted)]">
-                            ID: {contact.id.slice(0, 8)}...
-                          </p>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Phone className="h-3 w-3 text-[var(--text-muted)]" />
-                        <span className="font-mono text-sm text-[var(--text-secondary)]">
+          <>
+            {/* Mobile View - Cards */}
+            <div className="md:hidden space-y-3">
+              {contactsData.data.map((contact) => (
+                <div key={contact.id} className="p-4 rounded-ios-xs border border-[var(--glass-border)] bg-[var(--glass-bg-hover)]">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <Avatar className="h-12 w-12 flex-shrink-0">
+                        <AvatarImage src={contact.profilePictureUrl} />
+                        <AvatarFallback
+                          style={{
+                            backgroundColor: contactService.getAvatarColor(contact.id),
+                          }}
+                        >
+                          {contactService.getInitials(contact.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-[var(--text-primary)] truncate">
+                          {contact.name || 'Sem nome'}
+                        </p>
+                        <p className="text-sm text-[var(--text-muted)] font-mono">
                           {contactService.formatPhoneNumber(contact.phoneNumber)}
-                        </span>
+                        </p>
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      {contact.email ? (
-                        <div className="flex items-center gap-1">
-                          <Mail className="h-3 w-3 text-[var(--text-muted)]" />
-                          <span className="text-sm text-[var(--text-secondary)]">{contact.email}</span>
-                        </div>
-                      ) : (
-                        <span className="text-[var(--text-muted)]">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className="gap-1 bg-[var(--glass-bg-strong)]">
-                        <MessageSquare className="h-3 w-3" />
-                        {contact.conversationsCount || contact._count?.conversations || 0}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {contact.lastConversationAt ? (
-                        <span className="text-sm text-[var(--text-muted)]">
-                          {formatDistanceToNow(
-                            new Date(contact.lastConversationAt),
-                            { addSuffix: true, locale: ptBR }
-                          )}
-                        </span>
-                      ) : (
-                        <span className="text-[var(--text-muted)]">Nunca</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="glass-card border-[var(--glass-border)]">
-                          <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => setEditingContact(contact)}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Editar
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="text-red-600"
-                            onClick={() => setDeletingContact(contact)}
-                            disabled={
-                              (contact.conversationsCount ||
-                               contact._count?.conversations || 0) > 0
-                            }
-                          >
-                            <Trash className="mr-2 h-4 w-4" />
-                            Remover
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="flex-shrink-0">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="glass-card border-[var(--glass-border)]">
+                        <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => setEditingContact(contact)}>
+                          <Edit className="mr-2 h-4 w-4" />
+                          Editar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-red-600"
+                          onClick={() => setDeletingContact(contact)}
+                          disabled={
+                            (contact.conversationsCount ||
+                             contact._count?.conversations || 0) > 0
+                          }
+                        >
+                          <Trash className="mr-2 h-4 w-4" />
+                          Remover
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-[var(--glass-border)]">
+                    <Badge variant="secondary" className="gap-1 bg-[var(--glass-bg-strong)]">
+                      <MessageSquare className="h-3 w-3" />
+                      {contact.conversationsCount || contact._count?.conversations || 0} conversas
+                    </Badge>
+                    <span className="text-xs text-[var(--text-muted)]">
+                      {contact.lastConversationAt
+                        ? formatDistanceToNow(new Date(contact.lastConversationAt), { addSuffix: true, locale: ptBR })
+                        : 'Nunca'}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop View - Table */}
+            <div className="hidden md:block rounded-ios-xs overflow-hidden border border-[var(--glass-border)]">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-[var(--glass-bg-hover)]">
+                    <TableHead className="text-[var(--text-secondary)]">Contato</TableHead>
+                    <TableHead className="text-[var(--text-secondary)]">Telefone</TableHead>
+                    <TableHead className="text-[var(--text-secondary)] hidden lg:table-cell">Email</TableHead>
+                    <TableHead className="text-[var(--text-secondary)]">Conversas</TableHead>
+                    <TableHead className="text-[var(--text-secondary)] hidden lg:table-cell">Última Interação</TableHead>
+                    <TableHead className="text-right text-[var(--text-secondary)]">Ações</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {contactsData.data.map((contact) => (
+                    <TableRow key={contact.id} className="hover:bg-[var(--glass-bg-hover)] transition-colors">
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <Avatar>
+                            <AvatarImage src={contact.profilePictureUrl} />
+                            <AvatarFallback
+                              style={{
+                                backgroundColor: contactService.getAvatarColor(contact.id),
+                              }}
+                            >
+                              {contactService.getInitials(contact.name)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium text-[var(--text-primary)]">
+                              {contact.name || 'Sem nome'}
+                            </p>
+                            <p className="text-sm text-[var(--text-muted)]">
+                              ID: {contact.id.slice(0, 8)}...
+                            </p>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Phone className="h-3 w-3 text-[var(--text-muted)]" />
+                          <span className="font-mono text-sm text-[var(--text-secondary)]">
+                            {contactService.formatPhoneNumber(contact.phoneNumber)}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        {contact.email ? (
+                          <div className="flex items-center gap-1">
+                            <Mail className="h-3 w-3 text-[var(--text-muted)]" />
+                            <span className="text-sm text-[var(--text-secondary)]">{contact.email}</span>
+                          </div>
+                        ) : (
+                          <span className="text-[var(--text-muted)]">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className="gap-1 bg-[var(--glass-bg-strong)]">
+                          <MessageSquare className="h-3 w-3" />
+                          {contact.conversationsCount || contact._count?.conversations || 0}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        {contact.lastConversationAt ? (
+                          <span className="text-sm text-[var(--text-muted)]">
+                            {formatDistanceToNow(
+                              new Date(contact.lastConversationAt),
+                              { addSuffix: true, locale: ptBR }
+                            )}
+                          </span>
+                        ) : (
+                          <span className="text-[var(--text-muted)]">Nunca</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="glass-card border-[var(--glass-border)]">
+                            <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => setEditingContact(contact)}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-red-600"
+                              onClick={() => setDeletingContact(contact)}
+                              disabled={
+                                (contact.conversationsCount ||
+                                 contact._count?.conversations || 0) > 0
+                              }
+                            >
+                              <Trash className="mr-2 h-4 w-4" />
+                              Remover
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </>
         )}
 
         {/* Paginação */}
