@@ -27,6 +27,10 @@ export function MessageBubble({
   const bubbleColor = isOwnMessage ? 'bg-[#d9fdd3]' : 'bg-white';
   const alignment = isOwnMessage ? 'ml-auto' : 'mr-auto';
 
+  // Obter mediaUrl do campo direto ou do metadata
+  const mediaUrl = message.mediaUrl || (message.metadata as any)?.mediaUrl;
+  const caption = (message.metadata as any)?.caption;
+
   // Border radius dinâmico para criar efeito de agrupamento
   const getBorderRadius = () => {
     if (groupedWithNext) {
@@ -108,16 +112,20 @@ export function MessageBubble({
 
         {message.type === MessageType.IMAGE && (
           <div>
-            {message.mediaUrl && (
+            {mediaUrl ? (
               <img
-                src={message.mediaUrl}
+                src={mediaUrl}
                 alt="Imagem"
-                className="rounded-lg max-w-full mb-1 cursor-pointer hover:opacity-90 transition-opacity"
+                className="rounded-lg max-w-full max-h-[300px] mb-1 cursor-pointer hover:opacity-90 transition-opacity"
               />
+            ) : (
+              <div className="bg-[#f0f2f5] p-4 rounded-lg text-center text-[#667781]">
+                <span className="text-sm">Imagem não disponível</span>
+              </div>
             )}
-            {message.content && (
+            {(caption || (message.content && !message.content.match(/^[a-zA-Z0-9]+$/))) && (
               <p className="text-[14px] text-[#111b21] break-words whitespace-pre-wrap mt-1">
-                {message.content}
+                {caption || message.content}
               </p>
             )}
           </div>
@@ -129,41 +137,57 @@ export function MessageBubble({
               <Paperclip className="h-5 w-5 text-[#54656f]" />
             </div>
             <div className="flex-1 min-w-0">
-              <a
-                href={message.mediaUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[14px] text-[#027eb5] hover:underline truncate block"
-              >
-                {message.content || 'Documento'}
-              </a>
-              <p className="text-[12px] text-[#667781]">{message.mediaType || 'Arquivo'}</p>
+              {mediaUrl ? (
+                <a
+                  href={mediaUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[14px] text-[#027eb5] hover:underline truncate block"
+                  download
+                >
+                  {(message.metadata as any)?.filename || 'Documento'}
+                </a>
+              ) : (
+                <span className="text-[14px] text-[#667781]">Documento não disponível</span>
+              )}
+              <p className="text-[12px] text-[#667781]">{(message.metadata as any)?.mimeType || 'Arquivo'}</p>
             </div>
           </div>
         )}
 
         {message.type === MessageType.AUDIO && (
           <div className="flex items-center gap-2 min-w-[150px] sm:min-w-[200px]">
-            <audio controls className="w-full h-8" style={{ maxWidth: '100%' }}>
-              <source src={message.mediaUrl} type="audio/mpeg" />
-            </audio>
+            {mediaUrl ? (
+              <audio controls className="w-full h-8 max-w-full">
+                <source src={mediaUrl} type={(message.metadata as any)?.mimeType || 'audio/ogg'} />
+                Seu navegador não suporta áudio.
+              </audio>
+            ) : (
+              <div className="bg-[#f0f2f5] p-3 rounded-lg text-center text-[#667781] w-full">
+                <span className="text-sm">Áudio não disponível</span>
+              </div>
+            )}
           </div>
         )}
 
         {message.type === MessageType.VIDEO && (
           <div>
-            {message.mediaUrl && (
+            {mediaUrl ? (
               <video
                 controls
-                className="rounded-lg max-w-full mb-1"
-                style={{ maxHeight: '300px' }}
+                className="rounded-lg max-w-full max-h-[300px] mb-1"
               >
-                <source src={message.mediaUrl} type="video/mp4" />
+                <source src={mediaUrl} type={(message.metadata as any)?.mimeType || 'video/mp4'} />
+                Seu navegador não suporta vídeo.
               </video>
+            ) : (
+              <div className="bg-[#f0f2f5] p-4 rounded-lg text-center text-[#667781]">
+                <span className="text-sm">Vídeo não disponível</span>
+              </div>
             )}
-            {message.content && (
+            {(caption || (message.content && !message.content.match(/^[a-zA-Z0-9]+$/))) && (
               <p className="text-[14px] text-[#111b21] break-words whitespace-pre-wrap mt-1">
-                {message.content}
+                {caption || message.content}
               </p>
             )}
           </div>

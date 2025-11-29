@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import crypto from 'crypto';
 import { prisma } from '@/config/database';
 import { messageService } from '@/services/message.service';
+import { whatsAppService } from '@/services/whatsapp.service';
 import logger from '@/config/logger';
 import { decrypt } from '@/utils/encryption';
 
@@ -175,6 +176,27 @@ export class WebhookController {
         // Nome do contato (se fornecido)
         const contactName = value.contacts?.[0]?.profile?.name;
 
+        // Se for mídia, baixar e converter para data URL
+        let mediaUrl: string | undefined;
+        if (['IMAGE', 'VIDEO', 'AUDIO', 'DOCUMENT'].includes(messageData.type)) {
+          const mediaId = messageData.content; // O content contém o media ID
+          const mimeType = messageData.metadata?.mimeType || 'application/octet-stream';
+
+          try {
+            // Baixar mídia como data URL (base64)
+            mediaUrl = await whatsAppService.downloadMediaAsDataUrl(tenantId, mediaId, mimeType) || undefined;
+
+            if (mediaUrl) {
+              logger.info({ tenantId, messageId, mediaId, type: messageData.type }, 'Media downloaded successfully');
+            } else {
+              logger.warn({ tenantId, messageId, mediaId }, 'Failed to download media, will store media ID');
+            }
+          } catch (mediaError) {
+            logger.error({ error: mediaError, tenantId, mediaId }, 'Error downloading media');
+            // Continuar sem a mídia - salvar pelo menos o media ID
+          }
+        }
+
         // Processar mensagem via service
         await messageService.receiveMessage({
           tenantId,
@@ -183,11 +205,12 @@ export class WebhookController {
           whatsappMessageId: messageId,
           type: messageData.type,
           content: messageData.content,
+          mediaUrl, // URL da mídia baixada (data URL base64)
           metadata: messageData.metadata,
           timestamp,
         });
 
-        logger.info({ tenantId, messageId, from }, 'Webhook message processed');
+        logger.info({ tenantId, messageId, from, hasMedia: !!mediaUrl }, 'Webhook message processed');
       } catch (error) {
         logger.error({ error, message }, 'Error processing individual message');
       }

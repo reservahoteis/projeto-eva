@@ -55,6 +55,63 @@ export class WhatsAppService {
   }
 
   /**
+   * Obter URL da mídia do WhatsApp
+   * A URL é temporária e requer auth header para download
+   */
+  async getMediaUrl(tenantId: string, mediaId: string): Promise<string | null> {
+    try {
+      const axiosInstance = await this.getAxiosForTenant(tenantId);
+
+      // Chamar API do WhatsApp para obter URL da mídia
+      const response = await axiosInstance.get(`/${mediaId}`);
+
+      if (response.data?.url) {
+        logger.info({ tenantId, mediaId }, 'Media URL retrieved');
+        return response.data.url;
+      }
+
+      return null;
+    } catch (error: any) {
+      logger.error({ error, tenantId, mediaId }, 'Failed to get media URL');
+      return null;
+    }
+  }
+
+  /**
+   * Baixar mídia e retornar como base64 data URL
+   * Útil para mídias que precisam ser exibidas diretamente
+   */
+  async downloadMediaAsDataUrl(tenantId: string, mediaId: string, mimeType: string): Promise<string | null> {
+    try {
+      const axiosInstance = await this.getAxiosForTenant(tenantId);
+
+      // 1. Obter URL da mídia
+      const mediaResponse = await axiosInstance.get(`/${mediaId}`);
+      const mediaUrl = mediaResponse.data?.url;
+
+      if (!mediaUrl) {
+        logger.warn({ tenantId, mediaId }, 'No media URL found');
+        return null;
+      }
+
+      // 2. Baixar a mídia (a URL requer o mesmo token de auth)
+      const downloadResponse = await axiosInstance.get(mediaUrl, {
+        responseType: 'arraybuffer',
+      });
+
+      // 3. Converter para base64
+      const base64 = Buffer.from(downloadResponse.data).toString('base64');
+      const dataUrl = `data:${mimeType};base64,${base64}`;
+
+      logger.info({ tenantId, mediaId, size: downloadResponse.data.length }, 'Media downloaded as data URL');
+      return dataUrl;
+    } catch (error: any) {
+      logger.error({ error, tenantId, mediaId }, 'Failed to download media as data URL');
+      return null;
+    }
+  }
+
+  /**
    * Enviar mensagem de texto
    */
   async sendTextMessage(

@@ -163,6 +163,7 @@ export class MessageService {
     whatsappMessageId: string;
     type: MessageType;
     content: string;
+    mediaUrl?: string; // URL da mídia (imagem, vídeo, áudio, documento)
     metadata?: any;
     timestamp: Date;
   }) {
@@ -209,6 +210,12 @@ export class MessageService {
     }
 
     // 4. Criar mensagem
+    // Se tiver mediaUrl, incluir no metadata para o frontend poder exibir
+    const metadata = {
+      ...(data.metadata || {}),
+      ...(data.mediaUrl && { mediaUrl: data.mediaUrl }),
+    };
+
     const message = await prisma.message.create({
       data: {
         tenantId: data.tenantId,
@@ -217,7 +224,7 @@ export class MessageService {
         direction: 'INBOUND',
         type: data.type,
         content: data.content,
-        metadata: data.metadata || undefined,
+        metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
         timestamp: data.timestamp,
         status: 'DELIVERED',
       },
