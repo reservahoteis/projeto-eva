@@ -1,0 +1,2812 @@
+{
+  "name": "MARCIO - IA CONVERSACIONAL",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "recebimento_zapi_marcio_ok_",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -10832,
+        2816
+      ],
+      "id": "7d61822e-a215-4f62-9148-eb86bfc25f2a",
+      "name": "Webhook",
+      "webhookId": "840b69de-c25d-4694-b87a-d58aeb2e2bb7"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Webhook').item.json.body.text.message }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    },
+                    "id": "7ff1b5cc-0df0-405b-9c15-af60c05b631f"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "TEXTO"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "ce5a4374-c3bd-48a8-a9b4-af1fa467cca4",
+                    "leftValue": "={{ $('Webhook').item.json.body.audio.audioUrl }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "AUDIO"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "8ff3d0b6-e4a6-438f-a5f7-cfcbf8e06f92",
+                    "leftValue": "={{ $('Webhook').item.json.body.image.imageUrl }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "IMAGEM"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "bb9408cf-1b1a-48cc-99ed-fec82c804b11",
+                    "leftValue": "={{ $('Webhook').item.json.body.buttonReply.buttonId }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "BOTÃO"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "dbf2b0fc-7303-4b66-a0a6-5580b5309bd6",
+                    "leftValue": "={{ $('Webhook').item.json.body.buttonsResponseMessage.buttonId }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "BOTÃO2"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "98f41860-8bb8-4d26-9602-f04651adf475",
+                    "leftValue": "",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "19e0783b-d858-4d93-98b6-96c910ba2b88",
+                    "leftValue": "",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -8448,
+        2848
+      ],
+      "id": "115cee2d-ffc7-444f-85dc-646bf264b5e4",
+      "name": "Switch1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "09456dc1-ed76-4628-b638-dd4f6b36d5f3",
+              "name": "pergunta",
+              "value": "={{ $json.message.content }}",
+              "type": "string"
+            },
+            {
+              "id": "0d37339d-56b2-4a87-9ccd-60f775c49239",
+              "name": "telefone",
+              "value": "={{ (() => {\n  const w = $('Webhook').first().json || {};\n  const numeroOriginal = ((w.body && w.body.phone) ?? w.Numero ?? '').toString();\n\n  const somenteNumeros = numeroOriginal.replace(/\\D/g, '');\n  let numeroFinal = '';\n\n  if (somenteNumeros.length === 13) {\n    numeroFinal = somenteNumeros;\n  } else if (somenteNumeros.length === 12) {\n    numeroFinal = somenteNumeros.slice(0, 4) + '9' + somenteNumeros.slice(4);\n  } else if (somenteNumeros.length === 11) {\n    numeroFinal = '55' + somenteNumeros;\n  } else {\n    numeroFinal = numeroOriginal; // mantém exatamente como chegou (letras etc.)\n  }\n\n  return numeroFinal;\n})() }}",
+              "type": "string"
+            },
+            {
+              "id": "a6b35aa0-324b-4e93-972b-3a3b1cebcd7a",
+              "name": "hospede",
+              "value": "={{ (() => {\n  const w = $('Webhook').first().json || {};\n  const numeroOriginal = ((w.body && w.body.phone) ?? w.Numero ?? '').toString();\n\n  const somenteNumeros = numeroOriginal.replace(/\\D/g, '');\n  let numeroFinal = '';\n\n  if (somenteNumeros.length === 13) {\n    numeroFinal = somenteNumeros;\n  } else if (somenteNumeros.length === 12) {\n    numeroFinal = somenteNumeros.slice(0, 4) + '9' + somenteNumeros.slice(4);\n  } else if (somenteNumeros.length === 11) {\n    numeroFinal = '55' + somenteNumeros;\n  } else {\n    numeroFinal = numeroOriginal; // mantém exatamente como chegou (letras etc.)\n  }\n\n  return numeroFinal;\n})() }}",
+              "type": "string"
+            },
+            {
+              "id": "19023703-a56d-4786-8623-713108121cbc",
+              "name": "escolhaMenu",
+              "value": "={{ $('DADOS DO LEAD COM SDR1').item.json.escolheuMenu }}",
+              "type": "string"
+            },
+            {
+              "id": "cb5103d1-3a16-4e04-941a-8037c5a684d3",
+              "name": "subMenu",
+              "value": "={{ $('DADOS DO LEAD COM SDR1').item.json.subMenu }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -7040,
+        2624
+      ],
+      "id": "c472e70c-0bea-4b40-9b96-694992982668",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "b22959bb-c2ea-4274-9007-1f6178423688",
+              "leftValue": "={{ $json.body.fromMe }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -10480,
+        2880
+      ],
+      "id": "645743c5-190e-4b25-bad6-fcccdb8f874c",
+      "name": "EU QUE ENVIEI?"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.subMenu }}",
+                    "rightValue": "Já estou hospedado e quero  ajuda",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "48512db4-93c5-4ee2-8fa6-8f557dcc24a4"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "hospedado_ajuda"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "197507e2-a98f-45bd-a9bf-dd9ae5d8fe93",
+                    "leftValue": "={{ $json.subMenu }}",
+                    "rightValue": "Quer orçar uma reserva",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "orcar_reserva"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "814fa970-20a4-4c05-b3e0-f343ea468842",
+                    "leftValue": "={{ $json.subMenu }}",
+                    "rightValue": "Já tenho uma reserva",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "tenho_reserva"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "e600beb0-c73e-4749-801d-9ea4a4a1963e",
+                    "leftValue": "={{ $json.subMenu }}",
+                    "rightValue": "Mais opções ",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "mais_opcoes"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "ad29d351-7811-4b49-9d0f-97e743f0da29",
+                    "leftValue": "={{ $json.escolheuMenu }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "com menu"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -5984,
+        2800
+      ],
+      "id": "228a21ee-1201-48c7-b41d-6bd40875db19",
+      "name": "Switch3"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('CREDECIAMENTO').first().json.urlSemBarraFinal }}/send-text",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Client-Token",
+              "value": "={{ $('CREDECIAMENTO').first().json.token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"phone\": \"{{ $('Webhook').item.json.body.phone }}\",\n  \"message\": \"Selecione qual Smart Hotel Reserva gostaria de informações:\",\n  \"buttonList\": {\n    \"buttons\": [\n      {\n        \"id\": \"info_ilhabela\",\n        \"label\": \"Ilhabela\"\n      },\n      {\n        \"id\": \"info_campos\",\n        \"label\": \"Campos do Jordão\"\n      },\n      {\n        \"id\": \"info_camburi\",\n        \"label\": \"Camburi\"\n      },\n      {\n        \"id\": \"info_santo_antonio\",\n        \"label\": \"Santo Antônio do Pinhal\"\n      }\n    ]\n  }\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -5760,
+        3136
+      ],
+      "id": "60218bb5-3ed7-407d-9ca4-005ea33fc29c",
+      "name": "ENVIO DE MENSAGEM DE TEXTO5"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f924d116-0f5b-44c7-9a51-a0f43e5124bd",
+              "name": "unidade",
+              "value": "={{ ({\n  'Campos do Jordão': 'CAMPOS',\n  'Ilhabela': 'ILHABELA',\n  'Camburi': 'CAMBURI',\n  'Santo Antônio do Pinhal': 'SANTO ANTONIO'\n})[$json.escolheuMenu] ?? $json.unidade }}",
+              "type": "string"
+            },
+            {
+              "id": "6e263135-e2e3-4e92-b3e4-c51853fa0cef",
+              "name": "pergunta",
+              "value": "={{ $('Edit Fields8').item.json.pergunta }}",
+              "type": "string"
+            },
+            {
+              "id": "36344dce-1e15-4798-bbea-89beea9f69be",
+              "name": "memoria",
+              "value": "=|MARCIO-{{ $('Edit Fields8').item.json.telefone }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -5536,
+        2944
+      ],
+      "id": "4670515b-aece-4d3a-95ca-704deaf66dc4",
+      "name": "Edit Fields7"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "73c6bfba-1421-4cc2-85a3-c15b485bda71",
+              "name": "pergunta",
+              "value": "={{ $json.pergunta }}",
+              "type": "string"
+            },
+            {
+              "id": "57ea2c06-72fe-4c1d-becb-a531b29bfc19",
+              "name": "telefone",
+              "value": "={{ $json.telefone }}",
+              "type": "string"
+            },
+            {
+              "id": "01f594f1-6ca1-4201-8544-4988b78494ca",
+              "name": "escolheuMenu",
+              "value": "={{ $json.escolheuMenu }}",
+              "type": "string"
+            },
+            {
+              "id": "f7ef836e-4e92-426b-ae96-00dd24b36a21",
+              "name": "subMenu",
+              "value": "={{ $json.subMenu }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -6208,
+        2848
+      ],
+      "id": "5ef80f84-da2f-4617-95fb-d044944898fa",
+      "name": "Edit Fields8"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c7f291c0-ff1e-4b4b-b705-e74d62255d2f",
+              "name": "pergunta",
+              "value": "=Cliente selecionou no menu: {{ $('Webhook').item.json.body.buttonReply.buttonId }}\nEle deseja receber o carrossel detalhado então use o #02 se ja tiver coletado os dados necessarios, se não você deve pedir pra ele enviar",
+              "type": "string"
+            },
+            {
+              "id": "7eb423ca-0d2c-40fd-9375-b337d0b2b27b",
+              "name": "unidade",
+              "value": "={{ \n  $json.escolheuMenu == 'Campos do Jordão' ? 'CAMPOS' :\n  $json.escolheuMenu == 'Ilhabela' ? 'ILHABELA' :\n  $json.escolheuMenu == 'Camburi' ? 'CAMBURI' :\n  $json.escolheuMenu == 'Santo Antônio do Pinhal' ? 'SANTO ANTONIO' :\n  ''\n}}\n",
+              "type": "string"
+            },
+            {
+              "id": "e28772f1-da66-4ab7-90e0-de63ee133ab2",
+              "name": "memoria",
+              "value": "=|MARCIO-{{ $('BUSCA SE JA É HOSPEDE6').item.json.numero }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -5536,
+        3328
+      ],
+      "id": "b2d32b55-8c88-40b8-9252-eb82eaee0cb1",
+      "name": "Edit Fields14"
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "table": {
+          "__rl": true,
+          "value": "IA_SDR_CAMPOS",
+          "mode": "list",
+          "cachedResultName": "IA_SDR_CAMPOS"
+        },
+        "limit": 1,
+        "where": {
+          "values": [
+            {
+              "column": "numero",
+              "value": "={{ (() => {\n  const w = $('Webhook').first().json || {};\n  const numeroOriginal = ((w.body && w.body.phone) ?? w.Numero ?? '').toString();\n\n  const somenteNumeros = numeroOriginal.replace(/\\D/g, '');\n  let numeroFinal = '';\n\n  if (somenteNumeros.length === 13) {\n    numeroFinal = somenteNumeros;\n  } else if (somenteNumeros.length === 12) {\n    numeroFinal = somenteNumeros.slice(0, 4) + '9' + somenteNumeros.slice(4);\n  } else if (somenteNumeros.length === 11) {\n    numeroFinal = '55' + somenteNumeros;\n  } else {\n    numeroFinal = numeroOriginal; // mantém exatamente como chegou (letras etc.)\n  }\n\n  return numeroFinal;\n})() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [
+        -5760,
+        3328
+      ],
+      "id": "106a92dd-d550-4c2a-b2aa-4d0a27628007",
+      "name": "BUSCA SE JA É HOSPEDE6",
+      "alwaysOutputData": true,
+      "credentials": {
+        "mySql": {
+          "id": "A112kZvtWASH5sMG",
+          "name": "MARCIO_HOTEL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f924d116-0f5b-44c7-9a51-a0f43e5124bd",
+              "name": "unidade",
+              "value": "={{ $json.unidade }}",
+              "type": "string"
+            },
+            {
+              "id": "6e263135-e2e3-4e92-b3e4-c51853fa0cef",
+              "name": "pergunta",
+              "value": "={{ $json.pergunta }}",
+              "type": "string"
+            },
+            {
+              "id": "36344dce-1e15-4798-bbea-89beea9f69be",
+              "name": "memoria",
+              "value": "={{ $json.memoria }}",
+              "type": "string"
+            },
+            {
+              "id": "53f014d4-c11c-4e34-9339-1ad0a6882fc2",
+              "name": "body",
+              "value": "={{ $('Webhook').first().json.body }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -5312,
+        3232
+      ],
+      "id": "98c324da-0f3b-4a04-86aa-30299b715cf4",
+      "name": "Edit Fields19"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "de13fab2-74f2-4c89-a1e1-4cbceedebafa",
+              "leftValue": "={{ $('Webhook').item.json.body.buttonReply.buttonId }}",
+              "rightValue": "menu_inicial",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -5984,
+        3232
+      ],
+      "id": "a3252027-98a2-4357-8c7d-d4989ed2702e",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "table": {
+          "__rl": true,
+          "value": "IA_SDR_CAMPOS",
+          "mode": "list",
+          "cachedResultName": "IA_SDR_CAMPOS"
+        },
+        "limit": 1,
+        "where": {
+          "values": [
+            {
+              "column": "numero",
+              "value": "={{ $json.telefone }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [
+        -5760,
+        2656
+      ],
+      "id": "1ca13907-ac28-47ca-8244-ff22f52abb44",
+      "name": "BUSCA NO LOG",
+      "alwaysOutputData": true,
+      "credentials": {
+        "mySql": {
+          "id": "A112kZvtWASH5sMG",
+          "name": "MARCIO_HOTEL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f924d116-0f5b-44c7-9a51-a0f43e5124bd",
+              "name": "unidade",
+              "value": "={{ ({\n  'Campos do Jordão': 'CAMPOS',\n  'Ilhabela': 'ILHABELA',\n  'Camburi': 'CAMBURI',\n  'Santo Antônio do Pinhal': 'SANTO ANTONIO'\n})[$json.escolheuMenu] ?? $json.unidade }}",
+              "type": "string"
+            },
+            {
+              "id": "6e263135-e2e3-4e92-b3e4-c51853fa0cef",
+              "name": "pergunta",
+              "value": "={{ $('Edit Fields8').item.json.pergunta }}",
+              "type": "string"
+            },
+            {
+              "id": "c9393436-7071-43ad-b84e-e16132faea5a",
+              "name": "body",
+              "value": "={{ $('Webhook').first().json.body }}",
+              "type": "object"
+            },
+            {
+              "id": "0789c379-dcc4-4258-b51d-cbca65a5851e",
+              "name": "memoria",
+              "value": "={{ $('Webhook').first().json.body.phone }}{{ $('CREDECIAMENTO').first().json.memoriaRedis }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -5536,
+        2656
+      ],
+      "id": "bb78dddc-037b-4440-9110-128a787b4fad",
+      "name": "SETA A UNIDADE final"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d1e009d3-c819-4f58-9d22-947dabe55589",
+              "name": "urlSemBarraFinal",
+              "value": "https://api.z-api.io/instances/3E7B6A5C516A50D082B052988BE3B884/token/C7B6A22F18E00B139C4F1627",
+              "type": "string"
+            },
+            {
+              "id": "995821dd-3547-496b-9304-ab9e245c6008",
+              "name": "token",
+              "value": "F52d0326228f444c49d82c943eb576f71S",
+              "type": "string"
+            },
+            {
+              "id": "b6bd0819-0330-42ba-b2ce-0f6b92322053",
+              "name": "numero",
+              "value": "={{ (() => {\n  const w = $('Webhook').item.json || {};\n  const numeroOriginal = ((w.body && w.body.phone) ?? w.Numero ?? '').toString();\n\n  const somenteNumeros = numeroOriginal.replace(/\\D/g, '');\n  let numeroFinal = '';\n\n  if (somenteNumeros.length === 13) {\n    numeroFinal = somenteNumeros;\n  } else if (somenteNumeros.length === 12) {\n    numeroFinal = somenteNumeros.slice(0, 4) + '9' + somenteNumeros.slice(4);\n  } else if (somenteNumeros.length === 11) {\n    numeroFinal = '55' + somenteNumeros;\n  } else {\n    numeroFinal = numeroOriginal; // mantém exatamente como chegou (letras etc.)\n  }\n\n  return numeroFinal;\n})() }}",
+              "type": "string"
+            },
+            {
+              "id": "61dbbf08-7566-47c6-86a0-4fa2441fde08",
+              "name": "memoriaRedis",
+              "value": "marcioHotel",
+              "type": "string"
+            },
+            {
+              "id": "21ece186-0bb6-4aea-af0f-1e19487ac9a4",
+              "name": "numeroAtendente",
+              "value": "120363420234916766-group",
+              "type": "string"
+            },
+            {
+              "id": "fde03cc1-8d64-4c93-9feb-72dbc9c6f42b",
+              "name": "idFlow",
+              "value": "a64d6cbc-5d1b-4542-a47b-5d696d5f9fee",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -10048,
+        2896
+      ],
+      "id": "9aee70db-856f-4963-9e02-e0adbd6e4b2d",
+      "name": "CREDECIAMENTO"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "1ec83b6b-ace9-40b4-a40a-bf379719cce9",
+              "leftValue": "={{ $('Webhook').first().json.body.text.message }}",
+              "rightValue": "##memoria##",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -9472,
+        3056
+      ],
+      "id": "2771047a-6d79-44c5-ad54-e5f4073be506",
+      "name": "If3"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f46bc140-7dc0-4c48-a625-f1dc30b61d18",
+              "leftValue": "={{ $('Webhook').item.json.body.phone }}",
+              "rightValue": "555198893674",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "fbb399b1-1d33-4626-ba9f-7f1528fa72da",
+              "leftValue": "={{ $('Webhook').item.json.body.phone }}",
+              "rightValue": "5511987144676",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "1d978f33-4da7-40d2-83b3-cf29cb0e9a24",
+              "leftValue": "={{ $('Webhook').item.json.body.phone }}",
+              "rightValue": "5511967772011",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "9c01cdac-c786-41f4-98b6-e6087bf95b25",
+              "leftValue": "={{ $('Webhook').item.json.body.phone }}",
+              "rightValue": "5511933399369",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "63d4600e-96f0-408c-9c4c-1fd36039b889",
+              "leftValue": "={{ $('Webhook').item.json.body.phone }}",
+              "rightValue": "5511975692611",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "b9465453-85da-474c-9929-4e93618289a8",
+              "leftValue": "={{ $('Webhook').item.json.body.phone }}",
+              "rightValue": "555192773702",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "faa34674-41a1-4f40-acc5-6fe0789efbfd",
+              "leftValue": "={{ $('Webhook').item.json.body.phone }}",
+              "rightValue": "555197673534",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "dc101b1f-d9b4-4d16-87b2-d62214e0ca75",
+              "leftValue": "={{ $('Webhook').item.json.body.phone }}",
+              "rightValue": "5551997673534",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "b73f10bd-acec-4d35-9a21-86beb88f2471",
+              "leftValue": "={{ $('Webhook').item.json.body.phone }}",
+              "rightValue": "555197840937",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -10768,
+        3344
+      ],
+      "id": "2879643a-96c2-4c34-a624-dc0c4294a3f3",
+      "name": "É NUMERO DE TESTE?3"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('CREDECIAMENTO').first().json.urlSemBarraFinal }}/send-text",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Client-Token",
+              "value": "={{ $('CREDECIAMENTO').first().json.token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "={{ $('Webhook').first().json.body.phone }}"
+            },
+            {
+              "name": "message",
+              "value": "=Memoria reiniciada com sucesso!"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -9312,
+        2912
+      ],
+      "id": "40960758-6cbf-4468-8465-3a07f8f86c5e",
+      "name": "ENVIA MENSAGEM"
+    },
+    {
+      "parameters": {
+        "operation": "deleteTable",
+        "table": {
+          "__rl": true,
+          "value": "IA_SDR_CAMPOS",
+          "mode": "list",
+          "cachedResultName": "IA_SDR_CAMPOS"
+        },
+        "deleteCommand": "delete",
+        "where": {
+          "values": [
+            {
+              "column": "numero",
+              "value": "={{ $('CREDECIAMENTO').item.json.numero }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [
+        -8960,
+        2912
+      ],
+      "id": "1dd533f8-f053-4eb5-b57c-7af042879745",
+      "name": "DELETA O LEAD DO BANCO DE DADOS",
+      "alwaysOutputData": true,
+      "credentials": {
+        "mySql": {
+          "id": "A112kZvtWASH5sMG",
+          "name": "MARCIO_HOTEL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "key": "={{ $('Webhook').first().json.body.phone }}{{ $('CREDECIAMENTO').first().json.memoriaRedis }}"
+      },
+      "id": "ba9db698-89c3-4968-8d8f-ef222445ce11",
+      "name": "DELETA A MEMORIA DA IA",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -9136,
+        2912
+      ],
+      "credentials": {
+        "redis": {
+          "id": "jui80Gim2A5frf81",
+          "name": "3IAN - REDIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f46bc140-7dc0-4c48-a625-f1dc30b61d18",
+              "leftValue": "={{ $('Webhook').item.json.body.isGroup }}",
+              "rightValue": "-group",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -10656,
+        2816
+      ],
+      "id": "ed662309-632c-490b-8e4a-50bd61167061",
+      "name": "É GRUPO?1"
+    },
+    {
+      "parameters": {
+        "url": "={{ $('CREDECIAMENTO').item.json.urlSemBarraFinal }}/chats/{{ $('Webhook').item.json.body.phone }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Client-Token",
+              "value": "={{ $('CREDECIAMENTO').item.json.token }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -9328,
+        3168
+      ],
+      "id": "8450a43f-b39f-4479-a4f3-cfbc62adcc89",
+      "name": "BUSCA O CHAT"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "f4646038-2329-4d3f-a42a-857df5718620",
+                    "leftValue": "={{ $json.tags.includes(\"9\") }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "IA OFF"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "1a510081-aac1-4e99-ac15-82a8eacbc4b6",
+                    "leftValue": "",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "NADA"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -9120,
+        3168
+      ],
+      "id": "1e6f167d-5171-4f86-84e2-c66e66fce5cd",
+      "name": "Switch10"
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "table": {
+          "__rl": true,
+          "value": "IA_SDR_CAMPOS",
+          "mode": "list",
+          "cachedResultName": "IA_SDR_CAMPOS"
+        },
+        "limit": 1,
+        "where": {
+          "values": [
+            {
+              "column": "numero",
+              "value": "={{ (() => {\n  const w = $('Webhook').first().json || {};\n  const numeroOriginal = ((w.body && w.body.phone) ?? w.Numero ?? '').toString();\n\n  const somenteNumeros = numeroOriginal.replace(/\\D/g, '');\n  let numeroFinal = '';\n\n  if (somenteNumeros.length === 13) {\n    numeroFinal = somenteNumeros;\n  } else if (somenteNumeros.length === 12) {\n    numeroFinal = somenteNumeros.slice(0, 4) + '9' + somenteNumeros.slice(4);\n  } else if (somenteNumeros.length === 11) {\n    numeroFinal = '55' + somenteNumeros;\n  } else {\n    numeroFinal = numeroOriginal; // mantém exatamente como chegou (letras etc.)\n  }\n\n  return numeroFinal;\n})() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [
+        -8944,
+        3280
+      ],
+      "id": "283002a3-60cf-4b5e-a5d2-d5d419a0f4a4",
+      "name": "BUSCA SE JA TA NO BANCO2",
+      "alwaysOutputData": true,
+      "credentials": {
+        "mySql": {
+          "id": "A112kZvtWASH5sMG",
+          "name": "MARCIO_HOTEL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c6e7ce55-9004-4293-9aa6-46e046f20d3a",
+              "leftValue": "={{ $json.numero }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -8800,
+        3280
+      ],
+      "id": "6035abb9-29f5-47c3-be69-50cf4beae122",
+      "name": "ACHOU?1"
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "table": {
+          "__rl": true,
+          "value": "IA_SDR_CAMPOS",
+          "mode": "list",
+          "cachedResultName": "IA_SDR_CAMPOS"
+        },
+        "limit": 1,
+        "where": {
+          "values": [
+            {
+              "column": "numero",
+              "value": "={{ (() => {\n  const w = $('Webhook').first().json || {};\n  const numeroOriginal = ((w.body && w.body.phone) ?? w.Numero ?? '').toString();\n\n  const somenteNumeros = numeroOriginal.replace(/\\D/g, '');\n  let numeroFinal = '';\n\n  if (somenteNumeros.length === 13) {\n    numeroFinal = somenteNumeros;\n  } else if (somenteNumeros.length === 12) {\n    numeroFinal = somenteNumeros.slice(0, 4) + '9' + somenteNumeros.slice(4);\n  } else if (somenteNumeros.length === 11) {\n    numeroFinal = '55' + somenteNumeros;\n  } else {\n    numeroFinal = numeroOriginal; // mantém exatamente como chegou (letras etc.)\n  }\n\n  return numeroFinal;\n})() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [
+        -8640,
+        2928
+      ],
+      "id": "ec9ce83f-3fdf-4211-b57c-bbccf4d2a136",
+      "name": "DADOS DO LEAD COM SDR1",
+      "alwaysOutputData": true,
+      "credentials": {
+        "mySql": {
+          "id": "A112kZvtWASH5sMG",
+          "name": "MARCIO_HOTEL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "table": {
+          "__rl": true,
+          "value": "IA_SDR_CAMPOS",
+          "mode": "list",
+          "cachedResultName": "IA_SDR_CAMPOS"
+        },
+        "dataMode": "defineBelow",
+        "valuesToSend": {
+          "values": [
+            {
+              "column": "dataChegada",
+              "value": "={{ $now .format('dd/MM/yyyy')}}"
+            },
+            {
+              "column": "horaChegada",
+              "value": "={{ $now .format('HH:mm')}}"
+            },
+            {
+              "column": "diaDaSemana",
+              "value": "={{ $now .format('DDDD').split(',')[0]}}"
+            },
+            {
+              "column": "ultimaInteracao",
+              "value": "={{ $now .format('dd/MM/yyyy HH:mm')}}"
+            },
+            {
+              "column": "numero",
+              "value": "={{ (() => {\n  const w = $('Webhook').first().json || {};\n  const numeroOriginal = ((w.body && w.body.phone) ?? w.Numero ?? '').toString();\n\n  const somenteNumeros = numeroOriginal.replace(/\\D/g, '');\n  let numeroFinal = '';\n\n  if (somenteNumeros.length === 13) {\n    numeroFinal = somenteNumeros;\n  } else if (somenteNumeros.length === 12) {\n    numeroFinal = somenteNumeros.slice(0, 4) + '9' + somenteNumeros.slice(4);\n  } else if (somenteNumeros.length === 11) {\n    numeroFinal = '55' + somenteNumeros;\n  } else {\n    numeroFinal = numeroOriginal; // mantém exatamente como chegou (letras etc.)\n  }\n\n  return numeroFinal;\n})() }}"
+            },
+            {
+              "column": "rmkt_1",
+              "value": "={{ $now .plus('15',\"minutes\").format('dd/MM/yyyy HH:mm')}}"
+            },
+            {
+              "column": "rmkt_2",
+              "value": "={{ $now .plus('1',\"days\").format('dd/MM/yyyy HH:mm')}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [
+        -8672,
+        3520
+      ],
+      "id": "e023636d-e13f-45cb-8b03-59211618d3b1",
+      "name": "INSERE NO BANCO",
+      "alwaysOutputData": true,
+      "credentials": {
+        "mySql": {
+          "id": "A112kZvtWASH5sMG",
+          "name": "MARCIO_HOTEL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "operation": "transcribe",
+        "binaryPropertyName": "=data",
+        "options": {}
+      },
+      "id": "bff75b15-9cb0-4e01-bc78-6cbfeed400c0",
+      "name": "TRANSCREVE O AUDIO",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.3,
+      "position": [
+        -7712,
+        2624
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "KOT2Hf8hg3OIevZG",
+          "name": "MARCIO HOTEL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"gpt-4o-mini\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": [\n        {\n          \"type\": \"text\",\n          \"text\": \"Você trabalha em um escritório de advocacia. Sempre que receber uma imagem, sua função é descrever com precisão o que aparece, com foco especial em:\\n\\n1. Comprovantes de pagamento (PIX, depósitos, TED, boletos pagos etc.):\\n   - Identifique e descreva os dados relevantes (nome, valor, data, horário, instituição bancária, número da transação, CPF/CNPJ, etc.)\\n   - Se possível, diga se o comprovante está legível e completo\\n\\n2. Documentos jurídicos (petições, certidões, contratos, decisões, notificações):\\n   - Informe o tipo de documento e destaque dados importantes (nomes das partes, datas, valores, tipo de ação, número de processo, assinatura, etc.)\\n\\n3. Fotos de tela (prints):\\n   - Informe do que se trata (conversa de WhatsApp, extrato bancário, e-mail, etc.)\\n   - Resuma o conteúdo principal de forma neutra e informativa\\n\\n4. Outros tipos de imagem:\\n   - Caso a imagem contenha algo que não se encaixe nos itens acima (ex: foto pessoal, imagem genérica, produto, etc.), descreva o que está visível com clareza, dizendo se é algo relevante ou não para o atendimento jurídico.\\n\\nSua descrição será enviada a um atendente humano, que dará continuidade à conversa com o cliente. Seja objetivo, claro e profissional.\"\n        },\n        {\n          \"type\": \"image_url\",\n          \"image_url\": {\n            \"url\": \"data:image/jpeg;base64,{{ $('Extract from File6').item.json['fotoTESTE'] }}\"\n          }\n        }\n      ]\n    }\n  ],\n  \"max_tokens\": 300\n}\n",
+        "options": {}
+      },
+      "id": "0c3bc9c2-ff54-47a1-bfbe-eed6562309c9",
+      "name": "TRANSCRIÇÃO DE IMAGEM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -7712,
+        2816
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "KOT2Hf8hg3OIevZG",
+          "name": "MARCIO HOTEL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "binaryToPropery",
+        "destinationKey": "=fotoTESTE",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        -8000,
+        2816
+      ],
+      "id": "5c949c32-80a9-44e1-872c-5423d107a187",
+      "name": "Extract from File6"
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Webhook').item.json.body.audio.audioUrl }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -8000,
+        2624
+      ],
+      "id": "3a313917-1a22-41c9-b4d7-fcacd1e15969",
+      "name": "BUSCA O ARQUIVO1"
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Webhook').item.json.body.image.imageUrl }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -8224,
+        2816
+      ],
+      "id": "268bcccb-aa8b-4844-833b-6e5936898bb1",
+      "name": "BUSCA O ARQUIVO5"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0fc6f341-fdfe-4787-8919-a49e6f722b2b",
+              "name": "pergunta",
+              "value": "=(MENSAGEM DO SISTEMA) FOTO RECEBIDA PELO CLIENTE, ESSE É O RESUMO QUE TEMOS DO QUE TEM NA IMAGEM:{{ $json.choices[0].message.content }}\n\nLEGENDA QUE O CLIENTE ENVIOU JUNTO NA FOTO:{{ $('Webhook').item.json.body.image.caption }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -7424,
+        2816
+      ],
+      "id": "a6a3212b-9af6-41fd-abd2-60cbdce62864",
+      "name": "SETA TUDO2"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0fc6f341-fdfe-4787-8919-a49e6f722b2b",
+              "name": "pergunta",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -7424,
+        2624
+      ],
+      "id": "7f344a14-bd41-4a42-8580-8e6a80d7076c",
+      "name": "SETA TUDO4"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0fc6f341-fdfe-4787-8919-a49e6f722b2b",
+              "name": "pergunta",
+              "value": "={{ $('Webhook').first().json.body.text.message }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -7424,
+        2432
+      ],
+      "id": "a6a40eef-fa37-4fb0-93cf-41a800d7fc36",
+      "name": "SETA TUDO5"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8f16b1bf-1a3e-4029-8d7a-1bccb919ee43",
+              "name": "message.message_id",
+              "value": "={{ $('Webhook').item.json.body.messageId || ''}}",
+              "type": "string"
+            },
+            {
+              "id": "11800d83-ecca-4f9c-a878-a2419db0c8e9",
+              "name": "message.chat_id",
+              "value": "={{ $('Webhook').item.json.body.chatLid || ''}}",
+              "type": "string"
+            },
+            {
+              "id": "c33f9527-e661-49e5-8e5e-64f3b430928a",
+              "name": "message.content_type",
+              "value": "={{ $('Webhook').item.json.body.audio.audioUrl ? 'audio' : ''}}{{ $('Webhook').item.json.body.text.message ? 'text' : ''}}{{ $('Webhook').item.json.body.sticker.stickerUrl ? 'image' : ''}}",
+              "type": "string"
+            },
+            {
+              "id": "06eba1c9-cff0-4f68-b6da-6bb0092466b7",
+              "name": "message.content",
+              "value": "={{ $json.pergunta }}",
+              "type": "string"
+            },
+            {
+              "id": "b97f1af3-5361-46fc-9303-d644921231d8",
+              "name": "message.timestamp",
+              "value": "={{ $now .toDateTime('s').toISO()}}",
+              "type": "string"
+            },
+            {
+              "id": "dc3dc59c-90a3-4a45-bea2-de092c91083b",
+              "name": "message.content_url",
+              "value": "={{ $('Webhook').item.json.body.audio.audioUrl || '' }}{{ $('Webhook').item.json.body.image.imageUrl || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "8b01a818-a456-476e-bace-adefe2f04eb4",
+              "name": "message.event",
+              "value": "={{ $('Webhook').item.json.body.fromMe ? 'outcoming' : 'incoming'}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5706ed80-c8a2-4b0c-9767-44e23d303daa",
+      "name": "SETA OS CAMPOS2",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -7216,
+        2624
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "table": {
+          "__rl": true,
+          "value": "IA_SDR_CAMPOS",
+          "mode": "list",
+          "cachedResultName": "IA_SDR_CAMPOS"
+        },
+        "limit": 1,
+        "where": {
+          "values": [
+            {
+              "column": "numero",
+              "value": "={{ $json.telefone }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [
+        -5760,
+        2944
+      ],
+      "id": "a13ca731-0238-4930-b31a-3636661066f3",
+      "name": "BUSCA A UNIDADE ESCOLHIDA",
+      "alwaysOutputData": true,
+      "credentials": {
+        "mySql": {
+          "id": "A112kZvtWASH5sMG",
+          "name": "MARCIO_HOTEL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('CREDECIAMENTO').first().json.urlSemBarraFinal }}/send-text",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Client-Token",
+              "value": "={{ $('CREDECIAMENTO').first().json.token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "={{ $('Webhook').item.json.body.phone }}"
+            },
+            {
+              "name": "message",
+              "value": "=Seja bem-vindo a Rede de Smart Hoteis Reserva! \nSou a Eva, uma robô que sabe responder 99% das dúvidas dos nossos hóspedes.\n\nMe deixe tentar te ajudar bem rápido, escolha um dos assuntos a seguir. Se por algum motivo eu não conseguir, te passo para um humano."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -8448,
+        3520
+      ],
+      "id": "cb8c686b-9610-45fb-a491-a4b3939d5e39",
+      "name": "ENVIO DE MENSAGEM DE TEXTO7"
+    },
+    {
+      "parameters": {
+        "amount": 1
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -8224,
+        3520
+      ],
+      "id": "63754891-11de-482e-90d3-fcf9cef295ad",
+      "name": "Wait4",
+      "webhookId": "bee1f29a-c441-4db7-8c4b-8d063196ebbf"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('CREDECIAMENTO').first().json.urlSemBarraFinal }}/send-text",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Client-Token",
+              "value": "={{ $('CREDECIAMENTO').first().json.token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"phone\": \"{{ $('Webhook').item.json.body.phone }}\",\n  \"message\": \"Selecione qual Smart Hotel Reserva gostaria de informações:\",\n  \"buttonList\": {\n    \"buttons\": [\n      {\n        \"id\": \"info_ilhabela\",\n        \"label\": \"Ilhabela\"\n      },\n      {\n        \"id\": \"info_campos\",\n        \"label\": \"Campos do Jordão\"\n      },\n      {\n        \"id\": \"info_camburi\",\n        \"label\": \"Camburi\"\n      },\n      {\n        \"id\": \"info_santo_antonio\",\n        \"label\": \"Santo Antônio do Pinhal\"\n      }\n    ]\n  }\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -8000,
+        3520
+      ],
+      "id": "c08a043d-be7b-428b-ab14-9713759636f7",
+      "name": "ENVIO DE MENSAGEM DE TEXTO9"
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "messages": {
+          "messageValues": [
+            {
+              "type": "ai",
+              "message": "=Seja bem-vindo a Rede de Smart Hoteis Reserva! \nSou a Eva, uma robô que sabe responder 99% das dúvidas dos nossos hóspedes.\n\nMe deixe tentar te ajudar bem rápido, escolha um dos assuntos a seguir. Se por algum motivo eu não conseguir, te passo para um humano.\n\n📍 Selecione qual Smart Hotel Reserva você gostaria de informações:\n\nIlhabela\n\nCampos do Jordão\n\nCamburi\n\nSanto Antônio do Pinhal\n\nÉ só me responder com o número ou o nome do local que você quer saber mais! 😊"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryManager",
+      "typeVersion": 1.1,
+      "position": [
+        -7776,
+        3520
+      ],
+      "id": "3a07ad01-6c02-42b7-abcd-f6fc228e2e6b",
+      "name": "Chat Memory Manager"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Webhook').first().json.body.phone }}{{ $('CREDECIAMENTO').first().json.memoriaRedis }}",
+        "contextWindowLength": 1000
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryRedisChat",
+      "typeVersion": 1.4,
+      "position": [
+        -7696,
+        3744
+      ],
+      "id": "75b4f973-0108-4d6a-9442-c3239d8b6c02",
+      "name": "Redis Chat Memory2",
+      "credentials": {
+        "redis": {
+          "id": "jui80Gim2A5frf81",
+          "name": "3IAN - REDIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "579ff81b-c353-4823-bf56-bc340d47d94f",
+              "name": "body",
+              "value": "={{ $('Webhook').item.json.body }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -9408,
+        2640
+      ],
+      "id": "d47055c0-a982-45af-9589-fd59b92cdf35",
+      "name": "Edit Fields15"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "579ff81b-c353-4823-bf56-bc340d47d94f",
+              "name": "body",
+              "value": "={{ $('Webhook').first().json.body }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -7392,
+        3248
+      ],
+      "id": "0d76d75a-28ac-4c8f-b0c0-8c3666d7c2c4",
+      "name": "Edit Fields16"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "13fbaf15-0c8d-42a2-b498-04b1b97b7091",
+              "leftValue": "={{ $json.retornoAPI }}",
+              "rightValue": "xpto",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -6432,
+        2976
+      ],
+      "id": "60af7ad2-a3a3-4d1d-89ca-938d834b190d",
+      "name": "If5"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "d5ac50d0-0f05-4bb8-85c8-2f228b7048fb",
+              "leftValue": "={{ $('Webhook').first().json.body.text.message .toUpperCase()}}",
+              "rightValue": "=MENU",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -10352,
+        2304
+      ],
+      "id": "3d23adf6-331f-473b-bee6-fe55f026aa52",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Webhook').first().json.body.text.message .toUpperCase()}}",
+                    "rightValue": "MENU",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    },
+                    "id": "210d7a64-f3a2-4f46-8757-efe7373a01cd"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "menu"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "be7d2e59-e9e5-415a-83b9-fad31826938a",
+                    "leftValue": "={{ $('Webhook').first().json.body.text.message .toUpperCase()}}",
+                    "rightValue": "CANCELAR",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "cancelar"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -9872,
+        2880
+      ],
+      "id": "3b4ec4e8-41b7-421d-927a-ba8748b2fabb",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('CREDECIAMENTO').first().json.urlSemBarraFinal }}/send-text",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Client-Token",
+              "value": "={{ $('CREDECIAMENTO').first().json.token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"phone\": \"{{ $('Webhook').item.json.body.phone }}\",\n  \"message\": \"Selecione uma opção:\",\n  \"buttonList\": {\n    \"buttons\": [\n      {\n        \"id\": \"duvidas_frequentes\",\n        \"label\": \"Dúvidas Frequentes\"\n      },\n      {\n        \"id\": \"hospedado_ajuda\",\n        \"label\": \"Já Estou Hospedado\"\n      },\n      {\n        \"id\": \"orcar_reserva\",\n        \"label\": \"Quero Orçar\"\n      },\n      {\n        \"id\": \"tenho_reserva\",\n        \"label\": \"Já Tenho Reserva\"\n      },\n      {\n        \"id\": \"alterar_unidade\",\n        \"label\": \"Alterar Unidade\"\n      }\n    ]\n  }\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -9664,
+        2496
+      ],
+      "id": "0600cb08-b69f-4abf-a0fe-df84e089086d",
+      "name": "ENVIO DE MENSAGEM DE TEXTO13"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('CREDECIAMENTO').first().json.urlSemBarraFinal }}/send-text",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Client-Token",
+              "value": "={{ $('CREDECIAMENTO').first().json.token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "={{ $('Webhook').item.json.body.phone }}"
+            },
+            {
+              "name": "message",
+              "value": "=Para cancelamento ou alteração de data, envie um email com a solicitação para: adm@hoteisreserva.com.br "
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -9664,
+        2688
+      ],
+      "id": "3e83a756-1150-4010-9e09-0f04a308bf96",
+      "name": "ENVIO DE MENSAGEM DE TEXTO"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Code Node (JavaScript) — valida selectedRowId e retorna true/false em isValid\n\n// 1) Helper para acessar caminho de forma segura\nfunction get(obj, path) {\n  return path.split('.').reduce((o, k) => (o && o[k] !== undefined) ? o[k] : undefined, obj);\n}\n\n// 2) Pega o JSON do item atual (ou o primeiro, se preferir todos)\nconst input = (items && items[0] && items[0].json) ? items[0].json : $json;\n\n// 3) Tenta vários caminhos possíveis para achar o selectedRowId\nlet selectedRowId =\n  get(input, 'body.listResponseMessage.selectedRowId') ??\n  get(input, 'listResponseMessage.selectedRowId') ??\n  get(input, 'body.selectedRowId') ??\n  get(input, 'selectedRowId') ??\n  null;\n\n// Normaliza (ex.: \" cj-01 \" -> \"CJ-1\")\nif (typeof selectedRowId === 'string') {\n  selectedRowId = selectedRowId.trim().toUpperCase().replace(/-0+(\\d+)$/, '-$1');\n}\n\n// 4) Gera o conjunto de IDs válidos (IL-1..20, CJ-1..20, CB-1..20, SA-1..20)\nconst validSet = new Set();\nfor (let i = 1; i <= 10000; i++) {\n  validSet.add(`IL-${i}`);\n  validSet.add(`CJ-${i}`);\n  validSet.add(`CB-${i}`);\n  validSet.add(`SA-${i}`);\n}\n\n// 5) Retorna apenas um boolean dentro de json (n8n exige um objeto)\nconst isValid = !!(selectedRowId && validSet.has(selectedRowId));\nreturn [{ json: { isValid } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -10240,
+        2896
+      ],
+      "id": "aa56d1ca-daf0-4c53-ad0d-ae7af880304c",
+      "name": "MAPEIA O MENU FAQ"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "d5ac50d0-0f05-4bb8-85c8-2f228b7048fb",
+              "leftValue": "={{ $('MAPEIA O MENU FAQ').item.json.isValid }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -9680,
+        3040
+      ],
+      "id": "ca1213c8-2f68-422e-954c-a4345c9ab09e",
+      "name": "É RESPOSTA DO MENU FAQ?"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "pcNZQpawiENLgRz0",
+          "mode": "list",
+          "cachedResultName": "EXT - MARCIO IA HOSPEDE"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        -5312,
+        2656
+      ],
+      "id": "76eef389-0558-4944-a9d0-a9b45ef3bd0f",
+      "name": "IA HOSPEDE"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "ZuCcOtdnrWbR6gIc",
+          "mode": "list",
+          "cachedResultName": "EXT - MARCIO IA COMERCIAL"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        -5088,
+        3232
+      ],
+      "id": "c93c3f74-6b24-4a03-9ab2-b7c7cb29ed41",
+      "name": "IA COMERCIAL"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "l37Xy3wONOuNyI06",
+          "mode": "list",
+          "cachedResultName": "EXT - MARCIO RESPOSTAS MENUS BOTÕES"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        -7216,
+        3248
+      ],
+      "id": "0fe95d7f-51f7-4f18-adc1-661f6b826665",
+      "name": "RESPOSTA PARA BOTÕES"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "c1wyl5PxEkudwQbx",
+          "mode": "list",
+          "cachedResultName": "EXT - MARCIO RESPOSTA MENU FAQ"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        -9184,
+        2640
+      ],
+      "id": "231338ad-7110-4327-af15-be7ce285af77",
+      "name": "RESPOSTA PARA BOTOES DO FAQ"
+    }
+  ],
+  "pinData": {
+    "TRANSCREVE O AUDIO": [
+      {
+        "json": {
+          "text": "Acabei de comer 2 paes frances com mortadela e margarina"
+        }
+      }
+    ],
+    "Webhook": [
+      {
+        "json": {
+          "headers": {
+            "host": "n8n.3ian.com.br",
+            "x-real-ip": "129.148.21.165",
+            "x-forwarded-for": "129.148.21.165",
+            "x-forwarded-proto": "https",
+            "connection": "upgrade",
+            "content-length": "846",
+            "user-agent": "Mozilla/5.0 (X11; Linux x86_64; rv:111.0) Gecko/20100101 Firefox/111.0",
+            "z-api-token": "C7B6A22F18E00B139C4F1627",
+            "server": "Z-API",
+            "origin": "https://api.z-api.io",
+            "content-type": "application/json; charset=utf-8",
+            "accept-encoding": "gzip"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "isStatusReply": false,
+            "chatLid": "57269144297546@lid",
+            "connectedPhone": "5511968426658",
+            "waitingMessage": false,
+            "isEdit": false,
+            "isGroup": false,
+            "isNewsletter": false,
+            "instanceId": "3E7B6A5C516A50D082B052988BE3B884",
+            "messageId": "3EB00D0A3CD3806D7582E7",
+            "phone": "555197673534",
+            "fromMe": false,
+            "momment": 1761691724000,
+            "status": "RECEIVED",
+            "chatName": "Rafael Dall’Agnol",
+            "senderPhoto": null,
+            "senderName": "Rafael Dall’Agnol",
+            "photo": "https://pps.whatsapp.net/v/t61.24694-24/491872210_1675578906460139_5865111667155412505_n.jpg?ccb=11-4&oh=01_Q5Aa2wG9PE_CycQh0a3A5MDBvHYaAoOhW9TbQ8gWT2V2le7xRw&oe=690E64C5&_nc_sid=5e03e0&_nc_cat=104",
+            "broadcast": false,
+            "participantLid": null,
+            "forwarded": false,
+            "type": "ReceivedCallback",
+            "fromApi": false,
+            "text": {
+              "message": "Boa tarde"
+            },
+            "_traceContext": {
+              "traceId": "959fce21c310cb66f39f854ab871d111",
+              "spanId": "60c48fffe5b0f424"
+            }
+          },
+          "webhookUrl": "https://n8n.3ian.com.br/webhook/recebimento_zapi_marcio_ok_",
+          "executionMode": "production"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "É GRUPO?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch1": {
+      "main": [
+        [
+          {
+            "node": "SETA TUDO5",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "BUSCA O ARQUIVO1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "BUSCA O ARQUIVO5",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields16",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "EU QUE ENVIEI?": {
+      "main": [
+        [],
+        [
+          {
+            "node": "MAPEIA O MENU FAQ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch3": {
+      "main": [
+        [
+          {
+            "node": "BUSCA NO LOG",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "BUSCA A UNIDADE ESCOLHIDA",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "BUSCA A UNIDADE ESCOLHIDA",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "BUSCA A UNIDADE ESCOLHIDA",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "BUSCA A UNIDADE ESCOLHIDA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields7": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields19",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields8": {
+      "main": [
+        [
+          {
+            "node": "Switch3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields14": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields19",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BUSCA SE JA É HOSPEDE6": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields14",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields19": {
+      "main": [
+        [
+          {
+            "node": "IA COMERCIAL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "ENVIO DE MENSAGEM DE TEXTO5",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "BUSCA SE JA É HOSPEDE6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BUSCA NO LOG": {
+      "main": [
+        [
+          {
+            "node": "SETA A UNIDADE final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SETA A UNIDADE final": {
+      "main": [
+        [
+          {
+            "node": "IA HOSPEDE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CREDECIAMENTO": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If3": {
+      "main": [
+        [
+          {
+            "node": "ENVIA MENSAGEM",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "BUSCA O CHAT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "É NUMERO DE TESTE?3": {
+      "main": [
+        []
+      ]
+    },
+    "DELETA O LEAD DO BANCO DE DADOS": {
+      "main": [
+        []
+      ]
+    },
+    "DELETA A MEMORIA DA IA": {
+      "main": [
+        [
+          {
+            "node": "DELETA O LEAD DO BANCO DE DADOS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "É GRUPO?1": {
+      "main": [
+        [],
+        [
+          {
+            "node": "EU QUE ENVIEI?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BUSCA O CHAT": {
+      "main": [
+        [
+          {
+            "node": "Switch10",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch10": {
+      "main": [
+        [],
+        [
+          {
+            "node": "BUSCA SE JA TA NO BANCO2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BUSCA SE JA TA NO BANCO2": {
+      "main": [
+        [
+          {
+            "node": "ACHOU?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ACHOU?1": {
+      "main": [
+        [
+          {
+            "node": "DADOS DO LEAD COM SDR1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "INSERE NO BANCO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DADOS DO LEAD COM SDR1": {
+      "main": [
+        [
+          {
+            "node": "Switch1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "INSERE NO BANCO": {
+      "main": [
+        [
+          {
+            "node": "ENVIO DE MENSAGEM DE TEXTO7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TRANSCREVE O AUDIO": {
+      "main": [
+        [
+          {
+            "node": "SETA TUDO4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TRANSCRIÇÃO DE IMAGEM": {
+      "main": [
+        [
+          {
+            "node": "SETA TUDO2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File6": {
+      "main": [
+        [
+          {
+            "node": "TRANSCRIÇÃO DE IMAGEM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BUSCA O ARQUIVO1": {
+      "main": [
+        [
+          {
+            "node": "TRANSCREVE O AUDIO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BUSCA O ARQUIVO5": {
+      "main": [
+        [
+          {
+            "node": "Extract from File6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SETA TUDO2": {
+      "main": [
+        [
+          {
+            "node": "SETA OS CAMPOS2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SETA TUDO4": {
+      "main": [
+        [
+          {
+            "node": "SETA OS CAMPOS2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SETA TUDO5": {
+      "main": [
+        [
+          {
+            "node": "SETA OS CAMPOS2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SETA OS CAMPOS2": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BUSCA A UNIDADE ESCOLHIDA": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ENVIO DE MENSAGEM DE TEXTO7": {
+      "main": [
+        [
+          {
+            "node": "Wait4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait4": {
+      "main": [
+        [
+          {
+            "node": "ENVIO DE MENSAGEM DE TEXTO9",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis Chat Memory2": {
+      "ai_memory": [
+        [
+          {
+            "node": "Chat Memory Manager",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ENVIO DE MENSAGEM DE TEXTO9": {
+      "main": [
+        [
+          {
+            "node": "Chat Memory Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields15": {
+      "main": [
+        [
+          {
+            "node": "RESPOSTA PARA BOTOES DO FAQ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields16": {
+      "main": [
+        [
+          {
+            "node": "RESPOSTA PARA BOTÕES",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If5": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ENVIA MENSAGEM": {
+      "main": [
+        [
+          {
+            "node": "DELETA A MEMORIA DA IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "ENVIO DE MENSAGEM DE TEXTO13",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "ENVIO DE MENSAGEM DE TEXTO",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "É RESPOSTA DO MENU FAQ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MAPEIA O MENU FAQ": {
+      "main": [
+        [
+          {
+            "node": "CREDECIAMENTO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "É RESPOSTA DO MENU FAQ?": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields15",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "If3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RESPOSTA PARA BOTÕES": {
+      "main": [
+        [
+          {
+            "node": "If5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "39800a10-4ec1-4f64-b685-49b3b40b0095",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "33032ef6031266b8bc0d76b06793a6cdb5fab704b174a9882769b60050692f00"
+  },
+  "id": "8N6DjwxXbBY6KW0q",
+  "tags": []
+}

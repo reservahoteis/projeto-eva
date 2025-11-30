@@ -108,6 +108,7 @@ import reportRoutes from './routes/report.routes';
 import webhookRoutes from './routes/webhook.routes';
 import healthRoutes from './routes/health.routes';
 import debugRoutes from './routes/debug.routes';
+import escalationRoutes from './routes/escalation.routes';
 
 // Auth (público - sem tenant isolation)
 app.use('/auth', authRoutes);
@@ -128,6 +129,7 @@ app.use('/api/messages', messageRoutes);
 app.use('/api/contacts', contactRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/escalations', escalationRoutes);
 
 // Root API info
 app.get('/api', (req, res) => {

@@ -19,7 +19,9 @@ export interface SocketEvents {
   'message:status': (data: { messageId: string; status: 'sending' | 'sent' | 'delivered' | 'read' }) => void;
   'conversation:updated': (data: any) => void;
   'conversation:created': (data: any) => void;
+  'conversation:new': (data: { conversation: any }) => void;
   'conversation:status': (data: { conversationId: string; status: string }) => void;
+  'escalation:new': (data: { escalation: any; conversation: any }) => void;
   'user:typing': (data: { conversationId: string; userId: string; isTyping: boolean }) => void;
   'user:online': (data: { userId: string }) => void;
   'user:offline': (data: { userId: string }) => void;

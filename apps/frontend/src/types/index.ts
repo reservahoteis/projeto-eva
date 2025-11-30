@@ -123,12 +123,26 @@ export interface Conversation {
   assignedToId?: string;
   assignedTo?: User;
   status: ConversationStatus;
+  priority?: ConversationPriority;
+  source?: string;
+  // Controle de IA
+  iaLocked: boolean;
+  iaLockedAt?: string;
+  iaLockedBy?: string;
   lastMessageAt: string;
   lastMessage?: Message;
   unreadCount: number;
   tags: Tag[];
+  escalation?: Escalation;
   createdAt: string;
   updatedAt: string;
+}
+
+export enum ConversationPriority {
+  LOW = 'LOW',
+  MEDIUM = 'MEDIUM',
+  HIGH = 'HIGH',
+  URGENT = 'URGENT',
 }
 
 // ============================================
@@ -177,6 +191,42 @@ export interface Message {
   metadata?: Record<string, any>;
   createdAt: string;
   updatedAt: string;
+}
+
+// ============================================
+// ESCALATION
+// ============================================
+
+export enum EscalationReason {
+  USER_REQUESTED = 'USER_REQUESTED',
+  AI_UNABLE = 'AI_UNABLE',
+  COMPLEX_QUERY = 'COMPLEX_QUERY',
+  COMPLAINT = 'COMPLAINT',
+  SALES_OPPORTUNITY = 'SALES_OPPORTUNITY',
+  URGENCY = 'URGENCY',
+  OTHER = 'OTHER',
+}
+
+export enum EscalationStatus {
+  PENDING = 'PENDING',
+  IN_PROGRESS = 'IN_PROGRESS',
+  RESOLVED = 'RESOLVED',
+  CANCELLED = 'CANCELLED',
+}
+
+export interface Escalation {
+  id: string;
+  tenantId: string;
+  conversationId: string;
+  reason: EscalationReason;
+  reasonDetail?: string;
+  hotelUnit?: string;
+  aiContext?: Record<string, any>;
+  status: EscalationStatus;
+  attendedById?: string;
+  attendedAt?: string;
+  createdAt: string;
+  resolvedAt?: string;
 }
 
 // ============================================

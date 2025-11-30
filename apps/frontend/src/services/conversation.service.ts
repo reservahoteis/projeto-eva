@@ -76,4 +76,15 @@ export const conversationService = {
     const { data } = await api.get('/api/conversations/stats');
     return data;
   },
+
+  /**
+   * Toggle IA lock on conversation
+   * When locked, the AI will not respond to this conversation
+   */
+  async toggleIaLock(id: string, locked: boolean): Promise<Conversation> {
+    const { data } = await api.patch<Conversation>(`/api/conversations/${id}/ia-lock`, {
+      locked,
+    });
+    return data;
+  },
 };

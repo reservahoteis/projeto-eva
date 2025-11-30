@@ -1,0 +1,535 @@
+{
+  "name": "NOTIFICAR ATENDENTE MARCIO",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -720,
+        48
+      ],
+      "id": "fff56329-968f-4435-8288-628d731b30c9",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a04b0422-7a45-4263-a44b-23e690521144",
+              "name": "Numero",
+              "value": "={{ $('When Executed by Another Workflow').item.json.sessionId }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -384,
+        48
+      ],
+      "id": "15d558f6-fd0e-46cd-baf7-4b7a4b26c9f0",
+      "name": "SETA O NUMERO PARA FILTRAR"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Cada item vem do input e está disponível em \"items\"\nconst resultado = items.map(item => {\n  const numeroOriginal = item.json.Numero || '';\n\n  // Remove tudo que não for número\n  let somenteNumeros = numeroOriginal.replace(/\\D/g, '');\n\n  // Padroniza para um formato genérico de número\n  let numeroFinal = '';\n\n  // Verifica a quantidade de dígitos e aplica as regras de formatação\n  if (somenteNumeros.length === 13) {\n    numeroFinal = somenteNumeros; // Já está correto\n  } else if (somenteNumeros.length === 12) {\n    // Se tiver 12 dígitos, adiciona o 9 após o 4º caractere (unidade do DDD)\n    numeroFinal = somenteNumeros.slice(0, 4) + '9' + somenteNumeros.slice(4);\n  } else if (somenteNumeros.length === 11) {\n    // Se tiver 11 dígitos, adiciona o código de área \"55\"\n    numeroFinal = '55' + somenteNumeros;\n  } else {\n    numeroFinal = 'Número inválido'; // Se a quantidade de dígitos não for válida\n  }\n\n  return {\n    json: {\n      numeroOriginal,\n      numeroFormatado: numeroFinal\n    }\n  };\n});\n\nreturn resultado;\n"
+      },
+      "id": "982cd8d2-7db3-40be-bfa8-5d90d78648ad",
+      "name": "PADRONIZA O NUMERO6",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -176,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "table": {
+          "__rl": true,
+          "value": "IA_SDR_CAMPOS",
+          "mode": "list",
+          "cachedResultName": "IA_SDR_CAMPOS"
+        },
+        "limit": 1,
+        "where": {
+          "values": [
+            {
+              "column": "numero",
+              "value": "={{ $json.numeroFormatado }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [
+        0,
+        48
+      ],
+      "id": "12a1b6c5-9ed8-4786-86a0-dc6c86c09616",
+      "name": "BUSCA NO LOG",
+      "alwaysOutputData": true,
+      "credentials": {
+        "mySql": {
+          "id": "A112kZvtWASH5sMG",
+          "name": "MARCIO_HOTEL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "b4af1760-2d4e-45d3-8481-4406d36429ac",
+                    "leftValue": "={{ $json.escolheuMenu }}",
+                    "rightValue": "Campos do Jordão",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Campos do Jordão"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "ad29d351-7811-4b49-9d0f-97e743f0da29",
+                    "leftValue": "={{ $json.escolheuMenu }}",
+                    "rightValue": "Ilhabela",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Ilhabela"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "a2edbb82-d9bb-4546-bad0-d1db17f3e75b",
+                    "leftValue": "={{ $json.escolheuMenu }}",
+                    "rightValue": "Camburi",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Camburi"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "b8dab146-7d5b-4ba7-b401-d99b83b2a102",
+                    "leftValue": "={{ $json.escolheuMenu }}",
+                    "rightValue": "Santo Antônio do Pinhal",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Santo Antônio do Pinhal"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        192,
+        32
+      ],
+      "id": "7aa83b98-e1e6-40ce-bcfa-644f3a903169",
+      "name": "Switch7"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('CREDECIAMENTO').first().json.urlSemBarraFinal }}/send-text",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Client-Token",
+              "value": "={{ $('CREDECIAMENTO').first().json.token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "=5511934156466"
+            },
+            {
+              "name": "message",
+              "value": "={{ $('When Executed by Another Workflow').item.json.chatInput }}"
+            },
+            {
+              "name": "delayTyping",
+              "value": "1"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        448,
+        272
+      ],
+      "id": "94c7816b-d32c-4bec-98dc-f9d4ebf64bc1",
+      "name": "ENVIA MENSAGEM1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d1e009d3-c819-4f58-9d22-947dabe55589",
+              "name": "urlSemBarraFinal",
+              "value": "https://api.z-api.io/instances/3DDCE2C0BAB090F176CC12538E6B8BF6/token/ABCECEC4ECE6FA8A04C6B863",
+              "type": "string"
+            },
+            {
+              "id": "995821dd-3547-496b-9304-ab9e245c6008",
+              "name": "token",
+              "value": "Ffb031b6c74924a16a62fa08ccdfb31f5S",
+              "type": "string"
+            },
+            {
+              "id": "b6bd0819-0330-42ba-b2ce-0f6b92322053",
+              "name": "numero",
+              "value": "={{ $json.numeroFormatado }}",
+              "type": "string"
+            },
+            {
+              "id": "61dbbf08-7566-47c6-86a0-4fa2441fde08",
+              "name": "memoriaRedis",
+              "value": "drafabianie",
+              "type": "string"
+            },
+            {
+              "id": "21ece186-0bb6-4aea-af0f-1e19487ac9a4",
+              "name": "numeroAtendente",
+              "value": "120363420234916766-group",
+              "type": "string"
+            },
+            {
+              "id": "fde03cc1-8d64-4c93-9feb-72dbc9c6f42b",
+              "name": "idFlow",
+              "value": "a64d6cbc-5d1b-4542-a47b-5d696d5f9fee",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -560,
+        48
+      ],
+      "id": "41f2c9b8-6266-4086-a9af-79ed0f916547",
+      "name": "CREDECIAMENTO"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('CREDECIAMENTO').first().json.urlSemBarraFinal }}/send-text",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Client-Token",
+              "value": "={{ $('CREDECIAMENTO').first().json.token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "=5512991842900"
+            },
+            {
+              "name": "message",
+              "value": "={{ $('When Executed by Another Workflow').item.json.chatInput }}"
+            },
+            {
+              "name": "delayTyping",
+              "value": "1"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        448,
+        128
+      ],
+      "id": "17467eea-b9c7-461c-9ea0-fa56669490e8",
+      "name": "ENVIA MENSAGEM"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('CREDECIAMENTO').first().json.urlSemBarraFinal }}/send-text",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Client-Token",
+              "value": "={{ $('CREDECIAMENTO').first().json.token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "=5511910086172"
+            },
+            {
+              "name": "message",
+              "value": "={{ $('When Executed by Another Workflow').item.json.chatInput }}"
+            },
+            {
+              "name": "delayTyping",
+              "value": "1"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        448,
+        -16
+      ],
+      "id": "5e66d65d-c3ce-4ff9-82c9-a7d1a20ca6e1",
+      "name": "ENVIA MENSAGEM2"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('CREDECIAMENTO').first().json.urlSemBarraFinal }}/send-text",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Client-Token",
+              "value": "={{ $('CREDECIAMENTO').first().json.token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "=5511915525443"
+            },
+            {
+              "name": "message",
+              "value": "={{ $('When Executed by Another Workflow').item.json.chatInput }}"
+            },
+            {
+              "name": "delayTyping",
+              "value": "1"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        448,
+        -160
+      ],
+      "id": "f4dec863-4bb9-442a-b6f0-77717b6c0db6",
+      "name": "ENVIA MENSAGEM3"
+    }
+  ],
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "query": {
+            "chatInput": "Hóspede solicitou falar com um atendente. telefone: 555197673534"
+          },
+          "sessionId": "555197673534",
+          "chatInput": "Hóspede solicitou falar com um atendente. telefone: 555197673534"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "SETA O NUMERO PARA FILTRAR": {
+      "main": [
+        [
+          {
+            "node": "PADRONIZA O NUMERO6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "CREDECIAMENTO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PADRONIZA O NUMERO6": {
+      "main": [
+        [
+          {
+            "node": "BUSCA NO LOG",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BUSCA NO LOG": {
+      "main": [
+        [
+          {
+            "node": "Switch7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch7": {
+      "main": [
+        [
+          {
+            "node": "ENVIA MENSAGEM3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "ENVIA MENSAGEM2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "ENVIA MENSAGEM",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "ENVIA MENSAGEM1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CREDECIAMENTO": {
+      "main": [
+        [
+          {
+            "node": "SETA O NUMERO PARA FILTRAR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "9d33c548-9317-484f-9207-dbc48eff659c",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "33032ef6031266b8bc0d76b06793a6cdb5fab704b174a9882769b60050692f00"
+  },
+  "id": "FyGWJ8Uiy82tpGpF",
+  "tags": []
+}

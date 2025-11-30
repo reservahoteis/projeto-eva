@@ -177,6 +177,11 @@ model Conversation {
   // Campo source para rastrear origem
   source String? // "n8n", "manual", "webhook", "whatsapp"
 
+  // Controle de IA - quando true, IA não responde esta conversa
+  iaLocked   Boolean   @default(false)
+  iaLockedAt DateTime? // Quando a IA foi travada
+  iaLockedBy String?   // User ID que travou (ou "system" se automático)
+
   // Timestamps importantes
   lastMessageAt DateTime @default(now())
   createdAt     DateTime @default(now())
@@ -186,11 +191,12 @@ model Conversation {
   metadata Json?
 
   // Relações
-  tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  contact    Contact   @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  assignedTo User?     @relation(fields: [assignedToId], references: [id], onDelete: SetNull)
-  messages   Message[]
-  tags       Tag[]
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contact     Contact      @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  assignedTo  User?        @relation(fields: [assignedToId], references: [id], onDelete: SetNull)
+  messages    Message[]
+  tags        Tag[]
+  escalations Escalation[]
 
   @@index([tenantId, status, lastMessageAt])
   @@index([tenantId, status, assignedToId, lastMessageAt])
@@ -198,6 +204,7 @@ model Conversation {
   @@index([tenantId, contactId])
   @@index([tenantId, source])
   @@index([tenantId, createdAt])
+  @@index([tenantId, iaLocked])
   @@index([contactId])
   @@map("conversations")
 }
@@ -331,6 +338,61 @@ model UsageTracking {
   @@unique([tenantId, period])
   @@index([tenantId, period])
   @@map("usage_tracking")
+}
+
+// ============================================
+// ESCALATION (Escalações de IA para Humano)
+// Registro de quando a IA transfere para atendente
+// ============================================
+model Escalation {
+  id       String @id @default(uuid())
+  tenantId String
+
+  conversationId String
+
+  // Motivo da escalação
+  reason       EscalationReason
+  reasonDetail String?          @db.Text // Descrição livre do motivo
+
+  // Unidade hoteleira (Campos do Jordão, Ilhabela, etc)
+  hotelUnit String?
+
+  // Contexto da IA no momento da escalação
+  aiContext Json? // Histórico de mensagens, intent detectada, etc
+
+  // Status da escalação
+  status       EscalationStatus @default(PENDING)
+  attendedById String?          // User que atendeu
+  attendedAt   DateTime?        // Quando foi atendida
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  resolvedAt DateTime?
+
+  // Relações
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, status, createdAt])
+  @@index([conversationId])
+  @@index([tenantId, hotelUnit])
+  @@map("escalations")
+}
+
+enum EscalationReason {
+  USER_REQUESTED    // Cliente pediu para falar com humano
+  AI_UNABLE         // IA não conseguiu resolver
+  COMPLEX_QUERY     // Consulta complexa
+  COMPLAINT         // Reclamação
+  SALES_OPPORTUNITY // Oportunidade de venda
+  URGENCY           // Urgência detectada
+  OTHER             // Outro motivo
+}
+
+enum EscalationStatus {
+  PENDING     // Aguardando atendimento
+  IN_PROGRESS // Sendo atendida
+  RESOLVED    // Resolvida
+  CANCELLED   // Cancelada (cliente desistiu)
 }
 
 // ============================================

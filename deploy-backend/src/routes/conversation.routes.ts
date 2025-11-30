@@ -10,8 +10,10 @@ import {
   assignConversationSchema,
   createConversationSchema,
 } from '@/validators/conversation.validator';
+import { toggleIaLockSchema } from '@/validators/escalation.validator';
 import { sendMessageSchema, listMessagesSchema } from '@/validators/message.validator';
 import { createLimiter } from '@/middlewares/rate-limit.middleware';
+import { escalationService } from '@/services/escalation.service';
 
 const router = Router();
 
@@ -48,6 +50,41 @@ router.post('/:id/assign', validate(assignConversationSchema), conversationContr
 
 // POST /api/conversations/:id/close
 router.post('/:id/close', conversationController.close.bind(conversationController));
+
+// PATCH /api/conversations/:id/ia-lock
+// Toggle IA lock (travar/destravar IA para esta conversa)
+router.patch(
+  '/:id/ia-lock',
+  validate(toggleIaLockSchema),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { locked } = req.body;
+
+      if (!req.tenantId) {
+        return res.status(400).json({ error: 'Tenant ID nao encontrado' });
+      }
+
+      if (!req.user?.id) {
+        return res.status(401).json({ error: 'Usuario nao autenticado' });
+      }
+
+      const updated = await escalationService.toggleIaLock(
+        id,
+        req.tenantId,
+        locked,
+        req.user.id
+      );
+
+      return res.json(updated);
+    } catch (error: any) {
+      if (error.name === 'NotFoundError') {
+        return res.status(404).json({ error: error.message });
+      }
+      return res.status(500).json({ error: 'Erro interno' });
+    }
+  }
+);
 
 // ============================================
 // Nested Message Routes (RESTful Pattern)

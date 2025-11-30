@@ -1,0 +1,1995 @@
+{
+  "name": "EXT - MARCIO RESPOSTAS MENUS BOTÕES",
+  "nodes": [
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Webhook').item.json.body.buttonsResponseMessage.buttonId }}",
+                    "rightValue": "info_campos",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "f0c57ae3-bb68-4a44-b1a9-d14721fb6775"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "info_campos"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "26a2746e-7181-4c73-998b-3cc04e80c77b",
+                    "leftValue": "={{ $('Webhook').item.json.body.buttonsResponseMessage.buttonId }}",
+                    "rightValue": "info_ilhabela",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "info_ilhabela"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "81c61432-dc83-490f-90b8-98251531c794",
+                    "leftValue": "={{ $('Webhook').item.json.body.buttonsResponseMessage.buttonId }}",
+                    "rightValue": "info_camburi",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "info_camburi"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "f9636cd9-4639-4ac8-bf8a-70b883636761",
+                    "leftValue": "={{ $('Webhook').item.json.body.buttonsResponseMessage.buttonId }}",
+                    "rightValue": "info_santo_antonio",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "info_santo_antonio"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "a473d401-8f1d-455b-872b-5a036b3f79b7",
+                    "leftValue": "",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        1040,
+        -592
+      ],
+      "id": "67ba5d62-33e8-4c46-89bc-0d25acc94972",
+      "name": "Switch5"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4a11cf96-6607-4dd5-bc7a-062def8eac84",
+              "name": "escolha",
+              "value": "Campos do Jordão",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1392,
+        -928
+      ],
+      "id": "b46c0938-887c-4b42-a104-452bdee8ebb7",
+      "name": "seta a escolha"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a04b0422-7a45-4263-a44b-23e690521144",
+              "name": "Numero",
+              "value": "={{ $('Webhook').item.json.body.phone }}",
+              "type": "string"
+            },
+            {
+              "id": "6f07f505-82e5-4921-8911-1802baf9554e",
+              "name": "escolha",
+              "value": "={{ $json.escolha }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1680,
+        -640
+      ],
+      "id": "4441dd55-9746-4d3c-971f-57d948f542f4",
+      "name": "2 ENTRADAS 1 SAIDA3"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Cada item vem do input e está disponível em \"items\"\nconst resultado = items.map(item => {\n  const numeroOriginal = item.json.Numero || '';\n\n  // Remove tudo que não for número\n  let somenteNumeros = numeroOriginal.replace(/\\D/g, '');\n\n  // Padroniza para um formato genérico de número\n  let numeroFinal = '';\n\n  // Verifica a quantidade de dígitos e aplica as regras de formatação\n  if (somenteNumeros.length === 13) {\n    numeroFinal = somenteNumeros; // Já está correto\n  } else if (somenteNumeros.length === 12) {\n    // Se tiver 12 dígitos, adiciona o 9 após o 4º caractere (unidade do DDD)\n    numeroFinal = somenteNumeros.slice(0, 4) + '9' + somenteNumeros.slice(4);\n  } else if (somenteNumeros.length === 11) {\n    // Se tiver 11 dígitos, adiciona o código de área \"55\"\n    numeroFinal = '55' + somenteNumeros;\n  } else {\n    numeroFinal = 'Número inválido'; // Se a quantidade de dígitos não for válida\n  }\n\n  return {\n    json: {\n      numeroOriginal,\n      numeroFormatado: numeroFinal\n    }\n  };\n});\n\nreturn resultado;\n"
+      },
+      "id": "ec7ffe25-4a15-41c3-a035-9c46cfe92a14",
+      "name": "PADRONIZA O NUMERO3",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1904,
+        -640
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "table": {
+          "__rl": true,
+          "value": "IA_SDR_CAMPOS",
+          "mode": "list",
+          "cachedResultName": "IA_SDR_CAMPOS"
+        },
+        "dataMode": "defineBelow",
+        "columnToMatchOn": "numero",
+        "valueToMatchOn": "={{ $('PADRONIZA O NUMERO3').item.json.numeroFormatado }}",
+        "valuesToSend": {
+          "values": [
+            {
+              "column": "ultimaInteracao",
+              "value": "={{ $now .format('dd/MM/yyyy HH:mm')}}"
+            },
+            {
+              "column": "rmkt_1",
+              "value": "={{ $now .plus('15',\"minutes\").format('dd/MM/yyyy HH:mm')}}"
+            },
+            {
+              "column": "rmkt_2",
+              "value": "={{ $now .plus('1',\"days\").format('dd/MM/yyyy HH:mm')}}"
+            },
+            {
+              "column": "escolheuMenu",
+              "value": "={{ $('2 ENTRADAS 1 SAIDA3').item.json.escolha }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [
+        2128,
+        -640
+      ],
+      "id": "003bcf43-faed-4384-837e-ddc1c615c27f",
+      "name": "BUSCA SE JA TA NO BANCO4",
+      "alwaysOutputData": true,
+      "credentials": {
+        "mySql": {
+          "id": "A112kZvtWASH5sMG",
+          "name": "MARCIO_HOTEL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4a11cf96-6607-4dd5-bc7a-062def8eac84",
+              "name": "escolha",
+              "value": "Ilhabela",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1392,
+        -736
+      ],
+      "id": "cc6214b2-b93f-4158-b8c1-e395165ba19e",
+      "name": "seta a escolha1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4a11cf96-6607-4dd5-bc7a-062def8eac84",
+              "name": "escolha",
+              "value": "Camburi",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1392,
+        -544
+      ],
+      "id": "31ed064c-a8e3-497c-86d4-2c1e5959a666",
+      "name": "seta a escolha2"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4a11cf96-6607-4dd5-bc7a-062def8eac84",
+              "name": "escolha",
+              "value": "Santo Antônio do Pinhal",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1392,
+        -352
+      ],
+      "id": "538ffbee-1ebd-40a7-b952-bb57ddc123d3",
+      "name": "seta a escolha3"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('CREDECIAMENTO').first().json.urlSemBarraFinal }}/send-text",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Client-Token",
+              "value": "={{ $('CREDECIAMENTO').first().json.token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"phone\": \"{{ $('Webhook').item.json.body.phone }}\",\n  \"message\": \"Selecione uma opção:\",\n  \"buttonList\": {\n    \"buttons\": [\n      {\n        \"id\": \"duvidas_frequentes\",\n        \"label\": \"Dúvidas Frequentes\"\n      },\n      {\n        \"id\": \"hospedado_ajuda\",\n        \"label\": \"Já Estou Hospedado\"\n      },\n      {\n        \"id\": \"orcar_reserva\",\n        \"label\": \"Quero Orçar\"\n      },\n      {\n        \"id\": \"tenho_reserva\",\n        \"label\": \"Já Tenho Reserva\"\n      },\n      {\n        \"id\": \"alterar_unidade\",\n        \"label\": \"Alterar Unidade\"\n      }\n    ]\n  }\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2352,
+        -640
+      ],
+      "id": "bd16a9d6-e80a-4e7d-b405-3c9c9090763e",
+      "name": "ENVIO DE MENSAGEM DE TEXTO6"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Webhook').item.json.body.buttonsResponseMessage.buttonId }}",
+                    "rightValue": "hospedado_ajuda",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "1-hospedado"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "hospedado_ajuda"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Webhook').item.json.body.buttonsResponseMessage.buttonId }}",
+                    "rightValue": "orcar_reserva",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "2-orcar"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "orcar_reserva"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Webhook').item.json.body.buttonsResponseMessage.buttonId }}",
+                    "rightValue": "tenho_reserva",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "3-ja-tenho"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "tenho_reserva"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Webhook').item.json.body.buttonsResponseMessage.buttonId }}",
+                    "rightValue": "duvidas_frequentes",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "4-mais-opcoes"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "duvidas_frequentes"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "b83d1d70-00e7-4622-8253-68cfbc7d5c6d",
+                    "leftValue": "={{ $('Webhook').item.json.body.buttonsResponseMessage.buttonId }}",
+                    "rightValue": "alterar_unidade",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "alterar_unidade"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "cdd0b8a6-8671-484b-bf74-05e9ae7787d0",
+                    "leftValue": "={{ $('Webhook').item.json.body.buttonsResponseMessage.buttonId }}",
+                    "rightValue": "menu_inicial",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "menu_inicial"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        1040,
+        688
+      ],
+      "id": "a3a37cc3-caaa-4620-8b99-65ab9e0c1ab6",
+      "name": "Switch - Opções Principais"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4a11cf96-6607-4dd5-bc7a-062def8eac84",
+              "name": "escolha",
+              "value": "Quer orçar uma reserva",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1392,
+        144
+      ],
+      "id": "a08fd007-f5ea-425b-b33b-92a14885cadf",
+      "name": "seta a escolha5"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f6d7b3c0-c44b-4eb1-80e1-6bdc873fa137",
+              "leftValue": "={{ $('Webhook').item.json.body.buttonsResponseMessage.buttonId }}",
+              "rightValue": "info",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        752,
+        352
+      ],
+      "id": "36137e14-1c40-426f-aace-9f890f92ffb8",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('CREDECIAMENTO').first().json.urlSemBarraFinal }}/send-text",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Client-Token",
+              "value": "={{ $('CREDECIAMENTO').first().json.token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"phone\": \"{{ $('Webhook').item.json.body.phone }}\",\n  \"message\": \"Selecione qual Smart Hotel Reserva gostaria de informações:\",\n  \"buttonList\": {\n    \"buttons\": [\n      {\n        \"id\": \"info_ilhabela\",\n        \"label\": \"Ilhabela\"\n      },\n      {\n        \"id\": \"info_campos\",\n        \"label\": \"Campos do Jordão\"\n      },\n      {\n        \"id\": \"info_camburi\",\n        \"label\": \"Camburi\"\n      },\n      {\n        \"id\": \"info_santo_antonio\",\n        \"label\": \"Santo Antônio do Pinhal\"\n      }\n    ]\n  }\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1392,
+        928
+      ],
+      "id": "0254d852-c96e-47f5-b0b9-53ff15016f66",
+      "name": "ENVIO DE MENSAGEM DE TEXTO10"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4a11cf96-6607-4dd5-bc7a-062def8eac84",
+              "name": "escolha",
+              "value": "Já tenho uma reserva",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1392,
+        336
+      ],
+      "id": "494052cf-febe-4bb4-99ed-67b8585889b2",
+      "name": "seta a escolha6"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "73c6bfba-1421-4cc2-85a3-c15b485bda71",
+              "name": "pergunta",
+              "value": "=Cliente selecionou a opção: {{ $item(\"0\").$node[\"Edit Fields9\"].json[\"subMenu\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "57ea2c06-72fe-4c1d-becb-a531b29bfc19",
+              "name": "telefone",
+              "value": "={{ $('CREDECIAMENTO').first().json.numero }}",
+              "type": "string"
+            },
+            {
+              "id": "f7ef836e-4e92-426b-ae96-00dd24b36a21",
+              "name": "subMenu",
+              "value": "={{ $item(\"0\").$node[\"Edit Fields9\"].json[\"subMenu\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "3977ea4e-0b4b-41d2-bf0f-4223a91df3c4",
+              "name": "retornoAPI",
+              "value": "xpto",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2128,
+        240
+      ],
+      "id": "fc2f1cb7-331d-47e5-ba26-7ddf7036075d",
+      "name": "Edit Fields2"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4a11cf96-6607-4dd5-bc7a-062def8eac84",
+              "name": "escolha",
+              "value": "Já estou hospedado e quero  ajuda",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1392,
+        -48
+      ],
+      "id": "7be9dc90-ac12-4ff7-a132-cd9deed46fe1",
+      "name": "seta a escolha8"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "table": {
+          "__rl": true,
+          "value": "IA_SDR_CAMPOS",
+          "mode": "list",
+          "cachedResultName": "IA_SDR_CAMPOS"
+        },
+        "dataMode": "defineBelow",
+        "columnToMatchOn": "numero",
+        "valueToMatchOn": "={{ $('CREDECIAMENTO').first().json.numero }}",
+        "valuesToSend": {
+          "values": [
+            {
+              "column": "ultimaInteracao",
+              "value": "={{ $now .format('dd/MM/yyyy HH:mm')}}"
+            },
+            {
+              "column": "rmkt_1",
+              "value": "={{ $now .plus('15',\"minutes\").format('dd/MM/yyyy HH:mm')}}"
+            },
+            {
+              "column": "rmkt_2",
+              "value": "={{ $now .plus('1',\"days\").format('dd/MM/yyyy HH:mm')}}"
+            },
+            {
+              "column": "subMenu",
+              "value": "={{ $json.subMenu }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [
+        1904,
+        240
+      ],
+      "id": "022cae95-94e3-4d61-86ce-c0f15edffbf6",
+      "name": "ATUALIZA O SUBMENU",
+      "alwaysOutputData": true,
+      "credentials": {
+        "mySql": {
+          "id": "A112kZvtWASH5sMG",
+          "name": "MARCIO_HOTEL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "73c6bfba-1421-4cc2-85a3-c15b485bda71",
+              "name": "pergunta",
+              "value": "=Cliente selecionou a opção: ",
+              "type": "string"
+            },
+            {
+              "id": "57ea2c06-72fe-4c1d-becb-a531b29bfc19",
+              "name": "telefone",
+              "value": "={{ $('CREDECIAMENTO').first().json.numero }}",
+              "type": "string"
+            },
+            {
+              "id": "f7ef836e-4e92-426b-ae96-00dd24b36a21",
+              "name": "subMenu",
+              "value": "={{ $json.escolha }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1680,
+        240
+      ],
+      "id": "eed5de5e-9b24-4954-a6a1-ad00066bcb41",
+      "name": "Edit Fields9"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "73c6bfba-1421-4cc2-85a3-c15b485bda71",
+              "name": "pergunta",
+              "value": "=Cliente selecionou a opção: ",
+              "type": "string"
+            },
+            {
+              "id": "57ea2c06-72fe-4c1d-becb-a531b29bfc19",
+              "name": "telefone",
+              "value": "={{ $('CREDECIAMENTO').first().json.numero }}",
+              "type": "string"
+            },
+            {
+              "id": "f7ef836e-4e92-426b-ae96-00dd24b36a21",
+              "name": "subMenu",
+              "value": "={{ $item(\"0\").$node[\"Edit Fields11\"].json[\"subMenu\"] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2128,
+        -48
+      ],
+      "id": "393dbc2a-397c-4408-b51e-15050c59e568",
+      "name": "Edit Fields10"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "table": {
+          "__rl": true,
+          "value": "IA_SDR_CAMPOS",
+          "mode": "list",
+          "cachedResultName": "IA_SDR_CAMPOS"
+        },
+        "dataMode": "defineBelow",
+        "columnToMatchOn": "numero",
+        "valueToMatchOn": "={{ $('CREDECIAMENTO').first().json.numero }}",
+        "valuesToSend": {
+          "values": [
+            {
+              "column": "ultimaInteracao",
+              "value": "={{ $now .format('dd/MM/yyyy HH:mm')}}"
+            },
+            {
+              "column": "rmkt_1",
+              "value": "={{ $now .plus('15',\"minutes\").format('dd/MM/yyyy HH:mm')}}"
+            },
+            {
+              "column": "rmkt_2",
+              "value": "={{ $now .plus('1',\"days\").format('dd/MM/yyyy HH:mm')}}"
+            },
+            {
+              "column": "subMenu",
+              "value": "={{ $json.subMenu }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [
+        1904,
+        -48
+      ],
+      "id": "e2d40dbd-6805-4dfd-a622-e571c4b08259",
+      "name": "ATUALIZA O SUBMENU1",
+      "alwaysOutputData": true,
+      "credentials": {
+        "mySql": {
+          "id": "A112kZvtWASH5sMG",
+          "name": "MARCIO_HOTEL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "73c6bfba-1421-4cc2-85a3-c15b485bda71",
+              "name": "pergunta",
+              "value": "=Cliente selecionou a opção: ",
+              "type": "string"
+            },
+            {
+              "id": "57ea2c06-72fe-4c1d-becb-a531b29bfc19",
+              "name": "telefone",
+              "value": "={{ $('CREDECIAMENTO').first().json.numero }}",
+              "type": "string"
+            },
+            {
+              "id": "f7ef836e-4e92-426b-ae96-00dd24b36a21",
+              "name": "subMenu",
+              "value": "={{ $json.escolha }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1680,
+        -48
+      ],
+      "id": "a360e67e-ddb4-43f8-b75f-40c2ebb675ff",
+      "name": "Edit Fields11"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('CREDECIAMENTO').first().json.urlSemBarraFinal }}/send-text",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Client-Token",
+              "value": "={{ $('CREDECIAMENTO').first().json.token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "={{ $('Webhook').first().json.body.phone }}"
+            },
+            {
+              "name": "message",
+              "value": "=Para que eu possa ajudá-lo da melhor maneira, poderia me informar o número da dua suíte e qual é a sua dúvida ou necessidade? \n\nEstou aqui para oferecer o suporte que você precisar durante a sua estadia! 😊"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2352,
+        -48
+      ],
+      "id": "9a4e988f-b2fa-447b-9155-9d91680ecb7f",
+      "name": "ENVIO DE MENSAGEM DE TEXTO2"
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "messages": {
+          "messageValues": [
+            {
+              "type": "ai",
+              "message": "=Para que eu possa ajudá-lo da melhor maneira, poderia me informar o número da dua suíte e qual é a sua dúvida ou necessidade? \n\nEstou aqui para oferecer o suporte que você precisar durante a sua estadia! 😊"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryManager",
+      "typeVersion": 1.1,
+      "position": [
+        2576,
+        -48
+      ],
+      "id": "202fd221-6ba1-4e74-954c-c364677bfcbb",
+      "name": "Chat Memory Manager1"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Webhook').first().json.body.phone }}{{ $('CREDECIAMENTO').first().json.memoriaRedis }}",
+        "contextWindowLength": 1000
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryRedisChat",
+      "typeVersion": 1.4,
+      "position": [
+        2640,
+        176
+      ],
+      "id": "b70175c5-3d05-4cca-8336-5eb8b3ced903",
+      "name": "Redis Chat Memory3",
+      "credentials": {
+        "redis": {
+          "id": "jui80Gim2A5frf81",
+          "name": "3IAN - REDIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=CLIENTE ESCOLHEU A UNIDADE: {{ $('2 ENTRADAS 1 SAIDA3').item.json.escolha }}"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryManager",
+      "typeVersion": 1.1,
+      "position": [
+        2576,
+        -640
+      ],
+      "id": "7ff778e6-3aa8-40f9-88b0-693aa2dc59a4",
+      "name": "Chat Memory Manager2"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Webhook').first().json.body.phone }}{{ $('CREDECIAMENTO').first().json.memoriaRedis }}",
+        "contextWindowLength": 1000
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryRedisChat",
+      "typeVersion": 1.4,
+      "position": [
+        2640,
+        -416
+      ],
+      "id": "02ec8a91-c26b-4332-9138-858102f5e731",
+      "name": "Redis Chat Memory4",
+      "credentials": {
+        "redis": {
+          "id": "jui80Gim2A5frf81",
+          "name": "3IAN - REDIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "table": {
+          "__rl": true,
+          "value": "IA_SDR_CAMPOS",
+          "mode": "list",
+          "cachedResultName": "IA_SDR_CAMPOS"
+        },
+        "limit": 1,
+        "where": {
+          "values": [
+            {
+              "column": "numero",
+              "value": "={{ $('CREDECIAMENTO').first().json.numero }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [
+        1392,
+        736
+      ],
+      "id": "e6d9088a-bf30-421d-baff-eb1d25bec586",
+      "name": "BUSCA A UNIDADE ESCOLHIDA1",
+      "alwaysOutputData": true,
+      "credentials": {
+        "mySql": {
+          "id": "A112kZvtWASH5sMG",
+          "name": "MARCIO_HOTEL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "b4af1760-2d4e-45d3-8481-4406d36429ac",
+                    "leftValue": "={{ $json.escolheuMenu }}",
+                    "rightValue": "Campos do Jordão",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Campos do Jordão"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "ad29d351-7811-4b49-9d0f-97e743f0da29",
+                    "leftValue": "={{ $json.escolheuMenu }}",
+                    "rightValue": "Ilhabela",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Ilhabela"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "a2edbb82-d9bb-4546-bad0-d1db17f3e75b",
+                    "leftValue": "={{ $json.escolheuMenu }}",
+                    "rightValue": "Camburi",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Camburi"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "b8dab146-7d5b-4ba7-b401-d99b83b2a102",
+                    "leftValue": "={{ $json.escolheuMenu }}",
+                    "rightValue": "Santo Antônio do Pinhal",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Santo Antônio do Pinhal"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        2976,
+        1008
+      ],
+      "id": "2939283c-1dc0-40c0-bf85-5cf3f051c402",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('CREDECIAMENTO').first().json.urlSemBarraFinal }}/send-option-list",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Client-Token",
+              "value": "={{ $('CREDECIAMENTO').first().json.token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"phone\": \"{{ $('Webhook').first().json.body.phone }}\",\n  \"message\": \"Escolha uma das perguntas mais frequentes sobre sua estadia:\",\n{{ $json.data .slice('1')}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2016,
+        736
+      ],
+      "id": "7d2cf11a-e478-43dd-b5e5-5bfe010eb9e8",
+      "name": "ENVIO DE MENSAGEM DE TEXTO11"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('CREDECIAMENTO').first().json.urlSemBarraFinal }}/send-text",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Client-Token",
+              "value": "={{ $('CREDECIAMENTO').first().json.token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"phone\": \"{{ $('Webhook').first().json.body.phone }}\",\n  \"message\": \"_Se quiser retornar ao Menu, clique no botão abaixo_:\",\n  \"buttonList\": {\n    \"buttons\": [\n      {\n        \"id\": \"menu_inicial\",\n        \"label\": \"Voltar ao Menu\"\n      }\n    ]\n  }\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2400,
+        736
+      ],
+      "id": "67425b1f-7cc6-451a-8229-69afbf14b902",
+      "name": "ENVIO DE MENSAGEM DE TEXTO12"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('CREDECIAMENTO').first().json.urlSemBarraFinal }}/send-text",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Client-Token",
+              "value": "={{ $('CREDECIAMENTO').first().json.token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"phone\": \"{{ $('Webhook').item.json.body.phone }}\",\n  \"message\": \"Selecione uma opção:\",\n  \"buttonList\": {\n    \"buttons\": [\n      {\n        \"id\": \"duvidas_frequentes\",\n        \"label\": \"Dúvidas Frequentes\"\n      },\n      {\n        \"id\": \"hospedado_ajuda\",\n        \"label\": \"Já Estou Hospedado\"\n      },\n      {\n        \"id\": \"orcar_reserva\",\n        \"label\": \"Quero Orçar\"\n      },\n      {\n        \"id\": \"tenho_reserva\",\n        \"label\": \"Já Tenho Reserva\"\n      },\n      {\n        \"id\": \"alterar_unidade\",\n        \"label\": \"Alterar Unidade\"\n      }\n    ]\n  }\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1392,
+        1120
+      ],
+      "id": "06ace0d9-55d2-4838-b535-0834c84cf91a",
+      "name": "ENVIO DE MENSAGEM DE TEXTO13"
+    },
+    {
+      "parameters": {
+        "amount": 2
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2208,
+        736
+      ],
+      "id": "aad0ab27-da32-4850-b1c0-66a8faf27f9f",
+      "name": "Wait1",
+      "webhookId": "b2d1e9d1-51c3-4fda-bdde-dd4ad9587fac"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.z-api.io/instances/3DDCE2C0BAB090F176CC12538E6B8BF6/token/ABCECEC4ECE6FA8A04C6B863/send-option-list",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Client-Token",
+              "value": "=Ffb031b6c74924a16a62fa08ccdfb31f5S"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"phone\": \"{{ $('Webhook').item.json.body.phone }}\",\n  \"message\": \"Selecione uma das perguntas frequentes sobre sua estadia em Ilhabela:\",\n  \"optionList\": {\n    \"title\": \"Dúvidas Frequentes - Ilhabela\",\n    \"buttonLabel\": \"Abrir lista de dúvidas\",\n    \"options\": [\n      { \"id\": \"IL-1\", \"title\": \"Senha do Wifi\", \"description\": \"Acesso à internet no hotel\" },\n      { \"id\": \"IL-2\", \"title\": \"Café da manhã\", \"description\": \"Local e como chegar\" },\n      { \"id\": \"IL-3\", \"title\": \"Restaurante próximo\", \"description\": \"Opções a pé e distância\" },\n      { \"id\": \"IL-4\", \"title\": \"Praia da Feiticeira\", \"description\": \"Como acessar a praia\" },\n      { \"id\": \"IL-5\", \"title\": \"Banheira\", \"description\": \"Como utilizar corretamente\" },\n      { \"id\": \"IL-6\", \"title\": \"Praias próximas\", \"description\": \"Quais estão perto do hotel\" },\n      { \"id\": \"IL-7\", \"title\": \"Agendar yoga\", \"description\": \"Horários, agendamento e roupas\" },\n      { \"id\": \"IL-8\", \"title\": \"Agendar massagem\", \"description\": \"Contato, valores e link do menu\" },\n      { \"id\": \"IL-9\", \"title\": \"Estacionamento\", \"description\": \"Local e onde parar\" },\n      { \"id\": \"IL-10\", \"title\": \"Bebedouro\", \"description\": \"Disponibilidade de água filtrada\" },\n      { \"id\": \"IL-11\", \"title\": \"Frigobar e bebidas\", \"description\": \"Vendas e delivery por perto\" },\n      { \"id\": \"IL-12\", \"title\": \"Piscinas\", \"description\": \"Localização e horários de uso\" },\n      { \"id\": \"IL-13\", \"title\": \"Cachoeiras próximas\", \"description\": \"Trilhas acessíveis a pé\" },\n      { \"id\": \"IL-14\", \"title\": \"Pets soltos\", \"description\": \"Regras e orientações para pets\" },\n      { \"id\": \"IL-15\", \"title\": \"Padaria próxima\", \"description\": \"Onde tomar café fora do hotel\" },\n      { \"id\": \"IL-16\", \"title\": \"Toalha para piscina\", \"description\": \"Disponibilidade e política ambiental\" },\n      { \"id\": \"IL-17\", \"title\": \"Limpeza diária\", \"description\": \"Quando está inclusa e valor avulso\" },\n      { \"id\": \"IL-18\", \"title\": \"Coworking com comida?\", \"description\": \"Disponibilidade de café e lanches\" },\n      { \"id\": \"IL-19\", \"title\": \"Guardar bagagem\", \"description\": \"Antes do check-in tem onde deixar?\" },\n      { \"id\": \"IL-20\", \"title\": \"Chuveiro pós check-out\", \"description\": \"Existe? É possível usar?\" }\n    ]\n  }\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2448,
+        1072
+      ],
+      "id": "e263ef0f-958c-45d6-b432-2a7b1491fc9e",
+      "name": "ENVIO DE MENSAGEM DE TEXTO14"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.z-api.io/instances/3DDCE2C0BAB090F176CC12538E6B8BF6/token/ABCECEC4ECE6FA8A04C6B863/send-option-list",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Client-Token",
+              "value": "=Ffb031b6c74924a16a62fa08ccdfb31f5S"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"phone\": \"{{ $('Webhook').item.json.body.phone }}\",\n  \"message\": \"Dúvidas frequentes sobre sua estadia em Camburi:\",\n  \"optionList\": {\n    \"title\": \"FAQ - Reserva Camburi\",\n    \"buttonLabel\": \"Abrir lista\",\n    \"options\": [\n      { \"id\": \"CB-1\", \"title\": \"Senha do Wi-Fi\", \"description\": \"Acesso à internet no hotel\" },\n      { \"id\": \"CB-2\", \"title\": \"Restaurante\", \"description\": \"Horário de funcionamento\" },\n      { \"id\": \"CB-3\", \"title\": \"Café da manhã\", \"description\": \"Horário de serviço\" },\n      { \"id\": \"CB-4\", \"title\": \"Limpeza da suíte\", \"description\": \"Frequência e condições\" },\n      { \"id\": \"CB-5\", \"title\": \"Aula de Yoga\", \"description\": \"Como agendar via WhatsApp\" },\n      { \"id\": \"CB-6\", \"title\": \"Lenha para lareira\", \"description\": \"Como solicitar lenha\" },\n      { \"id\": \"CB-7\", \"title\": \"Cápsulas de café\", \"description\": \"Como pedir opções\" },\n      { \"id\": \"CB-8\", \"title\": \"Serviço de quarto\", \"description\": \"Refeições no quarto\" },\n      { \"id\": \"CB-9\", \"title\": \"Coworkings\", \"description\": \"Locais e estrutura\" },\n      { \"id\": \"CB-10\", \"title\": \"Filtro de água\", \"description\": \"Onde encontrar\" },\n      { \"id\": \"CB-11\", \"title\": \"Chuveiro\", \"description\": \"Como usar corretamente\" },\n      { \"id\": \"CB-12\", \"title\": \"Dia chuvoso\", \"description\": \"O que fazer mesmo com chuva\" },\n      { \"id\": \"CB-13\", \"title\": \"Praias próximas\", \"description\": \"Localização e acesso\" },\n      { \"id\": \"CB-14\", \"title\": \"Cachoeiras próximas\", \"description\": \"Trilhas e natureza\" },\n      { \"id\": \"CB-15\", \"title\": \"Late check-out\", \"description\": \"Como solicitar\" },\n      { \"id\": \"CB-16\", \"title\": \"Recepção\", \"description\": \"Como somos atendidos\" },\n      { \"id\": \"CB-17\", \"title\": \"Área Kids\", \"description\": \"Espaços para crianças\" },\n      { \"id\": \"CB-18\", \"title\": \"Piscina aquecida?\", \"description\": \"Quais são e onde ficam\" },\n      { \"id\": \"CB-19\", \"title\": \"Ofurô\", \"description\": \"Tem ou não tem?\" },\n      { \"id\": \"CB-20\", \"title\": \"Taças de vinho\", \"description\": \"Disponibilidade no local\" }\n    ]\n  }\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2464,
+        1264
+      ],
+      "id": "21154f69-f92a-4819-b27f-c117657d7292",
+      "name": "ENVIO DE MENSAGEM DE TEXTO15"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.z-api.io/instances/3DDCE2C0BAB090F176CC12538E6B8BF6/token/ABCECEC4ECE6FA8A04C6B863/send-option-list",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Client-Token",
+              "value": "=Ffb031b6c74924a16a62fa08ccdfb31f5S"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"phone\": \"{{ $('Webhook').item.json.body.phone }}\",\n  \"message\": \"Escolha uma das perguntas frequentes sobre sua estadia em Santo Antônio do Pinhal:\",\n  \"optionList\": {\n    \"title\": \"FAQ - Reserva Santo Antônio\",\n    \"buttonLabel\": \"Abrir dúvidas frequentes\",\n    \"options\": [\n      { \"id\": \"SA-1\", \"title\": \"Lenha\", \"description\": \"Como comprar lenha para a cabana\" },\n      { \"id\": \"SA-2\", \"title\": \"Taças\", \"description\": \"Disponibilidade e onde pegar\" },\n      { \"id\": \"SA-3\", \"title\": \"Estrada de entrada e saída\", \"description\": \"Como funciona o trajeto\" },\n      { \"id\": \"SA-4\", \"title\": \"Restaurante no hotel\", \"description\": \"Ahara Bistrô by Saint Coffee\" },\n      { \"id\": \"SA-5\", \"title\": \"Tem iFood?\", \"description\": \"Lista de deliveries parceiros\" },\n      { \"id\": \"SA-6\", \"title\": \"Voltagem das tomadas\", \"description\": \"São 110v em todas as cabanas\" },\n      { \"id\": \"SA-7\", \"title\": \"Café da manhã incluso?\", \"description\": \"Quando está incluso e contato do bistrô\" },\n      { \"id\": \"SA-8\", \"title\": \"Roupa de cama e banho\", \"description\": \"O que está incluso na cabana\" },\n      { \"id\": \"SA-9\", \"title\": \"Itens da cozinha\", \"description\": \"Fogão, forno, frigobar...\" },\n      { \"id\": \"SA-10\", \"title\": \"Early check-in\", \"description\": \"Disponível conforme a cabana\" },\n      { \"id\": \"SA-11\", \"title\": \"Late check-out\", \"description\": \"Política e horário limite\" },\n      { \"id\": \"SA-12\", \"title\": \"Mimo de aniversário\", \"description\": \"Sobre decorações e surpresas\" },\n      { \"id\": \"SA-13\", \"title\": \"Aceita pet?\", \"description\": \"Política e autorização\" },\n      { \"id\": \"SA-14\", \"title\": \"Água quente não funciona\", \"description\": \"Como ativar aquecimento a gás\" },\n      { \"id\": \"SA-15\", \"title\": \"Como ligar a lareira?\", \"description\": \"Orientações básicas\" },\n      { \"id\": \"SA-16\", \"title\": \"Pagamento no check-in\", \"description\": \"Política de pagamento\" },\n      { \"id\": \"SA-17\", \"title\": \"Carvão\", \"description\": \"Onde comprar carvão\" },\n      { \"id\": \"SA-18\", \"title\": \"Pratos e copos\", \"description\": \"O que há na cabana\" },\n      { \"id\": \"SA-19\", \"title\": \"Chegada após 15h\", \"description\": \"Recebimento da senha e acesso\" },\n      { \"id\": \"SA-20\", \"title\": \"Web check-in com erro\", \"description\": \"Fazemos para você 😄\" }\n    ]\n  }\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1904,
+        1024
+      ],
+      "id": "b8080fee-d9e5-42ad-9ee9-377c08eb20d0",
+      "name": "ENVIO DE MENSAGEM DE TEXTO16"
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "99452038-00b7-4bf6-a801-17b3308baf87",
+      "typeVersion": 1.1,
+      "name": "Webhook",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "position": [
+        80,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d1e009d3-c819-4f58-9d22-947dabe55589",
+              "name": "urlSemBarraFinal",
+              "value": "https://api.z-api.io/instances/3E7B6A5C516A50D082B052988BE3B884/token/C7B6A22F18E00B139C4F1627",
+              "type": "string"
+            },
+            {
+              "id": "995821dd-3547-496b-9304-ab9e245c6008",
+              "name": "token",
+              "value": "F52d0326228f444c49d82c943eb576f71S",
+              "type": "string"
+            },
+            {
+              "id": "b6bd0819-0330-42ba-b2ce-0f6b92322053",
+              "name": "numero",
+              "value": "={{ $json.numeroFormatado }}",
+              "type": "string"
+            },
+            {
+              "id": "61dbbf08-7566-47c6-86a0-4fa2441fde08",
+              "name": "memoriaRedis",
+              "value": "marcioHotel",
+              "type": "string"
+            },
+            {
+              "id": "21ece186-0bb6-4aea-af0f-1e19487ac9a4",
+              "name": "numeroAtendente",
+              "value": "120363420234916766-group",
+              "type": "string"
+            },
+            {
+              "id": "fde03cc1-8d64-4c93-9feb-72dbc9c6f42b",
+              "name": "idFlow",
+              "value": "a64d6cbc-5d1b-4542-a47b-5d696d5f9fee",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        592,
+        352
+      ],
+      "id": "b80b0f1b-b7dd-43b4-b37c-59a90be128a5",
+      "name": "CREDECIAMENTO"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a04b0422-7a45-4263-a44b-23e690521144",
+              "name": "Numero",
+              "value": "={{ $('Webhook').item.json.body.phone }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        256,
+        352
+      ],
+      "id": "cae6dbb3-64a5-46c2-bb5f-c527c410a110",
+      "name": "SETA O NUMERO PARA FILTRAR"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Cada item vem do input e está disponível em \"items\"\nconst resultado = items.map(item => {\n  const numeroOriginal = item.json.Numero || '';\n\n  // Remove tudo que não for número\n  let somenteNumeros = numeroOriginal.replace(/\\D/g, '');\n\n  // Padroniza para um formato genérico de número\n  let numeroFinal = '';\n\n  // Verifica a quantidade de dígitos e aplica as regras de formatação\n  if (somenteNumeros.length === 13) {\n    numeroFinal = somenteNumeros; // Já está correto\n  } else if (somenteNumeros.length === 12) {\n    // Se tiver 12 dígitos, adiciona o 9 após o 4º caractere (unidade do DDD)\n    numeroFinal = somenteNumeros.slice(0, 4) + '9' + somenteNumeros.slice(4);\n  } else if (somenteNumeros.length === 11) {\n    // Se tiver 11 dígitos, adiciona o código de área \"55\"\n    numeroFinal = '55' + somenteNumeros;\n  } else {\n    // Se for inválido, retorna o mesmo número que chegou\n    numeroFinal = numeroOriginal;\n  }\n\n  return {\n    json: {\n      numeroOriginal,\n      numeroFormatado: numeroFinal\n    }\n  };\n});\n\nreturn resultado;\n"
+      },
+      "id": "09a6e461-544f-4ed2-8200-3d8100a23ff8",
+      "name": "PADRONIZA O NUMERO6",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        432,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.z-api.io/instances/3DDCE2C0BAB090F176CC12538E6B8BF6/token/ABCECEC4ECE6FA8A04C6B863/send-option-list",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Client-Token",
+              "value": "=Ffb031b6c74924a16a62fa08ccdfb31f5S"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"phone\": \"{{ $('Webhook').item.json.body.phone }}\",\n  \"message\": \"Escolha uma das perguntas mais frequentes sobre sua estadia:\",\n{{ $json.data .slice('1')}}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3280,
+        704
+      ],
+      "id": "6ab4dde0-50b6-4a8b-92cd-3b7a4a5350b8",
+      "name": "ENVIO DE MENSAGEM DE TEXTO"
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "table": {
+          "__rl": true,
+          "value": "faq_perguntas",
+          "mode": "list",
+          "cachedResultName": "faq_perguntas"
+        },
+        "returnAll": true,
+        "where": {
+          "values": [
+            {
+              "column": "unidade",
+              "value": "={{ (() => {\n  const raw = ($json.escolheuMenu || '').toString();\n  const norm = raw.normalize('NFD').replace(/\\p{Diacritic}/gu,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();\n\n  const MAP = [\n    ['CJ',        ['campos do jordao','campos do jordao sp','campos']],\n    ['IL',      ['ilhabela','ilha bela','ilha-bela']],\n    ['JUQUEHY',       ['juquehy','juquei','juque']],\n    ['CB',       ['camburi','cambury']],\n    ['SA', ['santo antonio do pinhal','santo antonio','sto antonio do pinhal','sto antonio','santo antonio pinhal','s ant pinhal']]\n  ];\n\n  for (const [out, aliases] of MAP) if (aliases.some(a => norm === a || norm.includes(a))) return out;\n  return raw.toUpperCase();\n})() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [
+        1600,
+        736
+      ],
+      "id": "c744bbc5-5b51-4a00-bde5-2c62fe209346",
+      "name": "Select rows from a table",
+      "credentials": {
+        "mySql": {
+          "id": "A112kZvtWASH5sMG",
+          "name": "MARCIO_HOTEL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// n8n Code (JavaScript) — Run Once for All Items\n// Objetivo: gerar UMA ÚNICA STRING contendo todo o JSON { optionList: { ... } } (sem \"description\")\n// Saída: [{ json: { data: \"<STRING_JSON_AQUI>\" } }]\n\n// Detecta se o array veio dentro de um único item (ex: { input: [...] })\nlet source = items;\nif (items.length === 1) {\n  const j = items[0].json ?? {};\n  const key = Object.keys(j).find(k => Array.isArray(j[k]));\n  if (key) source = (j[key] || []).map(v => ({ json: v }));\n}\n\n// Mapeia para o formato de options (somente id e title)\nconst options = source.map((it, idx) => {\n  const j = it.json ?? it;\n  return {\n    id: String(j.pergunta_id ?? `CJ-${idx + 1}`).trim(),\n    title: String(j.titulo ?? \"Pergunta\").trim()\n  };\n});\n\n// Monta objeto final\nconst obj = {\n  optionList: {\n    title: \"Dúvidas Frequentes\",\n    buttonLabel: \"Abrir perguntas\",\n    options\n  }\n};\n\n// Converte para string única\nconst data = JSON.stringify(obj);\n\n// Retorna 1 item com a STRING\nreturn [{ json: { data } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1808,
+        736
+      ],
+      "id": "ae75636e-7150-4312-9e62-c6a6b53b0bd2",
+      "name": "Code"
+    }
+  ],
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "body": {
+            "isStatusReply": false,
+            "chatLid": "57269144297546@lid",
+            "connectedPhone": "5511996750075",
+            "waitingMessage": false,
+            "isEdit": false,
+            "isGroup": false,
+            "isNewsletter": false,
+            "instanceId": "3E7B6A5C516A50D082B052988BE3B884",
+            "messageId": "3EB0C3DE6B03192521ADE9",
+            "phone": "555197673534",
+            "fromMe": false,
+            "momment": 1758888839000,
+            "status": "RECEIVED",
+            "chatName": "Rafael Dall’Agnol",
+            "senderPhoto": null,
+            "senderName": "Rafael Dall’Agnol",
+            "photo": "https://pps.whatsapp.net/v/t61.24694-24/491872210_1675578906460139_5865111667155412505_n.jpg?ccb=11-4&oh=01_Q5Aa2gFG-CIRix8U7Oz_KDzx6WAhbZnCvyrjT1orkGgGwU_2YQ&oe=68E38C05&_nc_sid=5e03e0&_nc_cat=104",
+            "broadcast": false,
+            "participantLid": null,
+            "referenceMessageId": "3EB0AED7ABC12A508CDED6",
+            "messageExpirationSeconds": 0,
+            "forwarded": false,
+            "type": "ReceivedCallback",
+            "fromApi": false,
+            "buttonsResponseMessage": {
+              "buttonId": "duvidas_frequentes",
+              "message": "Dúvidas Frequentes"
+            }
+          }
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Switch5": {
+      "main": [
+        [
+          {
+            "node": "seta a escolha",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "seta a escolha1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "seta a escolha2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "seta a escolha3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "seta a escolha": {
+      "main": [
+        [
+          {
+            "node": "2 ENTRADAS 1 SAIDA3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2 ENTRADAS 1 SAIDA3": {
+      "main": [
+        [
+          {
+            "node": "PADRONIZA O NUMERO3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PADRONIZA O NUMERO3": {
+      "main": [
+        [
+          {
+            "node": "BUSCA SE JA TA NO BANCO4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BUSCA SE JA TA NO BANCO4": {
+      "main": [
+        [
+          {
+            "node": "ENVIO DE MENSAGEM DE TEXTO6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "seta a escolha1": {
+      "main": [
+        [
+          {
+            "node": "2 ENTRADAS 1 SAIDA3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "seta a escolha2": {
+      "main": [
+        [
+          {
+            "node": "2 ENTRADAS 1 SAIDA3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "seta a escolha3": {
+      "main": [
+        [
+          {
+            "node": "2 ENTRADAS 1 SAIDA3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ENVIO DE MENSAGEM DE TEXTO6": {
+      "main": [
+        [
+          {
+            "node": "Chat Memory Manager2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch - Opções Principais": {
+      "main": [
+        [
+          {
+            "node": "seta a escolha8",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "seta a escolha5",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "seta a escolha6",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "BUSCA A UNIDADE ESCOLHIDA1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "ENVIO DE MENSAGEM DE TEXTO10",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "ENVIO DE MENSAGEM DE TEXTO13",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "seta a escolha5": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields9",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Switch5",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Switch - Opções Principais",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "seta a escolha6": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields9",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "seta a escolha8": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields11",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ATUALIZA O SUBMENU": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields9": {
+      "main": [
+        [
+          {
+            "node": "ATUALIZA O SUBMENU",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields10": {
+      "main": [
+        [
+          {
+            "node": "ENVIO DE MENSAGEM DE TEXTO2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ATUALIZA O SUBMENU1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields10",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields11": {
+      "main": [
+        [
+          {
+            "node": "ATUALIZA O SUBMENU1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ENVIO DE MENSAGEM DE TEXTO2": {
+      "main": [
+        [
+          {
+            "node": "Chat Memory Manager1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis Chat Memory3": {
+      "ai_memory": [
+        [
+          {
+            "node": "Chat Memory Manager1",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis Chat Memory4": {
+      "ai_memory": [
+        [
+          {
+            "node": "Chat Memory Manager2",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BUSCA A UNIDADE ESCOLHIDA1": {
+      "main": [
+        [
+          {
+            "node": "Select rows from a table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [],
+        [],
+        [],
+        []
+      ]
+    },
+    "ENVIO DE MENSAGEM DE TEXTO11": {
+      "main": [
+        [
+          {
+            "node": "Wait1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait1": {
+      "main": [
+        [
+          {
+            "node": "ENVIO DE MENSAGEM DE TEXTO12",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ENVIO DE MENSAGEM DE TEXTO14": {
+      "main": [
+        []
+      ]
+    },
+    "ENVIO DE MENSAGEM DE TEXTO15": {
+      "main": [
+        []
+      ]
+    },
+    "ENVIO DE MENSAGEM DE TEXTO16": {
+      "main": [
+        []
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "SETA O NUMERO PARA FILTRAR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SETA O NUMERO PARA FILTRAR": {
+      "main": [
+        [
+          {
+            "node": "PADRONIZA O NUMERO6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PADRONIZA O NUMERO6": {
+      "main": [
+        [
+          {
+            "node": "CREDECIAMENTO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CREDECIAMENTO": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Select rows from a table": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "ENVIO DE MENSAGEM DE TEXTO11",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "eddc1bca-ed3c-4c6b-b05c-b7add995cc1e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "33032ef6031266b8bc0d76b06793a6cdb5fab704b174a9882769b60050692f00"
+  },
+  "id": "l37Xy3wONOuNyI06",
+  "tags": []
+}

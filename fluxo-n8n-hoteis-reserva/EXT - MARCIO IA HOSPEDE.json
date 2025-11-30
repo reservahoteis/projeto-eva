@@ -1,0 +1,1049 @@
+{
+  "name": "EXT - MARCIO IA HOSPEDE",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.messages }}",
+        "options": {
+          "systemMessage": "=ANTES DE NOTIFICAR A EQUIPE, SEMPRE PEÇA O NUMERO DO QUARTO QUE O HOSPEDE ESTÁ\nSE O CLIENTE ACRESCENTAR ALGO NO PEDIDO, PODE NOTIFICAR NOVAMENTE\nCASO O CLIENTE PEDIR PARA FALAR COM HUMANO / ATENDENTE, VOCÊ ALÉM DE NOTIFICAR O ATENDENTE PRECISA ENVIAR PARA ELE O LINK: https://wa.me/{{ $('CREDECIAMENTO').first().json.telefoneUNIDADE }}\n\n<hoje>\nHoje é {{ $now.setLocale('pt').weekdayLong }}.\ndia = {{ $now.format('dd/MM/yyyy - HH:mm') }}\n<\\hoje>\n\n<identidade>\nVocê é Eva, atendente da Smart Hotéis Reserva unidade {{ $('Webhook').first().json.unidade }} \nVocê já sabe que este hóspede está na unidade de Campos., Você atende os clientes via whatsapp para tirar as duvidas de forma gentil, clara e acolhedora, garantindo uma experiência tranquila e bem informada durante a estadia. Você tem um tom humano, simpático, respeitoso e objetivo, sempre mantendo educação e leveza.\nSeu objetivo é oferecer suporte 24h a hóspedes da unidade de: {{ $('Webhook').first().json.unidade }} (Não precisa confirmar nem perguntar sobre a unidade que ele está hospedado) que já estão em processo de check-in, durante a estadia ou com dúvidas gerais sobre o funcionamento da unidade. Você vai tirar todas as dúvidas e ajudar o cliente durante a estadia e quando não souber ou não conseguir responder o cliente adequadamente então você vai acionar a função 'notificar_atendente' e passar um resumo completo da conversa para o atendente.\n\nIMPORTANTE: A unidade do hóspede {{ $('Webhook').first().json.unidade }} já está definida. \nNUNCA pergunte qual unidade ele está hospedado.\n<\\identidade>\n\n<funcoes_plugadas>\nbuscar_faq = Ativa sempre que o cliente fizer qualquer pergunta, de qualquer tipo e toda vez. (Senhas do wifi, duvidas etc)\n\nbuscar_infos_servicos = Contém todas as informações relacionadas aos serviços que o cliente pode contratar enquanto está hospedado no hotel (Spa, Yoga etc)\n\nbuscar_infos_concierge = Contém todas as informações e indicações de lugares que o hotel recomenda os hospedes conhecerem.\n\nnotificar_atendente1 = Você deve ativar essa função quando não conseguir resolver a dúvida do hóspede, quando algo estiver fora do escopo ou quando o atendente precisar ser comunicado. Sempre que acionar essa função você deve enviar um resumo da conversa e o número de telefone do hospede.\n<\\funcoes_plugadas>\n\n<informacoes_sobre_a_empresa>\nA Smart Hotéis Reserva é uma rede de hospedagens sustentáveis com unidades em Ilhabela, Campos do Jordão, Camburi e Santo Antônio do Pinhal. Oferece conforto, contato com a natureza, café saudável, espaço para trabalho remoto e experiências únicas.\n<\\informacoes_sobre_a_empresa>\n\n<exemplos_de_falas_humanizadas>\n1. Hóspede: “Que horas é o café da manhã?”  \nResposta (ative a função 'buscar_infos_servicos'):  \n“O café é servido todos os dias das 8h às 10h, com opções saudáveis e feitas na hora 🥐☕”\n\n2. Hóspede: “Queria saber se tem lugar pra fazer massagem”  \nResposta (ative a função 'buscar_infos_servicos'):  \n“Tem sim! Temos o Jungle SPA na unidade, e as massagens podem ser agendadas direto na recepção ou comigo aqui, se preferir 😊”\n\n3. Hóspede: “A água do chuveiro não está esquentando direito”  \nResposta:  \native a função 'notificar_atendente' e envie um resumo da conversa com número de telefone do hospede.\n \"Hóspede relatou que o chuveiro do quarto não está esquentando direito.\n telefone: {{ $('Webhook').first().json.body.phone }}\"\nDepois responde:  \n“Poxa, que chato! Já acionei a equipe pra verificar isso para você, tá? Obrigado por avisar, logo resolveremos esse problema. 🙏”\n\nIMPORTANTE:\nAs mensagens acima são apenas exemplos para que você saiba como responder da maneira correta, você não pode copia-las, apenas se baseie nelas e crie suas próprias mensagens humanizadas.\n<\\exemplos_de_falas_humanizadas>\n\n<mensagem_inicial>\n“Olá! Sou a Eva, assistente aqui da Rede Smart Hotéis Reserva. Em que posso te ajudar?😊”\n<\\mensagem_inicial>\n\n<sobre_envio_de_links>\nNunca envie links em formato markdown Ex de como NUNCA ENVIAR: [clique aqui] (https://link), pois o WhatsApp pode não exibir corretamente.\nSempre envie o link de forma direta, como texto puro, por exemplo: https://wa.me/5512996477781\n<\\sobre_envio_de_links>\n\n<orientacoes>\n{{ $('SETA AS ORIENTAÇÕES').first().json.resultado }}\n<\\orientacoes>\n\nDADOS DO CLIENTE QUE VOCÊ ESTÁ CONVERSANDO:\nNumero: {{ $('Webhook').first().json.body.phone }}\nUnidade em que o Hospede está: {{ $('Webhook').first().json.unidade }}\n\n\n[DETALHES SOBRE AS UNDIADES:\nCAMPOS = CAMPOS DO JORDAO\nILHABELA = ILHABELA\nCAMBURI = CAMBURI\nSANTO ANTONIO = SANTO ANTONIO DO PINHAL]"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        -256,
+        -224
+      ],
+      "id": "841b7b45-2ef2-4a51-9ef1-8e03390c0ec7",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Webhook').first().json.memoria }}",
+        "contextWindowLength": 100
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryRedisChat",
+      "typeVersion": 1.5,
+      "position": [
+        -464,
+        144
+      ],
+      "id": "408ae81c-65fe-42a5-addb-524887f53466",
+      "name": "Redis Chat Memory",
+      "credentials": {
+        "redis": {
+          "id": "jui80Gim2A5frf81",
+          "name": "3IAN - REDIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('CREDECIAMENTO').first().json.urlSemBarraFinal }}/send-text",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Client-Token",
+              "value": "={{ $('CREDECIAMENTO').first().json.token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "={{ $('Webhook').first().json.body.phone }}"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.mensagens .replaceAll('**','*').replace(/\\[.*?\\]\\((https?:\\/\\/[^\\s)]+)\\)/g, '$1').replace(/\\((https?:\\/\\/[^\\s)]+)\\)/g, '$1')}}"
+            },
+            {
+              "name": "delayTyping",
+              "value": "1"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1792,
+        -192
+      ],
+      "id": "cfd9a528-18d2-41f3-8dbb-c974cdb3ae96",
+      "name": "ENVIA MENSAGEM1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cbc9f067-43c8-4ff1-bbc2-36d16f9a5cdb",
+              "name": "resposta",
+              "value": "={{ $json.output .replaceAll('#00',\"\").replaceAll('#01',\"\").replaceAll('#02',\"\").replaceAll('#03',\"\").replaceAll('#04',\"\").replaceAll('#05',\"\").replaceAll('#06',\"\").replaceAll('#07',\"\").replaceAll('#08',\"\").replaceAll('#09',\"\").split('|')[0].split('\\n')}}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        272,
+        -32
+      ],
+      "id": "8125a4a8-6aff-4b12-b846-b9de705bf71e",
+      "name": "SETA O ARRAY"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "resposta",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        480,
+        -32
+      ],
+      "id": "a03a59c4-b4f4-4d47-b498-96a39a5c277f",
+      "name": "SEPARA AS MSGS"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "651cb717-2245-481f-b9c3-64ae63994792",
+              "leftValue": "={{ $json.resposta }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        672,
+        -32
+      ],
+      "id": "6e703afe-8186-49b2-a922-f42a929c4430",
+      "name": "CONTEM VALOR"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0153ea88-e65e-45b0-9c3d-05897aeb0338",
+              "leftValue": "={{ $json.totalMensagens }}",
+              "rightValue": 5,
+              "operator": {
+                "type": "number",
+                "operation": "lte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1120,
+        -32
+      ],
+      "id": "3798a407-5df3-4dbe-9ee2-45b32dbb415e",
+      "name": "DIVIDIR?"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "mensagens",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        1344,
+        -128
+      ],
+      "id": "e2a6b44f-ece3-41dc-ba0b-64b5edcfef6d",
+      "name": "SEPARA AS MSGS1"
+    },
+    {
+      "parameters": {
+        "amount": "={{ $('Loop Over Items1').item.json.mensagens .length()/50}}"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2016,
+        -128
+      ],
+      "id": "0ce000e2-b9fa-4e91-93da-6fe0e4c098b7",
+      "name": "Wait3",
+      "webhookId": "511e5c31-0de0-4f8b-bf01-d5bc4e88623d"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('CREDECIAMENTO').first().json.urlSemBarraFinal }}/send-text",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Client-Token",
+              "value": "={{ $('CREDECIAMENTO').first().json.token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "={{ $('Webhook').first().json.body.phone }}"
+            },
+            {
+              "name": "message",
+              "value": "={{ $('AI Agent').first().json.output\n  .replace(/\\[.*?\\]\\((https?:\\/\\/[^\\s)]+)\\)/g, '$1')\n.replace(/\\((https?:\\/\\/[^\\s)]+)\\)/g, '$1').replaceAll('#00',\"\")\n  .replaceAll('#01',\"\")\n  .replaceAll('#02',\"\")\n  .replaceAll('#03',\"\")\n  .replaceAll('#04',\"\")\n  .replaceAll('#05',\"\")\n  .replaceAll('#06',\"\")\n  .replaceAll('#07',\"\")\n  .replaceAll('#08',\"\")\n  .replaceAll('#09',\"\")\n  .replaceAll('**','*')\n  .replaceAll('notificar_atendente',\"\")\n  .split('|')[0]\n}}\n"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1344,
+        64
+      ],
+      "id": "9b3ee99d-0519-4d6e-9540-fd7aa32f0b40",
+      "name": "ENVIA MENSAGEM2"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1568,
+        -128
+      ],
+      "id": "39224d7d-4dfb-4e03-b6e4-dd2d7da75cec",
+      "name": "Loop Over Items1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const respostas = items.map(item => item.json.resposta);\n\n// Conta quantas mensagens existem\nconst totalMensagens = respostas.length;\n\n// Define se deve ou não dividir (ex: mais de 5 blocos)\nconst deveDividir = totalMensagens > 5;\n\nreturn [\n  {\n    json: {\n      totalMensagens,\n      deveDividir,\n      mensagens: respostas\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        -32
+      ],
+      "id": "002174aa-8418-4fb3-817b-93184eb2382c",
+      "name": "Code2"
+    },
+    {
+      "parameters": {
+        "name": "notificar_atendente",
+        "description": "sempre_que_precisar_notificar_um_atendente",
+        "workflowId": {
+          "__rl": true,
+          "value": "FyGWJ8Uiy82tpGpF",
+          "mode": "list",
+          "cachedResultName": "NOTIFICAR ATENDENTE MARCIO"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.1,
+      "position": [
+        704,
+        448
+      ],
+      "id": "afa4652a-25f9-48c3-a247-48a3ad554091",
+      "name": "notificar_atendente2"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "orientacoes",
+        "returnAll": true,
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "user_id",
+              "condition": "eq",
+              "keyValue": "={{ $json.idFlow }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -880,
+        -224
+      ],
+      "id": "8a77a996-935b-4b66-a0b9-7143d2b69e27",
+      "name": "BUSCA AS ORIENTAÇÕES",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "bew69sBT7fMDPjGf",
+          "name": "DB - 3IAN"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "if (!items || items.length === 0) {\n  return [{ json: { resultado: \"\" } }];\n}\n\nconst lista = items\n  .map((item, index) => {\n    const orientacao = item?.json?.orientacao?.trim();\n    if (!orientacao) return null;\n\n    const excecao = item?.json?.condicao_excecao?.trim();\n    const temExcecao = excecao && excecao.toLowerCase() !== 'nenhuma';\n\n    return temExcecao\n      ? `${index + 1}. ${orientacao} (Exceto se: ${excecao})`\n      : `${index + 1}. ${orientacao}`;\n  })\n  .filter(Boolean); // Remove nulos ou inválidos\n\nconst textoFinal = lista.join('\\n\\n');\n\nreturn [{ json: { resultado: textoFinal || \"\" } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -704,
+        -224
+      ],
+      "id": "b27b1e8c-412b-475d-8be7-71ab862da651",
+      "name": "SETA AS ORIENTAÇÕES"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "65f40dc1-2830-4d84-9e61-0fc033cab578",
+              "name": "messages",
+              "value": "={{ $('Webhook').first().json.pergunta }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -480,
+        -224
+      ],
+      "id": "cf75f271-26ae-4d09-805f-3c1a1c2038ff",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "5e9ad847-847c-4c06-ac47-37195f6f9dfe",
+              "leftValue": "={{ $json.output }}",
+              "rightValue": "print(default",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "6b459493-6460-44d5-8814-8ff22a057a09",
+              "leftValue": "={{ $json.output }}",
+              "rightValue": "notificar_atendente",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "1837ad86-6c88-47eb-8b7e-d6dea420ed88",
+              "leftValue": "={{ $json.output }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        48,
+        -224
+      ],
+      "id": "92db3c57-697b-4757-9626-ca0bba13e2de",
+      "name": "If8"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "db5cfe0a-7f43-4a61-8b27-bfd3a95deb8d",
+              "name": "messages",
+              "value": "=MENSAGEM DO SISTEMA: Resposta bloqueada. Contém elementos proibidos",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "440a0f2e-d17d-4708-a89c-e718e03b627a",
+      "name": "SAIDA2",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        256,
+        -240
+      ]
+    },
+    {
+      "parameters": {
+        "description": "Sempre que precisar buscar infos concierge",
+        "workflowId": {
+          "__rl": true,
+          "value": "HFr3c4LiF7tU54Ko",
+          "mode": "list",
+          "cachedResultName": "FUNÇÕES IA MARCIO"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "unidade": "={{ $('Webhook').first().json.unidade }}",
+            "funcao": "concierge"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "funcao",
+              "displayName": "funcao",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "unidade",
+              "displayName": "unidade",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        -96,
+        144
+      ],
+      "id": "9fe82a90-260c-47fc-a7d3-a02030437111",
+      "name": "buscar_infos_concierge"
+    },
+    {
+      "parameters": {
+        "description": "Sempre que precisar buscar infos sobre servicos",
+        "workflowId": {
+          "__rl": true,
+          "value": "HFr3c4LiF7tU54Ko",
+          "mode": "list",
+          "cachedResultName": "FUNÇÕES IA MARCIO"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "unidade": "={{ $('Webhook').first().json.unidade }}",
+            "funcao": "servico"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "funcao",
+              "displayName": "funcao",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "unidade",
+              "displayName": "unidade",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        80,
+        144
+      ],
+      "id": "0dd0bab9-4801-42c9-9e02-3357ca7f0ffe",
+      "name": "buscar_infos_servicos"
+    },
+    {
+      "parameters": {
+        "description": "Sempre que precisar buscar perguntas e respostas frequentes",
+        "workflowId": {
+          "__rl": true,
+          "value": "HFr3c4LiF7tU54Ko",
+          "mode": "list",
+          "cachedResultName": "FUNÇÕES IA MARCIO"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "unidade": "={{ $('Webhook').first().json.unidade }}",
+            "funcao": "faq_hospede"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "funcao",
+              "displayName": "funcao",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "unidade",
+              "displayName": "unidade",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        224,
+        144
+      ],
+      "id": "1f8c3d91-f470-4d9d-94fb-d507e05714ac",
+      "name": "buscar_faq"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4.1-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -640,
+        144
+      ],
+      "id": "df8930f7-3fb6-4494-9ec7-a40e695d9752",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "KOT2Hf8hg3OIevZG",
+          "name": "MARCIO HOTEL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "df45971a-f157-4804-bce6-3dfc021dbd0c",
+      "typeVersion": 1.1,
+      "name": "Webhook",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "position": [
+        -1264,
+        -224
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d1e009d3-c819-4f58-9d22-947dabe55589",
+              "name": "urlSemBarraFinal",
+              "value": "https://api.z-api.io/instances/3E7B6A5C516A50D082B052988BE3B884/token/C7B6A22F18E00B139C4F1627",
+              "type": "string"
+            },
+            {
+              "id": "995821dd-3547-496b-9304-ab9e245c6008",
+              "name": "token",
+              "value": "F52d0326228f444c49d82c943eb576f71S",
+              "type": "string"
+            },
+            {
+              "id": "b6bd0819-0330-42ba-b2ce-0f6b92322053",
+              "name": "numero",
+              "value": "={{ (() => {\n  const w = $('Webhook').item.json || {};\n  const numeroOriginal = ((w.body && w.body.phone) ?? w.Numero ?? '').toString();\n\n  const somenteNumeros = numeroOriginal.replace(/\\D/g, '');\n  let numeroFinal = '';\n\n  if (somenteNumeros.length === 13) {\n    numeroFinal = somenteNumeros;\n  } else if (somenteNumeros.length === 12) {\n    numeroFinal = somenteNumeros.slice(0, 4) + '9' + somenteNumeros.slice(4);\n  } else if (somenteNumeros.length === 11) {\n    numeroFinal = '55' + somenteNumeros;\n  } else {\n    numeroFinal = numeroOriginal; // mantém exatamente como chegou (letras etc.)\n  }\n\n  return numeroFinal;\n})() }}",
+              "type": "string"
+            },
+            {
+              "id": "21ece186-0bb6-4aea-af0f-1e19487ac9a4",
+              "name": "numeroAtendente",
+              "value": "={{    $json.unidade == 'CAMPOS' ? '120363404755229919-group' :   $json.unidade == 'ILHABELA' ? '120363181527101610-group' :   $json.unidade == 'CAMBURI' ? '120363375908952016-group' :   $json.unidade == 'SANTO ANTONIO' ? '120363269863455304-group' :   '' }}",
+              "type": "string"
+            },
+            {
+              "id": "fde03cc1-8d64-4c93-9feb-72dbc9c6f42b",
+              "name": "idFlow",
+              "value": "a64d6cbc-5d1b-4542-a47b-5d696d5f9fee",
+              "type": "string"
+            },
+            {
+              "id": "1c412a81-bd43-4c07-9172-5163b8c647e7",
+              "name": "telefoneUNIDADE",
+              "value": "={{    $json.unidade == 'CAMPOS' ? '5511915525443' :   $json.unidade == 'ILHABELA' ? '5511910086172' :   $json.unidade == 'CAMBURI' ? '5512991842900' :   $json.unidade == 'SANTO ANTONIO' ? '5511934156466' :   '' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1056,
+        -224
+      ],
+      "id": "95f378f8-9b25-411a-9408-6e4c4eb9808c",
+      "name": "CREDECIAMENTO"
+    },
+    {
+      "parameters": {
+        "toolDescription": "=Sempre que precisar notificar o atendente",
+        "method": "POST",
+        "url": "={{ $('CREDECIAMENTO').first().json.urlSemBarraFinal }}/send-text",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Client-Token",
+              "value": "={{ $('CREDECIAMENTO').first().json.token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "message",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', `Sempre inclua o numero de telefone, o quarto e a unidade que o cliente está hospedado`, 'string') }}"
+            },
+            {
+              "name": "phone",
+              "value": "={{ $('CREDECIAMENTO').first().json.telefoneUNIDADE }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.2,
+      "position": [
+        -288,
+        352
+      ],
+      "id": "2c223871-5472-4798-943d-0d10b78fda64",
+      "name": "notificar_atendentes"
+    }
+  ],
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "unidade": "CAMPOS",
+          "pergunta": "minha privada entupiu",
+          "body": {
+            "isStatusReply": false,
+            "chatLid": "194970074009686@lid",
+            "connectedPhone": "5511915525443",
+            "waitingMessage": false,
+            "isEdit": false,
+            "isGroup": false,
+            "isNewsletter": false,
+            "instanceId": "3DDCE2C0BAB090F176CC12538E6B8BF6",
+            "messageId": "3EB024C6B6F5EDCB221BAB",
+            "phone": "5511987144676",
+            "fromMe": false,
+            "momment": 1758319160000,
+            "status": "RECEIVED",
+            "chatName": "Márcio Franco",
+            "senderPhoto": null,
+            "senderName": "Mff",
+            "photo": "https://pps.whatsapp.net/v/t61.24694-24/490584999_1940975696669259_3209498424819377571_n.jpg?ccb=11-4&oh=01_Q5Aa2gHUy9Bz1EOl171HpfPLHN8EZ7jfUBDvmv29cU_CtdJ2OA&oe=68DAE929&_nc_sid=5e03e0&_nc_cat=100",
+            "broadcast": false,
+            "participantLid": null,
+            "messageExpirationSeconds": 0,
+            "forwarded": false,
+            "type": "ReceivedCallback",
+            "fromApi": false,
+            "text": {
+              "message": "minha privada entupiu"
+            }
+          },
+          "memoria": "5511987144676marcioHotel"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "If8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ENVIA MENSAGEM1": {
+      "main": [
+        [
+          {
+            "node": "Wait3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SETA O ARRAY": {
+      "main": [
+        [
+          {
+            "node": "SEPARA AS MSGS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SEPARA AS MSGS": {
+      "main": [
+        [
+          {
+            "node": "CONTEM VALOR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CONTEM VALOR": {
+      "main": [
+        [
+          {
+            "node": "Code2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DIVIDIR?": {
+      "main": [
+        [
+          {
+            "node": "SEPARA AS MSGS1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "ENVIA MENSAGEM2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SEPARA AS MSGS1": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait3": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items1": {
+      "main": [
+        [],
+        [
+          {
+            "node": "ENVIA MENSAGEM1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code2": {
+      "main": [
+        [
+          {
+            "node": "DIVIDIR?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "notificar_atendente2": {
+      "ai_tool": [
+        []
+      ]
+    },
+    "BUSCA AS ORIENTAÇÕES": {
+      "main": [
+        [
+          {
+            "node": "SETA AS ORIENTAÇÕES",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SETA AS ORIENTAÇÕES": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If8": {
+      "main": [
+        [
+          {
+            "node": "SAIDA2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "SETA O ARRAY",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SAIDA2": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "buscar_infos_concierge": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "buscar_infos_servicos": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "buscar_faq": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "CREDECIAMENTO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CREDECIAMENTO": {
+      "main": [
+        [
+          {
+            "node": "BUSCA AS ORIENTAÇÕES",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "notificar_atendentes": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "5e67dd79-9b53-443f-a76b-b07deee5ae40",
+  "meta": {
+    "instanceId": "33032ef6031266b8bc0d76b06793a6cdb5fab704b174a9882769b60050692f00"
+  },
+  "id": "pcNZQpawiENLgRz0",
+  "tags": []
+}
