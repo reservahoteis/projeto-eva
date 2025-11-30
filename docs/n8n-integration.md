@@ -2,130 +2,158 @@
 
 Este documento descreve como integrar o N8N com o CRM usando a API oficial do WhatsApp Business.
 
-## Arquitetura
+## Autenticacao N8N (API Key)
 
-```
-WhatsApp Business API (Meta)
-        |
-        v
-   N8N Workflow
-   (IA Chatbot)
-        |
-        v
-  CRM Backend API
-  (Escalation)
-        |
-        v
-  Frontend Dashboard
-  (Atendentes)
-```
+Todas as rotas `/api/n8n/*` usam autenticacao por API Key no header `X-API-Key`.
 
-## Fluxo de Escalacao
+**Formato da API Key:** `{tenant-slug}:{secret-key}`
 
-1. Cliente envia mensagem via WhatsApp
-2. N8N recebe webhook da Meta e processa com IA
-3. Quando IA nao consegue resolver, chama API de escalacao
-4. CRM cria conversa, importa historico e notifica atendentes
-5. Atendente assume conversa (IA fica travada)
-6. Atendente responde via CRM, mensagem vai para WhatsApp
+**Exemplo:** `hoteis-reserva:abc123xyz`
 
-## Endpoints da API
+A secret-key pode ser:
 
-### POST /api/escalations
+- O campo `n8nApiKey` configurado no tenant (recomendado)
+- Ou o `whatsappPhoneNumberId` do tenant (fallback)
 
-Criar nova escalacao (chamado pelo N8N quando IA precisa transferir para humano).
+## Endpoints N8N (Compativeis com Z-API)
+
+Estes endpoints aceitam payloads no formato Z-API para facilitar a migracao.
+
+### POST /api/n8n/send-text
+
+Envia mensagem de texto simples.
 
 **Headers:**
-```
-Authorization: Bearer <token>
+
+```text
+X-API-Key: hoteis-reserva:sua-secret-key
 Content-Type: application/json
-X-Tenant-ID: <tenant-id>
 ```
 
-**Body:**
+**Body (formato Z-API):**
+
 ```json
 {
-  "contactPhoneNumber": "5511999999999",
-  "reason": "USER_REQUESTED",
-  "reasonDetail": "Cliente pediu para falar com atendente",
-  "hotelUnit": "Campos do Jordao",
-  "priority": "HIGH",
-  "messageHistory": [
-    {
-      "role": "user",
-      "content": "Ola, quero fazer uma reserva",
-      "timestamp": "2024-01-15T10:30:00Z"
-    },
-    {
-      "role": "assistant",
-      "content": "Ola! Ficarei feliz em ajudar com sua reserva...",
-      "timestamp": "2024-01-15T10:30:05Z"
-    },
-    {
-      "role": "user",
-      "content": "Quero falar com um atendente",
-      "timestamp": "2024-01-15T10:31:00Z"
-    }
-  ],
-  "aiContext": {
-    "intent": "reservation",
-    "sentiment": "neutral",
-    "language": "pt-BR"
-  }
+  "phone": "5511999999999",
+  "message": "Texto da mensagem",
+  "delayTyping": 1
 }
 ```
-
-**Reasons disponiveis:**
-- `USER_REQUESTED` - Cliente solicitou atendente
-- `AI_UNABLE` - IA nao conseguiu resolver
-- `COMPLEX_QUERY` - Consulta complexa
-- `COMPLAINT` - Reclamacao
-- `SALES_OPPORTUNITY` - Oportunidade de venda
-- `URGENCY` - Urgencia detectada
-- `OTHER` - Outro motivo
-
-**Priorities disponiveis:**
-- `LOW`
-- `MEDIUM`
-- `HIGH`
-- `URGENT`
-
-**Response (201):**
-```json
-{
-  "escalation": {
-    "id": "uuid",
-    "conversationId": "uuid",
-    "reason": "USER_REQUESTED",
-    "status": "PENDING",
-    "hotelUnit": "Campos do Jordao",
-    "createdAt": "2024-01-15T10:31:05Z"
-  },
-  "conversation": {
-    "id": "uuid",
-    "contactId": "uuid",
-    "status": "OPEN",
-    "iaLocked": true,
-    "contact": {
-      "phoneNumber": "5511999999999",
-      "name": "Joao Silva"
-    }
-  },
-  "contact": {
-    "id": "uuid",
-    "phoneNumber": "5511999999999"
-  }
-}
-```
-
-### GET /api/escalations/check-ia-lock
-
-Verificar se IA esta travada para um telefone (N8N chama antes de responder).
-
-**Query params:**
-- `phoneNumber` - Numero do telefone (formato: 5511999999999)
 
 **Response:**
+
+```json
+{
+  "success": true,
+  "messageId": "wamid.xxx",
+  "zapiResponse": {
+    "messageId": "wamid.xxx",
+    "id": "wamid.xxx"
+  }
+}
+```
+
+### POST /api/n8n/send-buttons
+
+Envia mensagem com botoes interativos (maximo 3).
+
+**Body:**
+
+```json
+{
+  "phone": "5511999999999",
+  "message": "Escolha uma opcao:",
+  "buttons": [
+    { "id": "btn1", "label": "Opcao 1" },
+    { "id": "btn2", "label": "Opcao 2" },
+    { "id": "btn3", "label": "Opcao 3" }
+  ],
+  "title": "Titulo opcional",
+  "footer": "Rodape opcional"
+}
+```
+
+### POST /api/n8n/send-list
+
+Envia mensagem com lista de opcoes (ate 10 itens).
+
+**Body (formato Z-API):**
+
+```json
+{
+  "phone": "5511999999999",
+  "message": "Escolha uma opcao:",
+  "optionList": {
+    "title": "Menu Principal",
+    "buttonLabel": "Ver opcoes",
+    "options": [
+      { "id": "opt1", "title": "Opcao 1", "description": "Descricao 1" },
+      { "id": "opt2", "title": "Opcao 2", "description": "Descricao 2" }
+    ]
+  }
+}
+```
+
+**Body (formato Cloud API):**
+
+```json
+{
+  "phone": "5511999999999",
+  "message": "Escolha uma opcao:",
+  "buttonText": "Ver opcoes",
+  "sections": [
+    {
+      "title": "Secao 1",
+      "rows": [
+        { "id": "opt1", "title": "Opcao 1", "description": "Descricao" }
+      ]
+    }
+  ]
+}
+```
+
+### POST /api/n8n/send-media
+
+Envia mensagem com midia (imagem, video, audio, documento).
+
+**Body:**
+
+```json
+{
+  "phone": "5511999999999",
+  "type": "image",
+  "url": "https://example.com/image.jpg",
+  "caption": "Legenda opcional"
+}
+```
+
+**Tipos suportados:** `image`, `video`, `audio`, `document`
+
+### POST /api/n8n/send-template
+
+Envia template pre-aprovado pela Meta.
+
+**Body:**
+
+```json
+{
+  "phone": "5511999999999",
+  "template": "nome_do_template",
+  "language": "pt_BR",
+  "parameters": ["param1", "param2"]
+}
+```
+
+### GET /api/n8n/check-ia-lock
+
+Verifica se IA esta travada para um telefone. N8N deve chamar antes de responder.
+
+**Query params:**
+
+- `phone` - Numero do telefone (formato: 5511999999999)
+
+**Response:**
+
 ```json
 {
   "locked": true,
@@ -135,93 +163,124 @@ Verificar se IA esta travada para um telefone (N8N chama antes de responder).
 
 Se `locked: true`, N8N NAO deve responder - atendente humano esta no controle.
 
-### PATCH /api/conversations/:id/ia-lock
+### POST /api/n8n/escalate
 
-Toggle do lock de IA (atendente usa para reativar IA).
+Criar escalacao (transferir para humano).
 
 **Body:**
+
 ```json
 {
-  "locked": false
+  "phone": "5511999999999",
+  "reason": "USER_REQUESTED",
+  "reasonDetail": "Cliente pediu atendente",
+  "hotelUnit": "Campos do Jordao",
+  "messageHistory": [
+    { "role": "user", "content": "Mensagem do cliente" },
+    { "role": "assistant", "content": "Resposta da IA" }
+  ],
+  "priority": "HIGH"
 }
 ```
 
-## Configuracao no N8N
+**Reasons disponiveis:**
 
-### 1. Webhook WhatsApp (Meta Cloud API)
+- `USER_REQUESTED` - Cliente solicitou atendente
+- `AI_UNABLE` - IA nao conseguiu resolver
+- `COMPLEX_QUERY` - Consulta complexa
+- `COMPLAINT` - Reclamacao
+- `SALES_OPPORTUNITY` - Oportunidade de venda
+- `URGENCY` - Urgencia detectada
+- `OTHER` - Outro motivo
 
-Configure um webhook no N8N para receber mensagens:
+**Priorities disponiveis:**
 
-```
-POST https://seu-n8n.com/webhook/whatsapp
-```
+- `LOW`
+- `MEDIUM`
+- `HIGH`
+- `URGENT`
 
-### 2. Verificar IA Lock
+### POST /api/n8n/mark-read
 
-Antes de processar com IA, verifique se conversa esta bloqueada:
+Marcar mensagem como lida.
 
-```javascript
-// HTTP Request node
-const response = await $http.get(
-  `${CRM_API_URL}/api/escalations/check-ia-lock`,
-  {
-    params: { phoneNumber: message.from },
-    headers: {
-      Authorization: `Bearer ${API_TOKEN}`,
-      'X-Tenant-ID': TENANT_ID
-    }
-  }
-);
+**Body:**
 
-if (response.data.locked) {
-  // NAO responder - atendente no controle
-  return [];
+```json
+{
+  "messageId": "wamid.xxx"
 }
-
-// Continuar com processamento IA
 ```
 
-### 3. Escalar para Humano
+## Mapeamento Z-API para Cloud API
 
-Quando IA detectar necessidade de escalacao:
+| Z-API Endpoint | N8N Endpoint | Notas |
+|----------------|--------------|-------|
+| `/send-text` | `/api/n8n/send-text` | Compativel |
+| `/send-buttons` | `/api/n8n/send-buttons` | Max 3 botoes |
+| `/send-option-list` | `/api/n8n/send-list` | Formato convertido |
+| `/send-image` | `/api/n8n/send-media` | type=image |
+| `/send-video` | `/api/n8n/send-media` | type=video |
+| `/send-audio` | `/api/n8n/send-media` | type=audio |
+| `/send-document` | `/api/n8n/send-media` | type=document |
+| `/send-carousel` | Templates | Requer template aprovado |
 
-```javascript
-// HTTP Request node
-await $http.post(
-  `${CRM_API_URL}/api/escalations`,
-  {
-    contactPhoneNumber: message.from,
-    reason: 'AI_UNABLE',
-    reasonDetail: 'Cliente solicitou informacao que requer atendente',
-    hotelUnit: detectHotelUnit(message),
-    messageHistory: conversationHistory,
-    priority: 'HIGH'
-  },
-  {
-    headers: {
-      Authorization: `Bearer ${API_TOKEN}`,
-      'X-Tenant-ID': TENANT_ID,
-      'Content-Type': 'application/json'
-    }
-  }
-);
+## Exemplo de Configuracao N8N
+
+### HTTP Request Node - Enviar Texto
+
+```text
+Method: POST
+URL: https://api.seudominio.com/api/n8n/send-text
+Headers:
+  X-API-Key: hoteis-reserva:sua-secret-key
+  Content-Type: application/json
+Body:
+{
+  "phone": "{{ $json.phone }}",
+  "message": "{{ $json.resposta }}"
+}
 ```
 
-### 4. Enviar Mensagem de Transicao
+### HTTP Request Node - Verificar IA Lock
 
-Apos escalar, envie mensagem informando o cliente:
-
-```javascript
-// WhatsApp Cloud API
-await sendWhatsAppMessage(
-  message.from,
-  'Estou transferindo voce para um de nossos atendentes. Por favor, aguarde um momento.'
-);
+```text
+Method: GET
+URL: https://api.seudominio.com/api/n8n/check-ia-lock?phone={{ $json.phone }}
+Headers:
+  X-API-Key: hoteis-reserva:sua-secret-key
 ```
+
+### HTTP Request Node - Escalar
+
+```text
+Method: POST
+URL: https://api.seudominio.com/api/n8n/escalate
+Headers:
+  X-API-Key: hoteis-reserva:sua-secret-key
+  Content-Type: application/json
+Body:
+{
+  "phone": "{{ $json.phone }}",
+  "reason": "USER_REQUESTED",
+  "hotelUnit": "{{ $json.unidade }}",
+  "messageHistory": {{ JSON.stringify($json.historico) }}
+}
+```
+
+## Fluxo Recomendado no N8N
+
+1. Webhook recebe mensagem do WhatsApp
+2. Verificar IA Lock: `GET /api/n8n/check-ia-lock?phone=xxx`
+3. Se `locked: true`, ignorar (atendente no controle)
+4. Se `locked: false`, processar com IA
+5. Se IA detectar necessidade de humano, chamar `/api/n8n/escalate`
+6. Enviar resposta via `/api/n8n/send-text` ou `/api/n8n/send-buttons`
 
 ## Unidades de Hotel
 
 O sistema suporta 4 unidades:
+
 - Campos do Jordao
 - Ilhabela
 - Camburi
@@ -238,41 +297,27 @@ Quando uma escalacao e criada:
 3. **Toast Notification**: Popup com detalhes da escalacao
 4. **Browser Notification**: Se permissao concedida
 
-## Autenticacao
-
-Use o token de API do tenant para autenticar requisicoes:
-
-```bash
-curl -X POST https://api.seudominio.com/api/escalations \
-  -H "Authorization: Bearer seu-token-aqui" \
-  -H "X-Tenant-ID: tenant-uuid" \
-  -H "Content-Type: application/json" \
-  -d '{"contactPhoneNumber": "5511999999999", "reason": "USER_REQUESTED"}'
-```
-
-## Boas Praticas
-
-1. **Sempre verificar IA lock** antes de responder automaticamente
-2. **Incluir historico completo** da conversa atual na escalacao
-3. **Detectar unidade do hotel** pelo contexto para roteamento correto
-4. **Usar priority HIGH** para reclamacoes e urgencias
-5. **Monitorar logs** do N8N para debugging
-
 ## Troubleshooting
+
+### Erro 401 - API Key invalida
+
+1. Verifique o formato: `tenant-slug:secret-key`
+2. Confira se o tenant existe e esta ACTIVE
+3. Verifique se a secret-key corresponde ao `n8nApiKey` ou `whatsappPhoneNumberId`
+
+### Erro 400 - WhatsApp nao configurado
+
+1. O tenant precisa ter `whatsappPhoneNumberId` e `whatsappAccessToken` configurados
+2. Verifique as credenciais da Meta Business Suite
 
 ### Escalacao nao aparece no dashboard
 
-1. Verifique se o tenant ID esta correto
-2. Confira se o token de API e valido
-3. Verifique logs do backend: `docker logs crm-backend`
+1. Verifique logs do backend: `docker logs crm-backend`
+2. Confira se o Socket.io esta conectado no frontend
+3. Verifique se o tenant ID esta correto
 
 ### Som de notificacao nao toca
 
 1. Usuario precisa interagir com a pagina primeiro (clique)
 2. Verifique se browser suporta Web Audio API
 3. Confira console do browser para erros
-
-### Mensagens duplicadas
-
-1. Verifique se IA lock esta sendo checado corretamente
-2. Confirme que webhook nao esta sendo chamado multiplas vezes

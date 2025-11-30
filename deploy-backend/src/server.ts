@@ -109,12 +109,16 @@ import webhookRoutes from './routes/webhook.routes';
 import healthRoutes from './routes/health.routes';
 import debugRoutes from './routes/debug.routes';
 import escalationRoutes from './routes/escalation.routes';
+import n8nRoutes from './routes/n8n.routes';
 
 // Auth (público - sem tenant isolation)
 app.use('/auth', authRoutes);
 
 // Webhooks (antes do tenant middleware para algumas rotas)
 app.use('/webhooks', webhookRoutes);
+
+// N8N Integration (autenticação própria por API Key)
+app.use('/api/n8n', n8nRoutes);
 
 // Health check (completo com database/redis)
 app.use('/api', healthRoutes);
