@@ -22,7 +22,7 @@ router.use(n8nAuthMiddleware);
  */
 router.post('/send-text', async (req: Request, res: Response) => {
   try {
-    const { phone, message, delayTyping } = req.body;
+    const { phone, message } = req.body;
 
     if (!phone || !message) {
       return res.status(400).json({
@@ -240,12 +240,7 @@ router.post('/send-list', async (req: Request, res: Response) => {
   }
 });
 
-// Alias para compatibilidade Z-API
-router.post('/send-option-list', async (req: Request, res: Response) => {
-  // Redirecionar para /send-list
-  req.url = '/send-list';
-  return router.handle(req, res, () => {});
-});
+// Alias para compatibilidade Z-API (mesma logica de /send-list)
 
 /**
  * POST /api/n8n/send-media
