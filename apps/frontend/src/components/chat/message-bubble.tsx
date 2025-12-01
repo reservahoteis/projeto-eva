@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Message, MessageStatus, MessageType } from '@/types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Check, CheckCheck, Paperclip, X, Download, ZoomIn, ZoomOut, List, LayoutGrid, FileText } from 'lucide-react';
+import { Check, CheckCheck, Paperclip, X, Download, ZoomIn, ZoomOut, List, LayoutGrid, FileText, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
 import { cn, getInitials } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
@@ -27,6 +27,7 @@ export function MessageBubble({
 }: MessageBubbleProps) {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [zoom, setZoom] = useState(1);
+  const [currentCardIndex, setCurrentCardIndex] = useState(0);
 
   const bubbleColor = isOwnMessage ? 'bg-[#d9fdd3]' : 'bg-white';
   const alignment = isOwnMessage ? 'ml-auto' : 'mr-auto';
@@ -296,34 +297,129 @@ export function MessageBubble({
         {/* TEMPLATE - Templates pré-aprovados */}
         {message.type === MessageType.TEMPLATE && (
           <div>
-            {/* Ícone e nome do template */}
-            <div className="flex items-center gap-2 mb-2">
-              <div className="bg-[#e7f3ff] p-1.5 rounded">
-                {(message.metadata as any)?.templateType === 'carousel' ? (
-                  <LayoutGrid className="w-4 h-4 text-[#027eb5]" />
-                ) : (
-                  <FileText className="w-4 h-4 text-[#027eb5]" />
-                )}
+            {/* Carousel Template - Exibir cards com navegação */}
+            {(message.metadata as any)?.templateType === 'carousel' && (message.metadata as any)?.cards?.length > 0 ? (
+              <div className="w-full">
+                {/* Header com nome do template */}
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="bg-[#e7f3ff] p-1.5 rounded">
+                    <LayoutGrid className="w-4 h-4 text-[#027eb5]" />
+                  </div>
+                  <span className="text-[12px] text-[#667781]">
+                    Carousel: {(message.metadata as any)?.templateName}
+                  </span>
+                </div>
+
+                {/* Card atual */}
+                {(() => {
+                  const cards = (message.metadata as any)?.cards || [];
+                  const card = cards[currentCardIndex];
+                  if (!card) return null;
+
+                  return (
+                    <div className="relative">
+                      {/* Imagem do card */}
+                      {card.imageUrl && (
+                        <div className="relative rounded-lg overflow-hidden mb-2">
+                          <img
+                            src={card.imageUrl}
+                            alt={`Card ${currentCardIndex + 1}`}
+                            className="w-full h-40 object-cover cursor-pointer"
+                            onClick={() => setLightboxOpen(true)}
+                          />
+                          {/* Indicador de posição */}
+                          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/60 px-2 py-0.5 rounded-full">
+                            <span className="text-white text-[11px]">
+                              {currentCardIndex + 1} / {cards.length}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Texto do body se houver */}
+                      {card.bodyParams && card.bodyParams[0] && (
+                        <p className="text-[14px] text-[#111b21] mb-2">
+                          {card.bodyParams[0]}
+                        </p>
+                      )}
+
+                      {/* Botões do card */}
+                      {card.buttonPayloads && card.buttonPayloads.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {card.buttonPayloads.map((payload: string, idx: number) => (
+                            <span
+                              key={idx}
+                              className="inline-flex items-center px-3 py-1.5 text-[12px] text-[#027eb5] bg-[#e7f3ff] rounded-full border border-[#027eb5]/20"
+                            >
+                              {payload.startsWith('http') || payload.startsWith('?') ? (
+                                <>
+                                  <ExternalLink className="w-3 h-3 mr-1" />
+                                  Link
+                                </>
+                              ) : (
+                                payload
+                              )}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Navegação entre cards */}
+                      {cards.length > 1 && (
+                        <div className="flex justify-between mt-3">
+                          <button
+                            type="button"
+                            onClick={() => setCurrentCardIndex(prev => Math.max(0, prev - 1))}
+                            disabled={currentCardIndex === 0}
+                            className={cn(
+                              "flex items-center gap-1 px-2 py-1 rounded text-[12px]",
+                              currentCardIndex === 0
+                                ? "text-gray-300 cursor-not-allowed"
+                                : "text-[#027eb5] hover:bg-[#e7f3ff]"
+                            )}
+                          >
+                            <ChevronLeft className="w-4 h-4" />
+                            Anterior
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setCurrentCardIndex(prev => Math.min(cards.length - 1, prev + 1))}
+                            disabled={currentCardIndex === cards.length - 1}
+                            className={cn(
+                              "flex items-center gap-1 px-2 py-1 rounded text-[12px]",
+                              currentCardIndex === cards.length - 1
+                                ? "text-gray-300 cursor-not-allowed"
+                                : "text-[#027eb5] hover:bg-[#e7f3ff]"
+                            )}
+                          >
+                            Próximo
+                            <ChevronRight className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
-              <span className="text-[12px] text-[#667781]">
-                Template: {(message.metadata as any)?.templateName || 'Mensagem automática'}
-              </span>
-            </div>
+            ) : (
+              /* Template normal (não carousel) */
+              <div>
+                {/* Ícone e nome do template */}
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="bg-[#e7f3ff] p-1.5 rounded">
+                    <FileText className="w-4 h-4 text-[#027eb5]" />
+                  </div>
+                  <span className="text-[12px] text-[#667781]">
+                    Template: {(message.metadata as any)?.templateName || 'Mensagem automática'}
+                  </span>
+                </div>
 
-            {/* Conteúdo do template */}
-            {message.content && (
-              <p className="text-[14px] text-[#111b21] break-words whitespace-pre-wrap">
-                {message.content}
-              </p>
-            )}
-
-            {/* Info adicional para carousel */}
-            {(message.metadata as any)?.templateType === 'carousel' && (
-              <div className="mt-2 flex items-center gap-2">
-                <LayoutGrid className="w-3.5 h-3.5 text-[#667781]" />
-                <span className="text-[12px] text-[#667781]">
-                  {(message.metadata as any)?.cardsCount || 0} cards
-                </span>
+                {/* Conteúdo do template */}
+                {message.content && (
+                  <p className="text-[14px] text-[#111b21] break-words whitespace-pre-wrap">
+                    {message.content}
+                  </p>
+                )}
               </div>
             )}
           </div>
