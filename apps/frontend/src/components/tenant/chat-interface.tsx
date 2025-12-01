@@ -27,7 +27,7 @@ export function ChatInterface({ conversation, messages, onMessageSent }: ChatInt
   const inputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const { sendTypingStatus, isUserTyping, isConnected } = useSocketContext();
+  const { sendTypingStatus, isUserTyping, isConnected, setActiveConversationId } = useSocketContext();
 
   const sendMutation = useMutation({
     mutationFn: (content: string) =>
@@ -118,16 +118,27 @@ export function ChatInterface({ conversation, messages, onMessageSent }: ChatInt
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Track active conversation to suppress notifications for open chats
+  useEffect(() => {
+    setActiveConversationId(conversation.id);
+
+    // Clear active conversation when unmounting
+    return () => {
+      setActiveConversationId(null);
+    };
+  }, [conversation.id, setActiveConversationId]);
+
   const getStatusBadge = () => {
-    const variants = {
-      OPEN: { label: 'Aberta', variant: 'warning' as const },
-      PENDING: { label: 'Pendente', variant: 'warning' as const },
-      IN_PROGRESS: { label: 'Em Andamento', variant: 'info' as const },
-      RESOLVED: { label: 'Resolvida', variant: 'success' as const },
-      CLOSED: { label: 'Fechada', variant: 'secondary' as const },
+    const variants: Record<string, { label: string; variant: 'warning' | 'info' | 'success' | 'secondary' }> = {
+      OPEN: { label: 'Aberta', variant: 'warning' },
+      PENDING: { label: 'Pendente', variant: 'warning' },
+      IN_PROGRESS: { label: 'Em Andamento', variant: 'info' },
+      RESOLVED: { label: 'Resolvida', variant: 'success' },
+      CLOSED: { label: 'Fechada', variant: 'secondary' },
+      BOT_HANDLING: { label: 'Bot', variant: 'info' },
     };
 
-    const status = variants[conversation.status];
+    const status = variants[conversation.status] || { label: conversation.status, variant: 'secondary' };
     return <Badge variant={status.variant}>{status.label}</Badge>;
   };
 

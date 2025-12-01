@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { n8nAuthMiddleware } from '@/middlewares/n8n-auth.middleware';
 import { whatsAppService } from '@/services/whatsapp.service';
 import { escalationService } from '@/services/escalation.service';
+import { messageService } from '@/services/message.service';
 import logger from '@/config/logger';
 
 const router = Router();
@@ -39,16 +40,25 @@ router.post('/send-text', async (req: Request, res: Response) => {
       message
     );
 
+    // Salvar mensagem no banco para aparecer no painel
+    await messageService.saveOutboundMessage({
+      tenantId: req.tenantId!,
+      phoneNumber: normalizedPhone,
+      whatsappMessageId: result.whatsappMessageId,
+      type: 'TEXT',
+      content: message,
+    });
+
     logger.info({
       tenantId: req.tenantId,
       phone: normalizedPhone,
       messageId: result.whatsappMessageId,
-    }, 'N8N: Text message sent');
+    }, 'N8N: Text message sent and saved');
 
     return res.json({
       success: true,
       messageId: result.whatsappMessageId,
-      zapiResponse: { // Formato compatível Z-API
+      botReservaResponse: {
         messageId: result.whatsappMessageId,
         id: result.whatsappMessageId,
       },
@@ -113,17 +123,35 @@ router.post('/send-buttons', async (req: Request, res: Response) => {
       footer
     );
 
+    // Salvar mensagem no banco para aparecer no painel
+    // Para botões, salvamos o texto principal + info dos botões no metadata
+    const buttonLabels = cloudApiButtons.map((btn: any) => btn.title).join(' | ');
+    await messageService.saveOutboundMessage({
+      tenantId: req.tenantId!,
+      phoneNumber: normalizedPhone,
+      whatsappMessageId: result.whatsappMessageId,
+      type: 'INTERACTIVE',
+      content: message,
+      metadata: {
+        interactiveType: 'buttons',
+        title,
+        footer,
+        buttons: cloudApiButtons,
+        buttonLabels,
+      },
+    });
+
     logger.info({
       tenantId: req.tenantId,
       phone: normalizedPhone,
       buttonsCount: buttons.length,
       messageId: result.whatsappMessageId,
-    }, 'N8N: Buttons message sent');
+    }, 'N8N: Buttons message sent and saved');
 
     return res.json({
       success: true,
       messageId: result.whatsappMessageId,
-      zapiResponse: {
+      botReservaResponse: {
         messageId: result.whatsappMessageId,
         id: result.whatsappMessageId,
       },
@@ -217,16 +245,30 @@ router.post('/send-list', async (req: Request, res: Response) => {
       cloudApiSections
     );
 
+    // Salvar mensagem no banco para aparecer no painel
+    await messageService.saveOutboundMessage({
+      tenantId: req.tenantId!,
+      phoneNumber: normalizedPhone,
+      whatsappMessageId: result.whatsappMessageId,
+      type: 'INTERACTIVE',
+      content: message,
+      metadata: {
+        interactiveType: 'list',
+        buttonLabel,
+        sections: cloudApiSections,
+      },
+    });
+
     logger.info({
       tenantId: req.tenantId,
       phone: normalizedPhone,
       messageId: result.whatsappMessageId,
-    }, 'N8N: List message sent');
+    }, 'N8N: List message sent and saved');
 
     return res.json({
       success: true,
       messageId: result.whatsappMessageId,
-      zapiResponse: {
+      botReservaResponse: {
         messageId: result.whatsappMessageId,
         id: result.whatsappMessageId,
       },
@@ -322,17 +364,39 @@ router.post('/send-media', async (req: Request, res: Response) => {
       }
     );
 
+    // Mapear tipo de mídia para MessageType
+    const messageTypeMap: Record<string, 'IMAGE' | 'VIDEO' | 'AUDIO' | 'DOCUMENT'> = {
+      image: 'IMAGE',
+      video: 'VIDEO',
+      audio: 'AUDIO',
+      document: 'DOCUMENT',
+    };
+
+    // Salvar mensagem no banco para aparecer no painel
+    await messageService.saveOutboundMessage({
+      tenantId: req.tenantId!,
+      phoneNumber: normalizedPhone,
+      whatsappMessageId: result.whatsappMessageId,
+      type: messageTypeMap[mediaType] || 'IMAGE',
+      content: mediaCaption || mediaLink,
+      metadata: {
+        mediaType,
+        mediaUrl: mediaLink,
+        caption: mediaCaption,
+      },
+    });
+
     logger.info({
       tenantId: req.tenantId,
       phone: normalizedPhone,
       mediaType,
       messageId: result.whatsappMessageId,
-    }, 'N8N: Media message sent');
+    }, 'N8N: Media message sent and saved');
 
     return res.json({
       success: true,
       messageId: result.whatsappMessageId,
-      zapiResponse: {
+      botReservaResponse: {
         messageId: result.whatsappMessageId,
         id: result.whatsappMessageId,
       },
@@ -378,17 +442,32 @@ router.post('/send-template', async (req: Request, res: Response) => {
       parameters
     );
 
+    // Salvar mensagem no banco para aparecer no painel
+    const templateNameUsed = template || templateName;
+    await messageService.saveOutboundMessage({
+      tenantId: req.tenantId!,
+      phoneNumber: normalizedPhone,
+      whatsappMessageId: result.whatsappMessageId,
+      type: 'TEMPLATE',
+      content: `[Template: ${templateNameUsed}]`,
+      metadata: {
+        templateName: templateNameUsed,
+        language: language || 'pt_BR',
+        parameters,
+      },
+    });
+
     logger.info({
       tenantId: req.tenantId,
       phone: normalizedPhone,
-      template: template || templateName,
+      template: templateNameUsed,
       messageId: result.whatsappMessageId,
-    }, 'N8N: Template sent');
+    }, 'N8N: Template sent and saved');
 
     return res.json({
       success: true,
       messageId: result.whatsappMessageId,
-      zapiResponse: {
+      botReservaResponse: {
         messageId: result.whatsappMessageId,
         id: result.whatsappMessageId,
       },
@@ -549,6 +628,239 @@ router.post('/mark-read', async (req: Request, res: Response) => {
     logger.error({ error, tenantId: req.tenantId }, 'N8N: Failed to mark as read');
     return res.status(500).json({
       error: 'Falha ao marcar como lido',
+      message: error.message,
+    });
+  }
+});
+
+/**
+ * POST /api/n8n/send-carousel
+ * Envia mensagem carousel (múltiplos cards com imagem e botões)
+ *
+ * MODO 1 - Template (carousel real):
+ * Templates disponíveis:
+ *   - carousel_quartos_geral: cards com 2 botões (Ver Detalhes, Voltar ao Menu)
+ *   - carousel_quarto_fotos: cards com 2 botões (URL + Voltar ao Menu)
+ *
+ * Exemplo para carousel_quartos_geral:
+ * {
+ *   "phone": "5511999999999",
+ *   "template": "carousel_quartos_geral",
+ *   "cards": [
+ *     {
+ *       "imageUrl": "https://example.com/quarto-standard.jpg",
+ *       "buttonPayloads": ["detalhes_standard", "menu"]
+ *     },
+ *     {
+ *       "imageUrl": "https://example.com/suite-premium.jpg",
+ *       "buttonPayloads": ["detalhes_premium", "menu"]
+ *     }
+ *   ]
+ * }
+ *
+ * NOTA: imageUrl é OBRIGATÓRIO para cada card.
+ * buttonPayloads é array com payload para cada botão quick_reply do template.
+ *
+ * MODO 2 - Mensagens interativas sequenciais (conteúdo dinâmico):
+ * {
+ *   "phone": "5511999999999",
+ *   "message": "Confira nossas opções:",
+ *   "carousel": [
+ *     {
+ *       "text": "Quarto Luxo - R$ 450/noite",
+ *       "image": "https://example.com/quarto-luxo.jpg",
+ *       "buttons": [
+ *         { "id": "reservar_luxo", "label": "Reservar" }
+ *       ]
+ *     }
+ *   ]
+ * }
+ *
+ * Máximo 10 cards por carousel (template) ou 3 botões por card (interativo).
+ */
+router.post('/send-carousel', async (req: Request, res: Response) => {
+  try {
+    const { phone, template, cards, message, carousel } = req.body;
+
+    if (!phone) {
+      return res.status(400).json({
+        error: 'Campo obrigatório: phone',
+      });
+    }
+
+    const normalizedPhone = phone.replace(/\D/g, '');
+
+    // MODO 1: Usar template aprovado da Meta (carousel real)
+    // O template tem conteúdo fixo (texto e imagens) - só os payloads dos botões são dinâmicos
+    if (template && cards) {
+      if (!Array.isArray(cards) || cards.length === 0) {
+        return res.status(400).json({
+          error: 'Campo obrigatório: cards (array com pelo menos 1 item)',
+        });
+      }
+
+      if (cards.length > 10) {
+        return res.status(400).json({
+          error: 'Máximo de 10 cards por carousel',
+        });
+      }
+
+      // Validar estrutura dos cards
+      for (let i = 0; i < cards.length; i++) {
+        const card = cards[i];
+        // imageUrl é obrigatório para templates de carousel
+        if (!card.imageUrl) {
+          return res.status(400).json({
+            error: `Card ${i + 1}: campo "imageUrl" é obrigatório (URL da imagem do card)`,
+          });
+        }
+        // buttonPayloads é obrigatório - array com payload para cada botão
+        if (!card.buttonPayloads || !Array.isArray(card.buttonPayloads) || card.buttonPayloads.length === 0) {
+          return res.status(400).json({
+            error: `Card ${i + 1}: campo "buttonPayloads" é obrigatório (array de payloads para cada botão)`,
+          });
+        }
+      }
+
+      const result = await whatsAppService.sendCarouselTemplate(
+        req.tenantId!,
+        normalizedPhone,
+        template,
+        cards.map((card: any) => ({
+          imageUrl: card.imageUrl, // Opcional - só se template aceita imagem dinâmica
+          bodyParams: card.bodyParams, // Opcional - só se template tem variáveis {{1}}
+          buttonPayloads: card.buttonPayloads, // Obrigatório - payload para cada botão
+        }))
+      );
+
+      // Salvar mensagem no banco para aparecer no painel
+      await messageService.saveOutboundMessage({
+        tenantId: req.tenantId!,
+        phoneNumber: normalizedPhone,
+        whatsappMessageId: result.whatsappMessageId,
+        type: 'TEMPLATE',
+        content: `[Carousel: ${template}] ${cards.length} cards`,
+        metadata: {
+          templateType: 'carousel',
+          templateName: template,
+          cardsCount: cards.length,
+          cards: cards.map((card: any) => ({
+            imageUrl: card.imageUrl,
+            buttonPayloads: card.buttonPayloads,
+          })),
+        },
+      });
+
+      logger.info({
+        tenantId: req.tenantId,
+        phone: normalizedPhone,
+        template,
+        cardsCount: cards.length,
+        messageId: result.whatsappMessageId,
+      }, 'N8N: Carousel template sent and saved');
+
+      return res.json({
+        success: true,
+        messageId: result.whatsappMessageId,
+        cardsCount: cards.length,
+        mode: 'template',
+        botReservaResponse: {
+          messageId: result.whatsappMessageId,
+          cardsCount: cards.length,
+        },
+      });
+    }
+
+    // MODO 2: Mensagens interativas sequenciais (fallback)
+    if (!carousel || !Array.isArray(carousel) || carousel.length === 0) {
+      return res.status(400).json({
+        error: 'Forneça "template" + "cards" (modo template) ou "carousel" (modo interativo)',
+      });
+    }
+
+    // Validar estrutura dos cards
+    for (let i = 0; i < carousel.length; i++) {
+      const card = carousel[i];
+      if (!card.text) {
+        return res.status(400).json({
+          error: `Card ${i + 1}: campo "text" é obrigatório`,
+        });
+      }
+      if (!card.buttons || !Array.isArray(card.buttons) || card.buttons.length === 0) {
+        return res.status(400).json({
+          error: `Card ${i + 1}: campo "buttons" é obrigatório (array com pelo menos 1 botão)`,
+        });
+      }
+      if (card.buttons.length > 3) {
+        return res.status(400).json({
+          error: `Card ${i + 1}: máximo de 3 botões por card`,
+        });
+      }
+    }
+
+    const results = await whatsAppService.sendCarousel(
+      req.tenantId!,
+      normalizedPhone,
+      message || '',
+      carousel.map((card: any) => ({
+        text: card.text,
+        image: card.image,
+        buttons: card.buttons.map((btn: any) => ({
+          id: btn.id || btn.buttonId,
+          label: btn.label || btn.title || btn.text,
+          type: btn.type || 'reply',
+          url: btn.url,
+        })),
+      }))
+    );
+
+    // Retornar array de IDs das mensagens enviadas
+    const messageIds = results.map(r => r.whatsappMessageId);
+
+    // Salvar cada mensagem no banco para aparecer no painel
+    for (let i = 0; i < results.length; i++) {
+      const result = results[i];
+      const card = carousel[i];
+      if (result && card) {
+        await messageService.saveOutboundMessage({
+          tenantId: req.tenantId!,
+          phoneNumber: normalizedPhone,
+          whatsappMessageId: result.whatsappMessageId,
+          type: card.image ? 'IMAGE' : 'INTERACTIVE',
+          content: card.text,
+          metadata: {
+            carouselIndex: i + 1,
+            carouselTotal: carousel.length,
+            imageUrl: card.image,
+            buttons: card.buttons,
+          },
+        });
+      }
+    }
+
+    logger.info({
+      tenantId: req.tenantId,
+      phone: normalizedPhone,
+      cardsCount: carousel.length,
+      messagesSent: results.length,
+    }, 'N8N: Carousel sent and saved');
+
+    return res.json({
+      success: true,
+      messageId: messageIds[0], // Primeiro ID para compatibilidade
+      messageIds: messageIds, // Todos os IDs
+      cardsCount: carousel.length,
+      mode: 'interactive',
+      botReservaResponse: {
+        messageIds: messageIds,
+        cardsCount: carousel.length,
+      },
+    });
+  } catch (error: any) {
+    logger.error({ error, tenantId: req.tenantId }, 'N8N: Failed to send carousel');
+    return res.status(500).json({
+      success: false,
+      error: 'Falha ao enviar carousel',
       message: error.message,
     });
   }

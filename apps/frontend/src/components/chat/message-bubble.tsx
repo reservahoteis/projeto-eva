@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Message, MessageStatus, MessageType } from '@/types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Check, CheckCheck, Paperclip, X, Download, ZoomIn, ZoomOut } from 'lucide-react';
+import { Check, CheckCheck, Paperclip, X, Download, ZoomIn, ZoomOut, List, LayoutGrid, FileText } from 'lucide-react';
 import { cn, getInitials } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
@@ -211,6 +211,120 @@ export function MessageBubble({
               <p className="text-[14px] text-[#111b21] break-words whitespace-pre-wrap mt-1">
                 {caption || message.content}
               </p>
+            )}
+          </div>
+        )}
+
+        {/* INTERACTIVE - Botões ou Listas */}
+        {message.type === MessageType.INTERACTIVE && (
+          <div>
+            {/* Texto principal da mensagem */}
+            {message.content && (
+              <p className="text-[14px] text-[#111b21] break-words whitespace-pre-wrap mb-2">
+                {message.content}
+              </p>
+            )}
+
+            {/* Renderizar botões */}
+            {(message.metadata as any)?.interactiveType === 'buttons' && (
+              <div className="space-y-1 mt-2">
+                {(message.metadata as any)?.title && (
+                  <p className="text-[13px] font-medium text-[#111b21] mb-1">
+                    {(message.metadata as any)?.title}
+                  </p>
+                )}
+                <div className="flex flex-wrap gap-1">
+                  {((message.metadata as any)?.buttons || []).map((btn: any, idx: number) => (
+                    <span
+                      key={idx}
+                      className="inline-flex items-center px-3 py-1.5 text-[13px] text-[#027eb5] bg-[#e7f3ff] rounded-full border border-[#027eb5]/20"
+                    >
+                      {btn.title || btn.label || btn.text}
+                    </span>
+                  ))}
+                </div>
+                {(message.metadata as any)?.footer && (
+                  <p className="text-[11px] text-[#667781] mt-1">
+                    {(message.metadata as any)?.footer}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Renderizar lista */}
+            {(message.metadata as any)?.interactiveType === 'list' && (
+              <div className="mt-2">
+                <div className="flex items-center gap-2 text-[#027eb5] mb-2">
+                  <List className="w-4 h-4" />
+                  <span className="text-[13px] font-medium">
+                    {(message.metadata as any)?.buttonLabel || 'Ver opções'}
+                  </span>
+                </div>
+                {((message.metadata as any)?.sections || []).map((section: any, sIdx: number) => (
+                  <div key={sIdx} className="mb-2">
+                    {section.title && (
+                      <p className="text-[12px] font-medium text-[#667781] mb-1">
+                        {section.title}
+                      </p>
+                    )}
+                    <div className="space-y-1">
+                      {(section.rows || []).map((row: any, rIdx: number) => (
+                        <div key={rIdx} className="bg-[#f0f2f5] px-3 py-2 rounded text-[13px]">
+                          <span className="text-[#111b21]">{row.title}</span>
+                          {row.description && (
+                            <p className="text-[11px] text-[#667781]">{row.description}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Carousel (sequencial) */}
+            {(message.metadata as any)?.carouselIndex && (
+              <div className="mt-1">
+                <span className="text-[11px] text-[#667781] bg-[#f0f2f5] px-2 py-0.5 rounded">
+                  Card {(message.metadata as any)?.carouselIndex}/{(message.metadata as any)?.carouselTotal}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TEMPLATE - Templates pré-aprovados */}
+        {message.type === MessageType.TEMPLATE && (
+          <div>
+            {/* Ícone e nome do template */}
+            <div className="flex items-center gap-2 mb-2">
+              <div className="bg-[#e7f3ff] p-1.5 rounded">
+                {(message.metadata as any)?.templateType === 'carousel' ? (
+                  <LayoutGrid className="w-4 h-4 text-[#027eb5]" />
+                ) : (
+                  <FileText className="w-4 h-4 text-[#027eb5]" />
+                )}
+              </div>
+              <span className="text-[12px] text-[#667781]">
+                Template: {(message.metadata as any)?.templateName || 'Mensagem automática'}
+              </span>
+            </div>
+
+            {/* Conteúdo do template */}
+            {message.content && (
+              <p className="text-[14px] text-[#111b21] break-words whitespace-pre-wrap">
+                {message.content}
+              </p>
+            )}
+
+            {/* Info adicional para carousel */}
+            {(message.metadata as any)?.templateType === 'carousel' && (
+              <div className="mt-2 flex items-center gap-2">
+                <LayoutGrid className="w-3.5 h-3.5 text-[#667781]" />
+                <span className="text-[12px] text-[#667781]">
+                  {(message.metadata as any)?.cardsCount || 0} cards
+                </span>
+              </div>
             )}
           </div>
         )}

@@ -32,6 +32,8 @@ interface SocketContextData {
   isUserTyping: (conversationId: string) => boolean;
   getTypingUsers: (conversationId: string) => string[];
   isUserOnline: (userId: string) => boolean;
+  activeConversationId: string | null;
+  setActiveConversationId: (id: string | null) => void;
 }
 
 interface MessageQueueItem {
@@ -54,6 +56,7 @@ export function SocketProvider({ children }: SocketProviderProps) {
   const [messageQueue, setMessageQueue] = useState<MessageQueueItem[]>([]);
   const [typingUsers, setTypingUsers] = useState<Map<string, Set<string>>>(new Map());
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const subscribedConversations = useRef<Set<string>>(new Set());
   const typingTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
@@ -252,8 +255,11 @@ export function SocketProvider({ children }: SocketProviderProps) {
         isSubscribed: subscribedConversations.current.has(data.message?.conversationId || data.conversation?.id)
       });
 
-      // Show notification for inbound messages
-      if (data.message.direction === 'INBOUND') {
+      // Show notification for inbound messages ONLY if chat is NOT open
+      const messageConversationId = data.message?.conversationId || data.conversation?.id;
+      const isChatOpen = activeConversationId === messageConversationId;
+
+      if (data.message.direction === 'INBOUND' && !isChatOpen) {
         // Play notification sound if available
         try {
           const audio = new Audio('/sounds/notification.mp3');
@@ -337,7 +343,7 @@ export function SocketProvider({ children }: SocketProviderProps) {
       off('user:offline', handleUserOffline);
       off('message:status', handleMessageStatus);
     };
-  }, [isConnected, on, off]);
+  }, [isConnected, on, off, activeConversationId]);
 
   // Clean up old messages from queue (older than 5 minutes)
   useEffect(() => {
@@ -385,7 +391,9 @@ export function SocketProvider({ children }: SocketProviderProps) {
         onlineUsers,
         isUserTyping,
         getTypingUsers,
-        isUserOnline
+        isUserOnline,
+        activeConversationId,
+        setActiveConversationId
       }}
     >
       {children}

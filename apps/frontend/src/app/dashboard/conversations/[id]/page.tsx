@@ -25,7 +25,7 @@ interface ConversationPageProps {
 export default function ConversationPage({ params }: ConversationPageProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { on, off, subscribeToConversation, unsubscribeFromConversation, isConnected, sendTypingStatus, isUserTyping } = useSocketContext();
+  const { on, off, subscribeToConversation, unsubscribeFromConversation, isConnected, sendTypingStatus, isUserTyping, setActiveConversationId } = useSocketContext();
   const [isTyping, setIsTyping] = useState(false);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -241,6 +241,16 @@ export default function ConversationPage({ params }: ConversationPageProps) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Track active conversation to suppress notifications for open chats
+  useEffect(() => {
+    setActiveConversationId(params.id);
+
+    // Clear active conversation when leaving this page
+    return () => {
+      setActiveConversationId(null);
+    };
+  }, [params.id, setActiveConversationId]);
 
   if (conversationLoading || messagesLoading) {
     return (

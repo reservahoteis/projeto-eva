@@ -293,6 +293,92 @@ export class MessageService {
 
     logger.debug({ whatsappMessageId, status }, 'Message status updated');
   }
+
+  /**
+   * Salvar mensagem enviada pela IA (via N8N)
+   * Cria contato e conversa automaticamente se não existirem
+   */
+  async saveOutboundMessage(data: {
+    tenantId: string;
+    phoneNumber: string;
+    whatsappMessageId: string;
+    type: MessageType;
+    content: string;
+    metadata?: any;
+  }) {
+    // 1. Buscar ou criar contato
+    let contact = await prisma.contact.findFirst({
+      where: {
+        tenantId: data.tenantId,
+        phoneNumber: data.phoneNumber,
+      },
+    });
+
+    if (!contact) {
+      contact = await prisma.contact.create({
+        data: {
+          tenantId: data.tenantId,
+          phoneNumber: data.phoneNumber,
+        },
+      });
+      logger.info({ contactId: contact.id, phoneNumber: data.phoneNumber }, 'Contact created for AI message');
+    }
+
+    // 2. Buscar ou criar conversa
+    const conversation = await conversationService.getOrCreateConversation(
+      data.tenantId,
+      contact.id
+    );
+
+    // 3. Verificar se mensagem já existe (idempotência)
+    const existingMessage = await prisma.message.findUnique({
+      where: { whatsappMessageId: data.whatsappMessageId },
+    });
+
+    if (existingMessage) {
+      logger.debug({ whatsappMessageId: data.whatsappMessageId }, 'AI message already exists');
+      return existingMessage;
+    }
+
+    // 4. Criar mensagem como OUTBOUND (mensagem da IA)
+    const message = await prisma.message.create({
+      data: {
+        tenantId: data.tenantId,
+        conversationId: conversation.id,
+        whatsappMessageId: data.whatsappMessageId,
+        direction: 'OUTBOUND',
+        type: data.type,
+        content: data.content,
+        metadata: data.metadata || undefined,
+        timestamp: new Date(),
+        status: 'SENT',
+        // sentById: null significa que foi enviado pela IA, não por um atendente
+      },
+    });
+
+    // 5. Atualizar lastMessageAt da conversa
+    await prisma.conversation.update({
+      where: { id: conversation.id },
+      data: { lastMessageAt: new Date() },
+    });
+
+    logger.info({
+      messageId: message.id,
+      conversationId: conversation.id,
+      whatsappMessageId: data.whatsappMessageId,
+      phoneNumber: data.phoneNumber,
+    }, 'AI outbound message saved');
+
+    // 6. Emitir evento Socket.io para atualizar o painel em tempo real
+    try {
+      const { emitNewMessage } = await import('@/config/socket');
+      emitNewMessage(data.tenantId, conversation.id, message);
+    } catch (error) {
+      logger.warn({ error }, 'Failed to emit Socket.io event for AI message');
+    }
+
+    return message;
+  }
 }
 
 export const messageService = new MessageService();

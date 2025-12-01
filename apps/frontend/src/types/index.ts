@@ -159,6 +159,7 @@ export enum MessageType {
   CONTACT = 'CONTACT',
   STICKER = 'STICKER',
   TEMPLATE = 'TEMPLATE',
+  INTERACTIVE = 'INTERACTIVE',
 }
 
 export enum MessageStatus {
