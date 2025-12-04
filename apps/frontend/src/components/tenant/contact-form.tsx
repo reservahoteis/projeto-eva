@@ -146,7 +146,7 @@ export function ContactForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 sm:space-y-6">
         {/* Número de Telefone */}
         <FormField
           control={form.control}
@@ -285,13 +285,14 @@ export function ContactForm({
         />
 
         {/* Botões */}
-        <div className="flex items-center justify-end gap-2 pt-4 border-t">
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 pt-4 border-t">
           {onCancel && (
             <Button
               type="button"
               variant="outline"
               onClick={onCancel}
               disabled={isLoading}
+              className="w-full sm:w-auto"
             >
               Cancelar
             </Button>
@@ -300,7 +301,7 @@ export function ContactForm({
           <Button
             type="submit"
             disabled={isLoading || !form.formState.isValid}
-            className="min-w-[120px]"
+            className="w-full sm:w-auto sm:min-w-[120px]"
           >
             {isLoading ? (
               <>

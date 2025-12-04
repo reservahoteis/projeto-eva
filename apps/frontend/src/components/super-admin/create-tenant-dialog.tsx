@@ -168,11 +168,11 @@ export function CreateTenantDialog({ open, onOpenChange, onSuccess }: CreateTena
                 {errors.plan && <p className="text-sm text-destructive">{errors.plan.message}</p>}
               </div>
 
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={handleClose} disabled={isLoading}>
+              <DialogFooter className="gap-2">
+                <Button type="button" variant="outline" onClick={handleClose} disabled={isLoading} className="w-full sm:w-auto">
                   Cancelar
                 </Button>
-                <Button type="submit" disabled={isLoading}>
+                <Button type="submit" disabled={isLoading} className="w-full sm:w-auto">
                   {isLoading ? 'Criando...' : 'Criar Tenant'}
                 </Button>
               </DialogFooter>
@@ -204,8 +204,8 @@ export function CreateTenantDialog({ open, onOpenChange, onSuccess }: CreateTena
                 deverá trocar a senha no primeiro acesso.
               </p>
             </div>
-            <DialogFooter>
-              <Button onClick={handleClose}>Fechar</Button>
+            <DialogFooter className="gap-2">
+              <Button onClick={handleClose} className="w-full sm:w-auto">Fechar</Button>
             </DialogFooter>
           </>
         )}

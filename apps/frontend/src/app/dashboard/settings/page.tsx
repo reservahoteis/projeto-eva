@@ -387,17 +387,17 @@ export default function SettingsPage() {
               />
             </div>
 
-            <DialogFooter>
+            <DialogFooter className="gap-2">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setIsConfigDialogOpen(false)}
                 disabled={updateConfigMutation.isPending}
-                className="glass-btn"
+                className="glass-btn w-full sm:w-auto"
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={updateConfigMutation.isPending} className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white">
+              <Button type="submit" disabled={updateConfigMutation.isPending} className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white w-full sm:w-auto">
                 {updateConfigMutation.isPending ? 'Salvando...' : 'Salvar Configuração'}
               </Button>
             </DialogFooter>
