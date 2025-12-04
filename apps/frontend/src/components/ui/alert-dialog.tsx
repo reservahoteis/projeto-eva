@@ -16,7 +16,14 @@ const AlertDialogOverlay = React.forwardRef<
   <AlertDialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      'fixed inset-0 z-50 bg-black/80',
+      // CRITICAL: Overlay is the scrollable container (like Facebook/Google/Instagram)
+      'fixed inset-0 z-50',
+      'bg-black/80',
+      // Overflow on overlay, NOT on content - this is the key fix
+      'overflow-y-auto',
+      // Smooth scrolling behavior
+      'scroll-smooth',
+      // Animations
       'data-[state=open]:animate-in data-[state=closed]:animate-out',
       'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
       className
@@ -31,39 +38,37 @@ const AlertDialogContent = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Content>
 >(({ className, ...props }, ref) => (
   <AlertDialogPortal>
-    <AlertDialogOverlay />
-    <AlertDialogPrimitive.Content
-      ref={ref}
-      className={cn(
-        // Positioning - fixed with flexbox centering
-        'fixed left-[50%] top-[50%] z-50',
-        'translate-x-[-50%] translate-y-[-50%]',
-        // Sizing - responsive width with proper constraints
-        'w-full max-w-lg',
-        // Mobile: small margins, Desktop: comfortable width
-        'mx-4 sm:mx-0',
-        // Max height to prevent overflow - leaves space for margins
-        'max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-4rem)]',
-        // Layout
-        'grid gap-4',
-        // Styling
-        'border bg-background p-6 shadow-lg rounded-lg',
-        // Overflow handling - allows scroll INSIDE the dialog
-        'overflow-y-auto',
-        // Focus management
-        'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-        // Animations
-        'data-[state=open]:animate-in data-[state=closed]:animate-out',
-        'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
-        'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
-        'data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%]',
-        'data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]',
-        // Smooth scrolling
-        'scroll-smooth',
-        className
-      )}
-      {...props}
-    />
+    <AlertDialogOverlay>
+      {/* Flexbox container for centering - this scrolls with the overlay */}
+      <div className="flex min-h-full items-center justify-center p-4 sm:p-6">
+        <AlertDialogPrimitive.Content
+          ref={ref}
+          className={cn(
+            // CRITICAL: NO fixed positioning, NO translate-y-[-50%]
+            // The dialog is positioned by the flex container above
+            'relative z-50',
+            // Sizing - responsive width
+            'w-full max-w-lg',
+            // NO max-height - let content grow naturally
+            // The overlay scrolls, not the content
+            // Layout
+            'grid gap-4',
+            // Styling
+            'border bg-background p-6 shadow-lg rounded-lg',
+            // NO overflow-y-auto here - overlay handles scroll
+            // Focus management
+            'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+            // Animations
+            'data-[state=open]:animate-in data-[state=closed]:animate-out',
+            'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+            'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
+            'data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom',
+            className
+          )}
+          {...props}
+        />
+      </div>
+    </AlertDialogOverlay>
   </AlertDialogPortal>
 ));
 AlertDialogContent.displayName = AlertDialogPrimitive.Content.displayName;
