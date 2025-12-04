@@ -15,7 +15,7 @@ const AlertDialogOverlay = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <AlertDialogPrimitive.Overlay
     className={cn(
-      'fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 overflow-y-auto',
+      'fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
       className
     )}
     {...props}
@@ -29,18 +29,18 @@ const AlertDialogContent = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Content>
 >(({ className, ...props }, ref) => (
   <AlertDialogPortal>
-    <AlertDialogOverlay className="flex items-center justify-center p-4">
+    <AlertDialogOverlay />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
       <AlertDialogPrimitive.Content
         ref={ref}
         className={cn(
-          'relative z-50 grid w-full max-w-lg gap-4 border bg-background p-4 sm:p-6 shadow-lg rounded-lg',
+          'relative z-50 grid w-full max-w-lg gap-4 border bg-background p-4 sm:p-6 shadow-lg rounded-lg my-auto',
           'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
-          'max-h-[calc(100vh-2rem)] overflow-y-auto',
           className
         )}
         {...props}
       />
-    </AlertDialogOverlay>
+    </div>
   </AlertDialogPortal>
 ));
 AlertDialogContent.displayName = AlertDialogPrimitive.Content.displayName;
