@@ -14,12 +14,14 @@ const AlertDialogOverlay = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Overlay>
 >(({ className, ...props }, ref) => (
   <AlertDialogPrimitive.Overlay
+    ref={ref}
     className={cn(
-      'fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+      'fixed inset-0 z-50 bg-black/80',
+      'data-[state=open]:animate-in data-[state=closed]:animate-out',
+      'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
       className
     )}
     {...props}
-    ref={ref}
   />
 ));
 AlertDialogOverlay.displayName = AlertDialogPrimitive.Overlay.displayName;
@@ -30,17 +32,38 @@ const AlertDialogContent = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <AlertDialogPortal>
     <AlertDialogOverlay />
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <AlertDialogPrimitive.Content
-        ref={ref}
-        className={cn(
-          'relative z-50 grid w-full max-w-lg gap-4 border bg-background p-4 sm:p-6 shadow-lg rounded-lg my-auto',
-          'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
-          className
-        )}
-        {...props}
-      />
-    </div>
+    <AlertDialogPrimitive.Content
+      ref={ref}
+      className={cn(
+        // Positioning - fixed with flexbox centering
+        'fixed left-[50%] top-[50%] z-50',
+        'translate-x-[-50%] translate-y-[-50%]',
+        // Sizing - responsive width with proper constraints
+        'w-full max-w-lg',
+        // Mobile: small margins, Desktop: comfortable width
+        'mx-4 sm:mx-0',
+        // Max height to prevent overflow - leaves space for margins
+        'max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-4rem)]',
+        // Layout
+        'grid gap-4',
+        // Styling
+        'border bg-background p-6 shadow-lg rounded-lg',
+        // Overflow handling - allows scroll INSIDE the dialog
+        'overflow-y-auto',
+        // Focus management
+        'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+        // Animations
+        'data-[state=open]:animate-in data-[state=closed]:animate-out',
+        'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+        'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
+        'data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%]',
+        'data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]',
+        // Smooth scrolling
+        'scroll-smooth',
+        className
+      )}
+      {...props}
+    />
   </AlertDialogPortal>
 ));
 AlertDialogContent.displayName = AlertDialogPrimitive.Content.displayName;
@@ -66,6 +89,8 @@ const AlertDialogFooter = ({
   <div
     className={cn(
       'flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2',
+      // Mobile: stack buttons vertically with spacing
+      'space-y-2 space-y-reverse sm:space-y-0',
       className
     )}
     {...props}
@@ -118,7 +143,6 @@ const AlertDialogCancel = React.forwardRef<
     ref={ref}
     className={cn(
       buttonVariants({ variant: 'outline' }),
-      'mt-2 sm:mt-0',
       className
     )}
     {...props}
