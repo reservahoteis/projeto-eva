@@ -260,7 +260,7 @@ export function SocketProvider({ children }: SocketProviderProps) {
       const messageConversationId = data.message?.conversationId || data.conversation?.id;
       const isChatOpen = activeConversationId === messageConversationId;
 
-      if (data.message.direction === 'INBOUND' && !isChatOpen) {
+      if (data.message?.direction === 'INBOUND' && !isChatOpen) {
         // Play notification sound using Web Audio API
         try {
           notificationSoundManager.playMessage();
@@ -271,7 +271,7 @@ export function SocketProvider({ children }: SocketProviderProps) {
         // Show toast notification
         const contactName = data.conversation?.contact?.name || data.conversation?.contact?.phoneNumber || 'Novo contato';
         toast.success(`Nova mensagem de ${contactName}`, {
-          description: data.message.content?.substring(0, 100) || '[Mídia]',
+          description: data.message?.content?.substring(0, 100) || '[Mídia]',
           duration: 5000,
           position: 'top-right'
         });

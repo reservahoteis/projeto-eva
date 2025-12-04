@@ -40,10 +40,22 @@ export function KanbanBoardRealtime({ initialConversations, onUpdate }: KanbanBo
     if (!isConnected) return;
 
     // Handle new message - update conversation
-    const handleNewMessage = ({ message, conversation }: { message: Message; conversation: Conversation }) => {
+    const handleNewMessage = ({ message, conversation, conversationId }: { message: Message; conversation?: Conversation; conversationId?: string }) => {
+      // Validação: precisa ter message e pelo menos conversation ou conversationId
+      if (!message) {
+        console.warn('handleNewMessage: message is undefined');
+        return;
+      }
+
+      const targetConversationId = conversation?.id || conversationId || message.conversationId;
+      if (!targetConversationId) {
+        console.warn('handleNewMessage: no conversationId found');
+        return;
+      }
+
       setConversations((prev) => {
         const updated = prev.map((conv) => {
-          if (conv.id === conversation.id) {
+          if (conv.id === targetConversationId) {
             return {
               ...conv,
               lastMessage: message,
@@ -54,9 +66,9 @@ export function KanbanBoardRealtime({ initialConversations, onUpdate }: KanbanBo
           return conv;
         });
 
-        // If conversation is new, add it to the list
-        const exists = prev.find((conv) => conv.id === conversation.id);
-        if (!exists) {
+        // If conversation is new AND we have full conversation data, add it to the list
+        const exists = prev.find((conv) => conv.id === targetConversationId);
+        if (!exists && conversation && conversation.id) {
           return [conversation, ...updated];
         }
 
@@ -65,7 +77,14 @@ export function KanbanBoardRealtime({ initialConversations, onUpdate }: KanbanBo
     };
 
     // Handle conversation status update
-    const handleConversationUpdate = ({ conversation }: { conversation: Conversation }) => {
+    const handleConversationUpdate = ({ conversation, conversationId }: { conversation?: Conversation; conversationId?: string }) => {
+      // Se não tiver conversation completa, ignorar (apenas atualização parcial)
+      if (!conversation || !conversation.id) {
+        console.log('handleConversationUpdate: partial update, refreshing data...');
+        onUpdate(); // Força refresh dos dados
+        return;
+      }
+
       setConversations((prev) =>
         prev.map((conv) => (conv.id === conversation.id ? conversation : conv))
       );
