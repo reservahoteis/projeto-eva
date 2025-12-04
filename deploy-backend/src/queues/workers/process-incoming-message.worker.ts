@@ -11,10 +11,13 @@ import {
   isLocationMessage,
   isButtonReply,
   isListReply,
+  isInteractiveButtonReply,
+  isTemplateButtonReply,
 } from '@/validators/whatsapp-webhook.validator';
 import { enqueueMediaDownload } from '../whatsapp-webhook.queue';
 import { emitNewMessage } from '@/config/socket';
 import { whatsAppService } from '@/services/whatsapp.service';
+import { n8nService } from '@/services/n8n.service';
 
 /**
  * Worker para processar mensagens recebidas do WhatsApp
@@ -107,6 +110,29 @@ export async function processIncomingMessage(job: Job<ProcessMessageJobData>): P
         },
       }
     );
+
+    // 8. ENCAMINHAR PARA N8N (IA)
+    // Verificar se conversa foi criada agora (para saber se é novo contato)
+    const isNewConversation = conversation.status === 'OPEN';
+
+    const n8nPayload = n8nService.buildPayload(
+      contact.phoneNumber,
+      {
+        id: savedMessage.id,
+        type: savedMessage.type,
+        content: savedMessage.content || '',
+        metadata: savedMessage.metadata,
+        timestamp: savedMessage.timestamp,
+      },
+      conversation.id,
+      contact.name,
+      isNewConversation
+    );
+
+    // Chamar N8N de forma assíncrona (não bloqueia o processamento)
+    n8nService.forwardToN8N(tenantId, n8nPayload).catch((err) => {
+      logger.error({ tenantId, messageId: savedMessage.id, error: err.message }, 'Failed to forward to N8N');
+    });
 
     logger.info(
       {
@@ -364,15 +390,34 @@ function extractMessageData(message: any): {
     };
   }
 
-  // BUTTON REPLY
-  if (isButtonReply(message)) {
+  // TEMPLATE BUTTON REPLY (Quick Reply de carousel template)
+  // Formato: type: 'button' com button.payload e button.text
+  if (isTemplateButtonReply(message)) {
+    const button = message.button as { payload: string; text: string };
     return {
       type: 'TEXT',
-      content: message.button!.button_reply.title,
+      content: button.text,
       metadata: {
         button: {
-          id: message.button!.button_reply.id,
-          title: message.button!.button_reply.title,
+          id: button.payload,
+          title: button.text,
+        },
+        context: message.context,
+      },
+      shouldDownload: false,
+    };
+  }
+
+  // BUTTON REPLY (formato antigo com button_reply)
+  if (isButtonReply(message)) {
+    const buttonReply = (message.button as any).button_reply;
+    return {
+      type: 'TEXT',
+      content: buttonReply.title,
+      metadata: {
+        button: {
+          id: buttonReply.id,
+          title: buttonReply.title,
         },
         context: message.context,
       },
@@ -390,6 +435,23 @@ function extractMessageData(message: any): {
           id: message.interactive.list_reply.id,
           title: message.interactive.list_reply.title,
           description: message.interactive.list_reply.description,
+        },
+        context: message.context,
+      },
+      shouldDownload: false,
+    };
+  }
+
+  // INTERACTIVE BUTTON REPLY (Quick Reply de carousel template)
+  if (isInteractiveButtonReply(message) && message.interactive && 'button_reply' in message.interactive) {
+    const buttonReply = (message.interactive as any).button_reply;
+    return {
+      type: 'TEXT',
+      content: buttonReply.title,
+      metadata: {
+        button: {
+          id: buttonReply.id,
+          title: buttonReply.title,
         },
         context: message.context,
       },

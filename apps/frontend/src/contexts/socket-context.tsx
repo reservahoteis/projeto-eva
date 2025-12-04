@@ -5,6 +5,7 @@ import { useSocket, SocketEvents } from '@/hooks/useSocket';
 import { useAuth } from './auth-context';
 import { toast } from 'sonner';
 import { Message, Conversation } from '@/types';
+import { notificationSoundManager } from '@/hooks/useNotificationSound';
 
 interface SocketContextData {
   isConnected: boolean;
@@ -260,16 +261,17 @@ export function SocketProvider({ children }: SocketProviderProps) {
       const isChatOpen = activeConversationId === messageConversationId;
 
       if (data.message.direction === 'INBOUND' && !isChatOpen) {
-        // Play notification sound if available
+        // Play notification sound using Web Audio API
         try {
-          const audio = new Audio('/sounds/notification.mp3');
-          audio.play().catch(console.error);
+          notificationSoundManager.playMessage();
         } catch (error) {
           console.error('Error playing notification sound:', error);
         }
 
-        toast.success(`Nova mensagem de ${data.conversation.contact.name}`, {
-          description: data.message.content || '[Mídia]',
+        // Show toast notification
+        const contactName = data.conversation?.contact?.name || data.conversation?.contact?.phoneNumber || 'Novo contato';
+        toast.success(`Nova mensagem de ${contactName}`, {
+          description: data.message.content?.substring(0, 100) || '[Mídia]',
           duration: 5000,
           position: 'top-right'
         });

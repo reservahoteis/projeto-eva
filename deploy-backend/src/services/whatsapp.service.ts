@@ -4,6 +4,7 @@ import { env } from '@/config/env';
 import { BadRequestError, InternalServerError } from '@/utils/errors';
 import logger from '@/config/logger';
 import { decrypt } from '@/utils/encryption';
+import { processImageForWhatsApp, uploadImageToWhatsApp } from '@/utils/image-processor';
 
 interface SendMessageResult {
   whatsappMessageId: string;
@@ -578,6 +579,344 @@ export class WhatsAppService {
       };
     } catch (error: any) {
       logger.error({ error, tenantId, to }, 'Failed to send interactive list');
+
+      if (axios.isAxiosError(error)) {
+        const errorMessage = error.response?.data?.error?.message || 'WhatsApp API error';
+        throw new InternalServerError(`WhatsApp: ${errorMessage}`);
+      }
+
+      throw error;
+    }
+  }
+
+  /**
+   * Enviar mensagem carousel (múltiplos cards com imagem e botões)
+   * Usa o formato de template da Meta Cloud API
+   *
+   * Nota: Carousel na API oficial do WhatsApp requer um template aprovado
+   * ou usa múltiplas mensagens interativas sequenciais
+   */
+  async sendCarousel(
+    tenantId: string,
+    to: string,
+    bodyText: string,
+    cards: Array<{
+      text: string;
+      image?: string;
+      buttons: Array<{
+        id: string;
+        label: string;
+        type?: 'reply' | 'url';
+        url?: string;
+      }>;
+    }>
+  ): Promise<SendMessageResult[]> {
+    try {
+      const tenant = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { whatsappPhoneNumberId: true },
+      });
+
+      if (!tenant?.whatsappPhoneNumberId) {
+        throw new BadRequestError('WhatsApp não configurado');
+      }
+
+      const axiosInstance = await this.getAxiosForTenant(tenantId);
+      const results: SendMessageResult[] = [];
+
+      // Enviar texto introdutório se fornecido
+      if (bodyText) {
+        const textResponse = await axiosInstance.post(
+          `/${tenant.whatsappPhoneNumberId}/messages`,
+          {
+            messaging_product: 'whatsapp',
+            recipient_type: 'individual',
+            to: to,
+            type: 'text',
+            text: {
+              preview_url: false,
+              body: bodyText,
+            },
+          }
+        );
+
+        results.push({
+          whatsappMessageId: textResponse.data.messages[0]?.id,
+          success: true,
+        });
+      }
+
+      // Enviar cada card como mensagem interativa separada
+      for (const card of cards) {
+        const payload: any = {
+          messaging_product: 'whatsapp',
+          recipient_type: 'individual',
+          to: to,
+          type: 'interactive',
+          interactive: {
+            type: 'button',
+            body: {
+              text: card.text,
+            },
+            action: {
+              buttons: card.buttons.slice(0, 3).map((btn) => {
+                if (btn.type === 'url' && btn.url) {
+                  // Botão de URL não é suportado em interactive buttons
+                  // Converter para reply e adicionar URL no texto
+                  return {
+                    type: 'reply',
+                    reply: {
+                      id: btn.id,
+                      title: btn.label.substring(0, 20),
+                    },
+                  };
+                }
+                return {
+                  type: 'reply',
+                  reply: {
+                    id: btn.id,
+                    title: btn.label.substring(0, 20),
+                  },
+                };
+              }),
+            },
+          },
+        };
+
+        // Adicionar imagem como header se fornecida
+        if (card.image) {
+          payload.interactive.header = {
+            type: 'image',
+            image: {
+              link: card.image,
+            },
+          };
+        }
+
+        const response = await axiosInstance.post(
+          `/${tenant.whatsappPhoneNumberId}/messages`,
+          payload
+        );
+
+        results.push({
+          whatsappMessageId: response.data.messages[0]?.id,
+          success: true,
+        });
+
+        // Pequeno delay entre mensagens para evitar rate limit
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+
+      logger.info({ tenantId, to, cardsCount: cards.length }, 'Carousel messages sent');
+
+      return results;
+    } catch (error: any) {
+      logger.error({ error, tenantId, to }, 'Failed to send carousel');
+
+      if (axios.isAxiosError(error)) {
+        const errorMessage = error.response?.data?.error?.message || 'WhatsApp API error';
+        throw new InternalServerError(`WhatsApp: ${errorMessage}`);
+      }
+
+      throw error;
+    }
+  }
+
+  /**
+   * Enviar carousel usando template aprovado da Meta
+   * Templates de carousel têm conteúdo fixo - só os payloads dos botões são dinâmicos
+   *
+   * @param tenantId - ID do tenant
+   * @param to - Número do destinatário
+   * @param templateName - Nome do template aprovado (ex: 'carousel_quartos_geral')
+   * @param cards - Array de cards com payloads dos botões
+   */
+  async sendCarouselTemplate(
+    tenantId: string,
+    to: string,
+    templateName: string,
+    cards: Array<{
+      imageUrl?: string; // Opcional - usado se template aceita imagem dinâmica
+      bodyParams?: string[]; // Opcional - usado se template tem variáveis {{1}}, {{2}}
+      buttonPayloads: string[]; // Payloads para cada botão quick_reply do card
+    }>
+  ): Promise<SendMessageResult> {
+    try {
+      const tenant = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: {
+          whatsappPhoneNumberId: true,
+          whatsappAccessToken: true,
+        },
+      });
+
+      if (!tenant?.whatsappPhoneNumberId || !tenant?.whatsappAccessToken) {
+        throw new BadRequestError('WhatsApp não configurado');
+      }
+
+      // Limitar a 10 cards (máximo do carousel)
+      if (cards.length > 10) {
+        throw new BadRequestError('Máximo de 10 cards no carousel');
+      }
+
+      // Descriptografar access token para upload de mídia
+      let accessToken: string;
+      try {
+        accessToken = decrypt(tenant.whatsappAccessToken);
+      } catch (error) {
+        logger.error({ tenantId, error }, 'Failed to decrypt WhatsApp access token');
+        throw new BadRequestError('Configuração WhatsApp inválida');
+      }
+
+      const axiosInstance = await this.getAxiosForTenant(tenantId);
+
+      // Processar imagens dos cards (redimensionar se necessário e fazer upload)
+      logger.info({ tenantId, cardsCount: cards.length }, 'Processing carousel images...');
+
+      const processedCards = await Promise.all(
+        cards.map(async (card, index) => {
+          if (!card.imageUrl) {
+            return { ...card, mediaId: undefined };
+          }
+
+          try {
+            // Processar imagem (redimensionar se necessário)
+            const processedImage = await processImageForWhatsApp(card.imageUrl);
+
+            if (!processedImage) {
+              logger.warn({ imageUrl: card.imageUrl, cardIndex: index }, 'Failed to process image, using original URL');
+              return { ...card, mediaId: undefined };
+            }
+
+            // Fazer upload da imagem processada para WhatsApp Media API
+            const mediaId = await uploadImageToWhatsApp(
+              processedImage.buffer,
+              accessToken,
+              tenant.whatsappPhoneNumberId!
+            );
+
+            if (mediaId) {
+              logger.info({
+                cardIndex: index,
+                originalUrl: card.imageUrl,
+                processedSize: processedImage.size,
+                mediaId,
+              }, 'Image processed and uploaded successfully');
+              return { ...card, mediaId };
+            }
+
+            logger.warn({ imageUrl: card.imageUrl, cardIndex: index }, 'Failed to upload image, using original URL');
+            return { ...card, mediaId: undefined };
+          } catch (error: any) {
+            logger.error({ error: error.message, imageUrl: card.imageUrl, cardIndex: index }, 'Error processing image');
+            return { ...card, mediaId: undefined };
+          }
+        })
+      );
+
+      // Construir componentes do carousel
+      // IMPORTANTE: Templates de carousel SEMPRE precisam de header image params
+      const carouselCards = processedCards.map((card, index) => {
+        const components: any[] = [];
+
+        // Header com imagem - OBRIGATÓRIO para carousel templates
+        // Usar mediaId se disponível (imagem processada), senão usar URL original
+        if (card.mediaId) {
+          components.push({
+            type: 'header',
+            parameters: [
+              {
+                type: 'image',
+                image: {
+                  id: card.mediaId,
+                },
+              },
+            ],
+          });
+        } else if (card.imageUrl) {
+          components.push({
+            type: 'header',
+            parameters: [
+              {
+                type: 'image',
+                image: {
+                  link: card.imageUrl,
+                },
+              },
+            ],
+          });
+        }
+
+        // Body params (se template tem variáveis)
+        if (card.bodyParams && card.bodyParams.length > 0) {
+          components.push({
+            type: 'body',
+            parameters: card.bodyParams.map((param) => ({
+              type: 'text',
+              text: param,
+            })),
+          });
+        }
+
+        // Botões quick_reply - cada um precisa de um payload
+        card.buttonPayloads.forEach((payload, btnIndex) => {
+          components.push({
+            type: 'button',
+            sub_type: 'quick_reply',
+            index: btnIndex,
+            parameters: [
+              {
+                type: 'payload',
+                payload: payload,
+              },
+            ],
+          });
+        });
+
+        return {
+          card_index: index,
+          components,
+        };
+      });
+
+      const payload = {
+        messaging_product: 'whatsapp',
+        to: to,
+        type: 'template',
+        template: {
+          name: templateName,
+          language: {
+            code: 'pt_BR',
+          },
+          components: [
+            {
+              type: 'carousel',
+              cards: carouselCards,
+            },
+          ],
+        },
+      };
+
+      logger.debug({ payload: JSON.stringify(payload) }, 'Sending carousel template');
+
+      const response = await axiosInstance.post(
+        `/${tenant.whatsappPhoneNumberId}/messages`,
+        payload
+      );
+
+      const whatsappMessageId = response.data.messages[0]?.id;
+
+      logger.info(
+        { tenantId, to, templateName, cardsCount: cards.length, whatsappMessageId },
+        'Carousel template sent'
+      );
+
+      return {
+        whatsappMessageId,
+        success: true,
+      };
+    } catch (error: any) {
+      logger.error({ error: error.response?.data || error, tenantId, to, templateName }, 'Failed to send carousel template');
 
       if (axios.isAxiosError(error)) {
         const errorMessage = error.response?.data?.error?.message || 'WhatsApp API error';

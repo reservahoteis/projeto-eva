@@ -272,6 +272,7 @@ export function getSocketIO(): SocketIOServer {
 /**
  * Emitir evento de nova mensagem
  * CORREÇÃO: Adicionar conversation como parâmetro para payload completo
+ * CORREÇÃO 2: Emitir para tenant room também (para Kanban e notificações globais)
  */
 export function emitNewMessage(
   tenantId: string,
@@ -281,17 +282,22 @@ export function emitNewMessage(
 ): void {
   if (!io) return;
 
-  // CORREÇÃO: Emitir payload completo esperado pelo frontend
-  // Frontend espera: { message: {...}, conversation: {...}, conversationId }
-  io.to(`conversation:${conversationId}`).emit('message:new', {
+  const payload = {
     message,           // data.message
     conversation,      // data.conversation
     conversationId,    // data.conversationId (fallback)
-  });
+  };
 
-  // Emitir para todos do tenant (para atualizar lista de conversas)
+  // Emitir para a conversa específica (para quem está com o chat aberto)
+  io.to(`conversation:${conversationId}`).emit('message:new', payload);
+
+  // NOVO: Emitir para todos do tenant (para Kanban, lista de conversas, notificações)
+  io.to(`tenant:${tenantId}`).emit('message:new', payload);
+
+  // Emitir conversation:updated para atualizar lista de conversas
   io.to(`tenant:${tenantId}`).emit('conversation:updated', {
     conversationId,
+    conversation,
     lastMessage: message,
     lastMessageAt: message.timestamp,
   });
@@ -304,7 +310,7 @@ export function emitNewMessage(
       hasConversation: !!conversation,
       direction: message.direction,
     },
-    '✅ Socket.io event [message:new] emitted to conversation room'
+    '✅ Socket.io event [message:new] emitted to conversation AND tenant rooms'
   );
 }
 

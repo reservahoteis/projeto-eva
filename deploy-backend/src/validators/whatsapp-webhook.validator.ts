@@ -102,6 +102,12 @@ const ButtonReplySchema = z.object({
   }),
 });
 
+// Template Quick Reply Button (formato usado por carousel templates)
+const TemplateButtonSchema = z.object({
+  payload: z.string(),
+  text: z.string(),
+});
+
 const ListReplySchema = z.object({
   list_reply: z.object({
     id: z.string(),
@@ -162,7 +168,8 @@ export const WhatsAppMessageSchema = z.object({
   sticker: StickerMessageSchema.optional(),
   location: LocationMessageSchema.optional(),
   contacts: ContactMessageSchema.optional(),
-  button: ButtonReplySchema.optional(),
+  // button pode ser ButtonReplySchema (interactive button reply) ou TemplateButtonSchema (carousel template quick reply)
+  button: z.union([ButtonReplySchema, TemplateButtonSchema]).optional(),
   interactive: z.union([ButtonReplySchema, ListReplySchema]).optional(),
 
   // Context (reply/quote)
@@ -374,4 +381,20 @@ export function isButtonReply(message: WhatsAppMessage): boolean {
 
 export function isListReply(message: WhatsAppMessage): boolean {
   return message.type === 'interactive' && !!message.interactive && 'list_reply' in message.interactive;
+}
+
+/**
+ * Verifica se é resposta de botão via interactive (Quick Reply de carousel template)
+ * Formato: type: 'interactive' com interactive.button_reply
+ */
+export function isInteractiveButtonReply(message: WhatsAppMessage): boolean {
+  return message.type === 'interactive' && !!message.interactive && 'button_reply' in message.interactive;
+}
+
+/**
+ * Verifica se é resposta de Quick Reply de template (carousel ou outro template)
+ * Formato: type: 'button' com button.payload e button.text
+ */
+export function isTemplateButtonReply(message: WhatsAppMessage): boolean {
+  return message.type === 'button' && !!message.button && 'payload' in message.button && 'text' in message.button;
 }

@@ -83,13 +83,13 @@ export function KanbanBoardRealtime({ initialConversations, onUpdate }: KanbanBo
     };
 
     on('message:new', handleNewMessage);
-    on('conversation:update', handleConversationUpdate);
+    on('conversation:updated', handleConversationUpdate);
     on('conversation:assign', handleConversationAssign);
 
     // Cleanup
     return () => {
       off('message:new', handleNewMessage);
-      off('conversation:update', handleConversationUpdate);
+      off('conversation:updated', handleConversationUpdate);
       off('conversation:assign', handleConversationAssign);
     };
   }, [isConnected, on, off]);
