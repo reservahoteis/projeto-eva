@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { conversationService } from '@/services/conversation.service';
-import { Conversation, ConversationStatus } from '@/types';
+import { userService } from '@/services/user.service';
+import { Conversation, ConversationStatus, UserRole, UserStatus } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -24,6 +25,7 @@ import {
   MessageSquare,
   CheckCircle2,
   Tag as TagIcon,
+  Users,
 } from 'lucide-react';
 import { getInitials, formatDate, formatPhoneNumber } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -36,6 +38,19 @@ interface ContactSidebarProps {
 export function ContactSidebar({ conversation }: ContactSidebarProps) {
   const { user } = useAuth();
   const [isUpdating, setIsUpdating] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<string>('');
+
+  // Verificar se é admin (pode atribuir a qualquer usuário)
+  const isAdmin = user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.TENANT_ADMIN;
+
+  // Buscar lista de usuários ativos (apenas para admins)
+  const { data: usersData } = useQuery({
+    queryKey: ['users', 'active'],
+    queryFn: () => userService.list({ status: UserStatus.ACTIVE, limit: 100 }),
+    enabled: isAdmin, // Só busca se for admin
+  });
+
+  const activeUsers = usersData?.data || [];
 
   const updateStatusMutation = useMutation({
     mutationFn: (status: ConversationStatus) =>
@@ -60,6 +75,26 @@ export function ContactSidebar({ conversation }: ContactSidebarProps) {
       toast.error('Erro ao atribuir conversa');
     },
   });
+
+  // Mutation para atribuir a qualquer usuário (admin)
+  const assignToUserMutation = useMutation({
+    mutationFn: (userId: string) => conversationService.assign(conversation.id, userId),
+    onSuccess: () => {
+      toast.success('Conversa atribuída com sucesso!');
+      setSelectedUserId('');
+    },
+    onError: () => {
+      toast.error('Erro ao atribuir conversa');
+    },
+  });
+
+  const handleAssignToUser = (userId: string) => {
+    if (userId === 'me') {
+      assignToMeMutation.mutate();
+    } else if (userId) {
+      assignToUserMutation.mutate(userId);
+    }
+  };
 
   const closeMutation = useMutation({
     mutationFn: () => conversationService.close(conversation.id),
@@ -94,16 +129,64 @@ export function ContactSidebar({ conversation }: ContactSidebarProps) {
 
         {/* Actions */}
         <div className="space-y-2">
-          {!conversation.assignedTo && (
-            <Button
-              onClick={() => assignToMeMutation.mutate()}
-              disabled={assignToMeMutation.isPending}
-              variant="outline"
-              className="w-full"
-            >
-              <User className="h-4 w-4 mr-2" />
-              Atribuir a mim
-            </Button>
+          {/* Atribuição - Admin vê dropdown, Atendente vê botão simples */}
+          {isAdmin ? (
+            <div className="space-y-2">
+              <Select
+                value={selectedUserId}
+                onValueChange={handleAssignToUser}
+                disabled={assignToMeMutation.isPending || assignToUserMutation.isPending}
+              >
+                <SelectTrigger className="w-full">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    <SelectValue placeholder="Atribuir conversa..." />
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="me">
+                    <div className="flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      Atribuir a mim
+                    </div>
+                  </SelectItem>
+                  {activeUsers
+                    .filter((u) => u.id !== user?.id) // Não mostrar o próprio usuário novamente
+                    .map((u) => (
+                      <SelectItem key={u.id} value={u.id}>
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-5 w-5">
+                            <AvatarFallback className="text-xs">
+                              {getInitials(u.name)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span>{u.name}</span>
+                          <Badge variant="outline" className="text-xs ml-1">
+                            {u.role === UserRole.TENANT_ADMIN ? 'Admin' : 'Atendente'}
+                          </Badge>
+                        </div>
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+              {conversation.assignedTo && (
+                <p className="text-xs text-muted-foreground text-center">
+                  Atualmente atribuído a: {conversation.assignedTo.name}
+                </p>
+              )}
+            </div>
+          ) : (
+            !conversation.assignedTo && (
+              <Button
+                onClick={() => assignToMeMutation.mutate()}
+                disabled={assignToMeMutation.isPending}
+                variant="outline"
+                className="w-full"
+              >
+                <User className="h-4 w-4 mr-2" />
+                Atribuir a mim
+              </Button>
+            )
           )}
           <Button
             onClick={() => closeMutation.mutate()}
