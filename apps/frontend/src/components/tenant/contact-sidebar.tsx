@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { conversationService } from '@/services/conversation.service';
 import { userService } from '@/services/user.service';
@@ -17,6 +17,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import {
   User,
   Phone,
@@ -26,6 +28,8 @@ import {
   CheckCircle2,
   Tag as TagIcon,
   Users,
+  Bot,
+  Loader2,
 } from 'lucide-react';
 import { getInitials, formatDate, formatPhoneNumber } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -33,12 +37,14 @@ import { useAuth } from '@/contexts/auth-context';
 
 interface ContactSidebarProps {
   conversation: Conversation;
+  onIaLockChange?: (locked: boolean) => void;
 }
 
-export function ContactSidebar({ conversation }: ContactSidebarProps) {
+export function ContactSidebar({ conversation, onIaLockChange }: ContactSidebarProps) {
   const { user } = useAuth();
   const [isUpdating, setIsUpdating] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string>('');
+  const [isTogglingIaLock, setIsTogglingIaLock] = useState(false);
 
   // Verificar se é admin (pode atribuir a qualquer usuário)
   const isAdmin = user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.TENANT_ADMIN;
@@ -106,6 +112,33 @@ export function ContactSidebar({ conversation }: ContactSidebarProps) {
     },
   });
 
+  const handleToggleIaLock = async (checked: boolean) => {
+    try {
+      setIsTogglingIaLock(true);
+      // Switch ON = IA ativa (iaLocked = false)
+      // Switch OFF = IA desativada (iaLocked = true)
+      const newLockState = !checked;
+      await conversationService.toggleIaLock(conversation.id, newLockState);
+
+      if (newLockState) {
+        toast.success('IA desativada para esta conversa', {
+          description: 'Somente atendentes humanos responderão',
+        });
+      } else {
+        toast.success('IA reativada para esta conversa', {
+          description: 'A IA voltará a responder mensagens',
+        });
+      }
+
+      onIaLockChange?.(newLockState);
+    } catch (error) {
+      toast.error('Erro ao alterar status da IA');
+      console.error('Error toggling IA lock:', error);
+    } finally {
+      setIsTogglingIaLock(false);
+    }
+  };
+
   const handleStatusChange = (status: string) => {
     setIsUpdating(true);
     updateStatusMutation.mutate(status as ConversationStatus);
@@ -126,6 +159,37 @@ export function ContactSidebar({ conversation }: ContactSidebarProps) {
             <p className="text-xs lg:text-sm text-muted-foreground">{formatPhoneNumber(conversation.contact.phoneNumber)}</p>
           </div>
         </div>
+
+        {/* IA Toggle */}
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Bot className={`h-5 w-5 ${conversation.iaLocked ? 'text-muted-foreground' : 'text-green-600'}`} />
+                <div className="flex flex-col">
+                  <Label htmlFor="ia-toggle" className="text-sm font-medium cursor-pointer">
+                    Assistente IA
+                  </Label>
+                  <span className="text-xs text-muted-foreground">
+                    {conversation.iaLocked ? 'Desativada' : 'Ativada'}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {isTogglingIaLock && (
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                )}
+                <Switch
+                  id="ia-toggle"
+                  checked={!conversation.iaLocked}
+                  onCheckedChange={handleToggleIaLock}
+                  disabled={isTogglingIaLock}
+                  className="data-[state=checked]:bg-green-600 data-[state=unchecked]:bg-red-400"
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Actions */}
         <div className="space-y-2">

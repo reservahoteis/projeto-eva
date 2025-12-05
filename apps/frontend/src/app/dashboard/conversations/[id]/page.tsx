@@ -311,7 +311,16 @@ export default function ConversationPage({ params }: ConversationPageProps) {
 
       {/* Contact Sidebar - Hidden on mobile */}
       <div className="hidden lg:block flex-shrink-0">
-        <ContactSidebar conversation={conversation} />
+        <ContactSidebar
+          conversation={conversation}
+          onIaLockChange={(locked) => {
+            // Update local conversation state
+            queryClient.setQueryData(['conversation', params.id], (old: any) => ({
+              ...old,
+              iaLocked: locked,
+            }));
+          }}
+        />
       </div>
     </div>
   );

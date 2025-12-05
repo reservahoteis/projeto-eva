@@ -1,22 +1,12 @@
 'use client';
 
-import { useState } from 'react';
 import { Conversation, ConversationStatus } from '@/types';
-import { Search, MoreVertical, Phone, Video, ArrowLeft, Bot, BotOff, Loader2 } from 'lucide-react';
+import { Search, MoreVertical, Phone, Video, ArrowLeft, BotOff } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { cn, getInitials } from '@/lib/utils';
-import { conversationService } from '@/services/conversation.service';
-import { toast } from 'sonner';
 
 interface ChatHeaderProps {
   conversation: Conversation;
@@ -24,37 +14,9 @@ interface ChatHeaderProps {
   isTyping?: boolean;
   isConnected?: boolean;
   onBack?: () => void;
-  onIaLockChange?: (locked: boolean) => void;
 }
 
-export function ChatHeader({ conversation, isOnline, isTyping, isConnected, onBack, onIaLockChange }: ChatHeaderProps) {
-  const [isTogglingIaLock, setIsTogglingIaLock] = useState(false);
-
-  const handleToggleIaLock = async () => {
-    try {
-      setIsTogglingIaLock(true);
-      const newLockState = !conversation.iaLocked;
-      await conversationService.toggleIaLock(conversation.id, newLockState);
-
-      if (newLockState) {
-        toast.success('IA desativada para esta conversa', {
-          description: 'Somente atendentes humanos responderão',
-        });
-      } else {
-        toast.success('IA reativada para esta conversa', {
-          description: 'A IA voltará a responder mensagens',
-        });
-      }
-
-      onIaLockChange?.(newLockState);
-    } catch (error) {
-      toast.error('Erro ao alterar status da IA');
-      console.error('Error toggling IA lock:', error);
-    } finally {
-      setIsTogglingIaLock(false);
-    }
-  };
-
+export function ChatHeader({ conversation, isOnline, isTyping, isConnected, onBack }: ChatHeaderProps) {
   const getStatusBadge = () => {
     const variants: Record<string, { label: string; className: string }> = {
       [ConversationStatus.OPEN]: { label: 'Aberta', className: 'bg-yellow-100 text-yellow-800' },
@@ -162,36 +124,6 @@ export function ChatHeader({ conversation, isOnline, isTyping, isConnected, onBa
 
         {/* Action Buttons - Condensed on mobile */}
         <div className="flex items-center gap-3 sm:gap-5 ml-1 sm:ml-3">
-          {/* IA Lock Toggle Button */}
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleToggleIaLock}
-                  disabled={isTogglingIaLock}
-                  className={cn(
-                    'p-2 h-auto transition-colors',
-                    conversation.iaLocked
-                      ? 'text-red-600 hover:text-red-700 hover:bg-red-50'
-                      : 'text-green-600 hover:text-green-700 hover:bg-green-50'
-                  )}
-                >
-                  {isTogglingIaLock ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                  ) : conversation.iaLocked ? (
-                    <BotOff className="w-5 h-5" />
-                  ) : (
-                    <Bot className="w-5 h-5" />
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{conversation.iaLocked ? 'Reativar IA' : 'Desativar IA'}</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
           <button
             className="hidden sm:block text-[#54656f] hover:text-[#111b21] transition-colors"
             title="Chamada de vídeo"
