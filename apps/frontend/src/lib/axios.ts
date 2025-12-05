@@ -32,19 +32,29 @@ api.interceptors.request.use(
         // Fallback: Get tenant from hostname (subdomain)
         const hostname = window.location.hostname;
 
-        // Para produção (www.botreserva.com.br)
-        if (hostname === 'www.botreserva.com.br' || hostname === 'botreserva.com.br') {
-          tenantSlug = 'hoteis-reserva'; // Tenant padrão para o domínio principal
+        // Domínios que usam tenant padrão hoteis-reserva
+        const defaultTenantDomains = [
+          'www.botreserva.com.br',
+          'botreserva.com.br',
+          'develop.botreserva.com.br',
+          'app.botreserva.com.br',
+          'localhost',
+          '127.0.0.1'
+        ];
+
+        // Subdomínios que NÃO são tenants (são ambientes)
+        const nonTenantSubdomains = ['www', 'api', 'app', 'develop', 'staging', 'admin'];
+
+        if (defaultTenantDomains.includes(hostname) || hostname.includes('vercel.app')) {
+          tenantSlug = 'hoteis-reserva'; // Tenant padrão
         }
-        // Para desenvolvimento local
-        else if (hostname === 'localhost' || hostname === '127.0.0.1') {
-          tenantSlug = 'hoteis-reserva'; // Tenant padrão para desenvolvimento
-        }
-        // Para subdomínios (ex: tenant.botreserva.com.br)
+        // Para subdomínios que são tenants reais (ex: hotel1.botreserva.com.br)
         else {
           const parts = hostname.split('.');
-          if (parts.length > 2 && parts[0] !== 'www') {
+          if (parts.length > 2 && !nonTenantSubdomains.includes(parts[0])) {
             tenantSlug = parts[0];
+          } else {
+            tenantSlug = 'hoteis-reserva'; // Fallback
           }
         }
 
