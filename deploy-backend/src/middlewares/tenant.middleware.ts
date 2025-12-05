@@ -57,6 +57,13 @@ export async function tenantIsolationMiddleware(
       logger.debug({ tenantSlug, host }, 'Tenant from subdomain');
     }
 
+    // Subdomínios que são ambientes (não tenants) - usar tenant padrão
+    const environmentSubdomains = ['app', 'develop', 'staging', 'preview'];
+    if (tenantSlug && environmentSubdomains.includes(tenantSlug)) {
+      tenantSlug = 'hoteis-reserva'; // Tenant padrão para ambientes
+      logger.debug({ originalSlug: tenantSlug, resolvedSlug: 'hoteis-reserva' }, 'Environment subdomain - using default tenant');
+    }
+
     // Se não tem tenant slug, é acesso sem tenant (super-admin)
     if (!tenantSlug || tenantSlug === 'super-admin' || tenantSlug === 'admin' || tenantSlug === 'api' || tenantSlug === 'www') {
       req.tenantId = null as string | null;

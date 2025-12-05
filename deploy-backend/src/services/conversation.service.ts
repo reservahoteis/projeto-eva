@@ -59,7 +59,9 @@ export class ConversationService {
       where.hotelUnit = params.hotelUnit;
     }
 
-    // Se é ATTENDANT, filtrar automaticamente pela unidade do usuário
+    // Se é ATTENDANT, filtrar por:
+    // 1. Conversas atribuídas a ele (qualquer unidade)
+    // 2. OU conversas da sua unidade (se tiver unidade definida)
     if (params.userRole === 'ATTENDANT' && params.userId) {
       // Buscar a unidade do atendente
       const user = await prisma.user.findUnique({
@@ -67,15 +69,18 @@ export class ConversationService {
         select: { hotelUnit: true },
       });
 
-      // Se atendente tem unidade definida, filtrar por ela
+      // Construir filtro OR: atribuídas a mim OU da minha unidade
+      const orConditions: any[] = [
+        { assignedToId: params.userId }, // Sempre vê conversas atribuídas a ele
+      ];
+
+      // Se atendente tem unidade definida, também vê conversas dessa unidade
       if (user?.hotelUnit) {
-        where.hotelUnit = user.hotelUnit;
+        orConditions.push({ hotelUnit: user.hotelUnit });
         logger.debug({ userId: params.userId, hotelUnit: user.hotelUnit }, 'Filtering conversations by attendant hotel unit');
       }
 
-      // Atendente vê apenas conversas atribuídas a ele OU da sua unidade sem atribuição
-      // Removido: where.assignedToId = params.userId;
-      // Agora: atendente vê todas as conversas da sua unidade
+      where.OR = orConditions;
     }
 
     // Busca por nome/telefone do contato
@@ -198,9 +203,30 @@ export class ConversationService {
       throw new NotFoundError('Conversa não encontrada');
     }
 
-    // Se não é admin, verificar se conversa pertence ao atendente
-    if (userRole === 'ATTENDANT' && conversation.assignedToId !== userId) {
-      throw new ForbiddenError('Você não tem acesso a esta conversa');
+    // Se é ATTENDANT, verificar acesso:
+    // - Conversa atribuída a ele OU
+    // - Conversa da mesma unidade hoteleira
+    if (userRole === 'ATTENDANT' && userId) {
+      const isAssignedToMe = conversation.assignedToId === userId;
+
+      if (!isAssignedToMe) {
+        // Buscar unidade do atendente para verificar se pode acessar
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { hotelUnit: true },
+        });
+
+        // @ts-ignore - hotelUnit pode não existir ainda no tipo
+        const conversationUnit = (conversation as any).hotelUnit;
+        const userUnit = user?.hotelUnit;
+
+        // Se conversa não está atribuída a mim E não é da minha unidade
+        const isSameUnit = userUnit && conversationUnit && userUnit === conversationUnit;
+
+        if (!isSameUnit) {
+          throw new ForbiddenError('Você não tem acesso a esta conversa');
+        }
+      }
     }
 
     return conversation;
