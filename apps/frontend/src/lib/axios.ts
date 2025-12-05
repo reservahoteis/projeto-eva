@@ -25,44 +25,40 @@ api.interceptors.request.use(
         config.headers.Authorization = `Bearer ${token}`;
       }
 
-      // Get tenant from localStorage (set during login) or from hostname
-      let tenantSlug = localStorage.getItem('tenantSlug');
+      // Get tenant from hostname - SEMPRE verificar primeiro
+      const hostname = window.location.hostname;
 
-      if (!tenantSlug) {
-        // Fallback: Get tenant from hostname (subdomain)
-        const hostname = window.location.hostname;
+      // Domínios que usam tenant padrão hoteis-reserva
+      const defaultTenantDomains = [
+        'www.botreserva.com.br',
+        'botreserva.com.br',
+        'develop.botreserva.com.br',
+        'app.botreserva.com.br',
+        'localhost',
+        '127.0.0.1'
+      ];
 
-        // Domínios que usam tenant padrão hoteis-reserva
-        const defaultTenantDomains = [
-          'www.botreserva.com.br',
-          'botreserva.com.br',
-          'develop.botreserva.com.br',
-          'app.botreserva.com.br',
-          'localhost',
-          '127.0.0.1'
-        ];
+      // Subdomínios que NÃO são tenants (são ambientes)
+      const nonTenantSubdomains = ['www', 'api', 'app', 'develop', 'staging', 'admin'];
 
-        // Subdomínios que NÃO são tenants (são ambientes)
-        const nonTenantSubdomains = ['www', 'api', 'app', 'develop', 'staging', 'admin'];
+      let tenantSlug: string;
 
-        if (defaultTenantDomains.includes(hostname) || hostname.includes('vercel.app')) {
-          tenantSlug = 'hoteis-reserva'; // Tenant padrão
-        }
-        // Para subdomínios que são tenants reais (ex: hotel1.botreserva.com.br)
-        else {
-          const parts = hostname.split('.');
-          if (parts.length > 2 && !nonTenantSubdomains.includes(parts[0])) {
-            tenantSlug = parts[0];
-          } else {
-            tenantSlug = 'hoteis-reserva'; // Fallback
-          }
-        }
-
-        // Salva o tenant slug no localStorage para futuras requisições
-        if (tenantSlug) {
-          localStorage.setItem('tenantSlug', tenantSlug);
+      // Para domínios conhecidos ou Vercel, SEMPRE usar tenant padrão
+      if (defaultTenantDomains.includes(hostname) || hostname.includes('vercel.app')) {
+        tenantSlug = 'hoteis-reserva'; // Tenant padrão
+      }
+      // Para subdomínios que são tenants reais (ex: hotel1.botreserva.com.br)
+      else {
+        const parts = hostname.split('.');
+        if (parts.length > 2 && !nonTenantSubdomains.includes(parts[0])) {
+          tenantSlug = parts[0];
+        } else {
+          tenantSlug = 'hoteis-reserva'; // Fallback
         }
       }
+
+      // Salva o tenant slug no localStorage (sobrescreve valor antigo incorreto)
+      localStorage.setItem('tenantSlug', tenantSlug);
 
       // Add x-tenant-slug header (MINÚSCULO - backend espera este formato)
       if (config.headers && tenantSlug) {
