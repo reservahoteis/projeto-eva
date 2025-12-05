@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { Role, UserStatus } from '@prisma/client';
+import { HOTEL_UNITS } from '@/constants/hotel-units';
 
 /**
  * Schema para listar usuários
@@ -10,6 +11,7 @@ export const listUsersQuerySchema = z.object({
   role: z.nativeEnum(Role).optional(),
   status: z.nativeEnum(UserStatus).optional(),
   search: z.string().optional(), // Busca por nome ou email
+  hotelUnit: z.string().optional(), // Filtrar por unidade hoteleira
 });
 
 /**
@@ -21,6 +23,16 @@ export const createUserSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório').max(100),
   role: z.nativeEnum(Role).optional().default(Role.ATTENDANT),
   avatarUrl: z.string().url('URL inválida').optional(),
+  hotelUnit: z.enum(HOTEL_UNITS).nullable().optional(), // Unidade hoteleira (obrigatória para ATTENDANT)
+}).refine((data) => {
+  // Atendentes devem ter unidade hoteleira definida
+  if (data.role === Role.ATTENDANT && !data.hotelUnit) {
+    return false;
+  }
+  return true;
+}, {
+  message: 'Atendentes devem ter uma unidade hoteleira definida',
+  path: ['hotelUnit'],
 });
 
 /**
@@ -36,6 +48,17 @@ export const updateUserBodySchema = z.object({
   role: z.nativeEnum(Role).optional(),
   avatarUrl: z.string().url().nullable().optional(),
   password: z.string().min(8).optional(), // Opcional - apenas se quiser alterar
+  hotelUnit: z.enum(HOTEL_UNITS).nullable().optional(), // Unidade hoteleira
+}).refine((data) => {
+  // Se role for ATTENDANT e hotelUnit está sendo definido, deve ser válido
+  // Esta validação só se aplica se role está sendo atualizado para ATTENDANT
+  if (data.role === Role.ATTENDANT && data.hotelUnit === null) {
+    return false;
+  }
+  return true;
+}, {
+  message: 'Atendentes devem ter uma unidade hoteleira definida',
+  path: ['hotelUnit'],
 });
 
 /**

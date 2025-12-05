@@ -15,12 +15,30 @@ import {
 } from '@/components/ui/select';
 import { UserRole, type User } from '@/types';
 
+// Unidades hoteleiras disponíveis
+const HOTEL_UNITS = [
+  'Ilha Bela',
+  'Campos do Jordão',
+  'Camburi',
+  'Santo Antônio do Pinhal',
+] as const;
+
 const userFormSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório').max(100),
   email: z.string().email('Email inválido'),
   role: z.nativeEnum(UserRole),
+  hotelUnit: z.string().optional().nullable(),
   password: z.string().min(8, 'Senha deve ter no mínimo 8 caracteres').optional().or(z.literal('')),
   avatarUrl: z.string().url('URL inválida').optional().or(z.literal('')),
+}).refine((data) => {
+  // Atendentes devem ter unidade definida
+  if (data.role === UserRole.ATTENDANT && !data.hotelUnit) {
+    return false;
+  }
+  return true;
+}, {
+  message: 'Atendentes devem ter uma unidade hoteleira definida',
+  path: ['hotelUnit'],
 });
 
 type UserFormData = z.infer<typeof userFormSchema>;
@@ -52,12 +70,14 @@ export function UserForm({
       name: user?.name || '',
       email: user?.email || '',
       role: user?.role || UserRole.ATTENDANT,
+      hotelUnit: (user as any)?.hotelUnit || null,
       password: '',
       avatarUrl: user?.avatar || '',
     },
   });
 
   const selectedRole = watch('role');
+  const selectedHotelUnit = watch('hotelUnit');
 
   const handleFormSubmit = async (data: UserFormData) => {
     // Se está editando e não preencheu senha, remover do payload
@@ -68,6 +88,10 @@ export function UserForm({
     // Se avatarUrl vazio, remover
     if (!payload.avatarUrl) {
       delete payload.avatarUrl;
+    }
+    // Se não for atendente, limpar hotelUnit
+    if (payload.role !== UserRole.ATTENDANT) {
+      payload.hotelUnit = null;
     }
     await onSubmit(payload);
   };
@@ -114,7 +138,13 @@ export function UserForm({
         </Label>
         <Select
           value={selectedRole}
-          onValueChange={(value) => setValue('role', value as UserRole)}
+          onValueChange={(value) => {
+            setValue('role', value as UserRole);
+            // Limpar unidade se mudar para admin
+            if (value === UserRole.TENANT_ADMIN) {
+              setValue('hotelUnit', null);
+            }
+          }}
           disabled={isLoading}
         >
           <SelectTrigger>
@@ -129,6 +159,34 @@ export function UserForm({
           <p className="text-sm text-destructive">{errors.role.message}</p>
         )}
       </div>
+
+      {/* Unidade Hoteleira (apenas para atendentes) */}
+      {selectedRole === UserRole.ATTENDANT && (
+        <div className="space-y-2">
+          <Label htmlFor="hotelUnit">
+            Unidade Hoteleira <span className="text-destructive">*</span>
+          </Label>
+          <Select
+            value={selectedHotelUnit || ''}
+            onValueChange={(value) => setValue('hotelUnit', value)}
+            disabled={isLoading}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione a unidade" />
+            </SelectTrigger>
+            <SelectContent>
+              {HOTEL_UNITS.map((unit) => (
+                <SelectItem key={unit} value={unit}>
+                  {unit}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {errors.hotelUnit && (
+            <p className="text-sm text-destructive">{errors.hotelUnit.message}</p>
+          )}
+        </div>
+      )}
 
       {/* Senha */}
       <div className="space-y-2">

@@ -107,6 +107,11 @@ model User {
   // Avatar/Profile
   avatarUrl String?
 
+  // Unidade hoteleira (para ATTENDANT - filtra conversas automaticamente)
+  // Valores: "Ilha Bela", "Campos do Jordão", "Camburi", "Santo Antônio do Pinhal"
+  // NULL = TENANT_ADMIN vê todas as unidades
+  hotelUnit String?
+
   // Timestamps
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -119,6 +124,7 @@ model User {
   @@index([tenantId])
   @@index([email])
   @@index([tenantId, status])
+  @@index([tenantId, hotelUnit])
   @@map("users")
 }
 
@@ -180,6 +186,10 @@ model Conversation {
   // Campo source para rastrear origem
   source String? // "n8n", "manual", "webhook", "whatsapp"
 
+  // Unidade hoteleira da conversa (para filtrar por atendente)
+  // Valores: "Ilha Bela", "Campos do Jordão", "Camburi", "Santo Antônio do Pinhal"
+  hotelUnit String?
+
   // Controle de IA - quando true, IA não responde esta conversa
   iaLocked   Boolean   @default(false)
   iaLockedAt DateTime? // Quando a IA foi travada
@@ -208,6 +218,8 @@ model Conversation {
   @@index([tenantId, source])
   @@index([tenantId, createdAt])
   @@index([tenantId, iaLocked])
+  @@index([tenantId, hotelUnit])
+  @@index([tenantId, hotelUnit, status, lastMessageAt])
   @@index([contactId])
   @@map("conversations")
 }

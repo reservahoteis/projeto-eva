@@ -45,8 +45,8 @@ export async function listUsers(
     // Get total count
     const total = await prisma.user.count({ where });
 
-    // Get users
-    const users = await prisma.user.findMany({
+    // Get users (usando any para suportar hotelUnit antes da migration)
+    const users = await (prisma.user.findMany as any)({
       where,
       skip,
       take: Number(limit),
@@ -58,6 +58,7 @@ export async function listUsers(
         role: true,
         status: true,
         avatarUrl: true,
+        hotelUnit: true,
         createdAt: true,
         updatedAt: true,
         lastLogin: true,
@@ -70,17 +71,18 @@ export async function listUsers(
     });
 
     // Format response
-    const data = users.map((user) => ({
+    const data = users.map((user: any) => ({
       id: user.id,
       email: user.email,
       name: user.name,
       role: user.role,
       status: user.status,
       avatarUrl: user.avatarUrl,
+      hotelUnit: user.hotelUnit || null,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
       lastLogin: user.lastLogin,
-      conversationsCount: user._count.conversations,
+      conversationsCount: user._count?.conversations || 0,
     }));
 
     res.json({
@@ -107,7 +109,7 @@ export async function getUserById(
     const tenantId = req.user!.tenantId!;
     const { id } = req.params;
 
-    const user = await prisma.user.findFirst({
+    const user = await (prisma.user.findFirst as any)({
       where: {
         id,
         tenantId,
@@ -119,6 +121,7 @@ export async function getUserById(
         role: true,
         status: true,
         avatarUrl: true,
+        hotelUnit: true,
         createdAt: true,
         updatedAt: true,
         lastLogin: true,
@@ -141,10 +144,11 @@ export async function getUserById(
       role: user.role,
       status: user.status,
       avatarUrl: user.avatarUrl,
+      hotelUnit: user.hotelUnit || null,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
       lastLogin: user.lastLogin,
-      conversationsCount: user._count.conversations,
+      conversationsCount: user._count?.conversations || 0,
     });
   } catch (error) {
     next(error);
@@ -175,14 +179,15 @@ export async function createUser(
     // Hash da senha
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
-    // Criar usuário
-    const user = await prisma.user.create({
+    // Criar usuário (usando any para suportar hotelUnit antes da migration)
+    const user = await (prisma.user.create as any)({
       data: {
         email: data.email,
         password: hashedPassword,
         name: data.name,
         role: data.role,
         avatarUrl: data.avatarUrl,
+        hotelUnit: (data as any).hotelUnit || null,
         tenantId,
       },
       select: {
@@ -192,12 +197,16 @@ export async function createUser(
         role: true,
         status: true,
         avatarUrl: true,
+        hotelUnit: true,
         createdAt: true,
         updatedAt: true,
       },
     });
 
-    res.status(201).json(user);
+    res.status(201).json({
+      ...user,
+      hotelUnit: user.hotelUnit || null,
+    });
   } catch (error) {
     next(error);
   }
@@ -246,14 +255,15 @@ export async function updateUser(
     if (data.email !== undefined) updateData.email = data.email;
     if (data.role !== undefined) updateData.role = data.role;
     if (data.avatarUrl !== undefined) updateData.avatarUrl = data.avatarUrl;
+    if ((data as any).hotelUnit !== undefined) updateData.hotelUnit = (data as any).hotelUnit;
 
     // Se está alterando senha, fazer hash
     if (data.password) {
       updateData.password = await bcrypt.hash(data.password, 10);
     }
 
-    // Atualizar usuário
-    const user = await prisma.user.update({
+    // Atualizar usuário (usando any para suportar hotelUnit antes da migration)
+    const user = await (prisma.user.update as any)({
       where: { id },
       data: updateData,
       select: {
@@ -263,12 +273,16 @@ export async function updateUser(
         role: true,
         status: true,
         avatarUrl: true,
+        hotelUnit: true,
         createdAt: true,
         updatedAt: true,
       },
     });
 
-    res.json(user);
+    res.json({
+      ...user,
+      hotelUnit: user.hotelUnit || null,
+    });
   } catch (error) {
     next(error);
   }

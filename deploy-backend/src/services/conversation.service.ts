@@ -16,6 +16,7 @@ interface ListConversationsParams {
   search?: string;
   page?: number;
   limit?: number;
+  hotelUnit?: string; // Filtro opcional por unidade
 }
 
 export class ConversationService {
@@ -53,9 +54,28 @@ export class ConversationService {
       where.assignedToId = params.assignedToId;
     }
 
-    // Se não é admin, mostrar apenas conversas do atendente
+    // Filtrar por unidade hoteleira (se fornecido)
+    if (params.hotelUnit) {
+      where.hotelUnit = params.hotelUnit;
+    }
+
+    // Se é ATTENDANT, filtrar automaticamente pela unidade do usuário
     if (params.userRole === 'ATTENDANT' && params.userId) {
-      where.assignedToId = params.userId;
+      // Buscar a unidade do atendente
+      const user = await prisma.user.findUnique({
+        where: { id: params.userId },
+        select: { hotelUnit: true },
+      });
+
+      // Se atendente tem unidade definida, filtrar por ela
+      if (user?.hotelUnit) {
+        where.hotelUnit = user.hotelUnit;
+        logger.debug({ userId: params.userId, hotelUnit: user.hotelUnit }, 'Filtering conversations by attendant hotel unit');
+      }
+
+      // Atendente vê apenas conversas atribuídas a ele OU da sua unidade sem atribuição
+      // Removido: where.assignedToId = params.userId;
+      // Agora: atendente vê todas as conversas da sua unidade
     }
 
     // Busca por nome/telefone do contato
@@ -562,6 +582,7 @@ export class ConversationService {
     priority?: Priority;
     metadata?: any;
     assignedToId?: string;
+    hotelUnit?: string; // Unidade hoteleira (Ilha Bela, Campos do Jordão, etc)
   }) {
     // 1. Buscar Contact por phoneNumber + tenantId
     let contact = await prisma.contact.findFirst({
@@ -611,6 +632,8 @@ export class ConversationService {
         priority: data.priority || 'MEDIUM',
         // @ts-ignore - Campo source pode não existir ainda no Prisma schema
         source: data.source,
+        // @ts-ignore - Campo hotelUnit será adicionado após migration
+        hotelUnit: data.hotelUnit,
         metadata: data.metadata,
         assignedToId: data.assignedToId,
         lastMessageAt: new Date(),

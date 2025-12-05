@@ -106,6 +106,7 @@ export class EscalationService {
           iaLockedBy: 'system',
           priority,
           source: 'n8n',
+          hotelUnit: hotelUnit || existingConversation.hotelUnit, // Atualizar unidade se fornecida
           lastMessageAt: now,
         } as any,
         include: {
@@ -142,6 +143,7 @@ export class EscalationService {
           status: 'OPEN',
           priority,
           source: 'n8n',
+          hotelUnit, // Salvar unidade hoteleira
           iaLocked: true,
           iaLockedAt: now,
           iaLockedBy: 'system',

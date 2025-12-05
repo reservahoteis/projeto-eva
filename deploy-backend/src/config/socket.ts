@@ -13,6 +13,8 @@ export interface SocketUser {
   tenantId: string | null; // Pode ser null para SUPER_ADMIN
   name?: string;
   email?: string;
+  role?: string;
+  hotelUnit?: string | null; // Unidade hoteleira do atendente
 }
 
 export interface AuthenticatedSocket extends Socket {
@@ -62,7 +64,7 @@ export function initializeSocketIO(httpServer: HTTPServer): SocketIOServer {
         tenantId: string;
       };
 
-      // Buscar usuário no banco
+      // Buscar usuário no banco (incluindo hotelUnit para filtro por unidade)
       const user = await prisma.user.findUnique({
         where: { id: decoded.userId },
         select: {
@@ -70,6 +72,8 @@ export function initializeSocketIO(httpServer: HTTPServer): SocketIOServer {
           name: true,
           email: true,
           tenantId: true,
+          role: true,
+          hotelUnit: true,
         },
       });
 
@@ -84,6 +88,8 @@ export function initializeSocketIO(httpServer: HTTPServer): SocketIOServer {
         tenantId: user.tenantId, // Aceita null para SUPER_ADMIN
         name: user.name || undefined,
         email: user.email,
+        role: user.role,
+        hotelUnit: (user as any).hotelUnit || null, // Unidade do atendente
       };
       socket.tenantId = user.tenantId; // Aceita null para SUPER_ADMIN
 
@@ -92,6 +98,8 @@ export function initializeSocketIO(httpServer: HTTPServer): SocketIOServer {
           socketId: socket.id,
           userId: user.id,
           tenantId: user.tenantId,
+          role: user.role,
+          hotelUnit: (user as any).hotelUnit,
         },
         'Socket authenticated'
       );
@@ -118,6 +126,18 @@ export function initializeSocketIO(httpServer: HTTPServer): SocketIOServer {
     if (socket.tenantId) {
       socket.join(`tenant:${socket.tenantId}`);
       logger.debug({ socketId: socket.id, tenantId: socket.tenantId }, 'Socket joined tenant room');
+    }
+
+    // Entrar na room da unidade hoteleira (para ATTENDANT filtrar por unidade)
+    if (socket.tenantId && socket.user?.hotelUnit && socket.user?.role === 'ATTENDANT') {
+      const unitRoom = `tenant:${socket.tenantId}:unit:${socket.user.hotelUnit}`;
+      socket.join(unitRoom);
+      logger.info({
+        socketId: socket.id,
+        tenantId: socket.tenantId,
+        hotelUnit: socket.user.hotelUnit,
+        unitRoom,
+      }, 'Socket joined hotel unit room');
     }
 
     // Entrar na room do usuário (para notificações diretas)
@@ -348,22 +368,37 @@ export function emitMessageStatusUpdate(
 
 /**
  * Emitir evento de nova conversa
+ * Emite para:
+ * - tenant room (TENANT_ADMIN vê todas)
+ * - unit room (ATTENDANT vê apenas da sua unidade)
  */
 export function emitNewConversation(tenantId: string, conversation: any): void {
   if (!io) return;
 
-  // Emitir para todos do tenant
+  // Emitir para todos do tenant (TENANT_ADMIN vê todas)
   io.to(`tenant:${tenantId}`).emit('conversation:new', {
     conversation,
   });
 
-  logger.debug(
-    {
+  // Se conversa tem unidade, emitir também para a sala da unidade
+  // Isso permite que atendentes recebam apenas conversas da sua unidade
+  if (conversation.hotelUnit) {
+    const unitRoom = `tenant:${tenantId}:unit:${conversation.hotelUnit}`;
+    io.to(unitRoom).emit('conversation:new', {
+      conversation,
+    });
+    logger.info({
       tenantId,
       conversationId: conversation.id,
-    },
-    'New conversation event emitted'
-  );
+      hotelUnit: conversation.hotelUnit,
+      unitRoom,
+    }, 'New conversation event emitted to tenant AND unit rooms');
+  } else {
+    logger.debug({
+      tenantId,
+      conversationId: conversation.id,
+    }, 'New conversation event emitted to tenant room only (no hotelUnit)');
+  }
 }
 
 /**
