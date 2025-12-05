@@ -44,7 +44,8 @@ model Tenant {
   whatsappAppSecret          String? // Para validar webhooks
 
   // N8N Integration
-  n8nApiKey String? // Chave de API para integracao N8N
+  n8nApiKey     String? // Chave de API para integracao N8N
+  n8nWebhookUrl String? // URL do webhook do N8N para encaminhar mensagens
 
   // Metadata
   metadata Json? // Dados customizados
