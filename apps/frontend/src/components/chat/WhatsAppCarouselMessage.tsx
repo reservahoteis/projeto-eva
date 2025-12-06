@@ -136,7 +136,7 @@ export function WhatsAppCarouselMessage({
   const bubbleColor = isOwnMessage ? 'bg-[#d9fdd3]' : 'bg-white';
 
   return (
-    <div className={cn('w-full', bubbleColor, 'rounded-lg overflow-hidden')}>
+    <div className={cn('max-w-full', bubbleColor, 'rounded-lg overflow-hidden')}>
       {/* Template name header (optional) */}
       {templateName && (
         <div className="px-3 pt-2 pb-1 bg-[#f0f2f5]/50">

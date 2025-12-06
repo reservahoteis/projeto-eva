@@ -276,7 +276,7 @@ export default function ConversationPage({ params }: ConversationPageProps) {
   return (
     <div className="flex h-screen overflow-hidden liquid-bg">
       {/* WhatsApp-Style Chat Interface */}
-      <div className="flex-1 flex flex-col h-screen w-full relative">
+      <div className="flex-1 flex flex-col h-screen min-w-0 relative">
         {/* Chat Header - Fixed at top */}
         <div className="flex-shrink-0">
           <ChatHeader
