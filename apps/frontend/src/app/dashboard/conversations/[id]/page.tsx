@@ -8,8 +8,8 @@ import { ContactSidebar } from '@/components/tenant/contact-sidebar';
 import { ChatHeader } from '@/components/chat/chat-header';
 import { MessageList } from '@/components/chat/message-list';
 import { ChatInput } from '@/components/chat/chat-input';
+import { ConversationListSidebar } from '@/components/chat/conversation-list-sidebar';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useSocketContext } from '@/contexts/socket-context';
 import { useEffect, useState, useRef } from 'react';
@@ -274,22 +274,30 @@ export default function ConversationPage({ params }: ConversationPageProps) {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden liquid-bg">
-      {/* WhatsApp-Style Chat Interface */}
-      <div className="flex-1 flex flex-col h-screen min-w-0 relative">
+    <div className="flex h-screen overflow-hidden">
+      {/* LEFT: Conversations List - Hidden on mobile, visible on lg+ */}
+      <div className="hidden lg:block flex-shrink-0">
+        <ConversationListSidebar activeConversationId={params.id} />
+      </div>
+
+      {/* CENTER: Chat Interface */}
+      <div className="flex-1 flex flex-col h-screen min-w-0 relative whatsapp-chat-bg">
+        {/* WhatsApp background pattern */}
+        <div className="absolute inset-0 whatsapp-chat-pattern" />
+
         {/* Chat Header - Fixed at top */}
-        <div className="flex-shrink-0">
+        <div className="flex-shrink-0 relative z-10">
           <ChatHeader
             conversation={conversation}
             isOnline={false}
             isTyping={isUserTyping(params.id)}
             isConnected={isConnected}
-            onBack={() => router.back()}
+            onBack={() => router.push('/dashboard/conversations')}
           />
         </div>
 
         {/* Message List - Takes remaining space */}
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden relative z-10">
           <MessageList
             messages={messagesData?.data || []}
             isTyping={isUserTyping(params.id)}
@@ -309,8 +317,8 @@ export default function ConversationPage({ params }: ConversationPageProps) {
         </div>
       </div>
 
-      {/* Contact Sidebar - Hidden on mobile, visible on md+ */}
-      <div className="hidden md:block flex-shrink-0">
+      {/* RIGHT: Contact Sidebar - Hidden on mobile, visible on xl+ */}
+      <div className="hidden xl:block flex-shrink-0">
         <ContactSidebar
           conversation={conversation}
           onIaLockChange={(locked) => {
