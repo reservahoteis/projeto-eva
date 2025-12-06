@@ -76,14 +76,14 @@ const navigation = [
 export function TenantSidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true);
 
   const isAdmin = user?.role === UserRole.TENANT_ADMIN || user?.role === UserRole.SUPER_ADMIN;
 
   return (
     <TooltipProvider delayDuration={0}>
       <div className={cn(
-        "flex h-screen flex-col glass-sidebar transition-all duration-300 ease-in-out relative",
+        "flex h-screen flex-col glass-sidebar transition-all duration-300 ease-in-out relative z-50",
         isCollapsed ? "w-20" : "w-64"
       )}>
         {/* Toggle Button */}
