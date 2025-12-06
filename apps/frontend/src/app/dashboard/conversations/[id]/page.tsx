@@ -55,11 +55,14 @@ export default function ConversationPage({ params }: ConversationPageProps) {
     },
   });
 
-  // Mark conversation as read when opening
+  // Mark conversation as read when opening (only if has unread messages)
   useEffect(() => {
-    if (!params.id) return;
+    if (!params.id || !conversation) return;
 
-    const markAsRead = async () => {
+    // Only mark as read if there are unread messages
+    if (conversation.unreadCount === 0) return;
+
+    const timeoutId = setTimeout(async () => {
       try {
         await conversationService.markAsRead(params.id);
         // Update the conversations list cache to reflect unread count = 0
@@ -72,15 +75,14 @@ export default function ConversationPage({ params }: ConversationPageProps) {
             ),
           };
         });
-        // Also invalidate to ensure fresh data
-        queryClient.invalidateQueries({ queryKey: ['conversations'] });
       } catch (error) {
+        // Silently ignore errors - not critical
         console.error('Error marking conversation as read:', error);
       }
-    };
+    }, 500); // Wait 500ms before marking as read to avoid rapid navigation issues
 
-    markAsRead();
-  }, [params.id, queryClient]);
+    return () => clearTimeout(timeoutId);
+  }, [params.id, conversation?.unreadCount, queryClient]);
 
   // Subscribe to real-time events for this conversation
   useEffect(() => {
