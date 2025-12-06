@@ -125,6 +125,8 @@ export interface Conversation {
   status: ConversationStatus;
   priority?: ConversationPriority;
   source?: string;
+  // Unidade hoteleira (Ilha Bela, Campos do Jordão, etc)
+  hotelUnit?: string;
   // Controle de IA
   iaLocked: boolean;
   iaLockedAt?: string;

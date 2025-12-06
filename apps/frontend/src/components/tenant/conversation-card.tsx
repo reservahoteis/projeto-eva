@@ -14,7 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { MessageSquare, MoreVertical, User, Clock, CheckCircle2 } from 'lucide-react';
+import { MessageSquare, MoreVertical, User, Clock, CheckCircle2, Building2 } from 'lucide-react';
 import { getInitials, formatTime } from '@/lib/utils';
 import { conversationService } from '@/services/conversation.service';
 import { toast } from 'sonner';
@@ -84,6 +84,16 @@ export function ConversationCard({ conversation, onUpdate }: ConversationCardPro
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
+
+        {/* Hotel Unit Badge */}
+        {conversation.hotelUnit && (
+          <div className="flex items-center gap-1">
+            <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+              <Building2 className="h-3 w-3 mr-1" />
+              {conversation.hotelUnit}
+            </Badge>
+          </div>
+        )}
 
         {/* Last Message */}
         {conversation.lastMessage && (

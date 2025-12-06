@@ -7,7 +7,7 @@ import { Conversation, ConversationStatus } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Search, MessageSquare, Bot } from 'lucide-react';
+import { Search, MessageSquare, Bot, Building2 } from 'lucide-react';
 import { cn, getInitials, formatTime } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 import { useSocketContext } from '@/contexts/socket-context';
@@ -207,6 +207,16 @@ function ConversationItem({ conversation, isActive, onClick, statusColor }: Conv
             </Badge>
           )}
         </div>
+
+        {/* Hotel Unit Tag */}
+        {conversation.hotelUnit && (
+          <div className="flex items-center gap-1 mt-1">
+            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 bg-blue-50 text-blue-600 border-blue-200">
+              <Building2 className="h-2.5 w-2.5 mr-0.5" />
+              {conversation.hotelUnit}
+            </Badge>
+          </div>
+        )}
       </div>
     </div>
   );
