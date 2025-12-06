@@ -139,7 +139,7 @@ export function ContactSidebar({ conversation, onIaLockChange }: ContactSidebarP
   };
 
   return (
-    <div className="contact-sidebar w-72 lg:w-80 xl:w-96 h-full overflow-y-auto">
+    <div className="contact-sidebar w-64 lg:w-72 xl:w-80 h-full overflow-y-auto">
       <div className="p-4 lg:p-5 space-y-4">
         {/* Contact Info - Avatar ao lado do nome */}
         <div className="glass-card-sidebar no-hover">
