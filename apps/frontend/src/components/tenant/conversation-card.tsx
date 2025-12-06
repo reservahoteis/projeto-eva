@@ -85,16 +85,6 @@ export function ConversationCard({ conversation, onUpdate }: ConversationCardPro
           </DropdownMenu>
         </div>
 
-        {/* Hotel Unit Badge */}
-        {conversation.hotelUnit && (
-          <div className="flex items-center gap-1">
-            <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
-              <Building2 className="h-3 w-3 mr-1" />
-              {conversation.hotelUnit}
-            </Badge>
-          </div>
-        )}
-
         {/* Last Message */}
         {conversation.lastMessage && (
           <div className="text-sm text-muted-foreground line-clamp-2">
@@ -116,6 +106,14 @@ export function ConversationCard({ conversation, onUpdate }: ConversationCardPro
               </Badge>
             )}
           </div>
+
+          {/* Hotel Unit Badge */}
+          {conversation.hotelUnit && (
+            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 bg-blue-50 text-blue-600 border-blue-200">
+              <Building2 className="h-2.5 w-2.5 mr-0.5" />
+              {conversation.hotelUnit}
+            </Badge>
+          )}
 
           <div className="flex items-center gap-1 text-muted-foreground">
             <Clock className="h-3 w-3" />
