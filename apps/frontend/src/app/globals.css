@@ -492,36 +492,29 @@
 }
 
 .glass-card-sidebar {
-  position: relative;
-  overflow: hidden;
-  border-radius: 16px;
+  border-radius: 12px;
   padding: 16px;
-  background: linear-gradient(135deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.12) 100%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  backdrop-filter: blur(20px) saturate(180%);
+  background: #ffffff;
   border: none;
-  /* Sombra suave e compacta */
-  box-shadow: 0 2px 4px rgba(0,0,0,0.04);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  transition: all 0.2s ease;
 }
 
 .glass-card-sidebar:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 3px 6px rgba(0,0,0,0.06);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.06);
 }
 
 .glass-card-sidebar.no-hover:hover {
-  transform: none;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
 }
 
 .dark .glass-card-sidebar {
-  background: linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%);
-  box-shadow: 0 2px 4px rgba(0,0,0,0.12);
+  background: #202c33;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.2);
 }
 
 .dark .glass-card-sidebar:hover {
-  box-shadow: 0 3px 6px rgba(0,0,0,0.15);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.25);
 }
 
 /* Glass card compact padding variant */
