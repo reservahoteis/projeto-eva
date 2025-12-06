@@ -32,7 +32,6 @@ export function MessageBubble({
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
 
   const bubbleColor = isOwnMessage ? 'bg-[#d9fdd3]' : 'bg-white';
-  const alignment = isOwnMessage ? 'ml-auto' : 'mr-auto';
 
   // Obter mediaUrl do campo direto ou do metadata
   const mediaUrl = message.mediaUrl || (message.metadata as any)?.mediaUrl;
@@ -93,7 +92,10 @@ export function MessageBubble({
   };
 
   return (
-    <div className={cn('flex items-end gap-2 max-w-[85%] sm:max-w-[75%] md:max-w-[65%] mb-1', alignment)}>
+    <div className={cn(
+      'flex items-end gap-2 max-w-[85%] sm:max-w-[75%] md:max-w-[65%] mb-1',
+      isOwnMessage ? 'ml-auto flex-row-reverse' : 'mr-auto'
+    )}>
       {!isOwnMessage && (
         <>
           {showAvatar ? (
