@@ -479,6 +479,177 @@
 }
 
 /* ============================================
+   CONTACT SIDEBAR - Liquid Glass Cards
+   ============================================ */
+.contact-sidebar {
+  background: linear-gradient(180deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
+  -webkit-backdrop-filter: blur(40px) saturate(150%);
+  backdrop-filter: blur(40px) saturate(150%);
+  border-left: 1px solid rgba(255,255,255,0.2);
+}
+
+.dark .contact-sidebar {
+  background: linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%);
+  border-left: 1px solid rgba(255,255,255,0.08);
+}
+
+.glass-card-sidebar {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+  padding: 16px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.15) 100%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255,255,255,0.5);
+  box-shadow:
+    0 8px 32px rgba(0,0,0,0.08),
+    inset 0 1px 0 rgba(255,255,255,0.6),
+    inset 0 -1px 0 rgba(255,255,255,0.1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card-sidebar::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.8) 0%, transparent 50%, rgba(255,255,255,0.2) 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.glass-card-sidebar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.8) 50%, transparent 100%);
+  pointer-events: none;
+}
+
+.glass-card-sidebar:hover {
+  transform: translateY(-2px) scale(1.01);
+  box-shadow:
+    0 12px 40px rgba(0,0,0,0.12),
+    inset 0 1px 0 rgba(255,255,255,0.7),
+    inset 0 -1px 0 rgba(255,255,255,0.15);
+}
+
+.glass-card-sidebar.no-hover:hover {
+  transform: none;
+}
+
+.dark .glass-card-sidebar {
+  background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 100%);
+  border: 1px solid rgba(255,255,255,0.12);
+  box-shadow:
+    0 8px 32px rgba(0,0,0,0.25),
+    inset 0 1px 0 rgba(255,255,255,0.1),
+    inset 0 -1px 0 rgba(0,0,0,0.2);
+}
+
+.dark .glass-card-sidebar::before {
+  background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 50%, rgba(255,255,255,0.05) 100%);
+}
+
+.dark .glass-card-sidebar::after {
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.2) 50%, transparent 100%);
+}
+
+.dark .glass-card-sidebar:hover {
+  box-shadow:
+    0 12px 40px rgba(0,0,0,0.35),
+    inset 0 1px 0 rgba(255,255,255,0.15),
+    inset 0 -1px 0 rgba(0,0,0,0.25);
+}
+
+/* Glass card compact padding variant */
+.glass-card-sidebar.compact {
+  padding: 12px;
+}
+
+/* Contact avatar with gradient */
+.contact-avatar-gradient {
+  background: linear-gradient(135deg, #00a884 0%, #00d4aa 100%);
+}
+
+/* IA status indicator backgrounds */
+.ia-status-active {
+  background: rgba(34, 197, 94, 0.15);
+}
+
+.ia-status-inactive {
+  background: rgba(239, 68, 68, 0.15);
+}
+
+.dark .ia-status-active {
+  background: rgba(34, 197, 94, 0.2);
+}
+
+.dark .ia-status-inactive {
+  background: rgba(239, 68, 68, 0.2);
+}
+
+/* Glass tabs */
+.glass-tabs {
+  background: rgba(255,255,255,0.15);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  padding: 4px;
+}
+
+.dark .glass-tabs {
+  background: rgba(255,255,255,0.08);
+}
+
+.glass-tab-trigger {
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.glass-tab-trigger[data-state="active"] {
+  background: rgba(255,255,255,0.3);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.dark .glass-tab-trigger[data-state="active"] {
+  background: rgba(255,255,255,0.15);
+}
+
+/* Glass input/select */
+.glass-input-sidebar {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.glass-input-sidebar:focus,
+.glass-input-sidebar:hover {
+  background: rgba(255,255,255,0.2);
+  border-color: rgba(255,255,255,0.35);
+}
+
+.dark .glass-input-sidebar {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.dark .glass-input-sidebar:focus,
+.dark .glass-input-sidebar:hover {
+  background: rgba(255,255,255,0.1);
+  border-color: rgba(255,255,255,0.2);
+}
+
+/* ============================================
    RESPONSIVE ADJUSTMENTS
    ============================================ */
 @media (max-width: 640px) {
