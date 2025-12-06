@@ -93,7 +93,7 @@ export function MessageBubble({
 
   return (
     <div className={cn(
-      'flex mb-1',
+      'flex my-2',
       isOwnMessage ? 'justify-end' : 'justify-start'
     )}>
       <div className={cn(
