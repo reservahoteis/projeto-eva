@@ -101,7 +101,7 @@ export function ConversationCard({ conversation, onUpdate }: ConversationCardPro
 
           {/* Hotel Unit Badge */}
           {conversation.hotelUnit && (
-            <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 bg-blue-50 text-blue-600 border-blue-200 truncate max-w-[100px]">
+            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 bg-blue-50 text-blue-600 border-blue-200 whitespace-nowrap">
               {conversation.hotelUnit}
             </Badge>
           )}
