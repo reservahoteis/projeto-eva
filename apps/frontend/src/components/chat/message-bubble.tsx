@@ -93,26 +93,9 @@ export function MessageBubble({
 
   return (
     <div className={cn(
-      'flex items-end gap-2 max-w-[85%] sm:max-w-[75%] md:max-w-[65%] mb-1',
-      isOwnMessage ? 'ml-auto flex-row-reverse' : 'mr-auto'
+      'flex items-end max-w-[85%] sm:max-w-[75%] md:max-w-[65%] mb-1',
+      isOwnMessage ? 'ml-auto' : 'mr-auto'
     )}>
-      {!isOwnMessage && (
-        <>
-          {showAvatar ? (
-            <Avatar className="w-8 h-8 flex-shrink-0">
-              {contactAvatar && (
-                <AvatarImage src={contactAvatar} alt={contactName || 'Contato'} />
-              )}
-              <AvatarFallback className="bg-[#00a884] text-white text-xs font-medium">
-                {getInitials(contactName || '')}
-              </AvatarFallback>
-            </Avatar>
-          ) : (
-            <div className="w-8 flex-shrink-0" />
-          )}
-        </>
-      )}
-
       <div
         className={cn(
           bubbleColor,
