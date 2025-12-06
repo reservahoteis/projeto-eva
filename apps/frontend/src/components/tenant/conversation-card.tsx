@@ -93,29 +93,20 @@ export function ConversationCard({ conversation, onUpdate }: ConversationCardPro
         )}
 
         {/* Footer */}
-        <div className="flex items-center justify-between text-xs">
-          <div className="flex items-center gap-2">
-            {conversation.assignedTo ? (
-              <div className="flex items-center gap-1 text-muted-foreground">
-                <User className="h-3 w-3" />
-                <span>{conversation.assignedTo.name?.split(' ')[0] || 'N/A'}</span>
-              </div>
-            ) : (
-              <Badge variant="outline" className="text-xs">
-                Não atribuído
-              </Badge>
-            )}
+        <div className="flex items-center justify-between text-xs gap-1">
+          <div className="flex items-center gap-1 text-muted-foreground flex-shrink-0">
+            <User className="h-3 w-3" />
+            <span>{conversation.assignedTo?.name?.split(' ')[0] || 'N/A'}</span>
           </div>
 
           {/* Hotel Unit Badge */}
           {conversation.hotelUnit && (
-            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 bg-blue-50 text-blue-600 border-blue-200">
-              <Building2 className="h-2.5 w-2.5 mr-0.5" />
+            <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 bg-blue-50 text-blue-600 border-blue-200 truncate max-w-[100px]">
               {conversation.hotelUnit}
             </Badge>
           )}
 
-          <div className="flex items-center gap-1 text-muted-foreground">
+          <div className="flex items-center gap-1 text-muted-foreground flex-shrink-0">
             <Clock className="h-3 w-3" />
             <span>{formatTime(conversation.lastMessageAt)}</span>
           </div>

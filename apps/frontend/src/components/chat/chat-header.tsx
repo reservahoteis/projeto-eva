@@ -1,7 +1,7 @@
 'use client';
 
 import { Conversation, ConversationStatus } from '@/types';
-import { Search, MoreVertical, Phone, Video, ArrowLeft, BotOff } from 'lucide-react';
+import { ArrowLeft, BotOff, Building2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
@@ -122,33 +122,13 @@ export function ChatHeader({ conversation, isOnline, isTyping, isConnected, onBa
           </Badge>
         )}
 
-        {/* Action Buttons - Condensed on mobile */}
-        <div className="flex items-center gap-3 sm:gap-5 ml-1 sm:ml-3">
-          <button
-            className="hidden sm:block text-[#54656f] hover:text-[#111b21] transition-colors"
-            title="Chamada de vídeo"
-          >
-            <Video className="w-5 h-5" />
-          </button>
-          <button
-            className="hidden sm:block text-[#54656f] hover:text-[#111b21] transition-colors"
-            title="Ligar"
-          >
-            <Phone className="w-5 h-5" />
-          </button>
-          <button
-            className="hidden sm:block text-[#54656f] hover:text-[#111b21] transition-colors"
-            title="Pesquisar"
-          >
-            <Search className="w-5 h-5" />
-          </button>
-          <button
-            className="text-[#54656f] hover:text-[#111b21] transition-colors"
-            title="Menu"
-          >
-            <MoreVertical className="w-5 h-5" />
-          </button>
-        </div>
+        {/* Hotel Unit Badge */}
+        {conversation.hotelUnit && (
+          <Badge variant="outline" className="text-xs bg-blue-50 text-blue-600 border-blue-200">
+            <Building2 className="w-3 h-3 mr-1" />
+            {conversation.hotelUnit}
+          </Badge>
+        )}
       </div>
     </div>
   );
