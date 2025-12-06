@@ -128,6 +128,18 @@ export function initializeSocketIO(httpServer: HTTPServer): SocketIOServer {
       logger.debug({ socketId: socket.id, tenantId: socket.tenantId }, 'Socket joined tenant room');
     }
 
+    // Entrar na room de admins (TENANT_ADMIN vê todas as conversas)
+    if (socket.tenantId && socket.user?.role === 'TENANT_ADMIN') {
+      const adminsRoom = `tenant:${socket.tenantId}:admins`;
+      socket.join(adminsRoom);
+      logger.info({
+        socketId: socket.id,
+        tenantId: socket.tenantId,
+        role: socket.user.role,
+        adminsRoom,
+      }, 'Socket joined admins room (TENANT_ADMIN)');
+    }
+
     // Entrar na room da unidade hoteleira (para ATTENDANT filtrar por unidade)
     if (socket.tenantId && socket.user?.hotelUnit && socket.user?.role === 'ATTENDANT') {
       const unitRoom = `tenant:${socket.tenantId}:unit:${socket.user.hotelUnit}`;
@@ -293,6 +305,7 @@ export function getSocketIO(): SocketIOServer {
  * Emitir evento de nova mensagem
  * CORREÇÃO: Adicionar conversation como parâmetro para payload completo
  * CORREÇÃO 2: Emitir para tenant room também (para Kanban e notificações globais)
+ * CORREÇÃO 3: Filtrar por unidade hoteleira - atendentes só veem conversas da sua unidade
  */
 export function emitNewMessage(
   tenantId: string,
@@ -311,16 +324,40 @@ export function emitNewMessage(
   // Emitir para a conversa específica (para quem está com o chat aberto)
   io.to(`conversation:${conversationId}`).emit('message:new', payload);
 
-  // NOVO: Emitir para todos do tenant (para Kanban, lista de conversas, notificações)
-  io.to(`tenant:${tenantId}`).emit('message:new', payload);
+  // Obter hotelUnit da conversa
+  const hotelUnit = conversation?.hotelUnit;
+
+  // Emitir para ADMINS do tenant (tenant room geral - eles sempre veem tudo)
+  // Os clientes que são ATTENDANT vão filtrar no frontend pelo hotelUnit
+  // Mas para otimizar, vamos emitir para rooms específicas:
+
+  // 1. Emitir para room de admins do tenant (TENANT_ADMIN vê todas as conversas)
+  io.to(`tenant:${tenantId}:admins`).emit('message:new', payload);
+
+  // 2. Se conversa tem hotelUnit, emitir para room da unidade específica
+  // Atendentes só veem conversas que já têm unidade definida
+  if (hotelUnit) {
+    io.to(`tenant:${tenantId}:unit:${hotelUnit}`).emit('message:new', payload);
+    logger.debug({ tenantId, hotelUnit, conversationId }, 'Emitted to unit room');
+  }
 
   // Emitir conversation:updated para atualizar lista de conversas
-  io.to(`tenant:${tenantId}`).emit('conversation:updated', {
+  // Mesma lógica: admins veem todas, atendentes só da sua unidade
+  io.to(`tenant:${tenantId}:admins`).emit('conversation:updated', {
     conversationId,
     conversation,
     lastMessage: message,
     lastMessageAt: message.timestamp,
   });
+
+  if (hotelUnit) {
+    io.to(`tenant:${tenantId}:unit:${hotelUnit}`).emit('conversation:updated', {
+      conversationId,
+      conversation,
+      lastMessage: message,
+      lastMessageAt: message.timestamp,
+    });
+  }
 
   logger.info(
     {
@@ -329,8 +366,9 @@ export function emitNewMessage(
       messageId: message.id,
       hasConversation: !!conversation,
       direction: message.direction,
+      hotelUnit: hotelUnit || 'none',
     },
-    '✅ Socket.io event [message:new] emitted to conversation AND tenant rooms'
+    '✅ Socket.io event [message:new] emitted to conversation, admins, and unit rooms'
   );
 }
 
@@ -369,55 +407,65 @@ export function emitMessageStatusUpdate(
 /**
  * Emitir evento de nova conversa
  * Emite para:
- * - tenant room (TENANT_ADMIN vê todas)
- * - unit room (ATTENDANT vê apenas da sua unidade)
+ * - admins room (TENANT_ADMIN vê todas as conversas)
+ * - unit room (ATTENDANT vê apenas conversas da sua unidade - só se hotelUnit definido)
  */
 export function emitNewConversation(tenantId: string, conversation: any): void {
   if (!io) return;
 
-  // Emitir para todos do tenant (TENANT_ADMIN vê todas)
-  io.to(`tenant:${tenantId}`).emit('conversation:new', {
-    conversation,
-  });
+  const payload = { conversation };
 
-  // Se conversa tem unidade, emitir também para a sala da unidade
-  // Isso permite que atendentes recebam apenas conversas da sua unidade
+  // 1. Emitir para room de admins (TENANT_ADMIN vê todas)
+  io.to(`tenant:${tenantId}:admins`).emit('conversation:new', payload);
+
+  // 2. Se conversa tem unidade, emitir para a sala da unidade
+  // Atendentes SÓ recebem conversas que já têm hotelUnit definido
   if (conversation.hotelUnit) {
     const unitRoom = `tenant:${tenantId}:unit:${conversation.hotelUnit}`;
-    io.to(unitRoom).emit('conversation:new', {
-      conversation,
-    });
+    io.to(unitRoom).emit('conversation:new', payload);
     logger.info({
       tenantId,
       conversationId: conversation.id,
       hotelUnit: conversation.hotelUnit,
       unitRoom,
-    }, 'New conversation event emitted to tenant AND unit rooms');
+    }, 'New conversation emitted to admins AND unit rooms');
   } else {
-    logger.debug({
+    logger.info({
       tenantId,
       conversationId: conversation.id,
-    }, 'New conversation event emitted to tenant room only (no hotelUnit)');
+    }, 'New conversation emitted to admins room only (no hotelUnit - attendants will NOT see this)');
   }
 }
 
 /**
  * Emitir evento de atualização de conversa
+ * @param hotelUnit - Opcional: se fornecido, emite também para a room da unidade
  */
-export function emitConversationUpdate(tenantId: string, conversationId: string, updates: any): void {
+export function emitConversationUpdate(tenantId: string, conversationId: string, updates: any, hotelUnit?: string): void {
   if (!io) return;
 
-  // Emitir para todos do tenant
-  io.to(`tenant:${tenantId}`).emit('conversation:updated', {
+  const payload = {
     conversationId,
     updates,
-  });
+  };
+
+  // 1. Emitir para room de admins (sempre)
+  io.to(`tenant:${tenantId}:admins`).emit('conversation:updated', payload);
+
+  // 2. Se hotelUnit fornecido, emitir para room da unidade
+  if (hotelUnit) {
+    io.to(`tenant:${tenantId}:unit:${hotelUnit}`).emit('conversation:updated', payload);
+  }
+
+  // 3. Emitir para a conversa específica também (para quem está com o chat aberto)
+  io.to(`conversation:${conversationId}`).emit('conversation:updated', payload);
 
   logger.debug(
     {
       tenantId,
       conversationId,
       updates,
+      hotelUnit: hotelUnit || 'none',
     },
     'Conversation update event emitted'
   );

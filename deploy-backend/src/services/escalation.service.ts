@@ -233,9 +233,11 @@ export class EscalationService {
       });
 
       // Emitir evento especifico de escalacao para notificacao sonora
+      // Emitir para rooms corretas: admins (sempre) e unidade (se definida)
       const { getSocketIO } = await import('@/config/socket');
       const io = getSocketIO();
-      io.to(`tenant:${tenantId}`).emit('escalation:new', {
+
+      const escalationPayload = {
         escalation: {
           id: escalation.id,
           reason,
@@ -246,7 +248,20 @@ export class EscalationService {
           contact: conversation.contact,
         },
         conversation,
-      });
+      };
+
+      // 1. Emitir para room de admins (TENANT_ADMIN vê todas)
+      io.to(`tenant:${tenantId}:admins`).emit('escalation:new', escalationPayload);
+
+      // 2. Se tem hotelUnit, emitir para room da unidade (ATTENDANT da unidade)
+      if (hotelUnit) {
+        io.to(`tenant:${tenantId}:unit:${hotelUnit}`).emit('escalation:new', escalationPayload);
+        logger.info({
+          tenantId,
+          hotelUnit,
+          unitRoom: `tenant:${tenantId}:unit:${hotelUnit}`,
+        }, 'Escalation emitted to unit room');
+      }
 
       logger.info({
         escalationId: escalation.id,

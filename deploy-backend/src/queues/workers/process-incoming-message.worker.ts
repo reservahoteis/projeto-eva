@@ -15,9 +15,29 @@ import {
   isTemplateButtonReply,
 } from '@/validators/whatsapp-webhook.validator';
 import { enqueueMediaDownload } from '../whatsapp-webhook.queue';
-import { emitNewMessage } from '@/config/socket';
+import { emitNewMessage, emitNewConversation, emitConversationUpdate, getSocketIO } from '@/config/socket';
 import { whatsAppService } from '@/services/whatsapp.service';
 import { n8nService } from '@/services/n8n.service';
+
+// Unidades hoteleiras válidas para detecção automática
+const VALID_HOTEL_UNITS = [
+  'Ilha Bela',
+  'Campos do Jordão',
+  'Camburi',
+  'Santo Antônio do Pinhal',
+];
+
+// Mapeamento de IDs/aliases para nomes de unidades (caso o N8N use IDs diferentes)
+const HOTEL_UNIT_ALIASES: Record<string, string> = {
+  'ilha_bela': 'Ilha Bela',
+  'ilhabela': 'Ilha Bela',
+  'campos_jordao': 'Campos do Jordão',
+  'camposdojordao': 'Campos do Jordão',
+  'camburi': 'Camburi',
+  'santo_antonio': 'Santo Antônio do Pinhal',
+  'santoantonio': 'Santo Antônio do Pinhal',
+  'santo_antonio_pinhal': 'Santo Antônio do Pinhal',
+};
 
 /**
  * Worker para processar mensagens recebidas do WhatsApp
@@ -69,6 +89,12 @@ export async function processIncomingMessage(job: Job<ProcessMessageJobData>): P
         status: (conversation.status === 'CLOSED' ? 'OPEN' : conversation.status) as any,
       },
     });
+
+    // 5.1 DETECTAR SELEÇÃO DE UNIDADE HOTELEIRA (list_reply)
+    const detectedHotelUnit = detectHotelUnitSelection(message, messageData);
+    if (detectedHotelUnit) {
+      await handleHotelUnitSelection(tenantId, conversation.id, detectedHotelUnit, contact);
+    }
 
     // 6. SE FOR MÍDIA, ENFILEIRAR DOWNLOAD
     if (messageData.shouldDownload && messageData.mediaId) {
@@ -502,4 +528,149 @@ function extractMessageData(message: any): {
     metadata: { rawMessage: message },
     shouldDownload: false,
   };
+}
+
+/**
+ * Detecta se a mensagem é uma seleção de unidade hoteleira
+ * Retorna o nome da unidade se detectada, null caso contrário
+ */
+function detectHotelUnitSelection(message: any, messageData: { metadata: any }): string | null {
+  // Verificar se é um list_reply
+  if (!isListReply(message) || !message.interactive || !('list_reply' in message.interactive)) {
+    return null;
+  }
+
+  const listReply = message.interactive.list_reply;
+  const id = listReply.id?.toLowerCase()?.trim();
+  const title = listReply.title?.trim();
+
+  logger.debug({ id, title }, 'Checking list_reply for hotel unit selection');
+
+  // 1. Verificar se o título corresponde exatamente a uma unidade válida
+  const exactMatch = VALID_HOTEL_UNITS.find(
+    (unit) => unit.toLowerCase() === title?.toLowerCase()
+  );
+  if (exactMatch) {
+    logger.info({ detectedUnit: exactMatch, source: 'title_exact' }, 'Hotel unit detected from list_reply title');
+    return exactMatch;
+  }
+
+  // 2. Verificar se o ID corresponde a um alias
+  if (id && HOTEL_UNIT_ALIASES[id]) {
+    logger.info({ detectedUnit: HOTEL_UNIT_ALIASES[id], source: 'id_alias', id }, 'Hotel unit detected from list_reply id alias');
+    return HOTEL_UNIT_ALIASES[id];
+  }
+
+  // 3. Verificar se o título contém o nome de uma unidade (match parcial)
+  const partialMatch = VALID_HOTEL_UNITS.find(
+    (unit) => title?.toLowerCase().includes(unit.toLowerCase())
+  );
+  if (partialMatch) {
+    logger.info({ detectedUnit: partialMatch, source: 'title_partial', title }, 'Hotel unit detected from list_reply title (partial match)');
+    return partialMatch;
+  }
+
+  // 4. Verificar se o ID contém o nome de uma unidade (sem underscores/hifens)
+  if (id) {
+    const normalizedId = id.replace(/[_-]/g, ' ');
+    const idPartialMatch = VALID_HOTEL_UNITS.find(
+      (unit) => normalizedId.includes(unit.toLowerCase()) || unit.toLowerCase().replace(/ /g, '').includes(normalizedId.replace(/ /g, ''))
+    );
+    if (idPartialMatch) {
+      logger.info({ detectedUnit: idPartialMatch, source: 'id_partial', id }, 'Hotel unit detected from list_reply id (partial match)');
+      return idPartialMatch;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Processa a seleção de unidade hoteleira
+ * Atualiza a conversa e emite eventos Socket.io para atendentes da unidade
+ */
+async function handleHotelUnitSelection(
+  tenantId: string,
+  conversationId: string,
+  hotelUnit: string,
+  contact: { id: string; phoneNumber: string; name: string | null; profilePictureUrl: string | null }
+): Promise<void> {
+  try {
+    // 1. Atualizar conversa com a unidade hoteleira
+    const updatedConversation = await prisma.conversation.update({
+      where: { id: conversationId },
+      data: {
+        hotelUnit,
+      } as any,
+      include: {
+        contact: {
+          select: {
+            id: true,
+            phoneNumber: true,
+            name: true,
+            profilePictureUrl: true,
+          },
+        },
+        assignedTo: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        tags: {
+          select: {
+            id: true,
+            name: true,
+            color: true,
+          },
+        },
+      },
+    });
+
+    logger.info({
+      conversationId,
+      hotelUnit,
+      tenantId,
+    }, 'Conversation updated with hotel unit from client selection');
+
+    // 2. Emitir evento para room da unidade (atendentes vão ver a conversa aparecer)
+    try {
+      const io = getSocketIO();
+      const unitRoom = `tenant:${tenantId}:unit:${hotelUnit}`;
+
+      // Emitir conversation:new para a room da unidade
+      io.to(unitRoom).emit('conversation:new', {
+        ...updatedConversation,
+        hotelUnit,
+      });
+
+      // Emitir também conversation:update para garantir atualização
+      io.to(unitRoom).emit('conversation:update', {
+        conversationId,
+        updates: { hotelUnit },
+      });
+
+      // Emitir para admins também (para atualizar o hotelUnit no painel deles)
+      io.to(`tenant:${tenantId}:admins`).emit('conversation:update', {
+        conversationId,
+        updates: { hotelUnit },
+      });
+
+      logger.info({
+        conversationId,
+        hotelUnit,
+        unitRoom,
+        tenantId,
+      }, 'Hotel unit selection events emitted via Socket.io');
+    } catch (socketError) {
+      logger.warn({ error: socketError, conversationId }, 'Failed to emit hotel unit selection events');
+    }
+  } catch (error) {
+    logger.error({
+      error: error instanceof Error ? error.message : 'Unknown error',
+      conversationId,
+      hotelUnit,
+    }, 'Failed to handle hotel unit selection');
+  }
 }

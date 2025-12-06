@@ -60,8 +60,10 @@ export class ConversationService {
     }
 
     // Se é ATTENDANT, filtrar por:
-    // 1. Conversas atribuídas a ele (qualquer unidade)
-    // 2. OU conversas da sua unidade (se tiver unidade definida)
+    // 1. Conversas atribuídas diretamente a ele (qualquer unidade)
+    // 2. OU conversas que têm a mesma unidade hoteleira (hotelUnit deve estar definido!)
+    // IMPORTANTE: Conversas sem hotelUnit definido NÃO aparecem para atendentes
+    // (exceto se estiver atribuída diretamente a ele)
     if (params.userRole === 'ATTENDANT' && params.userId) {
       // Buscar a unidade do atendente
       const user = await prisma.user.findUnique({
@@ -75,8 +77,11 @@ export class ConversationService {
       ];
 
       // Se atendente tem unidade definida, também vê conversas dessa unidade
+      // MAS apenas se a conversa também tem hotelUnit definido (não null)
       if (user?.hotelUnit) {
-        orConditions.push({ hotelUnit: user.hotelUnit });
+        orConditions.push({
+          hotelUnit: user.hotelUnit,  // Só conversas com exatamente esta unidade
+        });
         logger.debug({ userId: params.userId, hotelUnit: user.hotelUnit }, 'Filtering conversations by attendant hotel unit');
       }
 

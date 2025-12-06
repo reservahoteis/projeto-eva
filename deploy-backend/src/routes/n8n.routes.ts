@@ -3,9 +3,43 @@ import { n8nAuthMiddleware } from '@/middlewares/n8n-auth.middleware';
 import { whatsAppService } from '@/services/whatsapp.service';
 import { escalationService } from '@/services/escalation.service';
 import { messageService } from '@/services/message.service';
+import { prisma } from '@/config/database';
+import { emitNewConversation, emitConversationUpdate } from '@/config/socket';
 import logger from '@/config/logger';
 
 const router = Router();
+
+// Mapeamento de templates para seus textos (para exibição no painel)
+const TEMPLATE_TEXTS: Record<string, string> = {
+  'notificacao_atendente': '🚨 NOVO CHAMADO\n\n{{1}}\n\nChamado gerado via atendimento automatico.',
+  // Adicione outros templates aqui conforme necessário
+};
+
+/**
+ * Monta o conteúdo real do template substituindo os parâmetros
+ * para exibição no painel como o destinatário vê
+ */
+function buildTemplateContent(templateName: string, params?: string[]): string {
+  const templateText = TEMPLATE_TEXTS[templateName];
+
+  if (!templateText) {
+    // Se não temos o texto do template, retornar formato genérico com parâmetros
+    if (params && params.length > 0) {
+      return `[Template: ${templateName}]\n\n${params.join('\n')}`;
+    }
+    return `[Template: ${templateName}]`;
+  }
+
+  // Substituir {{1}}, {{2}}, etc. pelos parâmetros
+  let content = templateText;
+  if (params && params.length > 0) {
+    params.forEach((param, index) => {
+      content = content.replace(`{{${index + 1}}}`, param);
+    });
+  }
+
+  return content;
+}
 
 // Todas as rotas usam autenticação por API Key
 router.use(n8nAuthMiddleware);
@@ -424,7 +458,7 @@ router.post('/send-media', async (req: Request, res: Response) => {
  */
 router.post('/send-template', async (req: Request, res: Response) => {
   try {
-    const { phone, template, templateName, language, parameters } = req.body;
+    const { phone, template, templateName, language, languageCode, parameters, components } = req.body;
 
     if (!phone || (!template && !templateName)) {
       return res.status(400).json({
@@ -434,26 +468,41 @@ router.post('/send-template', async (req: Request, res: Response) => {
 
     const normalizedPhone = phone.replace(/\D/g, '');
 
+    // Extrair parâmetros - suporta tanto 'parameters' quanto 'components'
+    let templateParams: string[] | undefined = parameters;
+
+    // Se components foi enviado (formato N8N), extrair os parâmetros
+    if (!templateParams && components && Array.isArray(components)) {
+      const bodyComponent = components.find((c: any) => c.type === 'body');
+      if (bodyComponent?.parameters && Array.isArray(bodyComponent.parameters)) {
+        templateParams = bodyComponent.parameters.map((p: any) => p.text || p.value || '');
+      }
+    }
+
     const result = await whatsAppService.sendTemplate(
       req.tenantId!,
       normalizedPhone,
       template || templateName,
-      language || 'pt_BR',
-      parameters
+      languageCode || language || 'pt_BR',
+      templateParams
     );
 
     // Salvar mensagem no banco para aparecer no painel
     const templateNameUsed = template || templateName;
+
+    // Montar conteúdo real do template para exibição no painel
+    const templateContent = buildTemplateContent(templateNameUsed, templateParams);
+
     await messageService.saveOutboundMessage({
       tenantId: req.tenantId!,
       phoneNumber: normalizedPhone,
       whatsappMessageId: result.whatsappMessageId,
       type: 'TEMPLATE',
-      content: `[Template: ${templateNameUsed}]`,
+      content: templateContent,
       metadata: {
         templateName: templateNameUsed,
-        language: language || 'pt_BR',
-        parameters,
+        language: languageCode || language || 'pt_BR',
+        parameters: templateParams,
       },
     });
 
@@ -861,6 +910,163 @@ router.post('/send-carousel', async (req: Request, res: Response) => {
     return res.status(500).json({
       success: false,
       error: 'Falha ao enviar carousel',
+      message: error.message,
+    });
+  }
+});
+
+/**
+ * POST /api/n8n/set-hotel-unit
+ * Define a unidade hoteleira de uma conversa
+ * Chamado quando o cliente seleciona a unidade na automação
+ *
+ * Payload:
+ * {
+ *   "phone": "5511999999999",
+ *   "hotelUnit": "Ilha Bela"
+ * }
+ *
+ * Valores válidos para hotelUnit:
+ * - "Ilha Bela"
+ * - "Campos do Jordão"
+ * - "Camburi"
+ * - "Santo Antônio do Pinhal"
+ */
+router.post('/set-hotel-unit', async (req: Request, res: Response) => {
+  try {
+    const { phone, phoneNumber, hotelUnit } = req.body;
+    const phoneToUse = phone || phoneNumber;
+
+    if (!phoneToUse) {
+      return res.status(400).json({
+        error: 'Campo obrigatório: phone',
+      });
+    }
+
+    if (!hotelUnit) {
+      return res.status(400).json({
+        error: 'Campo obrigatório: hotelUnit',
+      });
+    }
+
+    // Validar hotelUnit
+    const validUnits = ['Ilha Bela', 'Campos do Jordão', 'Camburi', 'Santo Antônio do Pinhal'];
+    if (!validUnits.includes(hotelUnit)) {
+      return res.status(400).json({
+        error: `hotelUnit inválido. Valores válidos: ${validUnits.join(', ')}`,
+      });
+    }
+
+    const normalizedPhone = phoneToUse.replace(/\D/g, '');
+
+    // Buscar contato
+    const contact = await prisma.contact.findFirst({
+      where: {
+        tenantId: req.tenantId!,
+        phoneNumber: normalizedPhone,
+      },
+    });
+
+    if (!contact) {
+      return res.status(404).json({
+        error: 'Contato não encontrado',
+      });
+    }
+
+    // Buscar conversa ativa do contato
+    const conversation = await prisma.conversation.findFirst({
+      where: {
+        tenantId: req.tenantId!,
+        contactId: contact.id,
+        status: {
+          in: ['BOT_HANDLING', 'OPEN', 'IN_PROGRESS', 'WAITING'],
+        },
+      },
+      include: {
+        contact: {
+          select: {
+            id: true,
+            phoneNumber: true,
+            name: true,
+            profilePictureUrl: true,
+          },
+        },
+        assignedTo: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        tags: true,
+      },
+    });
+
+    if (!conversation) {
+      return res.status(404).json({
+        error: 'Conversa ativa não encontrada para este contato',
+      });
+    }
+
+    // Atualizar hotelUnit da conversa
+    const updatedConversation = await prisma.conversation.update({
+      where: { id: conversation.id },
+      data: {
+        hotelUnit,
+      },
+      include: {
+        contact: {
+          select: {
+            id: true,
+            phoneNumber: true,
+            name: true,
+            profilePictureUrl: true,
+          },
+        },
+        assignedTo: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        tags: true,
+      },
+    });
+
+    // Emitir evento Socket.io para notificar atendentes da unidade
+    try {
+      // Emitir conversation:updated para a unidade específica
+      emitConversationUpdate(
+        req.tenantId!,
+        conversation.id,
+        { hotelUnit },
+        hotelUnit
+      );
+
+      // Emitir conversation:new para que apareça no kanban dos atendentes da unidade
+      emitNewConversation(req.tenantId!, updatedConversation);
+
+      logger.info({
+        tenantId: req.tenantId,
+        conversationId: conversation.id,
+        hotelUnit,
+        phone: normalizedPhone,
+      }, 'N8N: Hotel unit set and Socket.io events emitted');
+    } catch (error) {
+      logger.warn({ error }, 'Failed to emit Socket.io events for hotel unit update');
+    }
+
+    return res.json({
+      success: true,
+      conversationId: conversation.id,
+      hotelUnit,
+      message: `Unidade hoteleira definida como: ${hotelUnit}`,
+    });
+  } catch (error: any) {
+    logger.error({ error, tenantId: req.tenantId }, 'N8N: Failed to set hotel unit');
+    return res.status(500).json({
+      error: 'Falha ao definir unidade hoteleira',
       message: error.message,
     });
   }
