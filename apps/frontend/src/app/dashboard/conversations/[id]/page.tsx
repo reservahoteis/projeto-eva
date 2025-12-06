@@ -309,8 +309,8 @@ export default function ConversationPage({ params }: ConversationPageProps) {
         </div>
       </div>
 
-      {/* Contact Sidebar - Hidden on mobile */}
-      <div className="hidden lg:block flex-shrink-0">
+      {/* Contact Sidebar - Hidden on mobile, visible on md+ */}
+      <div className="hidden md:block flex-shrink-0">
         <ContactSidebar
           conversation={conversation}
           onIaLockChange={(locked) => {

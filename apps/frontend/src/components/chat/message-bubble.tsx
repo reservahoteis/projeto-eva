@@ -272,8 +272,20 @@ export function MessageBubble({
         {/* TEMPLATE - Templates pré-aprovados */}
         {message.type === MessageType.TEMPLATE && (
           <div>
+            {/* Debug: log template metadata */}
+            {console.log('🎠 TEMPLATE MESSAGE:', {
+              type: message.type,
+              metadata: message.metadata,
+              templateType: (message.metadata as any)?.templateType,
+              hasCards: !!(message.metadata as any)?.cards,
+              cardsLength: (message.metadata as any)?.cards?.length,
+            })}
             {/* Carousel Template - Exibir cards com navegação horizontal */}
-            {(message.metadata as any)?.templateType === 'carousel' && (message.metadata as any)?.cards?.length > 0 ? (
+            {/* Detectar carrossel por: templateType === 'carousel' OU templateName contém 'carousel' */}
+            {(
+              ((message.metadata as any)?.templateType === 'carousel' && (message.metadata as any)?.cards?.length > 0) ||
+              ((message.metadata as any)?.templateName?.toLowerCase().includes('carousel') && (message.metadata as any)?.cards?.length > 0)
+            ) ? (
               <WhatsAppCarouselMessage
                 cards={(message.metadata as any)?.cards || []}
                 templateName={(message.metadata as any)?.templateName}
