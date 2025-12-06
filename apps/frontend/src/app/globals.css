@@ -501,96 +501,29 @@
   background: linear-gradient(135deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.12) 100%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   backdrop-filter: blur(20px) saturate(180%);
-  /* Borda metálica com gradiente */
-  border: 1.5px solid transparent;
-  background-clip: padding-box;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+  border: none;
+  /* Sombra suave e compacta */
+  box-shadow: 0 2px 4px rgba(0,0,0,0.04);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Borda metálica - efeito cromado/prateado */
-.glass-card-sidebar::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 1.5px;
-  background: linear-gradient(
-    135deg,
-    rgba(192,192,192,0.9) 0%,
-    rgba(255,255,255,0.95) 15%,
-    rgba(169,169,169,0.8) 30%,
-    rgba(220,220,220,0.9) 50%,
-    rgba(192,192,192,0.85) 70%,
-    rgba(255,255,255,0.9) 85%,
-    rgba(169,169,169,0.8) 100%
-  );
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
-}
-
-/* Reflexo metálico no topo */
-.glass-card-sidebar::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 5%;
-  right: 5%;
-  height: 1px;
-  background: linear-gradient(90deg,
-    transparent 0%,
-    rgba(255,255,255,0.9) 20%,
-    rgba(220,220,220,1) 50%,
-    rgba(255,255,255,0.9) 80%,
-    transparent 100%
-  );
-  pointer-events: none;
 }
 
 .glass-card-sidebar:hover {
   transform: translateY(-1px);
-  box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+  box-shadow: 0 3px 6px rgba(0,0,0,0.06);
 }
 
 .glass-card-sidebar.no-hover:hover {
   transform: none;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.04);
 }
 
 .dark .glass-card-sidebar {
   background: linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-}
-
-/* Borda metálica dark mode - mais sutil */
-.dark .glass-card-sidebar::before {
-  background: linear-gradient(
-    135deg,
-    rgba(120,120,120,0.6) 0%,
-    rgba(180,180,180,0.5) 15%,
-    rgba(100,100,100,0.5) 30%,
-    rgba(150,150,150,0.55) 50%,
-    rgba(120,120,120,0.5) 70%,
-    rgba(180,180,180,0.5) 85%,
-    rgba(100,100,100,0.5) 100%
-  );
-}
-
-.dark .glass-card-sidebar::after {
-  background: linear-gradient(90deg,
-    transparent 0%,
-    rgba(200,200,200,0.3) 20%,
-    rgba(180,180,180,0.4) 50%,
-    rgba(200,200,200,0.3) 80%,
-    transparent 100%
-  );
+  box-shadow: 0 2px 4px rgba(0,0,0,0.12);
 }
 
 .dark .glass-card-sidebar:hover {
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  box-shadow: 0 3px 6px rgba(0,0,0,0.15);
 }
 
 /* Glass card compact padding variant */
