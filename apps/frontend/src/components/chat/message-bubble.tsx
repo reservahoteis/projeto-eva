@@ -93,9 +93,12 @@ export function MessageBubble({
 
   return (
     <div className={cn(
-      'flex items-end max-w-[85%] sm:max-w-[75%] md:max-w-[65%] mb-1',
-      isOwnMessage ? 'ml-auto' : 'mr-auto'
+      'flex mb-1',
+      isOwnMessage ? 'justify-end' : 'justify-start'
     )}>
+      <div className={cn(
+        'flex items-end max-w-[85%] sm:max-w-[75%] md:max-w-[65%]'
+      )}>
       <div
         className={cn(
           bubbleColor,
@@ -380,6 +383,7 @@ export function MessageBubble({
           )}
         </div>
       )}
+      </div>
     </div>
   );
 }
