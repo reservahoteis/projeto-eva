@@ -87,4 +87,12 @@ export const conversationService = {
     });
     return data;
   },
+
+  /**
+   * Mark all messages in conversation as read
+   * Resets unread count to 0
+   */
+  async markAsRead(id: string): Promise<void> {
+    await api.post(`/api/conversations/${id}/read`);
+  },
 };

@@ -55,6 +55,33 @@ export default function ConversationPage({ params }: ConversationPageProps) {
     },
   });
 
+  // Mark conversation as read when opening
+  useEffect(() => {
+    if (!params.id) return;
+
+    const markAsRead = async () => {
+      try {
+        await conversationService.markAsRead(params.id);
+        // Update the conversations list cache to reflect unread count = 0
+        queryClient.setQueryData(['conversations'], (oldData: any) => {
+          if (!oldData?.data) return oldData;
+          return {
+            ...oldData,
+            data: oldData.data.map((conv: any) =>
+              conv.id === params.id ? { ...conv, unreadCount: 0 } : conv
+            ),
+          };
+        });
+        // Also invalidate to ensure fresh data
+        queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      } catch (error) {
+        console.error('Error marking conversation as read:', error);
+      }
+    };
+
+    markAsRead();
+  }, [params.id, queryClient]);
+
   // Subscribe to real-time events for this conversation
   useEffect(() => {
     if (!isConnected || !params.id) return;
