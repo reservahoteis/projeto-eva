@@ -115,7 +115,7 @@ export function MessageList({ messages, isTyping, contactName, contactAvatar }: 
       ) : (
         <>
           {groupedMessages.map(({ message, showDateDivider, showAvatar, groupedWithNext }) => (
-            <div key={message.id}>
+            <div key={message.id} className="w-full">
               {showDateDivider && (
                 <DateDivider date={new Date(message.createdAt)} />
               )}
