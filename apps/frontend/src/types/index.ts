@@ -1,4 +1,10 @@
 // ============================================
+// IMPORTS
+// ============================================
+
+import type { ContactMetadata, MessageMetadata, ConversationMetadata } from './metadata';
+
+// ============================================
 // USER & AUTH
 // ============================================
 
@@ -82,7 +88,7 @@ export interface Contact {
   name?: string;             // Corrigido: agora opcional
   email?: string;
   profilePictureUrl?: string; // Corrigido: era "avatar"
-  metadata?: Record<string, any>; // Corrigido: era "customFields"
+  metadata?: ContactMetadata; // Type-safe metadata
   createdAt: string;
   updatedAt: string;
   // Campos computados do backend:
@@ -136,6 +142,7 @@ export interface Conversation {
   unreadCount: number;
   tags: Tag[];
   escalation?: Escalation;
+  metadata?: ConversationMetadata; // Type-safe metadata
   createdAt: string;
   updatedAt: string;
 }
@@ -191,7 +198,7 @@ export interface Message {
   mediaUrl?: string;
   mediaType?: string;
   whatsappMessageId?: string;
-  metadata?: Record<string, any>;
+  metadata?: MessageMetadata; // Type-safe metadata
   createdAt: string;
   updatedAt: string;
 }
@@ -282,3 +289,33 @@ export interface ApiError {
   error?: string;
   details?: any;
 }
+
+// ============================================
+// RE-EXPORTS
+// ============================================
+
+// Export metadata types
+export type {
+  ContactMetadata,
+  MessageMetadata,
+  ConversationMetadata,
+} from './metadata';
+
+// Export utility types
+export type {
+  Nullable,
+  Optional,
+  Maybe,
+  ISODateString,
+  JSONValue,
+  JSONObject,
+  JSONArray,
+  DeepPartial,
+  DeepReadonly,
+  RequireKeys,
+  OptionalKeys,
+  Merge,
+  ValueOf,
+} from './utility';
+
+export { isSome, isNone } from './utility';

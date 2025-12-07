@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { Message, MessageDirection } from '@/types';
 import { MessageBubble } from './message-bubble';
 import { DateDivider } from './date-divider';
@@ -50,40 +50,43 @@ export function MessageList({ messages, isTyping, contactName, contactAvatar }: 
     setIsAtBottom(distanceFromBottom < 100);
   };
 
-  // Group messages by date and sender
-  const groupedMessages = messages.reduce((acc, message, index) => {
-    const prevMessage = messages[index - 1];
-    const nextMessage = messages[index + 1];
+  // [P0-2 FIX] Memoize groupedMessages to prevent expensive recalculation on every render
+  // This reduces unnecessary Date parsing and array operations
+  const groupedMessages = useMemo(() => {
+    return messages.reduce((acc, message, index) => {
+      const prevMessage = messages[index - 1];
+      const nextMessage = messages[index + 1];
 
-    // Check if we need a date divider
-    const showDateDivider = !prevMessage ||
-      new Date(message.createdAt).toDateString() !== new Date(prevMessage.createdAt).toDateString();
+      // Check if we need a date divider
+      const showDateDivider = !prevMessage ||
+        new Date(message.createdAt).toDateString() !== new Date(prevMessage.createdAt).toDateString();
 
-    // Check if this message should show avatar (first in group)
-    const showAvatar = !prevMessage ||
-      prevMessage.direction !== message.direction ||
-      new Date(message.createdAt).getTime() - new Date(prevMessage.createdAt).getTime() > 5 * 60 * 1000; // 5 minutes
+      // Check if this message should show avatar (first in group)
+      const showAvatar = !prevMessage ||
+        prevMessage.direction !== message.direction ||
+        new Date(message.createdAt).getTime() - new Date(prevMessage.createdAt).getTime() > 5 * 60 * 1000; // 5 minutes
 
-    // Check if grouped with next message
-    const groupedWithNext = nextMessage &&
-      nextMessage.direction === message.direction &&
-      new Date(nextMessage.createdAt).getTime() - new Date(message.createdAt).getTime() < 5 * 60 * 1000;
+      // Check if grouped with next message
+      const groupedWithNext = nextMessage &&
+        nextMessage.direction === message.direction &&
+        new Date(nextMessage.createdAt).getTime() - new Date(message.createdAt).getTime() < 5 * 60 * 1000;
 
-    return [
-      ...acc,
-      {
-        message,
-        showDateDivider,
-        showAvatar,
-        groupedWithNext: !!groupedWithNext
-      }
-    ];
-  }, [] as Array<{
-    message: Message;
-    showDateDivider: boolean;
-    showAvatar: boolean;
-    groupedWithNext: boolean;
-  }>);
+      return [
+        ...acc,
+        {
+          message,
+          showDateDivider,
+          showAvatar,
+          groupedWithNext: !!groupedWithNext
+        }
+      ];
+    }, [] as Array<{
+      message: Message;
+      showDateDivider: boolean;
+      showAvatar: boolean;
+      groupedWithNext: boolean;
+    }>);
+  }, [messages]); // Only recalculate when messages array changes
 
   return (
     <div

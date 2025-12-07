@@ -412,7 +412,7 @@ JWT_SECRET=dev_secret_32_chars_minimum
 ```env
 NODE_ENV=production
 PORT=3001
-DATABASE_URL=postgresql://crm_user:CrmSecurePass2024!@crm-postgres:5432/crm_whatsapp_saas
+DATABASE_URL=postgresql://crm_user:SUA_SENHA_DATABASE@crm-postgres:5432/crm_whatsapp_saas
 REDIS_HOST=crm-redis
 REDIS_PORT=6379
 JWT_SECRET=<gerado com crypto.randomBytes(32).toString('hex')>

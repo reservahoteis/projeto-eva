@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { Message, MessageStatus, MessageType } from '@/types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -19,7 +19,9 @@ interface MessageBubbleProps {
   contactAvatar?: string;
 }
 
-export function MessageBubble({
+// [P0-2 FIX] Memoize MessageBubble to prevent re-renders when props don't change
+// This significantly reduces render cycles in conversation views with many messages
+export const MessageBubble = memo(function MessageBubble({
   message,
   isOwnMessage,
   showAvatar,
@@ -386,4 +388,4 @@ export function MessageBubble({
       </div>
     </div>
   );
-}
+});

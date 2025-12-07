@@ -24,8 +24,10 @@
 
 **Super Admin:**
 - Email: `admin@botreserva.com.br`
-- Senha: `SuperAdmin@123`
+- Senha: `SUA_SENHA_SUPER_ADMIN`
 - Tenant Slug: `super-admin`
+
+> **IMPORTANTE:** Substitua os placeholders pelas credenciais reais obtidas do ambiente de producao.
 
 **Tenant Admin (Hotel Ipanema):**
 - Email: `contato@hotelipanema.com.br`

@@ -15,16 +15,17 @@ export const generalLimiter = rateLimit({
     const ip = req.ip || req.socket.remoteAddress || 'unknown';
     return `${req.tenantId || 'global'}:${ip}`;
   },
-  skip: (req) => false,
+  skip: () => false,
 });
 
 /**
- * Rate limiter para login (MUITO PERMISSIVO PARA DEBUG)
- * 100 tentativas por 15 minutos
+ * Rate limiter para login - Protecao contra brute force
+ * OWASP: https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html
+ * Limite: 5 tentativas por IP em 15 minutos
  */
 export const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 100, // AUMENTADO PARA 100 (antes: 5, depois: 20, agora: 100)
+  max: 5, // SECURITY FIX [SEC-001]: Reduzido de 100 para 5 tentativas para prevenir brute force
   message: 'Too many login attempts, please try again after 15 minutes',
   standardHeaders: true,
   legacyHeaders: false,

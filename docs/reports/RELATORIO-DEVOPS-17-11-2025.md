@@ -81,7 +81,7 @@ Sistema de CRM WhatsApp Multi-tenant **100% OPERACIONAL** e pronto para produç�
 |-------|-------|
 | **Slug** | hoteis-reserva |
 | **Admin** | admin@hoteisreserva.com.br |
-| **Senha** | Admin@123 |
+| **Senha** | SUA_SENHA_ADMIN |
 
 ### Configuração WhatsApp Business
 

@@ -62,7 +62,7 @@ Sistema SaaS multi-tenant para gestão de atendimento via WhatsApp Business API,
   },
   "body": {
     "email": "admin@botreserva.com.br",
-    "password": "SuperAdmin@123"
+    "password": "SUA_SENHA_SUPER_ADMIN"
   }
 }
 ```
@@ -1067,7 +1067,7 @@ docker system prune -a --volumes  # ⚠️ CUIDADO - apaga tudo não usado
 ```bash
 curl -k -X POST "https://api.botreserva.com.br/auth/login" \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@botreserva.com.br","password":"SuperAdmin@123"}'
+  -d '{"email":"admin@botreserva.com.br","password":"SUA_SENHA_SUPER_ADMIN"}'
 ```
 **Resultado:** ✅ **SUCESSO**
 - Token JWT gerado corretamente

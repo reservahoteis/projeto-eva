@@ -47,7 +47,6 @@ export async function n8nAuthMiddleware(req: Request, res: Response, next: NextF
         status: true,
         whatsappPhoneNumberId: true,
         whatsappAccessToken: true,
-        n8nApiKey: true,
       },
     });
 
@@ -66,8 +65,8 @@ export async function n8nAuthMiddleware(req: Request, res: Response, next: NextF
     }
 
     // Validar secret key
-    // Primeiro tenta n8nApiKey, depois aceita um hash simples do whatsappPhoneNumberId
-    const validKey = tenant.n8nApiKey || tenant.whatsappPhoneNumberId;
+    // Aceita whatsappPhoneNumberId como chave de API
+    const validKey = tenant.whatsappPhoneNumberId;
 
     if (secretKey !== validKey) {
       logger.warn({ tenantSlug, providedKey: secretKey.substring(0, 8) + '...' }, 'Invalid N8N API key attempt');

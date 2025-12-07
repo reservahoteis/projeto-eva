@@ -176,8 +176,9 @@ export async function createUser(
       return res.status(400).json({ message: 'Email já cadastrado' });
     }
 
-    // Hash da senha
-    const hashedPassword = await bcrypt.hash(data.password, 10);
+    // SECURITY FIX [SEC-015]: Hash da senha com salt=12 (padronizado com auth.service.ts)
+    // OWASP recomenda minimo de 10 rounds, usando 12 para maior seguranca
+    const hashedPassword = await bcrypt.hash(data.password, 12);
 
     // Criar usuário (usando any para suportar hotelUnit antes da migration)
     const user = await (prisma.user.create as any)({
@@ -257,9 +258,9 @@ export async function updateUser(
     if (data.avatarUrl !== undefined) updateData.avatarUrl = data.avatarUrl;
     if ((data as any).hotelUnit !== undefined) updateData.hotelUnit = (data as any).hotelUnit;
 
-    // Se está alterando senha, fazer hash
+    // SECURITY FIX [SEC-015]: Se esta alterando senha, fazer hash com salt=12
     if (data.password) {
-      updateData.password = await bcrypt.hash(data.password, 10);
+      updateData.password = await bcrypt.hash(data.password, 12);
     }
 
     // Atualizar usuário (usando any para suportar hotelUnit antes da migration)

@@ -16,7 +16,7 @@
 | **Porta** | `5432` |
 | **Database** | `crm_whatsapp_saas` |
 | **Username** | `crm_user` |
-| **Password** | `CrmSecurePass2024!` |
+| **Password** | `SUA_SENHA_DATABASE` |
 | **Driver** | PostgreSQL |
 
 ---
@@ -44,7 +44,7 @@ Host: 72.61.39.235
 Port: 5432
 Database: crm_whatsapp_saas
 Username: crm_user
-Password: CrmSecurePass2024!
+Password: SUA_SENHA_DATABASE
 ```
 
 **Marque a opção:**

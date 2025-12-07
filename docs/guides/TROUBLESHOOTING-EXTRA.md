@@ -543,7 +543,7 @@ docker exec crm-postgres psql -U crm_user -d crm_whatsapp_saas -c \
 # Fazer login como SUPER_ADMIN primeiro:
 TOKEN=$(curl -s -X POST https://api.botreserva.com.br/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@botreserva.com.br","password":"SuperAdmin@123"}' \
+  -d '{"email":"admin@botreserva.com.br","password":"SUA_SENHA_SUPER_ADMIN"}' \
   | jq -r '.access_token')
 
 # Criar tenant:

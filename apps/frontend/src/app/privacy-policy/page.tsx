@@ -263,7 +263,7 @@ export default function PrivacyPolicyPage(): React.JSX.Element {
               </List>
               <Paragraph>
                 <Strong>Importante:</Strong> Você pode revogar seu consentimento para
-                comunicações de marketing a qualquer momento através do comando "SAIR" ou
+                comunicações de marketing a qualquer momento através do comando &quot;SAIR&quot; ou
                 entrando em contato conosco.
               </Paragraph>
             </SubSection>
@@ -496,7 +496,7 @@ export default function PrivacyPolicyPage(): React.JSX.Element {
                     </a>
                   </ListItem>
                   <ListItem>
-                    <Strong>Assunto:</Strong> "Solicitação LGPD - [Seu Direito]"
+                    <Strong>Assunto:</Strong> &quot;Solicitação LGPD - [Seu Direito]&quot;
                   </ListItem>
                   <ListItem>
                     <Strong>Prazo de resposta:</Strong> Até 15 dias úteis
@@ -601,7 +601,7 @@ export default function PrivacyPolicyPage(): React.JSX.Element {
                   </a>
                 </ListItem>
                 <ListItem>
-                  <Strong>Assunto:</Strong> "DPO - Proteção de Dados"
+                  <Strong>Assunto:</Strong> &quot;DPO - Proteção de Dados&quot;
                 </ListItem>
               </List>
             </div>

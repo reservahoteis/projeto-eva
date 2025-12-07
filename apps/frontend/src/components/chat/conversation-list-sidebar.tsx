@@ -22,10 +22,14 @@ export function ConversationListSidebar({ activeConversationId }: ConversationLi
   const [searchQuery, setSearchQuery] = useState('');
   const { on, off, isConnected } = useSocketContext();
 
+  // [P1-1 FIX] Disable aggressive polling since Socket.IO provides real-time updates
+  // This eliminates redundant API calls and reduces server load
   const { data: conversationsData, refetch } = useQuery({
     queryKey: ['conversations-sidebar'],
     queryFn: () => conversationService.list({ limit: 50 }),
-    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchInterval: false, // Disabled - Socket.IO handles real-time updates
+    staleTime: 5 * 60 * 1000, // 5 minutes - data stays fresh longer
+    refetchOnWindowFocus: true, // Refetch when user returns to tab
   });
 
   // Real-time updates

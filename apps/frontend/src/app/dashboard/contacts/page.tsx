@@ -373,7 +373,7 @@ export default function ContactsPage() {
         ) : !contactsData?.data.length ? (
           <div className="text-center py-8 text-[var(--text-muted)]">
             {debouncedSearch ? (
-              <p>Nenhum contato encontrado para "{debouncedSearch}"</p>
+              <p>Nenhum contato encontrado para &quot;{debouncedSearch}&quot;</p>
             ) : (
               <>
                 <p>Nenhum contato cadastrado ainda</p>

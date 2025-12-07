@@ -32,9 +32,18 @@ let io: SocketIOServer | null = null;
  * Inicializar Socket.io server
  */
 export function initializeSocketIO(httpServer: HTTPServer): SocketIOServer {
+  // SECURITY FIX [SEC-002]: Validar FRONTEND_URL obrigatoriamente - nunca usar wildcard
+  const frontendUrl = process.env.FRONTEND_URL;
+  if (!frontendUrl) {
+    throw new Error(
+      'SECURITY ERROR: FRONTEND_URL environment variable is required. ' +
+      'CORS wildcard (*) is not allowed for Socket.io connections with credentials.'
+    );
+  }
+
   io = new SocketIOServer(httpServer, {
     cors: {
-      origin: process.env.FRONTEND_URL || '*',
+      origin: frontendUrl, // SECURITY: Origem explicita, sem fallback wildcard
       methods: ['GET', 'POST'],
       credentials: true,
     },

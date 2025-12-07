@@ -57,7 +57,7 @@ Limites:
 ```
 ID: 67875da9-6b10-4ef1-956d-d2b11c061365
 Email: admin@hoteisreserva.com.br
-Senha: Admin@123
+Senha: SUA_SENHA_ADMIN
 Nome: Administrador Hoteis Reserva
 Role: TENANT_ADMIN
 Status: ACTIVE
@@ -158,7 +158,7 @@ Total de tenants ativos: 1
 ```
 URL: https://www.botreserva.com.br/login
 Email: admin@hoteisreserva.com.br
-Senha: Admin@123
+Senha: SUA_SENHA_ADMIN
 Tenant Slug: hoteis-reserva
 ```
 
@@ -166,7 +166,7 @@ Tenant Slug: hoteis-reserva
 ```
 URL: https://www.botreserva.com.br/login
 Email: admin@botreserva.com.br
-Senha: SuperAdmin@123
+Senha: SUA_SENHA_SUPER_ADMIN
 Tenant Slug: super-admin
 ```
 
@@ -217,7 +217,7 @@ Host: 72.61.39.235
 Port: 5432 (exposta externamente)
 Database: crm_whatsapp_saas
 User: crm_user
-Password: CrmSecurePass2024!
+Password: SUA_SENHA_DATABASE
 ```
 
 **Acesso via DBeaver:** ✅ Configurado (ver [DBEAVER-SETUP.md](./DBEAVER-SETUP.md))

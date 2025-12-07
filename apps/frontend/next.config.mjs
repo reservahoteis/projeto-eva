@@ -9,18 +9,36 @@ const nextConfig = {
     NEXT_PUBLIC_WS_URL: process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001',
   },
 
-  // Permitir build com warnings de TypeScript e ESLint
+  // SECURITY FIX [SEC-012]: Erros de TypeScript e ESLint devem falhar o build
+  // Isso garante que vulnerabilidades detectadas pelo linter sejam corrigidas antes do deploy
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   eslint: {
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: false,
+  },
+
+  // [P1-4 FIX] Bundle size optimizations for production
+  experimental: {
+    optimizePackageImports: [
+      'lucide-react',
+      '@radix-ui/react-dialog',
+      '@radix-ui/react-dropdown-menu',
+      '@radix-ui/react-avatar',
+      '@radix-ui/react-toast',
+      '@radix-ui/react-select',
+      '@radix-ui/react-tabs',
+      '@radix-ui/react-popover',
+      'date-fns',
+    ],
   },
 
   // Otimizações
   compiler: {
-    // TEMPORARIAMENTE DESABILITADO para debug Socket.io
-    // removeConsole: process.env.NODE_ENV === 'production',
+    // Remove console logs in production (except errors and warnings)
+    removeConsole: process.env.NODE_ENV === 'production' ? {
+      exclude: ['error', 'warn'],
+    } : false,
   },
 
   // Images (caso use WhatsApp media)

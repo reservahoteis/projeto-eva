@@ -29,6 +29,14 @@ export default function ConversationPage({ params }: ConversationPageProps) {
   const [isTyping, setIsTyping] = useState(false);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // [P0-3 FIX] Use refs for stable handler references to prevent memory leaks
+  // This avoids re-registering Socket.IO handlers on every render
+  const handlersRef = useRef({
+    handleNewMessage: null as any,
+    handleConversationUpdate: null as any,
+    handleMessageStatus: null as any,
+  });
+
   const { data: conversation, isLoading: conversationLoading } = useQuery({
     queryKey: ['conversation', params.id],
     queryFn: () => conversationService.getById(params.id),
@@ -84,15 +92,10 @@ export default function ConversationPage({ params }: ConversationPageProps) {
     return () => clearTimeout(timeoutId);
   }, [params.id, conversation?.unreadCount, queryClient]);
 
-  // Subscribe to real-time events for this conversation
+  // [P0-3 FIX] Initialize stable handlers in a separate effect
   useEffect(() => {
-    if (!isConnected || !params.id) return;
-
-    console.log('Subscribing to conversation:', params.id);
-    subscribeToConversation(params.id);
-
-    // Handle new messages - PADRÃO WHATSAPP WEB
-    const handleNewMessage = (data: any) => {
+    // Create stable handler references that don't change between renders
+    handlersRef.current.handleNewMessage = (data: any) => {
       console.log('🔵 SOCKET EVENT - message:new:', {
         fullData: data,
         dataKeys: Object.keys(data),
@@ -186,8 +189,7 @@ export default function ConversationPage({ params }: ConversationPageProps) {
       }
     };
 
-    // Handle conversation updates
-    const handleConversationUpdate = (data: { conversation: any }) => {
+    handlersRef.current.handleConversationUpdate = (data: { conversation: any }) => {
       // Validar se conversation existe e tem id
       if (!data?.conversation?.id) {
         console.warn('Invalid conversation update data:', data);
@@ -200,8 +202,7 @@ export default function ConversationPage({ params }: ConversationPageProps) {
       }
     };
 
-    // Handle message status updates
-    const handleMessageStatus = (data: { messageId: string; status: string }) => {
+    handlersRef.current.handleMessageStatus = (data: { messageId: string; status: string }) => {
       console.log('Message status update:', data);
 
       // Update message status in cache
@@ -216,19 +217,33 @@ export default function ConversationPage({ params }: ConversationPageProps) {
         };
       });
     };
+  }, [params.id, queryClient]);
 
-    // Register event listeners
-    on('message:new', handleNewMessage);
-    on('conversation:updated', handleConversationUpdate);
-    on('message:status', handleMessageStatus);
+  // [P0-3 FIX] Subscribe to real-time events with stable handler references
+  // This prevents memory leaks by ensuring handlers are properly cleaned up
+  useEffect(() => {
+    if (!isConnected || !params.id) return;
 
-    // Cleanup
+    console.log('Subscribing to conversation:', params.id);
+    subscribeToConversation(params.id);
+
+    // Create wrapper functions that call the stable handlers
+    const newMessageWrapper = (data: any) => handlersRef.current.handleNewMessage?.(data);
+    const conversationUpdateWrapper = (data: any) => handlersRef.current.handleConversationUpdate?.(data);
+    const messageStatusWrapper = (data: any) => handlersRef.current.handleMessageStatus?.(data);
+
+    // Register event listeners with wrapper functions
+    on('message:new', newMessageWrapper);
+    on('conversation:updated', conversationUpdateWrapper);
+    on('message:status', messageStatusWrapper);
+
+    // Cleanup - GUARANTEED to remove the exact same function references
     return () => {
       console.log('Unsubscribing from conversation:', params.id);
       unsubscribeFromConversation(params.id);
-      off('message:new', handleNewMessage);
-      off('conversation:updated', handleConversationUpdate);
-      off('message:status', handleMessageStatus);
+      off('message:new', newMessageWrapper);
+      off('conversation:updated', conversationUpdateWrapper);
+      off('message:status', messageStatusWrapper);
     };
   }, [isConnected, params.id, on, off, subscribeToConversation, unsubscribeFromConversation]);
 
