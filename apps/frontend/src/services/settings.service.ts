@@ -1,4 +1,4 @@
-import { apiClient } from '@/lib/api-client';
+import api from '@/lib/axios';
 
 const SETTINGS_API_BASE_URL = '/api/tenants' as const;
 
@@ -24,14 +24,14 @@ export interface AutoMessages {
 
 class SettingsService {
   async getWhatsAppConfig(): Promise<WhatsAppConfig> {
-    const { data } = await apiClient.get<WhatsAppConfig>(
+    const { data } = await api.get<WhatsAppConfig>(
       `${SETTINGS_API_BASE_URL}/whatsapp-config`
     );
     return data;
   }
 
   async updateWhatsAppConfig(config: UpdateWhatsAppConfig): Promise<WhatsAppConfig> {
-    const { data } = await apiClient.post<WhatsAppConfig>(
+    const { data } = await api.post<WhatsAppConfig>(
       `${SETTINGS_API_BASE_URL}/whatsapp-config`,
       config
     );

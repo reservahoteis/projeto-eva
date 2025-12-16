@@ -1,4 +1,4 @@
-import { apiClient } from '@/lib/api-client';
+import api from '@/lib/axios';
 import type { Contact, PaginatedResponse } from '@/types';
 
 interface ListContactsParams {
@@ -41,7 +41,7 @@ class ContactService {
    */
   async list(params?: ListContactsParams): Promise<PaginatedResponse<Contact>> {
     try {
-      const { data } = await apiClient.get<PaginatedResponse<Contact>>(
+      const { data } = await api.get<PaginatedResponse<Contact>>(
         CONTACT_API_BASE_URL,
         { params }
       );
@@ -57,7 +57,7 @@ class ContactService {
    */
   async getById(id: string): Promise<Contact> {
     try {
-      const { data } = await apiClient.get<Contact>(`${CONTACT_API_BASE_URL}/${id}`);
+      const { data } = await api.get<Contact>(`${CONTACT_API_BASE_URL}/${id}`);
       return data;
     } catch (error) {
       console.error('Erro ao buscar contato:', error);
@@ -70,7 +70,7 @@ class ContactService {
    */
   async getByPhone(phoneNumber: string): Promise<Contact> {
     try {
-      const { data } = await apiClient.get<Contact>(
+      const { data } = await api.get<Contact>(
         `${CONTACT_API_BASE_URL}/phone/${phoneNumber}`
       );
       return data;
@@ -97,7 +97,7 @@ class ContactService {
         throw new Error('Número de telefone deve ter entre 10 e 15 dígitos');
       }
 
-      const { data } = await apiClient.post<Contact>(CONTACT_API_BASE_URL, {
+      const { data } = await api.post<Contact>(CONTACT_API_BASE_URL, {
         ...contactData,
         phoneNumber: cleanPhone,
       });
@@ -126,7 +126,7 @@ class ContactService {
         throw new Error('Nenhum dado para atualizar');
       }
 
-      const { data } = await apiClient.patch<Contact>(
+      const { data } = await api.patch<Contact>(
         `${CONTACT_API_BASE_URL}/${id}`,
         cleanData
       );
@@ -143,7 +143,7 @@ class ContactService {
    */
   async delete(id: string): Promise<void> {
     try {
-      await apiClient.delete(`${CONTACT_API_BASE_URL}/${id}`);
+      await api.delete(`${CONTACT_API_BASE_URL}/${id}`);
     } catch (error) {
       console.error('Erro ao deletar contato:', error);
       throw error;
@@ -155,7 +155,7 @@ class ContactService {
    */
   async getStats(): Promise<ContactStats> {
     try {
-      const { data} = await apiClient.get<ContactStats>(`${CONTACT_API_BASE_URL}/stats`);
+      const { data} = await api.get<ContactStats>(`${CONTACT_API_BASE_URL}/stats`);
       return data;
     } catch (error) {
       console.error('Erro ao buscar estatísticas:', error);
@@ -168,7 +168,7 @@ class ContactService {
    */
   async search(query: string, limit: number = 10): Promise<Contact[]> {
     try {
-      const { data } = await apiClient.get<PaginatedResponse<Contact>>(
+      const { data } = await api.get<PaginatedResponse<Contact>>(
         CONTACT_API_BASE_URL,
         {
           params: {

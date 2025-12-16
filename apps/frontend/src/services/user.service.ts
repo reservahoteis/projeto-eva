@@ -1,4 +1,4 @@
-import { apiClient } from '@/lib/api-client';
+import api from '@/lib/axios';
 import type { User, UserRole, UserStatus, PaginatedResponse } from '@/types';
 
 interface ListUsersParams {
@@ -36,7 +36,7 @@ class UserService {
    * Listar usuários com paginação e filtros
    */
   async list(params?: ListUsersParams): Promise<PaginatedResponse<User>> {
-    const { data } = await apiClient.get<PaginatedResponse<User>>(
+    const { data } = await api.get<PaginatedResponse<User>>(
       USER_API_BASE_URL,
       { params }
     );
@@ -47,7 +47,7 @@ class UserService {
    * Buscar usuário por ID
    */
   async getById(id: string): Promise<User> {
-    const { data } = await apiClient.get<User>(`${USER_API_BASE_URL}/${id}`);
+    const { data } = await api.get<User>(`${USER_API_BASE_URL}/${id}`);
     return data;
   }
 
@@ -55,7 +55,7 @@ class UserService {
    * Criar novo usuário
    */
   async create(userData: CreateUserData): Promise<User> {
-    const { data } = await apiClient.post<User>(USER_API_BASE_URL, userData);
+    const { data } = await api.post<User>(USER_API_BASE_URL, userData);
     return data;
   }
 
@@ -63,7 +63,7 @@ class UserService {
    * Atualizar usuário
    */
   async update(id: string, userData: UpdateUserData): Promise<User> {
-    const { data } = await apiClient.patch<User>(
+    const { data } = await api.patch<User>(
       `${USER_API_BASE_URL}/${id}`,
       userData
     );
@@ -74,7 +74,7 @@ class UserService {
    * Atualizar status do usuário (ativar/suspender)
    */
   async updateStatus(id: string, statusData: UpdateUserStatusData): Promise<User> {
-    const { data} = await apiClient.patch<User>(
+    const { data} = await api.patch<User>(
       `${USER_API_BASE_URL}/${id}/status`,
       statusData
     );
@@ -85,7 +85,7 @@ class UserService {
    * Deletar usuário
    */
   async delete(id: string): Promise<void> {
-    await apiClient.delete(`${USER_API_BASE_URL}/${id}`);
+    await api.delete(`${USER_API_BASE_URL}/${id}`);
   }
 
   /**

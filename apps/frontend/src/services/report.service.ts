@@ -1,4 +1,4 @@
-import { apiClient } from '@/lib/api-client';
+import api from '@/lib/axios';
 import { ConversationStatus } from '@/types';
 
 const REPORT_API_BASE_URL = '/api/reports' as const;
@@ -53,7 +53,7 @@ export interface HourlyVolumeResponse {
 
 class ReportService {
   async getOverview(params?: ReportPeriod): Promise<OverviewResponse> {
-    const { data } = await apiClient.get<OverviewResponse>(
+    const { data } = await api.get<OverviewResponse>(
       `${REPORT_API_BASE_URL}/overview`,
       { params }
     );
@@ -61,7 +61,7 @@ class ReportService {
   }
 
   async getAttendantsPerformance(params?: ReportPeriod): Promise<AttendantsResponse> {
-    const { data } = await apiClient.get<AttendantsResponse>(
+    const { data } = await api.get<AttendantsResponse>(
       `${REPORT_API_BASE_URL}/attendants`,
       { params }
     );
@@ -69,7 +69,7 @@ class ReportService {
   }
 
   async getHourlyVolume(params?: ReportPeriod): Promise<HourlyVolumeResponse> {
-    const { data } = await apiClient.get<HourlyVolumeResponse>(
+    const { data } = await api.get<HourlyVolumeResponse>(
       `${REPORT_API_BASE_URL}/hourly`,
       { params }
     );
