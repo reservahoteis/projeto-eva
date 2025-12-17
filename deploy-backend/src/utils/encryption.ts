@@ -7,7 +7,6 @@
  */
 
 import crypto from 'crypto';
-import { env } from '@/config/env';
 
 // Validate encryption key exists and is proper length
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || '';

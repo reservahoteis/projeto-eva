@@ -287,8 +287,12 @@ export async function getHourlyVolume(
     }
 
     conversations.forEach((conv) => {
-      const hour = conv.createdAt.getHours();
-      hourlyData[hour]++;
+      if (conv && conv.createdAt) {
+        const hour = conv.createdAt.getHours();
+        if (hourlyData[hour] !== undefined) {
+          hourlyData[hour]++;
+        }
+      }
     });
 
     const hourlyVolume = Object.entries(hourlyData).map(([hour, count]) => ({

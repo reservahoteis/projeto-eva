@@ -63,7 +63,8 @@ export async function processMediaDownload(job: Job<DownloadMediaJobData>): Prom
 
     // 2. BAIXAR MÍDIA DO WHATSAPP COMO DATA URL (base64)
     // Normalizar o mimeType removendo parâmetros extras (ex: "audio/ogg; codecs=opus" -> "audio/ogg")
-    const cleanMimeType = mimeType.split(';')[0].trim();
+    const splitResult = mimeType.split(';')[0];
+    const cleanMimeType = splitResult?.trim() ?? 'application/octet-stream';
 
     const mediaUrl = await whatsAppService.downloadMediaAsDataUrl(tenantId, mediaId, cleanMimeType);
 
@@ -133,59 +134,6 @@ export async function processMediaDownload(job: Job<DownloadMediaJobData>): Prom
 
     throw error; // Re-throw para Bull tentar novamente
   }
-}
-
-/**
- * Obtém extensão de arquivo baseado no MIME type
- */
-function getFileExtension(mimeType: string): string {
-  const mimeToExt: Record<string, string> = {
-    // Images
-    'image/jpeg': '.jpg',
-    'image/jpg': '.jpg',
-    'image/png': '.png',
-    'image/gif': '.gif',
-    'image/webp': '.webp',
-    'image/bmp': '.bmp',
-    'image/svg+xml': '.svg',
-
-    // Videos
-    'video/mp4': '.mp4',
-    'video/mpeg': '.mpeg',
-    'video/quicktime': '.mov',
-    'video/x-msvideo': '.avi',
-    'video/x-ms-wmv': '.wmv',
-    'video/3gpp': '.3gp',
-    'video/webm': '.webm',
-
-    // Audio
-    'audio/mpeg': '.mp3',
-    'audio/mp3': '.mp3',
-    'audio/ogg': '.ogg',
-    'audio/wav': '.wav',
-    'audio/webm': '.webm',
-    'audio/aac': '.aac',
-    'audio/x-m4a': '.m4a',
-    'audio/amr': '.amr',
-
-    // Documents
-    'application/pdf': '.pdf',
-    'application/msword': '.doc',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
-    'application/vnd.ms-excel': '.xls',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx',
-    'application/vnd.ms-powerpoint': '.ppt',
-    'application/vnd.openxmlformats-officedocument.presentationml.presentation': '.pptx',
-    'application/zip': '.zip',
-    'application/x-rar-compressed': '.rar',
-    'application/x-7z-compressed': '.7z',
-    'text/plain': '.txt',
-    'text/csv': '.csv',
-    'application/json': '.json',
-    'application/xml': '.xml',
-  };
-
-  return mimeToExt[mimeType] || '.bin';
 }
 
 /**

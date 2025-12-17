@@ -488,7 +488,8 @@ export class ConversationService {
       ]);
 
       // Formatar estatísticas por status
-      const statusStats = {
+      const statusStats: Record<string, number> = {
+        BOT_HANDLING: 0,
         OPEN: 0,
         IN_PROGRESS: 0,
         WAITING: 0,
@@ -512,7 +513,7 @@ export class ConversationService {
       });
 
       // Calcular conversas ativas
-      const active = statusStats.OPEN + statusStats.IN_PROGRESS + statusStats.WAITING;
+      const active = (statusStats.OPEN ?? 0) + (statusStats.IN_PROGRESS ?? 0) + (statusStats.WAITING ?? 0);
 
       // Mensagens não lidas
       const unreadMessages = await prisma.message.count({

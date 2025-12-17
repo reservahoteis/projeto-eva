@@ -118,13 +118,19 @@ export class EscalationController {
    */
   async getById(req: Request, res: Response) {
     try {
-      const { id } = req.params;
+      const id = req.params.id;
+      if (!id) {
+        return res.status(400).json({ error: 'ID da escalação não fornecido' });
+      }
 
-      if (!req.tenantId) {
+      const userTenantId = req.tenantId;
+      if (!userTenantId) {
         return res.status(400).json({ error: 'Tenant ID nao encontrado' });
       }
 
-      const escalation = await escalationService.getEscalationById(id, req.tenantId!);
+      // Type narrowing garantido pela validação acima
+      const tenantId: string = userTenantId;
+      const escalation = await escalationService.getEscalationById(id, tenantId);
       return res.json(escalation);
     } catch (error) {
       logger.error({ error, escalationId: req.params.id }, 'Erro ao buscar escalacao');
@@ -143,12 +149,20 @@ export class EscalationController {
    */
   async update(req: Request, res: Response) {
     try {
-      const { id } = req.params;
-      const data = req.body as UpdateEscalationInput;
+      const id = req.params.id;
+      if (!id) {
+        return res.status(400).json({ error: 'ID da escalação não fornecido' });
+      }
 
-      if (!req.tenantId) {
+      const data = req.body as UpdateEscalationInput;
+      const userTenantId = req.tenantId;
+
+      if (!userTenantId) {
         return res.status(400).json({ error: 'Tenant ID nao encontrado' });
       }
+
+      // Type narrowing garantido pela validação acima
+      const tenantId: string = userTenantId;
 
       if (!data.status) {
         return res.status(400).json({ error: 'Status e obrigatorio' });
@@ -156,8 +170,8 @@ export class EscalationController {
 
       const updated = await escalationService.updateEscalationStatus(
         id,
-        req.tenantId!,
-        data.status as any,
+        tenantId,
+        data.status,
         req.user?.id
       );
 

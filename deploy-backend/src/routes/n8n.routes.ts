@@ -9,6 +9,21 @@ import logger from '@/config/logger';
 
 const router = Router();
 
+/**
+ * Configuração do número da central de vendas para notificações
+ */
+const SALES_CENTER_PHONE = '5511973178256';
+
+/**
+ * Mapeamento de unidades para nomes formatados
+ */
+const UNIT_DISPLAY_NAMES: Record<string, string> = {
+  'ILHABELA': 'Ilha Bela',
+  'CAMBURI': 'Camburi',
+  'CAMPOS': 'Campos do Jordão',
+  'PINHAL': 'Santo Antônio do Pinhal',
+};
+
 // Mapeamento de templates para seus textos (para exibição no painel)
 const TEMPLATE_TEXTS: Record<string, string> = {
   'notificacao_atendente': '🚨 NOVO CHAMADO\n\n{{1}}\n\nChamado gerado via atendimento automatico.',
@@ -41,7 +56,163 @@ function buildTemplateContent(templateName: string, params?: string[]): string {
   return content;
 }
 
-// Todas as rotas usam autenticação por API Key
+// ============================================
+// ROTAS PÚBLICAS (sem autenticação)
+// ============================================
+
+/**
+ * GET /api/n8n/track-click
+ * Rastreia cliques em botões do WhatsApp e notifica a central de vendas
+ *
+ * Este endpoint é público pois é acessado diretamente via link no WhatsApp.
+ * Não requer autenticação por API Key.
+ *
+ * Query Parameters:
+ * @param {string} phone - Telefone do cliente (obrigatório)
+ * @param {string} unidade - Nome da unidade: ILHABELA, CAMBURI, CAMPOS, PINHAL (obrigatório)
+ * @param {string} quarto - Nome do quarto selecionado (obrigatório)
+ * @param {string} redirect - URL de destino (URL encoded) (obrigatório)
+ * @param {string} tenant - Slug do tenant (opcional, default: hoteis-reserva)
+ *
+ * @example
+ * GET /api/n8n/track-click?phone=5512988367859&unidade=ILHABELA&quarto=Varanda%20Gourmet&redirect=https%3A%2F%2Fhbook.hsystem.com.br%2FBooking
+ *
+ * @returns 302 Redirect para a URL especificada
+ */
+router.get('/track-click', async (req: Request, res: Response) => {
+  const startTime = Date.now();
+
+  try {
+    const { phone, unidade, quarto, redirect, tenant: tenantSlug = 'hoteis-reserva' } = req.query;
+
+    // Validação de parâmetros obrigatórios
+    const missingParams: string[] = [];
+    if (!phone) missingParams.push('phone');
+    if (!unidade) missingParams.push('unidade');
+    if (!quarto) missingParams.push('quarto');
+    if (!redirect) missingParams.push('redirect');
+
+    if (missingParams.length > 0) {
+      logger.warn({
+        missingParams,
+        query: req.query
+      }, 'Track-click: Missing required parameters');
+
+      return res.status(400).json({
+        error: 'Parâmetros obrigatórios ausentes',
+        missing: missingParams,
+        usage: '/api/n8n/track-click?phone=TELEFONE&unidade=UNIDADE&quarto=QUARTO&redirect=URL',
+      });
+    }
+
+    // Decodificar e validar URL de redirect
+    let redirectUrl: string;
+    try {
+      redirectUrl = decodeURIComponent(redirect as string);
+      new URL(redirectUrl); // Valida se é uma URL válida
+    } catch {
+      logger.warn({ redirect }, 'Track-click: Invalid redirect URL');
+      return res.status(400).json({
+        error: 'URL de redirect inválida',
+        provided: redirect,
+      });
+    }
+
+    // Buscar tenant
+    const tenantData = await prisma.tenant.findUnique({
+      where: { slug: tenantSlug as string },
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        whatsappPhoneNumberId: true,
+        whatsappAccessToken: true,
+      },
+    });
+
+    if (!tenantData) {
+      logger.error({ tenantSlug }, 'Track-click: Tenant not found');
+      // Mesmo com erro, redireciona para não prejudicar a experiência do cliente
+      return res.redirect(302, redirectUrl);
+    }
+
+    // Formatar dados para a notificação
+    const phoneFormatted = (phone as string).replace(/\D/g, '');
+    const unidadeFormatted = UNIT_DISPLAY_NAMES[(unidade as string).toUpperCase()] || unidade;
+    const quartoFormatted = decodeURIComponent(quarto as string);
+
+    // Montar mensagem de notificação
+    const notificationMessage = `Cliente ${phoneFormatted} da unidade ${unidadeFormatted} clicou para ver valores do quarto ${quartoFormatted}`;
+
+    // Log do clique para analytics
+    logger.info({
+      event: 'click_track',
+      phone: phoneFormatted,
+      unidade: unidadeFormatted,
+      quarto: quartoFormatted,
+      tenantId: tenantData.id,
+      tenantSlug: tenantData.slug,
+      redirectUrl,
+    }, 'Track-click: Click registered');
+
+    // Enviar notificação para a central de vendas (fire-and-forget)
+    // Não bloqueamos o redirect esperando a resposta
+    whatsAppService.sendTemplate(
+      tenantData.id,
+      SALES_CENTER_PHONE,
+      'notificacao_atendente',
+      'pt_BR',
+      [notificationMessage]
+    ).then((result) => {
+      logger.info({
+        messageId: result.whatsappMessageId,
+        phone: phoneFormatted,
+        unidade: unidadeFormatted,
+        quarto: quartoFormatted,
+        duration: Date.now() - startTime,
+      }, 'Track-click: Notification sent to sales center');
+    }).catch((error) => {
+      logger.error({
+        error: error.message,
+        phone: phoneFormatted,
+        unidade: unidadeFormatted,
+        salesPhone: SALES_CENTER_PHONE,
+      }, 'Track-click: Failed to send notification');
+    });
+
+    // Redirect imediato para não atrasar a experiência do cliente
+    return res.redirect(302, redirectUrl);
+
+  } catch (error: any) {
+    logger.error({
+      error: error.message,
+      query: req.query,
+      duration: Date.now() - startTime,
+    }, 'Track-click: Unexpected error');
+
+    // Em caso de erro, tenta redirecionar se tiver URL válida
+    const { redirect } = req.query;
+    if (redirect) {
+      try {
+        const redirectUrl = decodeURIComponent(redirect as string);
+        return res.redirect(302, redirectUrl);
+      } catch {
+        // URL inválida, retorna erro
+      }
+    }
+
+    return res.status(500).json({
+      error: 'Erro interno ao processar rastreamento',
+      message: error.message,
+    });
+  }
+});
+
+// ============================================
+// ROTAS AUTENTICADAS (requerem API Key)
+// ============================================
+
+// Todas as rotas abaixo usam autenticação por API Key
 router.use(n8nAuthMiddleware);
 
 /**
@@ -949,8 +1120,16 @@ router.post('/set-hotel-unit', async (req: Request, res: Response) => {
       });
     }
 
+    // Mapeamento de unidades para cores das tags
+    const HOTEL_UNIT_COLORS: Record<string, string> = {
+      'Ilha Bela': '#3B82F6',           // Azul
+      'Campos do Jordão': '#10B981',    // Verde
+      'Camburi': '#F59E0B',             // Amarelo/Laranja
+      'Santo Antônio do Pinhal': '#8B5CF6', // Roxo
+    };
+
     // Validar hotelUnit
-    const validUnits = ['Ilha Bela', 'Campos do Jordão', 'Camburi', 'Santo Antônio do Pinhal'];
+    const validUnits = Object.keys(HOTEL_UNIT_COLORS);
     if (!validUnits.includes(hotelUnit)) {
       return res.status(400).json({
         error: `hotelUnit inválido. Valores válidos: ${validUnits.join(', ')}`,
@@ -1008,11 +1187,40 @@ router.post('/set-hotel-unit', async (req: Request, res: Response) => {
       });
     }
 
-    // Atualizar hotelUnit da conversa
+    // Buscar ou criar a tag para a unidade hoteleira
+    let tag = await prisma.tag.findUnique({
+      where: {
+        tenantId_name: {
+          tenantId: req.tenantId!,
+          name: hotelUnit,
+        },
+      },
+    });
+
+    if (!tag) {
+      tag = await prisma.tag.create({
+        data: {
+          tenantId: req.tenantId!,
+          name: hotelUnit,
+          color: HOTEL_UNIT_COLORS[hotelUnit] ?? '#6B7280', // Fallback para cinza
+        },
+      });
+      logger.info({
+        tenantId: req.tenantId,
+        tagId: tag.id,
+        tagName: tag.name,
+      }, 'N8N: Created new tag for hotel unit');
+    }
+
+    // Atualizar hotelUnit da conversa e vincular a tag
     const updatedConversation = await prisma.conversation.update({
       where: { id: conversation.id },
       data: {
         hotelUnit,
+        tags: {
+          // Desconectar tags de outras unidades e conectar a tag atual
+          set: [{ id: tag.id }],
+        },
       },
       include: {
         contact: {
@@ -1061,6 +1269,11 @@ router.post('/set-hotel-unit', async (req: Request, res: Response) => {
       success: true,
       conversationId: conversation.id,
       hotelUnit,
+      tag: {
+        id: tag.id,
+        name: tag.name,
+        color: tag.color,
+      },
       message: `Unidade hoteleira definida como: ${hotelUnit}`,
     });
   } catch (error: any) {

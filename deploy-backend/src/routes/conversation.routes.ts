@@ -58,7 +58,11 @@ router.patch(
   validate(toggleIaLockSchema),
   async (req, res) => {
     try {
-      const { id } = req.params;
+      const id = req.params.id;
+      if (!id) {
+        return res.status(400).json({ error: 'ID da conversa não fornecido' });
+      }
+
       const { locked } = req.body;
 
       if (!req.tenantId) {
@@ -69,9 +73,11 @@ router.patch(
         return res.status(401).json({ error: 'Usuario nao autenticado' });
       }
 
+      // tenantId validado acima - type narrowing garantido
+      const tenantId: string = req.tenantId;
       const updated = await escalationService.toggleIaLock(
         id,
-        req.tenantId,
+        tenantId,
         locked,
         req.user.id
       );

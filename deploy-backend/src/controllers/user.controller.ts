@@ -12,13 +12,19 @@ import type {
  * Listar usuários do tenant
  */
 export async function listUsers(
-  req: Request<{}, {}, {}, ListUsersQuery>,
+  req: Request,
   res: Response,
   next: NextFunction
 ) {
   try {
-    const tenantId = req.user!.tenantId!;
-    const { page = 1, limit = 20, role, status, search } = req.query;
+    const tenantId = req.user?.tenantId;
+    if (!tenantId) {
+      res.status(400).json({ error: 'Tenant ID não encontrado' });
+      return;
+    }
+
+    const query = req.query as unknown as ListUsersQuery;
+    const { page = 1, limit = 20, role, status, search } = query;
 
     const skip = (Number(page) - 1) * Number(limit);
 
@@ -104,10 +110,15 @@ export async function getUserById(
   req: Request<{ id: string }>,
   res: Response,
   next: NextFunction
-) {
+): Promise<void> {
   try {
-    const tenantId = req.user!.tenantId!;
+    const tenantId = req.user!.tenantId;
     const { id } = req.params;
+
+    if (!tenantId) {
+      res.status(400).json({ message: 'Tenant ID não encontrado' });
+      return;
+    }
 
     const user = await (prisma.user.findFirst as any)({
       where: {
@@ -134,7 +145,8 @@ export async function getUserById(
     });
 
     if (!user) {
-      return res.status(404).json({ message: 'Usuário não encontrado' });
+      res.status(404).json({ message: 'Usuário não encontrado' });
+      return;
     }
 
     res.json({
@@ -162,10 +174,15 @@ export async function createUser(
   req: Request<{}, {}, CreateUserInput>,
   res: Response,
   next: NextFunction
-) {
+): Promise<void> {
   try {
-    const tenantId = req.user!.tenantId!;
+    const tenantId = req.user!.tenantId;
     const data = req.body as CreateUserInput;
+
+    if (!tenantId) {
+      res.status(400).json({ message: 'Tenant ID não encontrado' });
+      return;
+    }
 
     // Verificar se email já existe
     const existingUser = await prisma.user.findUnique({
@@ -173,7 +190,8 @@ export async function createUser(
     });
 
     if (existingUser) {
-      return res.status(400).json({ message: 'Email já cadastrado' });
+      res.status(400).json({ message: 'Email já cadastrado' });
+      return;
     }
 
     // SECURITY FIX [SEC-015]: Hash da senha com salt=12 (padronizado com auth.service.ts)
@@ -220,11 +238,16 @@ export async function updateUser(
   req: Request<{ id: string }, {}, UpdateUserBody>,
   res: Response,
   next: NextFunction
-) {
+): Promise<void> {
   try {
-    const tenantId = req.user!.tenantId!;
+    const tenantId = req.user!.tenantId;
     const { id } = req.params;
     const data = req.body as UpdateUserBody;
+
+    if (!tenantId) {
+      res.status(400).json({ message: 'Tenant ID não encontrado' });
+      return;
+    }
 
     // Verificar se usuário existe e pertence ao tenant
     const existingUser = await prisma.user.findFirst({
@@ -235,7 +258,8 @@ export async function updateUser(
     });
 
     if (!existingUser) {
-      return res.status(404).json({ message: 'Usuário não encontrado' });
+      res.status(404).json({ message: 'Usuário não encontrado' });
+      return;
     }
 
     // Se está alterando email, verificar se já existe
@@ -245,7 +269,8 @@ export async function updateUser(
       });
 
       if (emailExists) {
-        return res.status(400).json({ message: 'Email já cadastrado' });
+        res.status(400).json({ message: 'Email já cadastrado' });
+        return;
       }
     }
 
@@ -296,11 +321,16 @@ export async function updateUserStatus(
   req: Request<{ id: string }, {}, UpdateUserStatusBody>,
   res: Response,
   next: NextFunction
-) {
+): Promise<void> {
   try {
-    const tenantId = req.user!.tenantId!;
+    const tenantId = req.user!.tenantId;
     const { id } = req.params;
     const data = req.body as UpdateUserStatusBody;
+
+    if (!tenantId) {
+      res.status(400).json({ message: 'Tenant ID não encontrado' });
+      return;
+    }
 
     // Verificar se usuário existe e pertence ao tenant
     const existingUser = await prisma.user.findFirst({
@@ -311,12 +341,14 @@ export async function updateUserStatus(
     });
 
     if (!existingUser) {
-      return res.status(404).json({ message: 'Usuário não encontrado' });
+      res.status(404).json({ message: 'Usuário não encontrado' });
+      return;
     }
 
     // Não permitir que usuário altere seu próprio status
     if (id === req.user!.id) {
-      return res.status(400).json({ message: 'Você não pode alterar seu próprio status' });
+      res.status(400).json({ message: 'Você não pode alterar seu próprio status' });
+      return;
     }
 
     // Atualizar status
@@ -348,10 +380,15 @@ export async function deleteUser(
   req: Request<{ id: string }>,
   res: Response,
   next: NextFunction
-) {
+): Promise<void> {
   try {
-    const tenantId = req.user!.tenantId!;
+    const tenantId = req.user!.tenantId;
     const { id } = req.params;
+
+    if (!tenantId) {
+      res.status(400).json({ message: 'Tenant ID não encontrado' });
+      return;
+    }
 
     // Verificar se usuário existe e pertence ao tenant
     const existingUser = await prisma.user.findFirst({
@@ -362,12 +399,14 @@ export async function deleteUser(
     });
 
     if (!existingUser) {
-      return res.status(404).json({ message: 'Usuário não encontrado' });
+      res.status(404).json({ message: 'Usuário não encontrado' });
+      return;
     }
 
     // Não permitir que usuário delete a si mesmo
     if (id === req.user!.id) {
-      return res.status(400).json({ message: 'Você não pode deletar sua própria conta' });
+      res.status(400).json({ message: 'Você não pode deletar sua própria conta' });
+      return;
     }
 
     // Verificar se usuário tem conversas atribuídas
@@ -376,10 +415,11 @@ export async function deleteUser(
     });
 
     if (conversationsCount > 0) {
-      return res.status(400).json({
+      res.status(400).json({
         message: 'Não é possível deletar usuário com conversas atribuídas',
         conversationsCount,
       });
+      return;
     }
 
     // Deletar usuário

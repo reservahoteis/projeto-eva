@@ -5,6 +5,7 @@ import { BadRequestError, InternalServerError } from '@/utils/errors';
 import logger from '@/config/logger';
 import { decrypt } from '@/utils/encryption';
 import { processImageForWhatsApp, uploadImageToWhatsApp } from '@/utils/image-processor';
+import { mediaStorageService, type MediaType } from '@/services/media-storage.service';
 
 interface SendMessageResult {
   whatsappMessageId: string;
@@ -108,6 +109,106 @@ export class WhatsAppService {
       return dataUrl;
     } catch (error: any) {
       logger.error({ error, tenantId, mediaId }, 'Failed to download media as data URL');
+      return null;
+    }
+  }
+
+  /**
+   * Baixar mídia do WhatsApp e salvar em disco.
+   * Retorna URL HTTP pública em vez de Data URL (base64).
+   *
+   * Esta é a função principal para download de mídias que serão
+   * processadas por sistemas externos (N8N, IA, etc.) que precisam
+   * de URLs HTTP válidas.
+   *
+   * @param tenantId - ID do tenant
+   * @param mediaId - ID da mídia no WhatsApp
+   * @param mimeType - Tipo MIME da mídia
+   * @param messageType - Tipo de mensagem (IMAGE, VIDEO, AUDIO, DOCUMENT)
+   * @returns URL HTTP pública ou null se falhar
+   */
+  async downloadMediaAndSave(
+    tenantId: string,
+    mediaId: string,
+    mimeType: string,
+    messageType: string
+  ): Promise<{ url: string; fileSize: number } | null> {
+    try {
+      const axiosInstance = await this.getAxiosForTenant(tenantId);
+
+      // 1. Obter URL temporária da mídia
+      const mediaResponse = await axiosInstance.get(`/${mediaId}`);
+      const mediaUrl = mediaResponse.data?.url;
+
+      if (!mediaUrl) {
+        logger.warn({ tenantId, mediaId }, 'No media URL found');
+        return null;
+      }
+
+      // 2. Baixar a mídia (a URL requer o mesmo token de auth)
+      const downloadResponse = await axiosInstance.get(mediaUrl, {
+        responseType: 'arraybuffer',
+      });
+
+      const buffer = Buffer.from(downloadResponse.data);
+
+      // 3. Determinar tipo de mídia para organização de diretórios
+      const splitResult = mimeType.split(';')[0];
+      const cleanMimeType = (splitResult ?? 'application/octet-stream').trim();
+      let storageType: MediaType = 'document';
+
+      switch (messageType.toUpperCase()) {
+        case 'IMAGE':
+          storageType = cleanMimeType.includes('webp') ? 'sticker' : 'image';
+          break;
+        case 'VIDEO':
+          storageType = 'video';
+          break;
+        case 'AUDIO':
+          storageType = 'audio';
+          break;
+        case 'DOCUMENT':
+          storageType = 'document';
+          break;
+        case 'STICKER':
+          storageType = 'sticker';
+          break;
+      }
+
+      // 4. Salvar em disco e obter URL pública
+      const result = await mediaStorageService.saveMedia(
+        tenantId,
+        buffer,
+        cleanMimeType,
+        storageType
+      );
+
+      logger.info(
+        {
+          tenantId,
+          mediaId,
+          fileId: result.fileId,
+          publicUrl: result.publicUrl,
+          fileSize: result.fileSize,
+          storageType,
+        },
+        'Media downloaded and saved to disk'
+      );
+
+      return {
+        url: result.publicUrl,
+        fileSize: result.fileSize,
+      };
+    } catch (error: any) {
+      logger.error(
+        {
+          error: error.message,
+          tenantId,
+          mediaId,
+          stack: error.stack,
+        },
+        'Failed to download and save media'
+      );
       return null;
     }
   }

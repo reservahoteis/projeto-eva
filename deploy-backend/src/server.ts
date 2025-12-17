@@ -9,7 +9,7 @@ import { testRedisConnection } from './config/redis';
 import logger from './config/logger';
 import { errorHandler, notFoundHandler } from './middlewares/error-handler.middleware';
 import { tenantIsolationMiddleware } from './middlewares/tenant.middleware';
-import { generalLimiter } from './middlewares/rate-limit.middleware';
+import { generalLimiter, n8nLimiter } from './middlewares/rate-limit.middleware';
 import { initializeSocketIO } from './config/socket';
 import { registerWorkers } from './queues/workers';
 
@@ -67,7 +67,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Request logging (development)
 if (isDev) {
-  app.use((req, res, next) => {
+  app.use((req, _res, next) => {
     logger.info({
       method: req.method,
       url: req.url,
@@ -77,16 +77,13 @@ if (isDev) {
   });
 }
 
-// Rate limiting
-app.use(generalLimiter);
-
 // Tenant isolation (CRÍTICO)
 app.use(tenantIsolationMiddleware);
 
 // ============================================
 // HEALTH CHECK
 // ============================================
-app.get('/health', (req, res) => {
+app.get('/health', (_req, res) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
@@ -110,6 +107,7 @@ import healthRoutes from './routes/health.routes';
 import debugRoutes from './routes/debug.routes';
 import escalationRoutes from './routes/escalation.routes';
 import n8nRoutes from './routes/n8n.routes';
+import mediaRoutes from './routes/media.routes';
 
 // Auth (público - sem tenant isolation)
 app.use('/auth', authRoutes);
@@ -118,13 +116,33 @@ app.use('/auth', authRoutes);
 app.use('/webhooks', webhookRoutes);
 
 // N8N Integration (autenticação própria por API Key)
-app.use('/api/n8n', n8nRoutes);
+// Rate limit especifico: 5000 req/min por tenant (carrosseis enviam muitas msgs)
+// IMPORTANTE: n8nLimiter JA esta aplicado - NAO aplicar generalLimiter aqui!
+app.use('/api/n8n', n8nLimiter, n8nRoutes);
+
+// Media serving (público - IDs únicos não sequenciais, rate limited por IP)
+app.use('/api/media', mediaRoutes);
 
 // Health check (completo com database/redis)
 app.use('/api', healthRoutes);
 
 // Debug routes (apenas desenvolvimento)
 app.use('/api/debug', debugRoutes);
+
+// Rate limiting geral para rotas da API
+// IMPORTANTE: Excluir rotas que já têm rate limiter próprio (N8N, media, health, debug)
+app.use('/api', (req, res, next) => {
+  // Rotas com rate limiter próprio - NÃO aplicar generalLimiter
+  const excludedPaths = ['/api/n8n', '/api/media', '/api/health', '/api/debug'];
+  const shouldSkip = excludedPaths.some(path => req.originalUrl.startsWith(path));
+
+  if (shouldSkip) {
+    return next();
+  }
+
+  // Aplicar rate limit geral para demais rotas
+  generalLimiter(req, res, next);
+});
 
 // API protegida (com tenant)
 app.use('/api/tenants', tenantRoutes);

@@ -12,13 +12,31 @@ import type {
   ListContactsQuery,
 } from '@/validators/contact.validator';
 
+/**
+ * Helper para extrair e validar tenantId
+ * Retorna string se válido, envia erro e retorna null caso contrário
+ */
+function requireTenantId(req: Request, res: Response): string | null {
+  const tenantId = req.user?.tenantId;
+  if (!tenantId) {
+    res.status(400).json({
+      error: 'Tenant ID não encontrado',
+      message: 'Usuário deve estar associado a um tenant',
+    });
+    return null;
+  }
+  return tenantId;
+}
+
 class ContactController {
   /**
    * Listar contatos do tenant com paginação e busca
    */
-  async list(req: Request, res: Response, next: NextFunction) {
+  async list(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = requireTenantId(req, res);
+      if (!tenantId) return;
+
       const {
         page = 1,
         limit = 20,
@@ -29,7 +47,7 @@ class ContactController {
 
       logger.info({
         tenantId,
-        userId: req.user!.id,
+        userId: req.user?.id,
         params: { page, limit, search, sortBy, sortOrder },
       }, 'Listando contatos');
 
@@ -61,14 +79,20 @@ class ContactController {
   /**
    * Buscar contato por ID
    */
-  async getById(req: Request, res: Response, next: NextFunction) {
+  async getById(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { id } = req.params;
-      const tenantId = req.user!.tenantId;
+      const id = req.params.id;
+      if (!id) {
+        res.status(400).json({ error: 'ID do contato não fornecido' });
+        return;
+      }
+
+      const tenantId = requireTenantId(req, res);
+      if (!tenantId) return;
 
       logger.info({
         tenantId,
-        userId: req.user!.id,
+        userId: req.user?.id,
         contactId: id,
       }, 'Buscando contato por ID');
 
@@ -80,10 +104,11 @@ class ContactController {
           contactId: id,
         }, 'Contato não encontrado');
 
-        return res.status(404).json({
+        res.status(404).json({
           error: 'Contato não encontrado',
           message: 'O contato solicitado não existe ou não pertence ao seu tenant',
         });
+        return;
       }
 
       logger.debug({
@@ -105,14 +130,16 @@ class ContactController {
   /**
    * Criar novo contato
    */
-  async create(req: Request, res: Response, next: NextFunction) {
+  async create(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = requireTenantId(req, res);
+      if (!tenantId) return;
+
       const contactData = req.body as CreateContactInput;
 
       logger.info({
         tenantId,
-        userId: req.user!.id,
+        userId: req.user?.id,
         phoneNumber: contactData.phoneNumber,
         hasName: !!contactData.name,
         hasEmail: !!contactData.email,
@@ -131,11 +158,12 @@ class ContactController {
           existingContactId: existingContact.id,
         }, 'Tentativa de criar contato duplicado');
 
-        return res.status(409).json({
+        res.status(409).json({
           error: 'Contato já existe',
           message: `Já existe um contato com o número ${contactData.phoneNumber}`,
           existingContactId: existingContact.id,
         });
+        return;
       }
 
       const contact = await contactService.createContact({
@@ -152,7 +180,7 @@ class ContactController {
 
       logger.info({
         tenantId,
-        userId: req.user!.id,
+        userId: req.user?.id,
         contactId: contact.id,
         phoneNumber: contact.phoneNumber,
       }, 'Contato criado com sucesso');
@@ -171,15 +199,22 @@ class ContactController {
   /**
    * Atualizar contato existente
    */
-  async update(req: Request, res: Response, next: NextFunction) {
+  async update(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { id } = req.params;
-      const tenantId = req.user!.tenantId;
+      const id = req.params.id;
+      if (!id) {
+        res.status(400).json({ error: 'ID do contato não fornecido' });
+        return;
+      }
+
+      const tenantId = requireTenantId(req, res);
+      if (!tenantId) return;
+
       const updateData = req.body as UpdateContactInput;
 
       logger.info({
         tenantId,
-        userId: req.user!.id,
+        userId: req.user?.id,
         contactId: id,
         fieldsToUpdate: Object.keys(updateData),
       }, 'Atualizando contato');
@@ -193,10 +228,11 @@ class ContactController {
           contactId: id,
         }, 'Tentativa de atualizar contato inexistente');
 
-        return res.status(404).json({
+        res.status(404).json({
           error: 'Contato não encontrado',
           message: 'O contato não existe ou não pertence ao seu tenant',
         });
+        return;
       }
 
       const updatedContact = await contactService.updateContact(id, tenantId, updateData);
@@ -206,7 +242,7 @@ class ContactController {
 
       logger.info({
         tenantId,
-        userId: req.user!.id,
+        userId: req.user?.id,
         contactId: id,
         updatedFields: Object.keys(updateData),
       }, 'Contato atualizado com sucesso');
@@ -225,14 +261,20 @@ class ContactController {
   /**
    * Deletar contato
    */
-  async delete(req: Request, res: Response, next: NextFunction) {
+  async delete(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { id } = req.params;
-      const tenantId = req.user!.tenantId;
+      const id = req.params.id;
+      if (!id) {
+        res.status(400).json({ error: 'ID do contato não fornecido' });
+        return;
+      }
+
+      const tenantId = requireTenantId(req, res);
+      if (!tenantId) return;
 
       logger.info({
         tenantId,
-        userId: req.user!.id,
+        userId: req.user?.id,
         contactId: id,
       }, 'Deletando contato');
 
@@ -245,10 +287,11 @@ class ContactController {
           contactId: id,
         }, 'Tentativa de deletar contato inexistente');
 
-        return res.status(404).json({
+        res.status(404).json({
           error: 'Contato não encontrado',
           message: 'O contato não existe ou não pertence ao seu tenant',
         });
+        return;
       }
 
       // Verificar se há conversas ativas com este contato
@@ -261,10 +304,11 @@ class ContactController {
           activeConversations: activeConversationsCount,
         }, 'Tentativa de deletar contato com conversas ativas');
 
-        return res.status(400).json({
+        res.status(400).json({
           error: 'Não é possível deletar contato',
           message: `Este contato possui ${activeConversationsCount} conversa(s) ativa(s). Archive as conversas antes de deletar o contato.`,
         });
+        return;
       }
 
       await contactService.deleteContact(id, tenantId);
@@ -274,7 +318,7 @@ class ContactController {
 
       logger.info({
         tenantId,
-        userId: req.user!.id,
+        userId: req.user?.id,
         contactId: id,
       }, 'Contato deletado com sucesso');
 
@@ -292,14 +336,23 @@ class ContactController {
   /**
    * Buscar contato por número de telefone
    */
-  async getByPhone(req: Request, res: Response, next: NextFunction) {
+  async getByPhone(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { phoneNumber } = req.params;
-      const tenantId = req.user!.tenantId;
+      const tenantId = requireTenantId(req, res);
+      if (!tenantId) return;
+
+      if (!phoneNumber) {
+        res.status(400).json({
+          error: 'Número de telefone não fornecido',
+          message: 'O parâmetro phoneNumber é obrigatório',
+        });
+        return;
+      }
 
       logger.info({
         tenantId,
-        userId: req.user!.id,
+        userId: req.user?.id,
         phoneNumber,
       }, 'Buscando contato por número de telefone');
 
@@ -311,10 +364,11 @@ class ContactController {
           phoneNumber,
         }, 'Contato não encontrado pelo número');
 
-        return res.status(404).json({
+        res.status(404).json({
           error: 'Contato não encontrado',
           message: `Nenhum contato encontrado com o número ${phoneNumber}`,
         });
+        return;
       }
 
       logger.debug({
@@ -337,13 +391,14 @@ class ContactController {
   /**
    * Buscar estatísticas dos contatos
    */
-  async getStats(req: Request, res: Response, next: NextFunction) {
+  async getStats(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = requireTenantId(req, res);
+      if (!tenantId) return;
 
       logger.info({
         tenantId,
-        userId: req.user!.id,
+        userId: req.user?.id,
       }, 'Buscando estatísticas de contatos');
 
       const [totalContacts, contactsWithConversations, recentContacts] = await Promise.all([
