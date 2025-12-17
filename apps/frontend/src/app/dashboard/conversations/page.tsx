@@ -23,13 +23,10 @@ export default function ConversationsPage() {
     queryFn: () => {
       // Filtro "Todas" deve excluir conversas sendo atendidas por bot
       // Apenas mostra conversas que precisam de atenção humana
-      const statusesToExclude = [ConversationStatus.BOT_HANDLING];
-
+      // TODO: Backend deve aceitar parâmetro excludeStatus para filtrar BOT_HANDLING
       return conversationService.list({
         status: selectedStatus === 'all' ? undefined : selectedStatus,
         limit: 100,
-        // TODO: Backend deve aceitar parâmetro excludeStatus
-        // Por ora, filtramos no frontend
       });
     },
   });

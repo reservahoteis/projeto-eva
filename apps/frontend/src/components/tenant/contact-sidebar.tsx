@@ -381,14 +381,14 @@ export function ContactSidebar({ conversation, onIaLockChange }: ContactSidebarP
             )}
 
             {/* Notes */}
-            {conversation.contact.metadata?.notes && (
+            {conversation.contact.metadata?.notes && Array.isArray(conversation.contact.metadata.notes) && conversation.contact.metadata.notes.length > 0 && (
               <div className="glass-card-sidebar compact">
                 <div className="space-y-2">
                   <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                     Observações
                   </span>
                   <p className="text-sm text-muted-foreground">
-                    {conversation.contact.metadata.notes}
+                    {conversation.contact.metadata.notes.map(note => note.content).join('\n')}
                   </p>
                 </div>
               </div>

@@ -4,9 +4,8 @@ import { useState, memo } from 'react';
 import { Message, MessageStatus, MessageType } from '@/types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Check, CheckCheck, Paperclip, X, Download, ZoomIn, ZoomOut, List, LayoutGrid, FileText, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
-import { cn, getInitials } from '@/lib/utils';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Check, CheckCheck, Paperclip, X, Download, ZoomIn, ZoomOut, FileText } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { WhatsAppListMessage } from './WhatsAppListMessage';
 import { WhatsAppCarouselMessage } from './WhatsAppCarouselMessage';
 
@@ -24,14 +23,14 @@ interface MessageBubbleProps {
 export const MessageBubble = memo(function MessageBubble({
   message,
   isOwnMessage,
-  showAvatar,
+  showAvatar: _showAvatar,
   groupedWithNext,
-  contactName,
-  contactAvatar
+  contactName: _contactName,
+  contactAvatar: _contactAvatar
 }: MessageBubbleProps) {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [zoom, setZoom] = useState(1);
-  const [currentCardIndex, setCurrentCardIndex] = useState(0);
+  const [_currentCardIndex, _setCurrentCardIndex] = useState(0);
 
   const bubbleColor = isOwnMessage ? 'bg-[#d9fdd3]' : 'bg-white';
 

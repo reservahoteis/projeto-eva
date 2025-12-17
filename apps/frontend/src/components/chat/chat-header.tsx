@@ -19,12 +19,11 @@ interface ChatHeaderProps {
 export function ChatHeader({ conversation, isOnline, isTyping, isConnected, onBack }: ChatHeaderProps) {
   const getStatusBadge = () => {
     const variants: Record<string, { label: string; className: string }> = {
+      [ConversationStatus.BOT_HANDLING]: { label: 'Bot', className: 'bg-purple-100 text-purple-800' },
       [ConversationStatus.OPEN]: { label: 'Aberta', className: 'bg-yellow-100 text-yellow-800' },
-      [ConversationStatus.PENDING]: { label: 'Pendente', className: 'bg-orange-100 text-orange-800' },
       [ConversationStatus.IN_PROGRESS]: { label: 'Em Andamento', className: 'bg-blue-100 text-blue-800' },
-      [ConversationStatus.RESOLVED]: { label: 'Resolvida', className: 'bg-green-100 text-green-800' },
+      [ConversationStatus.WAITING]: { label: 'Aguardando', className: 'bg-orange-100 text-orange-800' },
       [ConversationStatus.CLOSED]: { label: 'Fechada', className: 'bg-gray-100 text-gray-800' },
-      WAITING: { label: 'Aguardando', className: 'bg-purple-100 text-purple-800' },
     };
 
     const status = variants[conversation.status] || { label: 'Desconhecido', className: 'bg-gray-100 text-gray-800' };

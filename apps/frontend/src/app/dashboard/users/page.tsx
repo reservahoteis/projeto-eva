@@ -40,7 +40,7 @@ import { ResetPasswordForm } from '@/components/tenant/reset-password-form';
 
 export default function UsersPage() {
   const queryClient = useQueryClient();
-  const [page, setPage] = useState(1);
+  const [page, _setPage] = useState(1); // TODO: Implement pagination UI
 
   // Estados dos dialogs
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -334,7 +334,7 @@ export default function UsersPage() {
 
                 <div className="flex items-center justify-between sm:justify-end gap-4 sm:gap-6 pl-13 sm:pl-0">
                   <div className="text-center">
-                    <p className="text-xl sm:text-2xl font-bold text-[var(--text-primary)]">{user.conversationsCount || 0}</p>
+                    <p className="text-xl sm:text-2xl font-bold text-[var(--text-primary)]">{(user as any).conversationsCount || 0}</p>
                     <p className="text-xs text-[var(--text-muted)]">Conversas</p>
                   </div>
 

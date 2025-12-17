@@ -92,13 +92,14 @@ export function WhatsAppCarouselMessage({
 
   // Touch handlers for mobile
   const handleTouchStart = (e: React.TouchEvent) => {
+    if (!e.touches[0]) return;
     setIsDragging(true);
     startXRef.current = e.touches[0].pageX - (scrollContainerRef.current?.offsetLeft || 0);
     scrollLeftRef.current = scrollContainerRef.current?.scrollLeft || 0;
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isDragging || !scrollContainerRef.current) return;
+    if (!isDragging || !scrollContainerRef.current || !e.touches[0]) return;
 
     const x = e.touches[0].pageX - (scrollContainerRef.current.offsetLeft || 0);
     const walk = (x - startXRef.current) * 1.5;

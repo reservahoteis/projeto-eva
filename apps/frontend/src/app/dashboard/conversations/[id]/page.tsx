@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useMutation } from '@tanstack/react-query';
 import { conversationService } from '@/services/conversation.service';
 import { messageService } from '@/services/message.service';
@@ -15,6 +15,7 @@ import { useSocketContext } from '@/contexts/socket-context';
 import { useEffect, useState, useRef } from 'react';
 import { Message, MessageType } from '@/types';
 import { toast } from 'sonner';
+import { Loader2 } from 'lucide-react';
 
 interface ConversationPageProps {
   params: {
@@ -37,14 +38,21 @@ export default function ConversationPage({ params }: ConversationPageProps) {
     handleMessageStatus: null as any,
   });
 
-  const { data: conversation, isLoading: conversationLoading } = useQuery({
+  // [PERFORMANCE OPTIMIZATION] Use placeholderData to keep previous conversation
+  // visible while loading the new one. This prevents blank screens during navigation.
+  // staleTime of 30s avoids unnecessary refetches for recently viewed conversations.
+  const { data: conversation, isLoading: conversationLoading, isFetching: conversationFetching, isPlaceholderData: isConversationStale } = useQuery({
     queryKey: ['conversation', params.id],
     queryFn: () => conversationService.getById(params.id),
+    placeholderData: keepPreviousData,
+    staleTime: 30000, // 30 seconds - avoid refetch for recently viewed conversations
   });
 
-  const { data: messagesData, isLoading: messagesLoading, refetch: refetchMessages } = useQuery({
+  const { data: messagesData, isLoading: messagesLoading, isFetching: messagesFetching, isPlaceholderData: isMessagesStale, refetch: refetchMessages } = useQuery({
     queryKey: ['messages', params.id],
     queryFn: () => messageService.list(params.id, { limit: 100 }),
+    placeholderData: keepPreviousData,
+    staleTime: 30000, // 30 seconds - avoid refetch for recently viewed conversations
   });
 
   // Send message mutation
@@ -160,12 +168,9 @@ export default function ConversationPage({ params }: ConversationPageProps) {
           }
         );
 
-        // FORÇAR RE-RENDER: Invalidar query das mensagens (não da conversa!)
-        console.log('🔄 Forcing UI update by invalidating messages query');
-        queryClient.invalidateQueries({
-          queryKey: ['messages', params.id],
-          exact: true
-        });
+        // [PERFORMANCE] Remove invalidateQueries - já atualizamos o cache com setQueryData
+        // Invalidar aqui causa refetch desnecessário e perda de performance
+        // console.log('🔄 Cache updated - no invalidation needed');
 
         // Also update conversation's lastMessage
         if (conversation) {
@@ -296,7 +301,16 @@ export default function ConversationPage({ params }: ConversationPageProps) {
     };
   }, [params.id, setActiveConversationId]);
 
-  if (conversationLoading || messagesLoading) {
+  // [PERFORMANCE] Intelligent loading states:
+  // - Only show fullscreen loading on INITIAL load (no cached data)
+  // - If we have placeholder data, show it with an inline loading indicator
+  // - Never show "not found" while actively fetching
+  const isInitialLoading = (conversationLoading || messagesLoading) && !conversation && !messagesData;
+  const isRefreshing = conversationFetching || messagesFetching;
+  const showInlineLoader = isRefreshing && (isConversationStale || isMessagesStale);
+
+  // Only show fullscreen loader on initial load (no data in cache)
+  if (isInitialLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
@@ -304,7 +318,8 @@ export default function ConversationPage({ params }: ConversationPageProps) {
     );
   }
 
-  if (!conversation) {
+  // Only show "not found" if we're NOT fetching and genuinely have no data
+  if (!conversation && !conversationFetching) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
@@ -313,6 +328,15 @@ export default function ConversationPage({ params }: ConversationPageProps) {
             Voltar para conversas
           </Button>
         </div>
+      </div>
+    );
+  }
+
+  // If we're still fetching but have no data at all, show loading
+  if (!conversation) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -331,13 +355,22 @@ export default function ConversationPage({ params }: ConversationPageProps) {
 
         {/* Chat Header - Fixed at top */}
         <div className="flex-shrink-0 relative z-10">
-          <ChatHeader
-            conversation={conversation}
-            isOnline={false}
-            isTyping={isUserTyping(params.id)}
-            isConnected={isConnected}
-            onBack={() => router.push('/dashboard/conversations')}
-          />
+          <div className="relative">
+            <ChatHeader
+              conversation={conversation}
+              isOnline={false}
+              isTyping={isUserTyping(params.id)}
+              isConnected={isConnected}
+              onBack={() => router.push('/dashboard/conversations')}
+            />
+            {/* Inline loading indicator when refreshing conversation data */}
+            {showInlineLoader && (
+              <div className="absolute top-2 right-4 bg-background/80 backdrop-blur-sm px-3 py-1 rounded-full shadow-sm border border-border flex items-center gap-2">
+                <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">Atualizando...</span>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Message List - Takes remaining space */}

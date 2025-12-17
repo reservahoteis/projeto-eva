@@ -234,11 +234,18 @@ class ContactService {
     if (!name) return '?';
 
     const parts = name.trim().split(/\s+/);
+    const firstPart = parts[0];
+    const lastPart = parts[parts.length - 1];
+
+    if (!firstPart) return '?';
+
     if (parts.length === 1) {
-      return parts[0].substring(0, 2).toUpperCase();
+      return firstPart.substring(0, 2).toUpperCase();
     }
 
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    const firstChar = firstPart[0] ?? '';
+    const lastChar = lastPart?.[0] ?? '';
+    return (firstChar + lastChar).toUpperCase();
   }
 
   /**
@@ -254,7 +261,7 @@ class ContactService {
       '#EC4899', // pink-500
       '#06B6D4', // cyan-500
       '#6366F1', // indigo-500
-    ];
+    ] as const;
 
     // Usar hash do ID para escolher cor consistente
     let hash = 0;
@@ -262,7 +269,8 @@ class ContactService {
       hash = id.charCodeAt(i) + ((hash << 5) - hash);
     }
 
-    return colors[Math.abs(hash) % colors.length];
+    const index = Math.abs(hash) % colors.length;
+    return colors[index] ?? '#3B82F6';
   }
 }
 

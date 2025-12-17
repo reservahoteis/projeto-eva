@@ -50,8 +50,9 @@ api.interceptors.request.use(
       // Para subdomínios que são tenants reais (ex: hotel1.botreserva.com.br)
       else {
         const parts = hostname.split('.');
-        if (parts.length > 2 && !nonTenantSubdomains.includes(parts[0])) {
-          tenantSlug = parts[0];
+        const firstPart = parts[0];
+        if (parts.length > 2 && firstPart && !nonTenantSubdomains.includes(firstPart)) {
+          tenantSlug = firstPart;
         } else {
           tenantSlug = 'hoteis-reserva'; // Fallback
         }

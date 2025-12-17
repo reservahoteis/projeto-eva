@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useDebounce } from '@/hooks/use-debounce';
 import { contactService } from '@/services/contact.service';
 import { useSocketContext } from '@/contexts/socket-context';
@@ -90,7 +90,7 @@ export default function ContactsPage() {
         sortBy: 'createdAt',
         sortOrder: 'desc',
       }),
-    keepPreviousData: true,
+    placeholderData: keepPreviousData, // React Query v5 migration
   });
 
   // Query para estatísticas
@@ -104,8 +104,8 @@ export default function ContactsPage() {
   const createMutation = useMutation({
     mutationFn: contactService.create,
     onSuccess: () => {
-      queryClient.invalidateQueries(['contacts']);
-      queryClient.invalidateQueries(['contact-stats']);
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      queryClient.invalidateQueries({ queryKey: ['contact-stats'] });
       setIsCreateOpen(false);
       toast.success('Contato criado com sucesso!');
     },
@@ -120,7 +120,7 @@ export default function ContactsPage() {
     mutationFn: ({ id, data }: { id: string; data: any }) =>
       contactService.update(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries(['contacts']);
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
       setEditingContact(null);
       toast.success('Contato atualizado com sucesso!');
     },
@@ -134,8 +134,8 @@ export default function ContactsPage() {
   const deleteMutation = useMutation({
     mutationFn: contactService.delete,
     onSuccess: () => {
-      queryClient.invalidateQueries(['contacts']);
-      queryClient.invalidateQueries(['contact-stats']);
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      queryClient.invalidateQueries({ queryKey: ['contact-stats'] });
       setDeletingContact(null);
       toast.success('Contato removido com sucesso!');
     },
@@ -150,8 +150,8 @@ export default function ContactsPage() {
     if (!socket) return;
 
     const handleContactCreated = ({ contact }: { contact: Contact }) => {
-      queryClient.invalidateQueries(['contacts']);
-      queryClient.invalidateQueries(['contact-stats']);
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      queryClient.invalidateQueries({ queryKey: ['contact-stats'] });
       toast.info(`Novo contato: ${contact.name || contact.phoneNumber}`);
     };
 
@@ -182,7 +182,7 @@ export default function ContactsPage() {
           };
         }
       );
-      queryClient.invalidateQueries(['contact-stats']);
+      queryClient.invalidateQueries({ queryKey: ['contact-stats'] });
     };
 
     socket.on('contact:created', handleContactCreated);
@@ -567,10 +567,10 @@ export default function ContactsPage() {
         )}
 
         {/* Paginação */}
-        {contactsData && contactsData.pagination.pages > 1 && (
+        {contactsData && contactsData.pagination.totalPages > 1 && (
           <div className="flex items-center justify-between mt-4">
             <p className="text-sm text-[var(--text-muted)]">
-              Mostrando {contactsData.data.length} de {contactsData.total} contatos
+              Mostrando {contactsData.data.length} de {contactsData.pagination.total} contatos
             </p>
             <div className="flex gap-2">
               <Button
@@ -586,7 +586,7 @@ export default function ContactsPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => setCurrentPage(currentPage + 1)}
-                disabled={currentPage === contactsData.pagination.pages}
+                disabled={currentPage === contactsData.pagination.totalPages}
                 className="glass-btn"
               >
                 Próximo
@@ -608,7 +608,7 @@ export default function ContactsPage() {
           <ContactForm
             onSubmit={handleCreateContact}
             onCancel={() => setIsCreateOpen(false)}
-            isLoading={createMutation.isLoading}
+            isLoading={createMutation.isPending}
             submitLabel="Criar Contato"
           />
         </DialogContent>
@@ -630,7 +630,7 @@ export default function ContactsPage() {
             contact={editingContact}
             onSubmit={handleUpdateContact}
             onCancel={() => setEditingContact(null)}
-            isLoading={updateMutation.isLoading}
+            isLoading={updateMutation.isPending}
             submitLabel="Salvar Alterações"
           />
         </DialogContent>

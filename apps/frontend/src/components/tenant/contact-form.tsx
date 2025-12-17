@@ -92,12 +92,18 @@ export function ContactForm({
   // Preencher formulário com dados do contato
   useEffect(() => {
     if (contact) {
+      // Extrair notas do metadata (pode ser array de ContactNote ou undefined)
+      const notesArray = contact.metadata?.notes;
+      const notesText = Array.isArray(notesArray) && notesArray.length > 0
+        ? notesArray.map(note => note.content).join('\n')
+        : '';
+
       form.reset({
         phoneNumber: contact.phoneNumber,
         name: contact.name || '',
         email: contact.email || '',
         profilePictureUrl: contact.profilePictureUrl || '',
-        notes: contact.metadata?.notes || '',
+        notes: notesText,
       });
     }
   }, [contact, form]);

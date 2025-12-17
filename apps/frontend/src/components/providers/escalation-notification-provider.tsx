@@ -4,7 +4,7 @@ import { useEffect, useCallback } from 'react';
 import { useSocket } from '@/hooks/useSocket';
 import { useNotificationSound } from '@/hooks/useNotificationSound';
 import { toast } from 'sonner';
-import { Bell, AlertTriangle } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { EscalationReason } from '@/types';
 
 const ESCALATION_REASON_LABELS: Record<EscalationReason, string> = {
@@ -110,23 +110,25 @@ export function EscalationNotificationProvider({ children }: EscalationNotificat
 
   // Solicitar permissao para notificacoes do navegador
   useEffect(() => {
-    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
-      // Aguardar interacao do usuario antes de solicitar
-      const requestPermission = () => {
-        Notification.requestPermission();
-        document.removeEventListener('click', requestPermission);
-      };
-
-      // Solicitar apos 5 segundos de uso
-      const timer = setTimeout(() => {
-        document.addEventListener('click', requestPermission, { once: true });
-      }, 5000);
-
-      return () => {
-        clearTimeout(timer);
-        document.removeEventListener('click', requestPermission);
-      };
+    if (typeof window === 'undefined' || !('Notification' in window) || Notification.permission !== 'default') {
+      return;
     }
+
+    // Aguardar interacao do usuario antes de solicitar
+    const requestPermission = () => {
+      Notification.requestPermission();
+      document.removeEventListener('click', requestPermission);
+    };
+
+    // Solicitar apos 5 segundos de uso
+    const timer = setTimeout(() => {
+      document.addEventListener('click', requestPermission, { once: true });
+    }, 5000);
+
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('click', requestPermission);
+    };
   }, []);
 
   return <>{children}</>;

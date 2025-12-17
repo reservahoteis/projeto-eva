@@ -95,8 +95,15 @@ class UserService {
     if (!name) return '?';
 
     const parts = name.trim().split(' ');
-    if (parts.length >= 2) {
-      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    const firstPart = parts[0];
+    const lastPart = parts[parts.length - 1];
+
+    if (!firstPart) return '?';
+
+    if (parts.length >= 2 && lastPart) {
+      const firstChar = firstPart[0] ?? '';
+      const lastChar = lastPart[0] ?? '';
+      return (firstChar + lastChar).toUpperCase();
     }
     return name.substring(0, 2).toUpperCase();
   }
@@ -114,11 +121,11 @@ class UserService {
       '#F7DC6F', // Yellow
       '#BB8FCE', // Purple
       '#85C1E2', // Sky Blue
-    ];
+    ] as const;
 
     // Use first char of ID to pick color
     const index = id.charCodeAt(0) % colors.length;
-    return colors[index];
+    return colors[index] ?? '#FF6B6B';
   }
 
   /**

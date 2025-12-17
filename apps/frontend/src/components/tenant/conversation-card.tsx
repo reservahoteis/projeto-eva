@@ -14,7 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { MessageSquare, MoreVertical, User, Clock, CheckCircle2, Building2 } from 'lucide-react';
+import { MessageSquare, MoreVertical, User, Clock, CheckCircle2 } from 'lucide-react';
 import { getInitials, formatTime } from '@/lib/utils';
 import { conversationService } from '@/services/conversation.service';
 import { toast } from 'sonner';

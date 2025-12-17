@@ -33,8 +33,13 @@ import {
 } from 'lucide-react';
 import { getInitials } from '@/lib/utils';
 import { UserRole } from '@/types';
+import type { LucideIcon } from 'lucide-react';
 
-const tenantNavigation = [
+type NavigationItem =
+  | { name: string; href: string; icon: LucideIcon; badge?: number; adminOnly?: boolean }
+  | { name: 'divider'; label: string };
+
+const tenantNavigation: NavigationItem[] = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Conversas', href: '/dashboard/conversations', icon: MessageSquare, badge: 3 },
   { name: 'Contatos', href: '/dashboard/contacts', icon: Phone },
@@ -43,7 +48,7 @@ const tenantNavigation = [
   { name: 'Configurações', href: '/dashboard/settings', icon: Settings, adminOnly: true },
 ];
 
-const superAdminNavigation = [
+const superAdminNavigation: NavigationItem[] = [
   { name: 'Tenants', href: '/super-admin/tenants', icon: Building2 },
   { name: 'Configurações SA', href: '/super-admin/settings', icon: Settings },
   { name: 'divider', label: 'Dashboard Tenant' },
@@ -102,7 +107,8 @@ export function MobileHeader({ variant = 'tenant' }: MobileHeaderProps) {
                   return true;
                 })
                 .map((item, index) => {
-                  if (item.name === 'divider') {
+                  // Type guard for divider items
+                  if (item.name === 'divider' && 'label' in item) {
                     return (
                       <div key={`divider-${index}`} className="pt-5 pb-2">
                         <p className="px-3 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
@@ -111,6 +117,9 @@ export function MobileHeader({ variant = 'tenant' }: MobileHeaderProps) {
                       </div>
                     );
                   }
+
+                  // Type guard for regular navigation items
+                  if (!('href' in item)) return null;
 
                   const Icon = item.icon;
                   const isActive = pathname === item.href;

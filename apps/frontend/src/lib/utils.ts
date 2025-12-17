@@ -119,16 +119,17 @@ export function getTenantFromHostname(hostname: string | null | undefined): stri
   if (!hostname) return null;
 
   const parts = hostname.split('.');
+  const firstPart = parts[0];
+  const lastPart = parts[parts.length - 1];
 
   // localhost:3000 or super-admin.localhost:3000
-  if (parts[0] === 'localhost' || parts[parts.length - 1].includes('localhost')) {
-    return parts[0] === 'localhost' ? null : parts[0];
+  if (firstPart === 'localhost' || (lastPart && lastPart.includes('localhost'))) {
+    return firstPart === 'localhost' ? null : (firstPart ?? null);
   }
 
   // Production: tenant.seucrm.com
-  if (parts.length >= 3) {
-    const tenant = parts[0];
-    return tenant === 'www' || tenant === 'super-admin' ? null : tenant;
+  if (parts.length >= 3 && firstPart) {
+    return firstPart === 'www' || firstPart === 'super-admin' ? null : firstPart;
   }
 
   return null;

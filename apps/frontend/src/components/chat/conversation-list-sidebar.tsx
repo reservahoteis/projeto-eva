@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { conversationService } from '@/services/conversation.service';
 import { Conversation, ConversationStatus } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -18,7 +18,6 @@ interface ConversationListSidebarProps {
 
 export function ConversationListSidebar({ activeConversationId }: ConversationListSidebarProps) {
   const router = useRouter();
-  const params = useParams();
   const [searchQuery, setSearchQuery] = useState('');
   const { on, off, isConnected } = useSocketContext();
 

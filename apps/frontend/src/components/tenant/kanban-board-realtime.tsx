@@ -77,7 +77,7 @@ export function KanbanBoardRealtime({ initialConversations, onUpdate }: KanbanBo
     };
 
     // Handle conversation status update
-    const handleConversationUpdate = ({ conversation, conversationId }: { conversation?: Conversation; conversationId?: string }) => {
+    const handleConversationUpdate = ({ conversation, conversationId: _conversationId }: { conversation?: Conversation; conversationId?: string }) => {
       // Se não tiver conversation completa, ignorar (apenas atualização parcial)
       if (!conversation || !conversation.id) {
         console.log('handleConversationUpdate: partial update, refreshing data...');
