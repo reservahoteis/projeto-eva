@@ -9,16 +9,17 @@ import logger from '@/config/logger';
  * A API Key é o whatsappAccessToken do tenant (criptografado)
  * Ou pode ser uma chave dedicada configurada no tenant
  */
-export async function n8nAuthMiddleware(req: Request, res: Response, next: NextFunction) {
+export async function n8nAuthMiddleware(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     // Buscar API Key do header ou query
     const apiKey = req.headers['x-api-key'] as string || req.query.apiKey as string;
 
     if (!apiKey) {
-      return res.status(401).json({
+      res.status(401).json({
         error: 'API Key não fornecida',
         message: 'Inclua X-API-Key no header ou apiKey na query string',
       });
+      return;
     }
 
     // Buscar tenant pela API Key
@@ -31,10 +32,11 @@ export async function n8nAuthMiddleware(req: Request, res: Response, next: NextF
     const [tenantSlug, secretKey] = apiKey.split(':');
 
     if (!tenantSlug || !secretKey) {
-      return res.status(401).json({
+      res.status(401).json({
         error: 'Formato de API Key inválido',
         message: 'Use o formato: {tenant-slug}:{secret-key}',
       });
+      return;
     }
 
     // Buscar tenant
@@ -51,17 +53,19 @@ export async function n8nAuthMiddleware(req: Request, res: Response, next: NextF
     });
 
     if (!tenant) {
-      return res.status(401).json({
+      res.status(401).json({
         error: 'Tenant não encontrado',
         message: `Tenant com slug "${tenantSlug}" não existe`,
       });
+      return;
     }
 
     if (tenant.status !== 'ACTIVE') {
-      return res.status(403).json({
+      res.status(403).json({
         error: 'Tenant inativo',
         message: 'Este tenant não está ativo',
       });
+      return;
     }
 
     // Validar secret key
@@ -70,18 +74,20 @@ export async function n8nAuthMiddleware(req: Request, res: Response, next: NextF
 
     if (secretKey !== validKey) {
       logger.warn({ tenantSlug, providedKey: secretKey.substring(0, 8) + '...' }, 'Invalid N8N API key attempt');
-      return res.status(401).json({
+      res.status(401).json({
         error: 'API Key inválida',
         message: 'A chave secreta não corresponde',
       });
+      return;
     }
 
     // Verificar se WhatsApp está configurado
     if (!tenant.whatsappPhoneNumberId || !tenant.whatsappAccessToken) {
-      return res.status(400).json({
+      res.status(400).json({
         error: 'WhatsApp não configurado',
         message: 'Este tenant não tem WhatsApp configurado',
       });
+      return;
     }
 
     // Adicionar tenant ao request
@@ -97,7 +103,7 @@ export async function n8nAuthMiddleware(req: Request, res: Response, next: NextF
     next();
   } catch (error) {
     logger.error({ error }, 'N8N auth middleware error');
-    return res.status(500).json({
+    res.status(500).json({
       error: 'Erro interno',
       message: 'Erro ao autenticar requisição',
     });

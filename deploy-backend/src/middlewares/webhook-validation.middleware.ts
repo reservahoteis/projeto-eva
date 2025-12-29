@@ -21,7 +21,7 @@ interface WebhookRequest extends Request {
  */
 export async function validateWhatsAppWebhook(
   req: WebhookRequest,
-  res: Response,
+  _res: Response,
   next: NextFunction
 ) {
   try {
@@ -199,7 +199,7 @@ export function handleWebhookVerification(
  */
 export function webhookRateLimiter(
   req: WebhookRequest,
-  res: Response,
+  _res: Response,
   next: NextFunction
 ) {
   // Skip rate limiting for verified webhooks
@@ -217,7 +217,7 @@ export function webhookRateLimiter(
  */
 export async function logWebhookEvent(
   req: WebhookRequest,
-  res: Response,
+  _res: Response,
   next: NextFunction
 ) {
   if (!req.webhookVerified || req.method === 'GET') {

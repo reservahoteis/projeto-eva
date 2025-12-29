@@ -3,7 +3,8 @@ import { prisma } from '@/config/database';
 import { whatsAppService } from '@/services/whatsapp.service';
 import logger from '@/config/logger';
 import type { SendMessageJobData } from '../whatsapp-webhook.queue';
-import { InternalServerError } from '@/utils/errors';
+// InternalServerError disponível para uso futuro se necessário
+// import { InternalServerError } from '@/utils/errors';
 import { emitNewMessage, emitMessageStatusUpdate } from '@/config/socket';
 
 /**
@@ -220,7 +221,7 @@ export async function processOutgoingMessage(job: Job<SendMessageJobData>): Prom
 
     // Atualizar status da mensagem para FAILED
     try {
-      const failedMessage = await prisma.message.update({
+      await prisma.message.update({
         where: {
           id: messageId,
         },

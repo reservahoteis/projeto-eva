@@ -1,0 +1,324 @@
+================================================================================
+                    CREDENCIAIS COMPLETAS DO PROJETO
+                    Bot Reserva - WhatsApp CRM SaaS
+                    Gerado em: 27/12/2024
+================================================================================
+
+================================================================================
+                              VPS - PRODUCAO
+                           IP: 72.61.39.235
+================================================================================
+
+--- ACESSO SSH ---
+Host: 72.61.39.235
+Usuario: root
+Porta: 22
+
+--- POSTGRESQL (Producao) ---
+Host: crm-postgres (interno) / 72.61.39.235:5432 (externo)
+Database: crm_whatsapp_saas
+Usuario: crm_user
+Senha: CrmSecurePass2024!
+URL Completa: postgresql://crm_user:CrmSecurePass2024!@crm-postgres:5432/crm_whatsapp_saas?schema=public
+
+--- REDIS (Producao) ---
+Host: crm-redis (interno)
+Porta: 6379
+Senha: RedisSecurePass2024!
+URL Completa: redis://:RedisSecurePass2024!@crm-redis:6379
+
+--- JWT / AUTENTICACAO (Producao) ---
+JWT_SECRET: crm_jwt_secret_min_32_chars_production_2024
+JWT_REFRESH_SECRET: crm_refresh_secret_min_32_chars_production_2024
+
+--- ENCRYPTION KEY (Producao) ---
+ENCRYPTION_KEY: 2b135afe5bc4771af1ca5a0d2d0a05dcfcbda79ec9d118fa3722670c0e98245a
+
+--- WHATSAPP WEBHOOK ---
+WHATSAPP_API_VERSION: v21.0
+WHATSAPP_WEBHOOK_VERIFY_TOKEN: webhook_verify_token_secure_2024
+
+--- N8N INTEGRACAO ---
+N8N_API_KEY: n8n_api_key_change_me
+
+--- SUPER ADMIN (Sistema) ---
+Email: admin@example.com
+Senha: Admin123!Change
+
+
+================================================================================
+                           VPS - DESENVOLVIMENTO
+                        Porta Backend Dev: 3002
+================================================================================
+
+--- POSTGRESQL (Dev) ---
+Host: postgres-dev (interno) / 72.61.39.235:5433 (externo)
+Database: crm_whatsapp_dev
+Usuario: crm_user
+Senha: CrmSecurePass2024!
+URL Completa: postgresql://crm_user:CrmSecurePass2024!@postgres-dev:5432/crm_whatsapp_dev?schema=public
+
+--- REDIS (Dev) ---
+Host: redis-dev (interno) / 72.61.39.235:6380 (externo)
+Porta: 6379
+Senha: RedisSecurePass2024!
+URL Completa: redis://:RedisSecurePass2024!@redis-dev:6379
+
+--- JWT / AUTENTICACAO (Dev) ---
+JWT_SECRET: crm_jwt_secret_min_32_chars_production_2024
+JWT_REFRESH_SECRET: crm_refresh_secret_min_32_chars_production_2024
+
+--- ENCRYPTION KEY (Dev) ---
+ENCRYPTION_KEY: 3c246bfe6cd5882bf2db6b1e3e1b16edfddce8afd0e229gb4833781d1f09356b
+
+--- SUPER ADMIN (Dev) ---
+Email: admin-dev@example.com
+Senha: AdminDev123!Change
+
+
+================================================================================
+                         TENANT: HOTEIS RESERVA
+                   (Dados do banco de dados producao)
+================================================================================
+
+--- IDENTIFICACAO ---
+ID: 916ca70a-0428-47f8-98a3-0f791e42f292
+Nome: Hoteis Reserva
+Slug: hoteis-reserva
+Email: contato@hoteisreserva.com.br
+
+--- WHATSAPP BUSINESS API (DESCRIPTOGRAFADO) ---
+Phone Number ID: 782115004996178
+Business Account ID: 1377104410568104
+Webhook Verify Token: webhook_verify_token_secure_2024
+
+Access Token (TEXTO PLANO):
+EAAhLVq96CJ8BQLpnUGYLgrdQBJQAkq5E5Ma7MxYK9DPtmCOVIn9XSULZBMimDAPRfNCeR9VloyxzUNMh45TcpkL2zlGcYtYF5TIsbpvDbkd0ZBYPhzbDT08SWjzwIog2muJzhpGZARFTrsgmZCX1lQzXZAvo6YiK4aVZAUImdwIZB5PGU8eZAThLbadxpOcG7QZDZD
+
+App Secret (TEXTO PLANO):
+286cb2bd03d39b0a1b572aa4d84e6dbb
+
+--- Valores Criptografados (como estao no banco) ---
+Access Token (Criptografado): 7877f573bed90fb6048e63f1f5cf934f:53b308ac6f09aa87bf1e85fb70868d1d461273769df4c933593f019c9bedb02f5d2b82046c0d65942cd1a87b6d48659a0b162b66b981e8608bb88fd4b6e5977f9387b1a7e96eef62c15a010d9921add43f45511fb48f4903eae2abdb91ba478301ab5c75630f167d5c5c12c4e186176c7de8115746d0eea07aa31f8de63f8846d08c54c7f2e5401f84b042e3344b1b43cc0b0606c8f57016ef2f64d3944a842648c00cff93e6c11d06c2d9b1c99b1ad4040f436197102394a2f1133e0fa32f01a45913d72a2ef86b4df78dccca986dd5
+App Secret (Criptografado): bfbc25bd83b2d5e0ae5499c52483c70c:a8da3c3aeacfc86f528713a3dfdb266ee7ae2129b6510ac443a94921fc870bc525746e239cce54988eeb24f76db563e8
+
+--- N8N INTEGRACAO ---
+Webhook URL: https://n8n.3ian.com.br/webhook/recebimento-hoteis-reserva-ok
+API Key: 372aa0d0239b819db7e1d53aa30c1147892f4a628732b8627b4910b9a0e5d420
+
+
+================================================================================
+                         USUARIOS DO SISTEMA
+                      (Banco de dados producao)
+================================================================================
+
+--- SUPER ADMIN ---
+Email: admin@botreserva.com.br
+Nome: Super Admin
+Role: SUPER_ADMIN
+
+--- TENANT ADMINS ---
+Email: central@hoteisreserva.com.br | Nome: Central de Reservas | Role: TENANT_ADMIN
+Email: thiagopedrosa.mkt@gmail.com | Nome: Thiago Pedrosa Mkt | Role: TENANT_ADMIN
+Email: headredereserva@gmail.com | Nome: Mariana Maya | Role: TENANT_ADMIN
+Email: contato@3ian.com.br | Nome: Vinicius almeida | Role: TENANT_ADMIN
+Email: admin@hoteisreserva.com.br | Nome: Administrador Hoteis Reserva | Role: TENANT_ADMIN
+Email: tech@hoteisreserva.com.br | Nome: Tainan Head Tech | Role: TENANT_ADMIN
+
+--- ATENDENTES ---
+Email: paulareservaihabela@gmail.com | Nome: Paula Maya Head Camburi | Role: ATTENDANT
+Email: grazielereservacampos@gmail.com | Nome: Graziele Head Campos | Role: ATTENDANT
+Email: reserva.bonin@gmail.com | Nome: Luiz Gustavo Head Ilhabela | Role: ATTENDANT
+Email: Eduardosindelar@icloud.com | Nome: Eduardo Head SAP | Role: ATTENDANT
+
+
+================================================================================
+                       ARQUIVOS .ENV LOCAIS
+================================================================================
+
+--- .env.production (Raiz do projeto) ---
+DATABASE_URL: postgresql://crm_user:CrmSecurePass2024!@postgres:5432/crm_whatsapp_saas
+POSTGRES_USER: crm_user
+POSTGRES_PASSWORD: CrmSecurePass2024!
+POSTGRES_DB: crm_whatsapp_saas
+REDIS_HOST: redis
+REDIS_PORT: 6379
+REDIS_PASSWORD: RedisSecurePass2024!
+JWT_SECRET: prod_jwt_secret_smart_hoteis_2024_min_32_chars_a1b2c3d4e5f6
+JWT_REFRESH_SECRET: prod_refresh_smart_hoteis_2024_different_min_32_x9y8z7
+WHATSAPP_API_VERSION: v21.0
+WHATSAPP_WEBHOOK_VERIFY_TOKEN: smart_hoteis_webhook_2024_secure_token
+WHATSAPP_TEST_PHONE_NUMBER_ID: 796628440207853
+WHATSAPP_TEST_ACCESS_TOKEN: EAAhLVq96CJ8BP5mHvbFMCAhDzhZBnNsFlUxVuXD7bMl28xpGPPu1SXHMm18uKcCAMcWRpUZAahZBJcGrPkXl2RGmHz015gOSxPcKbCmu6h4OmHQOAbVzQ2TRDQbjc6p0vN1khEXBqremV5D9yTC94YMtv7rLV7KeOdnY3S5K9IYGFbsiCeZBElIDEWbflhLDINtEesLocF0OAA4OxPK0RZA5lJvbTkeZArRqPo3kPyFqTZAZBWSooCCKrpol5sN17M0ZCObYgkT3yZBLIspr7AV1YZBeZAM94IfPBpO3CdWqipUZD
+WHATSAPP_APP_ID: 2334635496966303
+WHATSAPP_WABA_ID: 1350650163185836
+N8N_API_KEY: n8n_prod_api_key_smart_hoteis_2024
+SUPER_ADMIN_EMAIL: admin@smarthoteis.com
+SUPER_ADMIN_PASSWORD: AdminSecure2024!
+
+
+================================================================================
+                        FRONTEND URLS
+================================================================================
+
+--- Producao ---
+API URL: https://api.botreserva.com.br
+WebSocket URL: https://api.botreserva.com.br
+Frontend Vercel: https://projeto-eva-frontend.vercel.app
+Dominios: https://www.botreserva.com.br, https://botreserva.com.br
+
+--- Desenvolvimento ---
+API URL (Dev): https://app.botreserva.com.br (porta 3002)
+
+
+================================================================================
+                        CONTAINERS DOCKER (VPS)
+================================================================================
+
+Producao:
+- crm-backend (porta 3001)
+- crm-postgres (porta 5432)
+- crm-redis (porta 6379)
+- crm-nginx (portas 80, 443)
+- crm-certbot
+
+Desenvolvimento:
+- crm-backend-dev (porta 3002)
+- crm-postgres-dev (porta 5433 externa)
+- crm-redis-dev (porta 6380 externa)
+
+
+================================================================================
+                        CERTIFICADOS SSL
+================================================================================
+
+Dominio: botreserva.com.br
+Caminho: /etc/letsencrypt/live/botreserva.com.br/
+- fullchain.pem
+- privkey.pem
+
+
+================================================================================
+                        SERVICOS EXTERNOS
+================================================================================
+
+--- VERCEL (Frontend) ---
+Projeto: projeto-eva-frontend
+URL: https://projeto-eva-frontend.vercel.app
+
+--- N8N ---
+URL: https://n8n.3ian.com.br
+Webhook: https://n8n.3ian.com.br/webhook/recebimento-hoteis-reserva-ok
+
+--- MINIO (Storage de Imagens) ---
+URL: https://minio-api.srv02.messengermax.com.br
+Status: OFFLINE (verificar - causando erro nos carrosseis)
+
+
+================================================================================
+           COMO DESCRIPTOGRAFAR TOKENS DO WHATSAPP
+================================================================================
+
+O sistema usa AES-256-CBC para criptografar tokens sensiveis.
+Formato do dado criptografado: "iv:encrypted_data" (separado por dois pontos)
+
+--- ENCRYPTION KEY (Producao) ---
+2b135afe5bc4771af1ca5a0d2d0a05dcfcbda79ec9d118fa3722670c0e98245a
+
+--- CODIGO JAVASCRIPT PARA DESCRIPTOGRAFAR ---
+
+const crypto = require('crypto');
+
+const ENCRYPTION_KEY = '2b135afe5bc4771af1ca5a0d2d0a05dcfcbda79ec9d118fa3722670c0e98245a';
+const ALGORITHM = 'aes-256-cbc';
+
+function decrypt(text) {
+  const parts = text.split(':');
+  const iv = Buffer.from(parts[0], 'hex');
+  const encryptedText = Buffer.from(parts[1], 'hex');
+
+  const decipher = crypto.createDecipheriv(
+    ALGORITHM,
+    Buffer.from(ENCRYPTION_KEY, 'hex'),
+    iv
+  );
+
+  let decrypted = decipher.update(encryptedText);
+  decrypted = Buffer.concat([decrypted, decipher.final()]);
+
+  return decrypted.toString('utf8');
+}
+
+// Exemplo de uso:
+const accessTokenEncrypted = '7877f573bed90fb6048e63f1f5cf934f:53b308ac...';
+console.log(decrypt(accessTokenEncrypted));
+
+
+--- CODIGO PYTHON PARA DESCRIPTOGRAFAR ---
+
+from Crypto.Cipher import AES
+import binascii
+
+ENCRYPTION_KEY = bytes.fromhex('2b135afe5bc4771af1ca5a0d2d0a05dcfcbda79ec9d118fa3722670c0e98245a')
+
+def decrypt(encrypted_text):
+    parts = encrypted_text.split(':')
+    iv = bytes.fromhex(parts[0])
+    encrypted_data = bytes.fromhex(parts[1])
+
+    cipher = AES.new(ENCRYPTION_KEY, AES.MODE_CBC, iv)
+    decrypted = cipher.decrypt(encrypted_data)
+
+    # Remover padding PKCS7
+    padding_length = decrypted[-1]
+    return decrypted[:-padding_length].decode('utf-8')
+
+# Exemplo de uso:
+access_token_encrypted = '7877f573bed90fb6048e63f1f5cf934f:53b308ac...'
+print(decrypt(access_token_encrypted))
+
+
+--- COMANDO DIRETO NA VPS (dentro do container) ---
+
+ssh root@72.61.39.235 "docker exec crm-backend node -e \"
+const crypto = require('crypto');
+const ENCRYPTION_KEY = '2b135afe5bc4771af1ca5a0d2d0a05dcfcbda79ec9d118fa3722670c0e98245a';
+const ALGORITHM = 'aes-256-cbc';
+
+function decrypt(text) {
+  const parts = text.split(':');
+  const iv = Buffer.from(parts[0], 'hex');
+  const encryptedText = Buffer.from(parts[1], 'hex');
+  const decipher = crypto.createDecipheriv(ALGORITHM, Buffer.from(ENCRYPTION_KEY, 'hex'), iv);
+  let decrypted = decipher.update(encryptedText);
+  decrypted = Buffer.concat([decrypted, decipher.final()]);
+  return decrypted.toString('utf8');
+}
+
+// Cole aqui o token criptografado
+const encrypted = 'SEU_TOKEN_CRIPTOGRAFADO_AQUI';
+console.log(decrypt(encrypted));
+\""
+
+
+================================================================================
+                    NOTAS IMPORTANTES
+================================================================================
+
+1. Os tokens do WhatsApp armazenados no banco de dados estao CRIPTOGRAFADOS
+   usando AES-256-CBC. A ENCRYPTION_KEY de producao esta listada acima.
+
+2. O servidor MinIO (minio-api.srv02.messengermax.com.br) esta OFFLINE,
+   causando falha no envio de carrosseis.
+
+3. Senhas de usuarios nao sao armazenadas em texto plano - sao hasheadas
+   com bcrypt no banco de dados (nao podem ser recuperadas).
+
+4. Tokens JWT expiram em 15 minutos, refresh tokens em 7 dias.
+
+5. Para gerar nova ENCRYPTION_KEY: openssl rand -hex 32
+
+6. CUIDADO: Se trocar a ENCRYPTION_KEY, todos os tokens criptografados
+   no banco de dados ficarao inutilizaveis e precisarao ser recadastrados.
+
+================================================================================

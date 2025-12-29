@@ -84,7 +84,14 @@ export function initializeSocketIO(httpServer: HTTPServer): SocketIOServer {
           role: true,
           hotelUnit: true,
         },
-      });
+      }) as {
+        id: string;
+        name: string;
+        email: string;
+        tenantId: string | null;
+        role: string;
+        hotelUnit: string | null;
+      } | null;
 
       if (!user) {
         logger.warn({ userId: decoded.userId }, 'Socket connection with invalid user');
@@ -98,7 +105,7 @@ export function initializeSocketIO(httpServer: HTTPServer): SocketIOServer {
         name: user.name || undefined,
         email: user.email,
         role: user.role,
-        hotelUnit: (user as any).hotelUnit || null, // Unidade do atendente
+        hotelUnit: user.hotelUnit, // Unidade do atendente
       };
       socket.tenantId = user.tenantId; // Aceita null para SUPER_ADMIN
 
@@ -108,7 +115,7 @@ export function initializeSocketIO(httpServer: HTTPServer): SocketIOServer {
           userId: user.id,
           tenantId: user.tenantId,
           role: user.role,
-          hotelUnit: (user as any).hotelUnit,
+          hotelUnit: user.hotelUnit,
         },
         'Socket authenticated'
       );

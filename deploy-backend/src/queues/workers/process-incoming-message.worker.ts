@@ -13,11 +13,110 @@ import {
   isListReply,
   isInteractiveButtonReply,
   isTemplateButtonReply,
+  type WhatsAppMessage,
 } from '@/validators/whatsapp-webhook.validator';
 import { enqueueMediaDownload } from '../whatsapp-webhook.queue';
-import { emitNewMessage, emitNewConversation, emitConversationUpdate, getSocketIO } from '@/config/socket';
+import { emitNewMessage, getSocketIO } from '@/config/socket';
 import { whatsAppService } from '@/services/whatsapp.service';
 import { n8nService } from '@/services/n8n.service';
+import { ConversationStatus, MessageType, Prisma } from '@prisma/client';
+
+// ============================================
+// Type Definitions
+// ============================================
+
+/**
+ * Context de mensagem WhatsApp (reply ou forward)
+ */
+interface MessageContext {
+  from?: string;
+  id?: string;
+  forwarded?: boolean;
+  frequently_forwarded?: boolean;
+}
+
+/**
+ * Metadata de mensagem com propriedades conhecidas para mídia
+ * Compatível com Prisma.InputJsonValue
+ */
+interface MediaMessageMetadata {
+  mimeType?: string;
+  caption?: string;
+  sha256?: string;
+  filename?: string;
+  voice?: boolean;
+  animated?: boolean;
+  isSticker?: boolean;
+  name?: string;
+  address?: string;
+  context?: MessageContext;
+  button?: { id: string; title: string };
+  list?: { id: string; title: string; description?: string };
+  contacts?: Array<{ name?: string; phones?: string[]; emails?: string[] }>;
+  rawMessage?: Prisma.InputJsonValue;
+  mediaUrl?: string;
+  fileSize?: number;
+  downloadedAt?: string;
+}
+
+/**
+ * Resultado da extração de dados da mensagem WhatsApp
+ * Usado para criar mensagem no banco de dados
+ */
+interface ExtractedMessageData {
+  type: MessageType;
+  content: string;
+  metadata: MediaMessageMetadata | null;
+  shouldDownload: boolean;
+  mediaId?: string;
+}
+
+/**
+ * Tipos de mídia válidos para download (alinhado com DownloadMediaJobData)
+ */
+type MediaDownloadType = 'image' | 'video' | 'audio' | 'document';
+
+/**
+ * Helper para converter MessageType enum para MediaDownloadType
+ */
+function toMediaDownloadType(type: MessageType): MediaDownloadType {
+  const typeMap: Record<string, MediaDownloadType> = {
+    IMAGE: 'image',
+    VIDEO: 'video',
+    AUDIO: 'audio',
+    DOCUMENT: 'document',
+  };
+  return typeMap[type] || 'image';
+}
+
+/**
+ * Converte metadata interno para formato Prisma JSON
+ * Retorna undefined para null (Prisma trata como NULL no DB)
+ */
+function toJsonValue(metadata: MediaMessageMetadata | null): Prisma.InputJsonValue | undefined {
+  if (metadata === null) {
+    return undefined;
+  }
+  // Serializa e deserializa para garantir compatibilidade com InputJsonValue
+  return JSON.parse(JSON.stringify(metadata)) as Prisma.InputJsonValue;
+}
+
+// ============================================
+// Configuration Constants
+// ============================================
+
+/**
+ * Timeout para download síncrono de mídia (ms).
+ * Usado para garantir que a URL da mídia esteja disponível no payload do N8N.
+ * Se o download falhar ou exceder o timeout, a mídia é enfileirada para retry assíncrono.
+ */
+const MEDIA_DOWNLOAD_TIMEOUT_MS = 15000; // 15 segundos
+
+/**
+ * Tipos de mídia que requerem download antes de enviar para N8N.
+ * O N8N precisa da URL da mídia para processamento por IA.
+ */
+// const MEDIA_TYPES_REQUIRING_DOWNLOAD = ['IMAGE', 'VIDEO', 'AUDIO', 'DOCUMENT'] as const;
 
 // Unidades hoteleiras válidas para detecção automática
 const VALID_HOTEL_UNITS = [
@@ -73,38 +172,110 @@ export async function processIncomingMessage(job: Job<ProcessMessageJobData>): P
         conversationId: conversation.id,
         whatsappMessageId: message.id,
         direction: 'INBOUND',
-        type: messageData.type as any, // Type validated by extractMessageData
+        type: messageData.type,
         content: messageData.content,
-        metadata: messageData.metadata,
+        metadata: toJsonValue(messageData.metadata),
         status: 'DELIVERED',
         timestamp: new Date(parseInt(message.timestamp) * 1000),
       },
     });
 
     // 5. ATUALIZAR lastMessageAt DA CONVERSA
+    // Se a conversa estava CLOSED, reabre como OPEN; caso contrário, mantém status atual
+    const newStatus: ConversationStatus = conversation.status === 'CLOSED'
+      ? ConversationStatus.OPEN
+      : (conversation.status as ConversationStatus);
+
     await prisma.conversation.update({
       where: { id: conversation.id },
       data: {
         lastMessageAt: savedMessage.timestamp,
-        status: (conversation.status === 'CLOSED' ? 'OPEN' : conversation.status) as any,
+        status: newStatus,
       },
     });
 
     // 5.1 DETECTAR SELEÇÃO DE UNIDADE HOTELEIRA (list_reply)
-    const detectedHotelUnit = detectHotelUnitSelection(message, messageData);
+    const detectedHotelUnit = detectHotelUnitSelection(message);
     if (detectedHotelUnit) {
       await handleHotelUnitSelection(tenantId, conversation.id, detectedHotelUnit, contact);
     }
 
-    // 6. SE FOR MÍDIA, ENFILEIRAR DOWNLOAD
+    // 6. SE FOR MÍDIA, BAIXAR SINCRONAMENTE PARA INCLUIR URL NO PAYLOAD DO N8N
     if (messageData.shouldDownload && messageData.mediaId) {
-      await enqueueMediaDownload({
-        tenantId,
-        messageId: savedMessage.id,
-        mediaId: messageData.mediaId,
-        mediaType: messageData.type as any,
-        mimeType: messageData.metadata?.mimeType || 'application/octet-stream',
-      });
+      const downloadStartTime = Date.now();
+      const mimeType = messageData.metadata?.mimeType ?? 'application/octet-stream';
+
+      try {
+        // Baixa e salva em disco, retorna URL HTTP pública
+        const mediaResult = await downloadMediaWithTimeout(
+          tenantId,
+          messageData.mediaId,
+          mimeType,
+          messageData.type // Passa o tipo de mídia (IMAGE, VIDEO, etc.)
+        );
+
+        if (mediaResult) {
+          // Atualizar metadata com URL HTTP pública da mídia
+          const updatedMetadata: MediaMessageMetadata = {
+            ...(messageData.metadata ?? {}),
+            mediaUrl: mediaResult.url,
+            fileSize: mediaResult.fileSize,
+            downloadedAt: new Date().toISOString(),
+          };
+
+          // Persistir no banco de dados
+          await prisma.message.update({
+            where: { id: savedMessage.id },
+            data: { metadata: toJsonValue(updatedMetadata) },
+          });
+
+          // Atualizar referência local para uso no payload do N8N
+          messageData.metadata = updatedMetadata;
+
+          logger.info({
+            tenantId,
+            messageId: savedMessage.id,
+            mediaId: messageData.mediaId,
+            mediaType: messageData.type,
+            mediaUrl: mediaResult.url,
+            fileSize: mediaResult.fileSize,
+            downloadDurationMs: Date.now() - downloadStartTime,
+          }, 'Media downloaded and saved to disk for N8N payload');
+        } else {
+          // Download falhou ou timeout - enfileirar para retry assíncrono
+          await enqueueMediaDownload({
+            tenantId,
+            messageId: savedMessage.id,
+            mediaId: messageData.mediaId,
+            mediaType: toMediaDownloadType(messageData.type),
+            mimeType,
+          });
+
+          logger.warn({
+            tenantId,
+            messageId: savedMessage.id,
+            mediaId: messageData.mediaId,
+            downloadDurationMs: Date.now() - downloadStartTime,
+          }, 'Media download failed or timed out, enqueued for async retry');
+        }
+      } catch (downloadError) {
+        // Erro inesperado - enfileirar para retry assíncrono (não bloqueia processamento)
+        await enqueueMediaDownload({
+          tenantId,
+          messageId: savedMessage.id,
+          mediaId: messageData.mediaId,
+          mediaType: toMediaDownloadType(messageData.type),
+          mimeType,
+        });
+
+        logger.error({
+          tenantId,
+          messageId: savedMessage.id,
+          mediaId: messageData.mediaId,
+          error: downloadError instanceof Error ? downloadError.message : 'Unknown error',
+          downloadDurationMs: Date.now() - downloadStartTime,
+        }, 'Media download error, enqueued for async retry');
+      }
     }
 
     // 7. EMITIR EVENTO WEBSOCKET (TEMPO REAL)
@@ -141,13 +312,15 @@ export async function processIncomingMessage(job: Job<ProcessMessageJobData>): P
     // Verificar se conversa foi criada agora (para saber se é novo contato)
     const isNewConversation = conversation.status === 'OPEN';
 
+    // IMPORTANTE: Usar messageData.metadata que contém a mediaUrl atualizada (se disponível)
+    // savedMessage.metadata é o valor original antes do download síncrono
     const n8nPayload = n8nService.buildPayload(
       contact.phoneNumber,
       {
         id: savedMessage.id,
         type: savedMessage.type,
         content: savedMessage.content || '',
-        metadata: savedMessage.metadata,
+        metadata: messageData.metadata, // Usar metadata atualizado com mediaUrl
         timestamp: savedMessage.timestamp,
       },
       conversation.id,
@@ -322,19 +495,55 @@ async function findOrCreateConversation(
 }
 
 /**
- * Extrai dados da mensagem baseado no tipo
+ * Realiza download síncrono de mídia com timeout.
+ * Salva em disco e retorna URL HTTP pública (não base64).
+ *
+ * IMPORTANTE: Esta função salva a mídia em disco e retorna uma URL HTTP
+ * que pode ser usada por sistemas externos (N8N, IA, etc.) que precisam
+ * de URLs HTTP válidas, não Data URLs (base64).
+ *
+ * @param tenantId - ID do tenant
+ * @param mediaId - ID da mídia no WhatsApp
+ * @param mimeType - Tipo MIME da mídia
+ * @param messageType - Tipo de mensagem (IMAGE, VIDEO, AUDIO, DOCUMENT)
+ * @returns Objeto com URL HTTP e tamanho do arquivo, ou null se falhar
  */
-function extractMessageData(message: any): {
-  type: string;
-  content: string;
-  metadata: any;
-  shouldDownload: boolean;
-  mediaId?: string;
-} {
+async function downloadMediaWithTimeout(
+  tenantId: string,
+  mediaId: string,
+  mimeType: string,
+  messageType: string = 'IMAGE'
+): Promise<{ url: string; fileSize: number } | null> {
+  // Garante que mimeType é string válida antes de processar
+  const safeMimeType: string = mimeType ?? 'application/octet-stream';
+  const cleanMimeType: string = safeMimeType.split(';')[0]?.trim() ?? 'application/octet-stream';
+
+  const downloadPromise = whatsAppService.downloadMediaAndSave(
+    tenantId,
+    mediaId,
+    cleanMimeType,
+    messageType
+  );
+
+  const timeoutPromise = new Promise<null>((resolve) => {
+    setTimeout(() => resolve(null), MEDIA_DOWNLOAD_TIMEOUT_MS);
+  });
+
+  return Promise.race([downloadPromise, timeoutPromise]);
+}
+
+/**
+ * Extrai dados da mensagem baseado no tipo
+ * Converte mensagem WhatsApp para formato do banco de dados
+ *
+ * @param message - Mensagem WhatsApp validada pelo Zod schema
+ * @returns Dados extraídos com tipo MessageType do Prisma
+ */
+function extractMessageData(message: ProcessMessageJobData['message']): ExtractedMessageData {
   // TEXT
   if (isTextMessage(message)) {
     return {
-      type: 'TEXT',
+      type: MessageType.TEXT,
       content: message.text.body,
       metadata: message.context ? { context: message.context } : null,
       shouldDownload: false,
@@ -344,8 +553,8 @@ function extractMessageData(message: any): {
   // IMAGE
   if (isImageMessage(message)) {
     return {
-      type: 'IMAGE',
-      content: message.image.id, // Media ID
+      type: MessageType.IMAGE,
+      content: message.image.id,
       metadata: {
         caption: message.image.caption,
         mimeType: message.image.mime_type,
@@ -359,7 +568,7 @@ function extractMessageData(message: any): {
   // VIDEO
   if (isVideoMessage(message)) {
     return {
-      type: 'VIDEO',
+      type: MessageType.VIDEO,
       content: message.video.id,
       metadata: {
         caption: message.video.caption,
@@ -374,7 +583,7 @@ function extractMessageData(message: any): {
   // AUDIO
   if (isAudioMessage(message)) {
     return {
-      type: 'AUDIO',
+      type: MessageType.AUDIO,
       content: message.audio.id,
       metadata: {
         mimeType: message.audio.mime_type,
@@ -388,7 +597,7 @@ function extractMessageData(message: any): {
   // DOCUMENT
   if (isDocumentMessage(message)) {
     return {
-      type: 'DOCUMENT',
+      type: MessageType.DOCUMENT,
       content: message.document.id,
       metadata: {
         filename: message.document.filename,
@@ -403,7 +612,7 @@ function extractMessageData(message: any): {
   // LOCATION
   if (isLocationMessage(message)) {
     return {
-      type: 'LOCATION',
+      type: MessageType.LOCATION,
       content: JSON.stringify({
         latitude: message.location.latitude,
         longitude: message.location.longitude,
@@ -421,7 +630,7 @@ function extractMessageData(message: any): {
   if (isTemplateButtonReply(message)) {
     const button = message.button as { payload: string; text: string };
     return {
-      type: 'TEXT',
+      type: MessageType.TEXT,
       content: button.text,
       metadata: {
         button: {
@@ -436,14 +645,14 @@ function extractMessageData(message: any): {
 
   // BUTTON REPLY (formato antigo com button_reply)
   if (isButtonReply(message)) {
-    const buttonReply = (message.button as any).button_reply;
+    const buttonData = message.button as { button_reply: { id: string; title: string } };
     return {
-      type: 'TEXT',
-      content: buttonReply.title,
+      type: MessageType.TEXT,
+      content: buttonData.button_reply.title,
       metadata: {
         button: {
-          id: buttonReply.id,
-          title: buttonReply.title,
+          id: buttonData.button_reply.id,
+          title: buttonData.button_reply.title,
         },
         context: message.context,
       },
@@ -453,14 +662,15 @@ function extractMessageData(message: any): {
 
   // LIST REPLY
   if (isListReply(message) && message.interactive && 'list_reply' in message.interactive) {
+    const listReply = message.interactive.list_reply;
     return {
-      type: 'TEXT',
-      content: message.interactive.list_reply.title,
+      type: MessageType.TEXT,
+      content: listReply.title,
       metadata: {
         list: {
-          id: message.interactive.list_reply.id,
-          title: message.interactive.list_reply.title,
-          description: message.interactive.list_reply.description,
+          id: listReply.id,
+          title: listReply.title,
+          description: listReply.description,
         },
         context: message.context,
       },
@@ -470,9 +680,9 @@ function extractMessageData(message: any): {
 
   // INTERACTIVE BUTTON REPLY (Quick Reply de carousel template)
   if (isInteractiveButtonReply(message) && message.interactive && 'button_reply' in message.interactive) {
-    const buttonReply = (message.interactive as any).button_reply;
+    const buttonReply = message.interactive.button_reply;
     return {
-      type: 'TEXT',
+      type: MessageType.TEXT,
       content: buttonReply.title,
       metadata: {
         button: {
@@ -487,16 +697,21 @@ function extractMessageData(message: any): {
 
   // CONTACTS
   if (message.type === 'contacts' && message.contacts) {
-    const contacts = message.contacts.contacts || [];
-    const contactsList = contacts.map((c: any) => ({
+    const contactsData = message.contacts.contacts || [];
+    interface ContactInfo {
+      name: string | undefined;
+      phones: string[] | undefined;
+      emails: string[] | undefined;
+    }
+    const contactsList: ContactInfo[] = contactsData.map((c) => ({
       name: c.name?.formatted_name,
-      phones: c.phones?.map((p: any) => p.phone),
-      emails: c.emails?.map((e: any) => e.email),
+      phones: c.phones?.map((p) => p.phone),
+      emails: c.emails?.map((e) => e.email),
     }));
 
     return {
-      type: 'TEXT',
-      content: `[Contato compartilhado: ${contactsList.map((c: any) => c.name).join(', ')}]`,
+      type: MessageType.TEXT,
+      content: `[Contato compartilhado: ${contactsList.map((c) => c.name).join(', ')}]`,
       metadata: {
         contacts: contactsList,
       },
@@ -507,7 +722,7 @@ function extractMessageData(message: any): {
   // STICKER
   if (message.type === 'sticker' && message.sticker) {
     return {
-      type: 'IMAGE',
+      type: MessageType.IMAGE,
       content: message.sticker.id,
       metadata: {
         mimeType: message.sticker.mime_type,
@@ -523,7 +738,7 @@ function extractMessageData(message: any): {
   logger.warn({ messageType: message.type, message }, 'Unsupported message type');
 
   return {
-    type: 'TEXT',
+    type: MessageType.TEXT,
     content: `[Tipo não suportado: ${message.type}]`,
     metadata: { rawMessage: message },
     shouldDownload: false,
@@ -533,8 +748,11 @@ function extractMessageData(message: any): {
 /**
  * Detecta se a mensagem é uma seleção de unidade hoteleira
  * Retorna o nome da unidade se detectada, null caso contrário
+ *
+ * @param message - Mensagem WhatsApp com possível list_reply
+ * @returns Nome da unidade hoteleira se detectada, null caso contrário
  */
-function detectHotelUnitSelection(message: any, messageData: { metadata: any }): string | null {
+function detectHotelUnitSelection(message: WhatsAppMessage): string | null {
   // Verificar se é um list_reply
   if (!isListReply(message) || !message.interactive || !('list_reply' in message.interactive)) {
     return null;
@@ -586,22 +804,62 @@ function detectHotelUnitSelection(message: any, messageData: { metadata: any }):
 }
 
 /**
+ * Mapeamento de cores por unidade hoteleira
+ * Cores consistentes em todo o sistema
+ */
+const HOTEL_UNIT_COLORS: Record<string, string> = {
+  'Ilha Bela': '#3B82F6',           // Azul
+  'Campos do Jordão': '#10B981',    // Verde
+  'Camburi': '#F59E0B',             // Amarelo/Laranja
+  'Santo Antônio do Pinhal': '#8B5CF6', // Roxo
+};
+
+/**
  * Processa a seleção de unidade hoteleira
- * Atualiza a conversa e emite eventos Socket.io para atendentes da unidade
+ * Atualiza a conversa, cria/vincula tag e emite eventos Socket.io
  */
 async function handleHotelUnitSelection(
   tenantId: string,
   conversationId: string,
   hotelUnit: string,
-  contact: { id: string; phoneNumber: string; name: string | null; profilePictureUrl: string | null }
+  _contact: { id: string; phoneNumber: string; name: string | null; profilePictureUrl: string | null }
 ): Promise<void> {
   try {
-    // 1. Atualizar conversa com a unidade hoteleira
+    // 1. Buscar ou criar a tag para a unidade hoteleira
+    let tag = await prisma.tag.findUnique({
+      where: {
+        tenantId_name: {
+          tenantId,
+          name: hotelUnit,
+        },
+      },
+    });
+
+    if (!tag) {
+      tag = await prisma.tag.create({
+        data: {
+          tenantId,
+          name: hotelUnit,
+          color: HOTEL_UNIT_COLORS[hotelUnit] || '#6B7280', // Cinza como fallback
+        },
+      });
+      logger.info({
+        tenantId,
+        tagId: tag.id,
+        tagName: tag.name,
+        tagColor: tag.color,
+      }, 'Created new tag for hotel unit');
+    }
+
+    // 2. Atualizar conversa com a unidade hoteleira E vincular a tag
     const updatedConversation = await prisma.conversation.update({
       where: { id: conversationId },
       data: {
         hotelUnit,
-      } as any,
+        tags: {
+          set: [{ id: tag.id }],
+        },
+      },
       include: {
         contact: {
           select: {
@@ -632,12 +890,20 @@ async function handleHotelUnitSelection(
       conversationId,
       hotelUnit,
       tenantId,
-    }, 'Conversation updated with hotel unit from client selection');
+      tagId: tag.id,
+      tagName: tag.name,
+    }, 'Conversation updated with hotel unit and tag from client selection');
 
-    // 2. Emitir evento para room da unidade (atendentes vão ver a conversa aparecer)
+    // 3. Emitir evento para room da unidade (atendentes vão ver a conversa aparecer)
     try {
       const io = getSocketIO();
       const unitRoom = `tenant:${tenantId}:unit:${hotelUnit}`;
+
+      // Dados atualizados incluindo tag
+      const updateData = {
+        hotelUnit,
+        tags: updatedConversation.tags,
+      };
 
       // Emitir conversation:new para a room da unidade
       io.to(unitRoom).emit('conversation:new', {
@@ -645,16 +911,22 @@ async function handleHotelUnitSelection(
         hotelUnit,
       });
 
-      // Emitir também conversation:update para garantir atualização
+      // Emitir conversation:update para garantir atualização (inclui tags)
       io.to(unitRoom).emit('conversation:update', {
         conversationId,
-        updates: { hotelUnit },
+        updates: updateData,
       });
 
-      // Emitir para admins também (para atualizar o hotelUnit no painel deles)
+      // Emitir para admins também (para atualizar hotelUnit e tags no painel)
       io.to(`tenant:${tenantId}:admins`).emit('conversation:update', {
         conversationId,
-        updates: { hotelUnit },
+        updates: updateData,
+      });
+
+      // Emitir para a room da conversa específica
+      io.to(`conversation:${conversationId}`).emit('conversation:update', {
+        conversationId,
+        updates: updateData,
       });
 
       logger.info({
@@ -662,7 +934,8 @@ async function handleHotelUnitSelection(
         hotelUnit,
         unitRoom,
         tenantId,
-      }, 'Hotel unit selection events emitted via Socket.io');
+        tagId: tag.id,
+      }, 'Hotel unit and tag selection events emitted via Socket.io');
     } catch (socketError) {
       logger.warn({ error: socketError, conversationId }, 'Failed to emit hotel unit selection events');
     }

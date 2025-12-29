@@ -130,7 +130,7 @@ export const whatsappMediaDownloadQueue = new Queue<DownloadMediaJobData>(
 // ============================================
 
 // Incoming Messages Queue
-whatsappIncomingMessageQueue.on('completed', (job, result) => {
+whatsappIncomingMessageQueue.on('completed', (job, _result) => {
   logger.info(
     {
       jobId: job.id,

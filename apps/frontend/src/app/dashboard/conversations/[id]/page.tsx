@@ -203,7 +203,13 @@ export default function ConversationPage({ params }: ConversationPageProps) {
 
       if (data.conversation.id === params.id) {
         console.log('Conversation updated:', data);
-        queryClient.setQueryData(['conversation', params.id], data.conversation);
+
+        // [FIX] Safety guard: merge com cache existente para evitar undefined
+        // Isso previne o crash ao alternar IA rapidamente
+        queryClient.setQueryData(['conversation', params.id], (old: any) => {
+          if (!old) return data.conversation; // Se não há cache, usa novo
+          return { ...old, ...data.conversation }; // Merge seguro
+        });
       }
     };
 

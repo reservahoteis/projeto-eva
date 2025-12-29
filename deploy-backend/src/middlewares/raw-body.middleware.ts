@@ -22,7 +22,7 @@ declare global {
 /**
  * Raw body middleware - captura o body original como string
  */
-export function rawBodyMiddleware(req: Request, res: Response, next: NextFunction): void {
+export function rawBodyMiddleware(req: Request, _res: Response, next: NextFunction): void {
   let data = '';
 
   req.on('data', (chunk) => {
@@ -42,7 +42,7 @@ export function rawBodyMiddleware(req: Request, res: Response, next: NextFunctio
 export function rawBodySaver(options?: any) {
   const jsonParser = json(options);
 
-  return (req: Request, res: Response, next: NextFunction) => {
+  return (req: Request, _res: Response, next: NextFunction) => {
     // Capturar raw body
     let rawBody = '';
 
@@ -55,6 +55,6 @@ export function rawBodySaver(options?: any) {
     });
 
     // Fazer parse JSON normalmente
-    jsonParser(req, res, next);
+    jsonParser(req, _res, next);
   };
 }

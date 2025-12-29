@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { conversationService } from '@/services/conversation.service';
 import { userService } from '@/services/user.service';
 import { Conversation, ConversationStatus, UserRole, UserStatus } from '@/types';
@@ -41,9 +41,9 @@ interface ContactSidebarProps {
 
 export function ContactSidebar({ conversation, onIaLockChange }: ContactSidebarProps) {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [isUpdating, setIsUpdating] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string>('');
-  const [isTogglingIaLock, setIsTogglingIaLock] = useState(false);
 
   const isAdmin = user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.TENANT_ADMIN;
 
@@ -108,13 +108,44 @@ export function ContactSidebar({ conversation, onIaLockChange }: ContactSidebarP
     },
   });
 
-  const handleToggleIaLock = async (checked: boolean) => {
-    try {
-      setIsTogglingIaLock(true);
-      const newLockState = !checked;
-      await conversationService.toggleIaLock(conversation.id, newLockState);
+  // [FIX] Mutation com optimistic update para evitar race conditions
+  // Isso resolve o crash ao clicar rapidamente no toggle de IA
+  const toggleIaLockMutation = useMutation({
+    mutationFn: ({ id, locked }: { id: string; locked: boolean }) =>
+      conversationService.toggleIaLock(id, locked),
 
-      if (newLockState) {
+    // Optimistic update: atualiza UI ANTES da API responder
+    onMutate: async ({ id, locked }) => {
+      // Cancela refetches em progresso para evitar race conditions
+      await queryClient.cancelQueries({ queryKey: ['conversation', id] });
+
+      // Salva valor anterior para rollback em caso de erro
+      const previousConversation = queryClient.getQueryData(['conversation', id]);
+
+      // Atualiza cache otimisticamente (UI responde imediatamente)
+      queryClient.setQueryData(['conversation', id], (old: Conversation | undefined) => {
+        if (!old) return old; // Safety guard: não atualiza se cache vazio
+        return { ...old, iaLocked: locked };
+      });
+
+      return { previousConversation };
+    },
+
+    // Em caso de erro, faz rollback ao estado anterior
+    onError: (err, variables, context) => {
+      if (context?.previousConversation) {
+        queryClient.setQueryData(
+          ['conversation', variables.id],
+          context.previousConversation
+        );
+      }
+      toast.error('Erro ao alterar status da IA');
+      console.error('Error toggling IA lock:', err);
+    },
+
+    // Sucesso: atualiza com dados reais da API e notifica
+    onSuccess: (data, variables) => {
+      if (variables.locked) {
         toast.success('IA desativada para esta conversa', {
           description: 'Somente atendentes humanos responderão',
         });
@@ -124,13 +155,19 @@ export function ContactSidebar({ conversation, onIaLockChange }: ContactSidebarP
         });
       }
 
-      onIaLockChange?.(newLockState);
-    } catch (error) {
-      toast.error('Erro ao alterar status da IA');
-      console.error('Error toggling IA lock:', error);
-    } finally {
-      setIsTogglingIaLock(false);
-    }
+      // Atualiza cache com dados reais (substitui optimistic update)
+      if (data) {
+        queryClient.setQueryData(['conversation', variables.id], data);
+      }
+
+      // Callback opcional do parent (para compatibilidade)
+      onIaLockChange?.(variables.locked);
+    },
+  });
+
+  const handleToggleIaLock = (checked: boolean) => {
+    const newLockState = !checked;
+    toggleIaLockMutation.mutate({ id: conversation.id, locked: newLockState });
   };
 
   const handleStatusChange = (status: string) => {
@@ -186,14 +223,14 @@ export function ContactSidebar({ conversation, onIaLockChange }: ContactSidebarP
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {isTogglingIaLock && (
+              {toggleIaLockMutation.isPending && (
                 <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
               )}
               <Switch
                 id="ia-toggle"
                 checked={!conversation.iaLocked}
                 onCheckedChange={handleToggleIaLock}
-                disabled={isTogglingIaLock}
+                disabled={toggleIaLockMutation.isPending}
                 className="data-[state=checked]:bg-green-500 data-[state=unchecked]:bg-red-400"
               />
             </div>

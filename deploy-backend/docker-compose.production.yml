@@ -59,7 +59,7 @@ services:
   backend:
     build:
       context: .
-      dockerfile: Dockerfile.standalone
+      dockerfile: Dockerfile
     container_name: crm-backend
     restart: always
     environment:
@@ -71,6 +71,7 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
       FRONTEND_URL: ${FRONTEND_URL}
       BASE_DOMAIN: ${BASE_DOMAIN}
       WHATSAPP_API_VERSION: ${WHATSAPP_API_VERSION:-v21.0}
@@ -78,6 +79,12 @@ services:
       N8N_API_KEY: ${N8N_API_KEY}
       SUPER_ADMIN_EMAIL: ${SUPER_ADMIN_EMAIL}
       SUPER_ADMIN_PASSWORD: ${SUPER_ADMIN_PASSWORD}
+      # Media Storage
+      MEDIA_STORAGE_PATH: /var/lib/whatsapp-crm/media
+      MEDIA_BASE_URL: ${MEDIA_BASE_URL:-https://api.botreserva.com.br/api/media}
+      MEDIA_RETENTION_DAYS: ${MEDIA_RETENTION_DAYS:-30}
+    volumes:
+      - media_data:/var/lib/whatsapp-crm/media
     depends_on:
       postgres:
         condition: service_healthy
@@ -140,6 +147,8 @@ volumes:
   postgres_data:
     driver: local
   redis_data:
+    driver: local
+  media_data:
     driver: local
 
 networks:

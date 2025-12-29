@@ -27,7 +27,7 @@ interface HealthStatus {
  * - 200 se tudo estiver saudável
  * - 503 se algum serviço estiver degradado
  */
-router.get('/health', async (req: Request, res: Response) => {
+router.get('/health', async (_req: Request, res: Response) => {
   const healthStatus: HealthStatus = {
     status: 'healthy',
     api: 'ok',

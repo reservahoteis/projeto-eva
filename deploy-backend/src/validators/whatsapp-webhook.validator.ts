@@ -69,6 +69,12 @@ const LocationMessageSchema = z.object({
   address: z.string().optional(),
 });
 
+// Reaction Message (emoji reactions to messages)
+const ReactionMessageSchema = z.object({
+  message_id: z.string(), // ID da mensagem que recebeu a reação
+  emoji: z.string(), // Emoji da reação (pode ser vazio se reação foi removida)
+});
+
 const ContactMessageSchema = z.object({
   contacts: z.array(
     z.object({
@@ -116,10 +122,14 @@ const ListReplySchema = z.object({
   }),
 });
 
-// Context (Reply/Quote)
+// Context (Reply/Quote or Forwarded Message)
+// Quando é reply: tem from e id
+// Quando é forwarded: tem apenas forwarded: true (ou frequently_forwarded: true)
 const ContextSchema = z.object({
-  from: z.string(),
-  id: z.string(),
+  from: z.string().optional(),
+  id: z.string().optional(),
+  forwarded: z.boolean().optional(),
+  frequently_forwarded: z.boolean().optional(),
 });
 
 // Referral (From ads)
@@ -154,6 +164,7 @@ export const WhatsAppMessageSchema = z.object({
     'contacts',
     'button',
     'interactive',
+    'reaction',
     'order',
     'system',
     'unknown',
@@ -171,6 +182,7 @@ export const WhatsAppMessageSchema = z.object({
   // button pode ser ButtonReplySchema (interactive button reply) ou TemplateButtonSchema (carousel template quick reply)
   button: z.union([ButtonReplySchema, TemplateButtonSchema]).optional(),
   interactive: z.union([ButtonReplySchema, ListReplySchema]).optional(),
+  reaction: ReactionMessageSchema.optional(),
 
   // Context (reply/quote)
   context: ContextSchema.optional(),

@@ -8,7 +8,8 @@ import { emitMessageStatusUpdate } from '@/config/socket';
  * Worker para processar status updates de mensagens enviadas
  */
 export async function processStatusUpdate(job: Job<ProcessStatusJobData>): Promise<void> {
-  const { tenantId, status, metadata } = job.data;
+  const { tenantId, status } = job.data;
+  // metadata disponível em job.data.metadata se necessário no futuro
 
   logger.debug(
     {

@@ -1,5 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { authenticate, authorize } from '@/middlewares/auth.middleware';
+import { authenticate } from '@/middlewares/auth.middleware';
+// authorize disponível se necessário para rotas específicas
+// import { authorize } from '@/middlewares/auth.middleware';
 import { env } from '@/config/env';
 import logger from '@/config/logger';
 
@@ -14,16 +16,18 @@ const router = Router();
  * Middleware: Bloqueia TODAS as rotas de debug em produção
  * A menos que seja SUPER_ADMIN autenticado
  */
-function debugModeGuard(req: Request, res: Response, next: NextFunction) {
+function debugModeGuard(req: Request, res: Response, next: NextFunction): void {
   // Em produção, apenas SUPER_ADMIN pode acessar
   if (env.NODE_ENV === 'production') {
     // Se não autenticado, bloqueia
     if (!req.user) {
-      return res.status(404).json({ error: 'Not found' });
+      res.status(404).json({ error: 'Not found' });
+      return;
     }
     // Se não é SUPER_ADMIN, bloqueia
     if (req.user.role !== 'SUPER_ADMIN') {
-      return res.status(404).json({ error: 'Not found' });
+      res.status(404).json({ error: 'Not found' });
+      return;
     }
   }
   next();
