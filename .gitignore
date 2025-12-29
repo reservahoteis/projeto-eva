@@ -20,7 +20,8 @@ out/
 .env.test.local
 .env.production.local
 .env.production
-CREDENCIAIS-COMPLETAS.md
+docs/CREDENCIAIS-COMPLETAS.txt
+docs/CREDENCIAIS-COMPLETAS.md
 
 # Logs
 logs/
