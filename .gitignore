@@ -43,6 +43,12 @@ Thumbs.db
 *.swo
 *~
 
+# Claude Code
+.claude/
+
+# Documentos sensíveis
+documentos.env/
+
 # Prisma
 prisma/migrations/**/*.sql
 !prisma/migrations/migration_lock.toml
