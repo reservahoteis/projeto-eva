@@ -8,7 +8,6 @@ import { ContactSidebar } from '@/components/tenant/contact-sidebar';
 import { ChatHeader } from '@/components/chat/chat-header';
 import { MessageList } from '@/components/chat/message-list';
 import { ChatInput } from '@/components/chat/chat-input';
-import { ConversationListSidebar } from '@/components/chat/conversation-list-sidebar';
 import { useRouter } from 'next/navigation';
 import { useSocketContext } from '@/contexts/socket-context';
 import { useEffect, useState, useRef } from 'react';
@@ -323,12 +322,7 @@ export default function ConversationPage({ params }: ConversationPageProps) {
 
   return (
     <div className="flex h-screen">
-      {/* LEFT: Conversation List Sidebar */}
-      <div className="hidden lg:block flex-shrink-0">
-        <ConversationListSidebar activeConversationId={conversationId} />
-      </div>
-
-      {/* Main Chat Area - respects sidebar space */}
+      {/* Main Chat Area - respects right sidebar space */}
       <div className="flex-1 flex flex-col min-w-0 relative whatsapp-chat-bg xl:mr-[320px]">
         {/* WhatsApp background pattern */}
         <div className="absolute inset-0 whatsapp-chat-pattern" />
