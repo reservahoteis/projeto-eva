@@ -1,8 +1,7 @@
 'use client';
 
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { ConversationListSidebar } from '@/components/chat/conversation-list-sidebar';
-import { useEffect, useState, useCallback } from 'react';
 
 /**
  * Layout para área de conversas
