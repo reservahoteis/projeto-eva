@@ -105,12 +105,16 @@ export default function ConversationsPage() {
         ) : viewMode === 'kanban' ? (
           <KanbanBoardRealtime
             initialConversations={
-              // Filtrar conversas BOT_HANDLING e ARCHIVED para não aparecer no Kanban
-              (conversations?.data || []).filter(
-                conv => conv.status !== ConversationStatus.BOT_HANDLING && conv.status !== ConversationStatus.ARCHIVED
-              )
+              // Quando "Arquivadas" selecionado, mostrar apenas arquivadas
+              // Caso contrário, filtrar BOT_HANDLING e ARCHIVED
+              selectedStatus === ConversationStatus.ARCHIVED
+                ? (conversations?.data || [])
+                : (conversations?.data || []).filter(
+                    conv => conv.status !== ConversationStatus.BOT_HANDLING && conv.status !== ConversationStatus.ARCHIVED
+                  )
             }
             onUpdate={refetch}
+            selectedStatus={selectedStatus}
           />
         ) : (
           <ConversationList

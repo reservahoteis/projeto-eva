@@ -13,22 +13,30 @@ import { cn } from '@/lib/utils';
 interface KanbanBoardRealtimeProps {
   initialConversations: Conversation[];
   onUpdate: () => void;
+  selectedStatus?: ConversationStatus | 'all';
 }
 
 /**
  * Colunas do Kanban - Sincronizadas com backend Prisma schema
  * Não inclui BOT_HANDLING pois essas conversas não aparecem no Kanban
  */
-const columns = [
+const defaultColumns = [
   { id: ConversationStatus.OPEN, title: 'Novas', color: 'border-yellow-500' },
   { id: ConversationStatus.IN_PROGRESS, title: 'Em Atendimento', color: 'border-blue-500' },
   { id: ConversationStatus.WAITING, title: 'Aguardando Cliente', color: 'border-orange-500' },
   { id: ConversationStatus.CLOSED, title: 'Finalizadas', color: 'border-green-500' },
 ] as const;
 
-export function KanbanBoardRealtime({ initialConversations, onUpdate }: KanbanBoardRealtimeProps) {
+const archivedColumn = [
+  { id: ConversationStatus.ARCHIVED, title: 'Arquivadas', color: 'border-gray-500' },
+] as const;
+
+export function KanbanBoardRealtime({ initialConversations, onUpdate, selectedStatus = 'all' }: KanbanBoardRealtimeProps) {
   const [conversations, setConversations] = useState(initialConversations);
   const { on, off, isConnected } = useSocketContext();
+
+  // Selecionar colunas baseado no status selecionado
+  const columns = selectedStatus === ConversationStatus.ARCHIVED ? archivedColumn : defaultColumns;
 
   // Update conversations when initial data changes
   useEffect(() => {
@@ -164,6 +172,7 @@ export function KanbanBoardRealtime({ initialConversations, onUpdate }: KanbanBo
       ConversationStatus.IN_PROGRESS,
       ConversationStatus.WAITING,
       ConversationStatus.CLOSED,
+      ConversationStatus.ARCHIVED,
     ];
 
     if (!validStatuses.includes(destination.droppableId)) {
