@@ -94,6 +94,7 @@ class ReportService {
       [ConversationStatus.IN_PROGRESS]: 'Em Andamento',
       [ConversationStatus.WAITING]: 'Aguardando',
       [ConversationStatus.CLOSED]: 'Fechadas',
+      [ConversationStatus.ARCHIVED]: 'Arquivadas',
     };
     return labels[status] || status;
   }
@@ -105,6 +106,7 @@ class ReportService {
       [ConversationStatus.IN_PROGRESS]: 'bg-blue-500',
       [ConversationStatus.WAITING]: 'bg-orange-500',
       [ConversationStatus.CLOSED]: 'bg-green-500',
+      [ConversationStatus.ARCHIVED]: 'bg-gray-500',
     };
     return colors[status] || 'bg-gray-500';
   }
