@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { conversationService } from '@/services/conversation.service';
 import { Conversation, ConversationStatus } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -10,7 +10,7 @@ import { Search, MessageSquare, Bot, Building2 } from 'lucide-react';
 import { cn, getInitials, formatTime } from '@/lib/utils';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSocketContext } from '@/contexts/socket-context';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 interface ConversationListSidebarProps {
   activeConversationId?: string;
@@ -19,7 +19,7 @@ interface ConversationListSidebarProps {
 export function ConversationListSidebar({ activeConversationId }: ConversationListSidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const { on, off, isConnected } = useSocketContext();
-  const router = useRouter();
+  const queryClient = useQueryClient();
 
   // Ref to preserve scroll position
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -106,10 +106,14 @@ export function ConversationListSidebar({ activeConversationId }: ConversationLi
     return new Date(b.lastMessageAt || 0).getTime() - new Date(a.lastMessageAt || 0).getTime();
   });
 
-  // Navigate to conversation - scroll is preserved because sidebar never unmounts
-  const handleSelectConversation = useCallback((conversationId: string) => {
-    router.push(`/dashboard/conversations/${conversationId}`);
-  }, [router]);
+  // Prefetch conversation data when hovering for instant navigation
+  const prefetchConversation = useCallback((conversationId: string) => {
+    queryClient.prefetchQuery({
+      queryKey: ['conversation', conversationId],
+      queryFn: () => conversationService.getById(conversationId),
+      staleTime: 30000,
+    });
+  }, [queryClient]);
 
   // Track scroll position continuously
   useEffect(() => {
@@ -174,7 +178,7 @@ export function ConversationListSidebar({ activeConversationId }: ConversationLi
               key={conversation.id}
               conversation={conversation}
               isActive={conversation.id === activeConversationId}
-              onClick={() => handleSelectConversation(conversation.id)}
+              onMouseEnter={() => prefetchConversation(conversation.id)}
               statusColor={getStatusColor(conversation.status)}
             />
           ))
@@ -187,19 +191,21 @@ export function ConversationListSidebar({ activeConversationId }: ConversationLi
 interface ConversationItemProps {
   conversation: Conversation;
   isActive: boolean;
-  onClick: () => void;
+  onMouseEnter?: () => void;
   statusColor: string;
 }
 
-function ConversationItem({ conversation, isActive, onClick, statusColor }: ConversationItemProps) {
+function ConversationItem({ conversation, isActive, onMouseEnter, statusColor }: ConversationItemProps) {
   const lastMessageContent = conversation.lastMessage?.content || '';
   const truncatedMessage = lastMessageContent.length > 45
     ? lastMessageContent.substring(0, 45) + '...'
     : lastMessageContent;
 
   return (
-    <div
-      onClick={onClick}
+    <Link
+      href={`/dashboard/conversations/${conversation.id}`}
+      prefetch={true}
+      onMouseEnter={onMouseEnter}
       className={cn(
         'flex items-center gap-3 px-3 py-3 cursor-pointer transition-colors border-b border-[#e9edef]',
         isActive ? 'bg-[#f0f2f5]' : 'hover:bg-[#f5f6f6]'
@@ -262,6 +268,6 @@ function ConversationItem({ conversation, isActive, onClick, statusColor }: Conv
           </div>
         )}
       </div>
-    </div>
+    </Link>
   );
 }

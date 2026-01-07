@@ -25,7 +25,7 @@ export default function ConversationPage({ params }: ConversationPageProps) {
   const queryClient = useQueryClient();
   const { on, off, subscribeToConversation, unsubscribeFromConversation, isConnected, sendTypingStatus, isUserTyping, setActiveConversationId: setSocketActiveConversationId } = useSocketContext();
   const [isTyping, setIsTyping] = useState(false);
-  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Usar params.id diretamente - mais simples e confiável
   const conversationId = params.id;
@@ -321,7 +321,7 @@ export default function ConversationPage({ params }: ConversationPageProps) {
   }
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-full">
       {/* Main Chat Area - respects right sidebar space */}
       <div className="flex-1 flex flex-col min-w-0 relative whatsapp-chat-bg xl:mr-[320px]">
         {/* WhatsApp background pattern */}
