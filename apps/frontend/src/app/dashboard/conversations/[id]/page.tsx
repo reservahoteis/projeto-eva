@@ -321,49 +321,49 @@ export default function ConversationPage({ params }: ConversationPageProps) {
   }
 
   return (
-    <div className="flex-1 flex flex-col h-screen min-w-0 relative whatsapp-chat-bg">
+    <div className="flex h-screen">
+      {/* Main Chat Area - respects sidebar space */}
+      <div className="flex-1 flex flex-col min-w-0 relative whatsapp-chat-bg xl:mr-[320px]">
         {/* WhatsApp background pattern */}
         <div className="absolute inset-0 whatsapp-chat-pattern" />
 
         {/* Chat Header - Fixed at top */}
         <div className="flex-shrink-0 relative z-10">
-          <div className="relative">
-            <ChatHeader
-              conversation={conversation}
-              isOnline={false}
-              isTyping={isUserTyping(conversationId)}
-              isConnected={isConnected}
-              onBack={() => router.push('/dashboard/conversations')}
-            />
-          </div>
+          <ChatHeader
+            conversation={conversation}
+            isOnline={false}
+            isTyping={isUserTyping(conversationId)}
+            isConnected={isConnected}
+            onBack={() => router.push('/dashboard/conversations')}
+          />
         </div>
 
-      {/* Message List - Takes remaining space */}
-      <div className="flex-1 overflow-hidden relative z-10">
-        <MessageList
-          messages={messagesData?.data || []}
-          isTyping={isUserTyping(conversationId)}
-          contactName={conversation.contact.name || conversation.contact.phoneNumber}
-          contactAvatar={conversation.contact.profilePictureUrl}
-        />
+        {/* Message List - Takes remaining space */}
+        <div className="flex-1 overflow-hidden relative z-10">
+          <MessageList
+            messages={messagesData?.data || []}
+            isTyping={isUserTyping(conversationId)}
+            contactName={conversation.contact.name || conversation.contact.phoneNumber}
+            contactAvatar={conversation.contact.profilePictureUrl}
+          />
+        </div>
+
+        {/* Chat Input - Fixed at bottom */}
+        <div className="flex-shrink-0 relative z-10">
+          <ChatInput
+            onSendMessage={handleSendMessage}
+            onTypingChange={handleTypingChange}
+            disabled={!isConnected}
+            isLoading={sendMutation.isPending}
+          />
+        </div>
       </div>
 
-      {/* Chat Input - Fixed at bottom */}
-      <div className="flex-shrink-0 sticky bottom-0 z-10">
-        <ChatInput
-          onSendMessage={handleSendMessage}
-          onTypingChange={handleTypingChange}
-          disabled={!isConnected}
-          isLoading={sendMutation.isPending}
-        />
-      </div>
-
-      {/* RIGHT: Contact Sidebar - Hidden on mobile, visible on xl+ */}
-      <div className="hidden xl:absolute xl:block xl:right-0 xl:top-0 xl:h-full flex-shrink-0 z-20">
+      {/* RIGHT: Contact Sidebar - Fixed position */}
+      <div className="hidden xl:block fixed right-0 top-0 h-full w-[320px] z-20">
         <ContactSidebar
           conversation={conversation}
           onIaLockChange={(locked) => {
-            // Update local conversation state
             queryClient.setQueryData(['conversation', conversationId], (old: any) => ({
               ...old,
               iaLocked: locked,
