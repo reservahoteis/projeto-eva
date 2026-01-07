@@ -1,7 +1,6 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { useRouter } from 'next/navigation';
 import { conversationService } from '@/services/conversation.service';
 import { Conversation, ConversationStatus } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -9,19 +8,20 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Search, MessageSquare, Bot, Building2 } from 'lucide-react';
 import { cn, getInitials, formatTime } from '@/lib/utils';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSocketContext } from '@/contexts/socket-context';
+import { useChatStore } from '@/stores/chat-store';
 
 interface ConversationListSidebarProps {
   activeConversationId?: string;
 }
 
 export function ConversationListSidebar({ activeConversationId }: ConversationListSidebarProps) {
-  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const { on, off, isConnected } = useSocketContext();
+  const { setActiveConversationId } = useChatStore();
 
-  // Ref to preserve scroll position
+  // Ref to preserve scroll position - agora funciona NATIVAMENTE pois componente nunca desmonta
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const scrollPositionRef = useRef<number>(0);
 
@@ -107,11 +107,13 @@ export function ConversationListSidebar({ activeConversationId }: ConversationLi
     return new Date(b.lastMessageAt || 0).getTime() - new Date(a.lastMessageAt || 0).getTime();
   });
 
-  const handleSelectConversation = (conversationId: string) => {
-    // Save scroll position before navigation
-    saveScrollPosition();
-    router.push(`/dashboard/conversations/${conversationId}`);
-  };
+  // [SPA-LIKE] Trocar conversa via Zustand - SEM router.push
+  // RESULTADO: Scroll NUNCA reseta, transição INSTANTÂNEA (padrão WhatsApp)
+  const handleSelectConversation = useCallback((conversationId: string) => {
+    // Atualizar estado - Layout fará shallow routing
+    setActiveConversationId(conversationId);
+    // Scroll é preservado NATURALMENTE (componente não desmonta)
+  }, [setActiveConversationId]);
 
   // Track scroll position on scroll events
   useEffect(() => {
