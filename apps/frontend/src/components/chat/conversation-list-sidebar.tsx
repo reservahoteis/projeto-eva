@@ -10,7 +10,7 @@ import { Search, MessageSquare, Bot, Building2 } from 'lucide-react';
 import { cn, getInitials, formatTime } from '@/lib/utils';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSocketContext } from '@/contexts/socket-context';
-import { useChatStore } from '@/stores/chat-store';
+import { useRouter } from 'next/navigation';
 
 interface ConversationListSidebarProps {
   activeConversationId?: string;
@@ -19,9 +19,9 @@ interface ConversationListSidebarProps {
 export function ConversationListSidebar({ activeConversationId }: ConversationListSidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const { on, off, isConnected } = useSocketContext();
-  const { setActiveConversationId } = useChatStore();
+  const router = useRouter();
 
-  // Ref to preserve scroll position - agora funciona NATIVAMENTE pois componente nunca desmonta
+  // Ref to preserve scroll position
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const scrollPositionRef = useRef<number>(0);
 
@@ -36,18 +36,18 @@ export function ConversationListSidebar({ activeConversationId }: ConversationLi
   });
 
   // Save scroll position before updates
-  const saveScrollPosition = () => {
+  const saveScrollPosition = useCallback(() => {
     if (scrollContainerRef.current) {
       scrollPositionRef.current = scrollContainerRef.current.scrollTop;
     }
-  };
+  }, []);
 
   // Restore scroll position after updates
-  const restoreScrollPosition = () => {
+  const restoreScrollPosition = useCallback(() => {
     if (scrollContainerRef.current && scrollPositionRef.current > 0) {
       scrollContainerRef.current.scrollTop = scrollPositionRef.current;
     }
-  };
+  }, []);
 
   // Real-time updates
   useEffect(() => {
@@ -56,7 +56,6 @@ export function ConversationListSidebar({ activeConversationId }: ConversationLi
     const handleNewConversation = () => {
       saveScrollPosition();
       refetch().then(() => {
-        // Restore scroll position after refetch completes
         requestAnimationFrame(restoreScrollPosition);
       });
     };
@@ -84,7 +83,7 @@ export function ConversationListSidebar({ activeConversationId }: ConversationLi
       off('conversation:updated', handleConversationUpdate);
       off('message:new', handleNewMessage);
     };
-  }, [isConnected, on, off, refetch]);
+  }, [isConnected, on, off, refetch, saveScrollPosition, restoreScrollPosition]);
 
   const conversations = conversationsData?.data || [];
 
@@ -107,15 +106,12 @@ export function ConversationListSidebar({ activeConversationId }: ConversationLi
     return new Date(b.lastMessageAt || 0).getTime() - new Date(a.lastMessageAt || 0).getTime();
   });
 
-  // [SPA-LIKE] Trocar conversa via Zustand - SEM router.push
-  // RESULTADO: Scroll NUNCA reseta, transição INSTANTÂNEA (padrão WhatsApp)
+  // Navigate to conversation - scroll is preserved because sidebar never unmounts
   const handleSelectConversation = useCallback((conversationId: string) => {
-    // Atualizar estado - Layout fará shallow routing
-    setActiveConversationId(conversationId);
-    // Scroll é preservado NATURALMENTE (componente não desmonta)
-  }, [setActiveConversationId]);
+    router.push(`/dashboard/conversations/${conversationId}`);
+  }, [router]);
 
-  // Track scroll position on scroll events
+  // Track scroll position continuously
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;

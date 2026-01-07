@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMutation } from '@tanstack/react-query';
 import { conversationService } from '@/services/conversation.service';
 import { messageService } from '@/services/message.service';
@@ -8,14 +8,11 @@ import { ContactSidebar } from '@/components/tenant/contact-sidebar';
 import { ChatHeader } from '@/components/chat/chat-header';
 import { MessageList } from '@/components/chat/message-list';
 import { ChatInput } from '@/components/chat/chat-input';
-import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import { useSocketContext } from '@/contexts/socket-context';
 import { useEffect, useState, useRef } from 'react';
 import { Message, MessageType } from '@/types';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
-import { useChatStore } from '@/stores/chat-store';
 
 interface ConversationPageProps {
   params: {
@@ -27,13 +24,11 @@ export default function ConversationPage({ params }: ConversationPageProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { on, off, subscribeToConversation, unsubscribeFromConversation, isConnected, sendTypingStatus, isUserTyping, setActiveConversationId: setSocketActiveConversationId } = useSocketContext();
-  const { activeConversationId } = useChatStore();
   const [isTyping, setIsTyping] = useState(false);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Usar activeConversationId do Zustand se disponível, senão usar params.id
-  // Isso permite transição instantânea mesmo antes do URL mudar
-  const conversationId = activeConversationId || params.id;
+  // Usar params.id diretamente - mais simples e confiável
+  const conversationId = params.id;
 
   // [P0-3 FIX] Use refs for stable handler references to prevent memory leaks
   // This avoids re-registering Socket.IO handlers on every render
@@ -43,23 +38,19 @@ export default function ConversationPage({ params }: ConversationPageProps) {
     handleMessageStatus: null as any,
   });
 
-  // [PERFORMANCE OPTIMIZATION] Use placeholderData to keep previous conversation
-  // visible while loading the new one. This prevents blank screens during navigation.
-  // staleTime of 30s avoids unnecessary refetches for recently viewed conversations.
-  const { data: conversation, isLoading: conversationLoading, isFetching: conversationFetching, isPlaceholderData: isConversationStale } = useQuery({
+  // Fetch conversation data - staleTime evita refetches desnecessários
+  const { data: conversation, isLoading: conversationLoading } = useQuery({
     queryKey: ['conversation', conversationId],
     queryFn: () => conversationService.getById(conversationId),
-    placeholderData: keepPreviousData,
     staleTime: 30000, // 30 seconds - avoid refetch for recently viewed conversations
-    enabled: !!conversationId, // Só buscar se tiver ID
+    enabled: !!conversationId,
   });
 
-  const { data: messagesData, isLoading: messagesLoading, isFetching: messagesFetching, isPlaceholderData: isMessagesStale, refetch: refetchMessages } = useQuery({
+  const { data: messagesData, isLoading: messagesLoading, refetch: refetchMessages } = useQuery({
     queryKey: ['messages', conversationId],
     queryFn: () => messageService.list(conversationId, { limit: 100 }),
-    placeholderData: keepPreviousData,
     staleTime: 30000, // 30 seconds - avoid refetch for recently viewed conversations
-    enabled: !!conversationId, // Só buscar se tiver ID
+    enabled: !!conversationId,
   });
 
   // Send message mutation
@@ -314,42 +305,17 @@ export default function ConversationPage({ params }: ConversationPageProps) {
     };
   }, [conversationId, setSocketActiveConversationId]);
 
-  // [PERFORMANCE] Intelligent loading states:
-  // - Only show fullscreen loading on INITIAL load (no cached data)
-  // - If we have placeholder data, show it with an inline loading indicator
-  // - Never show "not found" while actively fetching
-  const isInitialLoading = (conversationLoading || messagesLoading) && !conversation && !messagesData;
-  const isRefreshing = conversationFetching || messagesFetching;
-  const showInlineLoader = isRefreshing && (isConversationStale || isMessagesStale);
+  // Loading state - mostrar enquanto carrega
+  const isLoading = conversationLoading || messagesLoading;
 
-  // Only show fullscreen loader on initial load (no data in cache)
-  if (isInitialLoading) {
+  // Mostrar loading enquanto carrega a conversa
+  if (isLoading || !conversation) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
-  // Only show "not found" if we're NOT fetching and genuinely have no data
-  if (!conversation && !conversationFetching) {
-    return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center h-screen bg-[#f0f2f5]">
         <div className="text-center">
-          <p className="text-lg font-medium">Conversa não encontrada</p>
-          <Button onClick={() => router.push('/dashboard/conversations')} className="mt-4">
-            Voltar para conversas
-          </Button>
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#00a884] mx-auto mb-4"></div>
+          <p className="text-sm text-[#667781]">Carregando conversa...</p>
         </div>
-      </div>
-    );
-  }
-
-  // If we're still fetching but have no data at all, show loading
-  if (!conversation) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -369,13 +335,6 @@ export default function ConversationPage({ params }: ConversationPageProps) {
               isConnected={isConnected}
               onBack={() => router.push('/dashboard/conversations')}
             />
-            {/* Inline loading indicator when refreshing conversation data */}
-            {showInlineLoader && (
-              <div className="absolute top-2 right-4 bg-background/80 backdrop-blur-sm px-3 py-1 rounded-full shadow-sm border border-border flex items-center gap-2">
-                <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">Atualizando...</span>
-              </div>
-            )}
           </div>
         </div>
 
