@@ -29,6 +29,8 @@ import {
   Users,
   Bot,
   Loader2,
+  Archive,
+  Trash2,
 } from 'lucide-react';
 import { cn, getInitials, formatDate, formatPhoneNumber } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -37,9 +39,11 @@ import { useAuth } from '@/contexts/auth-context';
 interface ContactSidebarProps {
   conversation: Conversation;
   onIaLockChange?: (locked: boolean) => void;
+  onArchive?: () => void;
+  onDelete?: () => void;
 }
 
-export function ContactSidebar({ conversation, onIaLockChange }: ContactSidebarProps) {
+export function ContactSidebar({ conversation, onIaLockChange, onArchive, onDelete }: ContactSidebarProps) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [isUpdating, setIsUpdating] = useState(false);
@@ -107,6 +111,34 @@ export function ContactSidebar({ conversation, onIaLockChange }: ContactSidebarP
       toast.error('Erro ao fechar conversa');
     },
   });
+
+  const archiveMutation = useMutation({
+    mutationFn: () => conversationService.archive(conversation.id),
+    onSuccess: () => {
+      toast.success('Conversa arquivada!');
+      onArchive?.();
+    },
+    onError: () => {
+      toast.error('Erro ao arquivar conversa');
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => conversationService.delete(conversation.id),
+    onSuccess: () => {
+      toast.success('Conversa excluída!');
+      onDelete?.();
+    },
+    onError: () => {
+      toast.error('Erro ao excluir conversa');
+    },
+  });
+
+  const handleDelete = () => {
+    if (confirm('Tem certeza que deseja excluir esta conversa? Esta ação não pode ser desfeita.')) {
+      deleteMutation.mutate();
+    }
+  };
 
   // [FIX] Mutation com optimistic update para evitar race conditions
   // Isso resolve o crash ao clicar rapidamente no toggle de IA
@@ -306,6 +338,24 @@ export function ContactSidebar({ conversation, onIaLockChange }: ContactSidebarP
             >
               <CheckCircle2 className="h-4 w-4 mr-2" />
               Fechar conversa
+            </Button>
+            <Button
+              onClick={() => archiveMutation.mutate()}
+              disabled={archiveMutation.isPending || conversation.status === ConversationStatus.ARCHIVED}
+              variant="outline"
+              className="w-full glass-input-sidebar hover:bg-white/20"
+            >
+              <Archive className="h-4 w-4 mr-2" />
+              Arquivar
+            </Button>
+            <Button
+              onClick={handleDelete}
+              disabled={deleteMutation.isPending}
+              variant="outline"
+              className="w-full glass-input-sidebar hover:bg-red-500/10 text-red-600 hover:text-red-700 border-red-200"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Excluir conversa
             </Button>
           </div>
         </div>

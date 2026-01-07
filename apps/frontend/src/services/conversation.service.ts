@@ -95,4 +95,22 @@ export const conversationService = {
   async markAsRead(id: string): Promise<void> {
     await api.post(`/api/conversations/${id}/read`);
   },
+
+  /**
+   * Archive conversation
+   * Moves conversation to ARCHIVED status
+   */
+  async archive(id: string): Promise<Conversation> {
+    const { data } = await api.post<Conversation>(`/api/conversations/${id}/archive`);
+    return data;
+  },
+
+  /**
+   * Delete conversation permanently
+   * This action cannot be undone
+   */
+  async delete(id: string): Promise<{ success: boolean; id: string }> {
+    const { data } = await api.delete<{ success: boolean; id: string }>(`/api/conversations/${id}`);
+    return data;
+  },
 };

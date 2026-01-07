@@ -369,6 +369,12 @@ export default function ConversationPage({ params }: ConversationPageProps) {
               iaLocked: locked,
             }));
           }}
+          onArchive={() => {
+            router.push('/dashboard/conversations');
+          }}
+          onDelete={() => {
+            router.push('/dashboard/conversations');
+          }}
         />
       </div>
     </div>

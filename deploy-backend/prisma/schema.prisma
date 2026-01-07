@@ -231,6 +231,7 @@ enum ConversationStatus {
   IN_PROGRESS // Atendente está conversando
   WAITING     // Aguardando resposta do cliente
   CLOSED      // Finalizada
+  ARCHIVED    // Arquivada (não aparece em listas)
 }
 
 enum Priority {

@@ -14,7 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { MessageSquare, MoreVertical, User, Clock, CheckCircle2 } from 'lucide-react';
+import { MessageSquare, MoreVertical, User, Clock, CheckCircle2, Archive, Trash2 } from 'lucide-react';
 import { getInitials, formatTime } from '@/lib/utils';
 import { conversationService } from '@/services/conversation.service';
 import { toast } from 'sonner';
@@ -36,6 +36,35 @@ export function ConversationCard({ conversation, onUpdate }: ConversationCardPro
       onUpdate();
     } catch (error) {
       toast.error('Erro ao fechar conversa');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleArchive = async () => {
+    setIsLoading(true);
+    try {
+      await conversationService.archive(conversation.id);
+      toast.success('Conversa arquivada!');
+      onUpdate();
+    } catch (error) {
+      toast.error('Erro ao arquivar conversa');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirm('Tem certeza que deseja excluir esta conversa? Esta ação não pode ser desfeita.')) {
+      return;
+    }
+    setIsLoading(true);
+    try {
+      await conversationService.delete(conversation.id);
+      toast.success('Conversa excluída!');
+      onUpdate();
+    } catch (error) {
+      toast.error('Erro ao excluir conversa');
     } finally {
       setIsLoading(false);
     }
@@ -80,6 +109,15 @@ export function ConversationCard({ conversation, onUpdate }: ConversationCardPro
               <DropdownMenuItem onClick={handleClose} disabled={isLoading}>
                 <CheckCircle2 className="mr-2 h-4 w-4" />
                 Fechar conversa
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleArchive} disabled={isLoading}>
+                <Archive className="mr-2 h-4 w-4" />
+                Arquivar
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleDelete} disabled={isLoading} className="text-red-600 focus:text-red-600">
+                <Trash2 className="mr-2 h-4 w-4" />
+                Excluir
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

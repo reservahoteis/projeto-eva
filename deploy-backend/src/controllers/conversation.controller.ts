@@ -260,6 +260,56 @@ export class ConversationController {
   }
 
   /**
+   * POST /api/conversations/:id/archive
+   */
+  async archive(req: Request, res: Response) {
+    try {
+      const id = req.params.id as string;
+
+      if (!req.tenantId) {
+        return res.status(400).json({ error: 'Tenant ID não encontrado' });
+      }
+
+      const conversation = await conversationService.archiveConversation(id, req.tenantId);
+
+      return res.json(conversation);
+    } catch (error) {
+      logger.error({ error, conversationId: req.params.id }, 'Erro ao arquivar conversa');
+
+      if (error instanceof NotFoundError) {
+        return res.status(404).json({ error: error.message });
+      }
+
+      return res.status(500).json({ error: 'Erro interno ao arquivar conversa' });
+    }
+  }
+
+  /**
+   * DELETE /api/conversations/:id
+   */
+  async delete(req: Request, res: Response) {
+    try {
+      const id = req.params.id as string;
+
+      if (!req.tenantId) {
+        return res.status(400).json({ error: 'Tenant ID não encontrado' });
+      }
+
+      const result = await conversationService.deleteConversation(id, req.tenantId);
+
+      return res.json(result);
+    } catch (error) {
+      logger.error({ error, conversationId: req.params.id }, 'Erro ao excluir conversa');
+
+      if (error instanceof NotFoundError) {
+        return res.status(404).json({ error: error.message });
+      }
+
+      return res.status(500).json({ error: 'Erro interno ao excluir conversa' });
+    }
+  }
+
+  /**
    * GET /api/conversations/stats
    * Retorna estatísticas das conversas do tenant
    */

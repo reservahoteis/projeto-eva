@@ -119,6 +119,7 @@ export enum ConversationStatus {
   IN_PROGRESS = 'IN_PROGRESS',   // Atendente está conversando ativamente
   WAITING = 'WAITING',           // Aguardando resposta do cliente
   CLOSED = 'CLOSED',             // Conversa finalizada
+  ARCHIVED = 'ARCHIVED',         // Conversa arquivada (não aparece em listas)
 }
 
 export interface Conversation {

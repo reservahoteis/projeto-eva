@@ -721,6 +721,70 @@ export class ConversationService {
 
     return conversation;
   }
+
+  /**
+   * Arquivar conversa
+   */
+  async archiveConversation(conversationId: string, tenantId: string) {
+    const conversation = await prisma.conversation.findFirst({
+      where: {
+        id: conversationId,
+        tenantId,
+      },
+    });
+
+    if (!conversation) {
+      throw new NotFoundError('Conversa não encontrada');
+    }
+
+    const updated = await prisma.conversation.update({
+      where: { id: conversationId },
+      data: {
+        status: 'ARCHIVED' as ConversationStatus,
+        closedAt: new Date(),
+      },
+    });
+
+    logger.info({ conversationId }, 'Conversation archived');
+
+    return updated;
+  }
+
+  /**
+   * Excluir conversa permanentemente
+   */
+  async deleteConversation(conversationId: string, tenantId: string) {
+    const conversation = await prisma.conversation.findFirst({
+      where: {
+        id: conversationId,
+        tenantId,
+      },
+    });
+
+    if (!conversation) {
+      throw new NotFoundError('Conversa não encontrada');
+    }
+
+    // Deletar em cascata: messages, escalations, tags relation
+    await prisma.$transaction([
+      // Deletar escalations associados
+      prisma.escalation.deleteMany({
+        where: { conversationId },
+      }),
+      // Deletar mensagens
+      prisma.message.deleteMany({
+        where: { conversationId },
+      }),
+      // Deletar a conversa (tags são desconectadas automaticamente por ser M:N)
+      prisma.conversation.delete({
+        where: { id: conversationId },
+      }),
+    ]);
+
+    logger.info({ conversationId, tenantId }, 'Conversation deleted permanently');
+
+    return { success: true, id: conversationId };
+  }
 }
 
 export const conversationService = new ConversationService();

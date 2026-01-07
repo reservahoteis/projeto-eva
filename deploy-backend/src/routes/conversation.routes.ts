@@ -51,6 +51,12 @@ router.post('/:id/assign', validate(assignConversationSchema), conversationContr
 // POST /api/conversations/:id/close
 router.post('/:id/close', conversationController.close.bind(conversationController));
 
+// POST /api/conversations/:id/archive
+router.post('/:id/archive', conversationController.archive.bind(conversationController));
+
+// DELETE /api/conversations/:id
+router.delete('/:id', conversationController.delete.bind(conversationController));
+
 // PATCH /api/conversations/:id/ia-lock
 // Toggle IA lock (travar/destravar IA para esta conversa)
 router.patch(
