@@ -144,9 +144,39 @@ export function ConversationCard({ conversation, onUpdate }: ConversationCardPro
             </Badge>
           )}
 
-          <div className="flex items-center gap-1 text-muted-foreground flex-shrink-0">
-            <Clock className="h-3 w-3" />
-            <span>{formatTime(conversation.lastMessageAt)}</span>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="flex items-center gap-1 text-muted-foreground">
+              <Clock className="h-3 w-3" />
+              <span>{formatTime(conversation.lastMessageAt)}</span>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="flex items-center gap-0.5">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleArchive();
+                }}
+                disabled={isLoading}
+                className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+                title="Arquivar"
+              >
+                <Archive className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDelete();
+                }}
+                disabled={isLoading}
+                className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
+                title="Excluir"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
           </div>
         </div>
 

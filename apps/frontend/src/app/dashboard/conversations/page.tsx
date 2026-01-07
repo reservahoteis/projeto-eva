@@ -72,6 +72,7 @@ export default function ConversationsPage() {
             <TabsTrigger value={ConversationStatus.IN_PROGRESS} className="text-xs sm:text-sm">Em Atendimento</TabsTrigger>
             <TabsTrigger value={ConversationStatus.WAITING} className="text-xs sm:text-sm hidden sm:inline-flex">Aguardando</TabsTrigger>
             <TabsTrigger value={ConversationStatus.CLOSED} className="text-xs sm:text-sm">Finalizadas</TabsTrigger>
+            <TabsTrigger value={ConversationStatus.ARCHIVED} className="text-xs sm:text-sm text-gray-500">Arquivadas</TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
@@ -104,15 +105,25 @@ export default function ConversationsPage() {
         ) : viewMode === 'kanban' ? (
           <KanbanBoardRealtime
             initialConversations={
-              // Filtrar conversas BOT_HANDLING para não aparecer no Kanban
+              // Filtrar conversas BOT_HANDLING e ARCHIVED para não aparecer no Kanban
               (conversations?.data || []).filter(
-                conv => conv.status !== ConversationStatus.BOT_HANDLING
+                conv => conv.status !== ConversationStatus.BOT_HANDLING && conv.status !== ConversationStatus.ARCHIVED
               )
             }
             onUpdate={refetch}
           />
         ) : (
-          <ConversationList conversations={conversations?.data || []} onUpdate={refetch} />
+          <ConversationList
+            conversations={
+              // Na lista, quando "Todas" selecionado, não mostrar BOT_HANDLING e ARCHIVED
+              selectedStatus === 'all'
+                ? (conversations?.data || []).filter(
+                    conv => conv.status !== ConversationStatus.BOT_HANDLING && conv.status !== ConversationStatus.ARCHIVED
+                  )
+                : (conversations?.data || [])
+            }
+            onUpdate={refetch}
+          />
         )}
       </div>
     </div>
