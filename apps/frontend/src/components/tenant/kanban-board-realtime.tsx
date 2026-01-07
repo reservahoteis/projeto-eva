@@ -119,12 +119,13 @@ export function KanbanBoardRealtime({ initialConversations, onUpdate }: KanbanBo
     retry: 3, // Retry até 3 vezes
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000), // Exponential backoff
     onSuccess: (_, variables) => {
-      const statusLabels = {
+      const statusLabels: Record<ConversationStatus, string> = {
         [ConversationStatus.OPEN]: 'Novas',
         [ConversationStatus.IN_PROGRESS]: 'Em Atendimento',
         [ConversationStatus.WAITING]: 'Aguardando Cliente',
         [ConversationStatus.CLOSED]: 'Finalizadas',
         [ConversationStatus.BOT_HANDLING]: 'Bot',
+        [ConversationStatus.ARCHIVED]: 'Arquivadas',
       };
       toast.success(`Conversa movida para "${statusLabels[variables.status]}"`);
       onUpdate();
