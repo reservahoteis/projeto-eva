@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Search, MessageSquare, Bot, Building2 } from 'lucide-react';
 import { cn, getInitials, formatTime } from '@/lib/utils';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSocketContext } from '@/contexts/socket-context';
 
 interface ConversationListSidebarProps {
@@ -21,6 +21,10 @@ export function ConversationListSidebar({ activeConversationId }: ConversationLi
   const [searchQuery, setSearchQuery] = useState('');
   const { on, off, isConnected } = useSocketContext();
 
+  // Ref to preserve scroll position
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const scrollPositionRef = useRef<number>(0);
+
   // [P1-1 FIX] Disable aggressive polling since Socket.IO provides real-time updates
   // This eliminates redundant API calls and reduces server load
   const { data: conversationsData, refetch } = useQuery({
@@ -31,20 +35,44 @@ export function ConversationListSidebar({ activeConversationId }: ConversationLi
     refetchOnWindowFocus: true, // Refetch when user returns to tab
   });
 
+  // Save scroll position before updates
+  const saveScrollPosition = () => {
+    if (scrollContainerRef.current) {
+      scrollPositionRef.current = scrollContainerRef.current.scrollTop;
+    }
+  };
+
+  // Restore scroll position after updates
+  const restoreScrollPosition = () => {
+    if (scrollContainerRef.current && scrollPositionRef.current > 0) {
+      scrollContainerRef.current.scrollTop = scrollPositionRef.current;
+    }
+  };
+
   // Real-time updates
   useEffect(() => {
     if (!isConnected) return;
 
     const handleNewConversation = () => {
-      refetch();
+      saveScrollPosition();
+      refetch().then(() => {
+        // Restore scroll position after refetch completes
+        requestAnimationFrame(restoreScrollPosition);
+      });
     };
 
     const handleConversationUpdate = () => {
-      refetch();
+      saveScrollPosition();
+      refetch().then(() => {
+        requestAnimationFrame(restoreScrollPosition);
+      });
     };
 
     const handleNewMessage = () => {
-      refetch();
+      saveScrollPosition();
+      refetch().then(() => {
+        requestAnimationFrame(restoreScrollPosition);
+      });
     };
 
     on('conversation:new', handleNewConversation);
@@ -80,8 +108,23 @@ export function ConversationListSidebar({ activeConversationId }: ConversationLi
   });
 
   const handleSelectConversation = (conversationId: string) => {
+    // Save scroll position before navigation
+    saveScrollPosition();
     router.push(`/dashboard/conversations/${conversationId}`);
   };
+
+  // Track scroll position on scroll events
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      scrollPositionRef.current = container.scrollTop;
+    };
+
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const getStatusColor = (status: ConversationStatus) => {
     switch (status) {
@@ -119,7 +162,7 @@ export function ConversationListSidebar({ activeConversationId }: ConversationLi
       </div>
 
       {/* Conversations List */}
-      <div className="flex-1 overflow-y-auto">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto">
         {sortedConversations.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center p-4">
             <MessageSquare className="h-12 w-12 text-[#8696a0] mb-3" />
