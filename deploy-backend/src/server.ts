@@ -108,12 +108,16 @@ import debugRoutes from './routes/debug.routes';
 import escalationRoutes from './routes/escalation.routes';
 import n8nRoutes from './routes/n8n.routes';
 import mediaRoutes from './routes/media.routes';
+import publicRoutes from './routes/public.routes';
 
 // Auth (público - sem tenant isolation)
 app.use('/auth', authRoutes);
 
 // Webhooks (antes do tenant middleware para algumas rotas)
 app.use('/webhooks', webhookRoutes);
+
+// N8N Public routes (sem autenticação - para track-click do WhatsApp)
+app.use('/api/n8n', publicRoutes);
 
 // N8N Integration (autenticação própria por API Key)
 // Rate limit especifico: 5000 req/min por tenant (carrosseis enviam muitas msgs)
