@@ -855,14 +855,14 @@ describe('TenantService', () => {
       // Act
       const result = await tenantService.configureWhatsApp('tenant-123', whatsappConfig);
 
-      // Assert
+      // Assert - tokens são criptografados antes de salvar
       expect(prismaMock.tenant.update).toHaveBeenCalledWith({
         where: { id: 'tenant-123' },
         data: {
           whatsappPhoneNumberId: whatsappConfig.whatsappPhoneNumberId,
-          whatsappAccessToken: whatsappConfig.whatsappAccessToken,
+          whatsappAccessToken: expect.stringContaining(':'), // Token criptografado contém ':'
           whatsappBusinessAccountId: whatsappConfig.whatsappBusinessAccountId,
-          whatsappAppSecret: whatsappConfig.whatsappAppSecret,
+          whatsappAppSecret: expect.stringContaining(':'), // Token criptografado contém ':'
         },
       });
 
@@ -878,15 +878,20 @@ describe('TenantService', () => {
         whatsappAppSecret: 'secret-abc',
       };
 
-      prismaMock.tenant.update.mockResolvedValue({ id: 'tenant-123' } as any);
+      prismaMock.tenant.update.mockResolvedValue({ id: 'tenant-123' } as never);
 
       // Act
       await tenantService.configureWhatsApp('tenant-123', partialConfig);
 
-      // Assert
+      // Assert - tokens são criptografados antes de salvar
       expect(prismaMock.tenant.update).toHaveBeenCalledWith({
         where: { id: 'tenant-123' },
-        data: partialConfig,
+        data: {
+          whatsappPhoneNumberId: partialConfig.whatsappPhoneNumberId,
+          whatsappAccessToken: expect.stringContaining(':'), // Token criptografado
+          whatsappBusinessAccountId: partialConfig.whatsappBusinessAccountId,
+          whatsappAppSecret: expect.stringContaining(':'), // Token criptografado
+        },
       });
     });
   });

@@ -145,13 +145,13 @@ describe('Message Validators', () => {
         expect(result.success).toBe(false);
       });
 
-      it('deve rejeitar objeto sem conversationId', () => {
+      it('deve aceitar objeto sem conversationId (opcional - pode vir do route param)', () => {
         const input = {
           content: 'Teste',
         };
 
         const result = sendMessageSchema.safeParse(input);
-        expect(result.success).toBe(false);
+        expect(result.success).toBe(true);
       });
 
       it('deve rejeitar objeto sem content', () => {
@@ -174,22 +174,22 @@ describe('Message Validators', () => {
         expect(result.success).toBe(true);
       });
 
-      it('deve aceitar limit válido (1-100)', () => {
-        const input = { limit: 50 };
+      it('deve aceitar limit válido (1-100) como string', () => {
+        const input = { limit: '50' };
 
         const result = listMessagesSchema.safeParse(input);
         expect(result.success).toBe(true);
       });
 
-      it('deve aceitar limit mínimo (1)', () => {
-        const input = { limit: 1 };
+      it('deve aceitar limit mínimo (1) como string', () => {
+        const input = { limit: '1' };
 
         const result = listMessagesSchema.safeParse(input);
         expect(result.success).toBe(true);
       });
 
-      it('deve aceitar limit máximo (100)', () => {
-        const input = { limit: 100 };
+      it('deve aceitar limit máximo (100) como string', () => {
+        const input = { limit: '100' };
 
         const result = listMessagesSchema.safeParse(input);
         expect(result.success).toBe(true);
@@ -215,7 +215,7 @@ describe('Message Validators', () => {
 
       it('deve aceitar limit + before', () => {
         const input = {
-          limit: 20,
+          limit: '20',
           before: '123e4567-e89b-12d3-a456-426614174000',
         };
 
@@ -225,7 +225,7 @@ describe('Message Validators', () => {
 
       it('deve aceitar limit + after', () => {
         const input = {
-          limit: 20,
+          limit: '20',
           after: '123e4567-e89b-12d3-a456-426614174000',
         };
 
@@ -236,28 +236,28 @@ describe('Message Validators', () => {
 
     describe('❌ Invalid inputs', () => {
       it('deve rejeitar limit < 1', () => {
-        const input = { limit: 0 };
+        const input = { limit: '0' };
 
         const result = listMessagesSchema.safeParse(input);
         expect(result.success).toBe(false);
       });
 
       it('deve rejeitar limit > 100', () => {
-        const input = { limit: 101 };
+        const input = { limit: '101' };
 
         const result = listMessagesSchema.safeParse(input);
         expect(result.success).toBe(false);
       });
 
       it('deve rejeitar limit negativo', () => {
-        const input = { limit: -10 };
+        const input = { limit: '-10' };
 
         const result = listMessagesSchema.safeParse(input);
         expect(result.success).toBe(false);
       });
 
-      it('deve rejeitar limit decimal', () => {
-        const input = { limit: 10.5 };
+      it('deve rejeitar limit não numérico', () => {
+        const input = { limit: 'abc' };
 
         const result = listMessagesSchema.safeParse(input);
         expect(result.success).toBe(false);

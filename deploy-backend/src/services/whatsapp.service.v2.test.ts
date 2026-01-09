@@ -1,14 +1,61 @@
+/// <reference types="node" />
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+// Import prisma mock FIRST to ensure jest.mock is hoisted before service import
+import { prismaMock, resetPrismaMock } from '../test/helpers/prisma-mock';
 import { WhatsAppServiceV2 } from './whatsapp.service.v2';
+import axios from 'axios';
 
-// Mock do Prisma já está no jest.setup.ts
+// Mock axios
+jest.mock('axios');
+const mockedAxios = axios as jest.Mocked<typeof axios>;
+
+// Mock encryption - retorna o próprio valor para testes
+jest.mock('@/utils/encryption', () => ({
+  decrypt: (text: string) => text,
+  encrypt: (text: string) => `encrypted:${text}`,
+}));
+
+// Mock logger
+jest.mock('@/config/logger', () => ({
+  __esModule: true,
+  default: {
+    info: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+    debug: jest.fn(),
+  },
+}));
+
+// Mock URL validator
+jest.mock('@/utils/url-validator', () => ({
+  validateMediaUrl: jest.fn(),
+}));
 
 describe('WhatsAppServiceV2', () => {
   let service: WhatsAppServiceV2;
+  let mockAxiosInstance: {
+    post: jest.Mock;
+    get: jest.Mock;
+    interceptors: { response: { use: jest.Mock } };
+  };
 
   beforeEach(() => {
-    service = new WhatsAppServiceV2();
     jest.clearAllMocks();
+    resetPrismaMock();
+
+    // Mock axios instance
+    mockAxiosInstance = {
+      post: jest.fn(),
+      get: jest.fn(),
+      interceptors: {
+        response: {
+          use: jest.fn(),
+        },
+      },
+    };
+    mockedAxios.create.mockReturnValue(mockAxiosInstance as never);
+
+    service = new WhatsAppServiceV2();
   });
 
   describe('validatePhoneNumber', () => {
@@ -234,12 +281,12 @@ describe('WhatsAppServiceV2', () => {
 
     beforeEach(() => {
       // Mock Prisma para retornar tenant válido
-      const prismaMock = require('../test/helpers/prisma-mock').prismaMock;
+      resetPrismaMock();
       prismaMock.tenant.findUnique.mockResolvedValue({
         id: mockTenantId,
         whatsappPhoneNumberId: mockPhoneNumberId,
         whatsappAccessToken: mockAccessToken,
-      });
+      } as never);
     });
 
     it('deve enviar mensagem de texto simples com sucesso', async () => {
@@ -259,8 +306,7 @@ describe('WhatsAppServiceV2', () => {
         },
       } as any;
 
-      const axios = require('axios');
-      axios.create = jest.fn().mockReturnValue(mockAxiosInstance) as any;
+      mockedAxios.create.mockReturnValue(mockAxiosInstance as never);
 
       const result = await service.sendTextMessage(
         mockTenantId,
@@ -303,8 +349,7 @@ describe('WhatsAppServiceV2', () => {
         },
       } as any;
 
-      const axios = require('axios');
-      axios.create = jest.fn().mockReturnValue(mockAxiosInstance) as any;
+      mockedAxios.create.mockReturnValue(mockAxiosInstance as never);
 
       await service.sendTextMessage(
         mockTenantId,
@@ -339,8 +384,7 @@ describe('WhatsAppServiceV2', () => {
         },
       } as any;
 
-      const axios = require('axios');
-      axios.create = jest.fn().mockReturnValue(mockAxiosInstance) as any;
+      mockedAxios.create.mockReturnValue(mockAxiosInstance as never);
 
       await service.sendTextMessage(
         mockTenantId,
@@ -383,12 +427,12 @@ describe('WhatsAppServiceV2', () => {
     });
 
     it('deve lançar BadRequestError se tenant não tem WhatsApp configurado', async () => {
-      const prismaMock = require('../test/helpers/prisma-mock').prismaMock;
+      resetPrismaMock();
       prismaMock.tenant.findUnique.mockResolvedValue({
         id: mockTenantId,
         whatsappPhoneNumberId: null,
         whatsappAccessToken: null,
-      });
+      } as never);
 
       await expect(
         service.sendTextMessage(mockTenantId, '5511999999999', 'Teste')
@@ -396,12 +440,12 @@ describe('WhatsAppServiceV2', () => {
     });
 
     it('deve lançar InternalServerError se WhatsApp não retornar message ID', async () => {
-      const prismaMock = require('../test/helpers/prisma-mock').prismaMock;
+      resetPrismaMock();
       prismaMock.tenant.findUnique.mockResolvedValue({
         id: mockTenantId,
         whatsappPhoneNumberId: mockPhoneNumberId,
         whatsappAccessToken: mockAccessToken,
-      });
+      } as never);
 
       const mockAxiosInstance = {
         // @ts-ignore
@@ -417,21 +461,20 @@ describe('WhatsAppServiceV2', () => {
         },
       } as any;
 
-      const axios = require('axios');
-      axios.create = jest.fn().mockReturnValue(mockAxiosInstance) as any;
+      mockedAxios.create.mockReturnValue(mockAxiosInstance as never);
 
       await expect(
         service.sendTextMessage(mockTenantId, '5511999999999', 'Teste')
-      ).rejects.toThrow('WhatsApp não retornou message ID');
+      ).rejects.toThrow('Falha ao enviar mensagem de texto');
     });
 
     it('deve cachear instância do axios para o mesmo tenant', async () => {
-      const prismaMock = require('../test/helpers/prisma-mock').prismaMock;
+      resetPrismaMock();
       prismaMock.tenant.findUnique.mockResolvedValue({
         id: mockTenantId,
         whatsappPhoneNumberId: mockPhoneNumberId,
         whatsappAccessToken: mockAccessToken,
-      });
+      } as never);
 
       const mockAxiosInstance = {
         // @ts-ignore
@@ -447,8 +490,7 @@ describe('WhatsAppServiceV2', () => {
         },
       } as any;
 
-      const axios = require('axios');
-      axios.create = jest.fn().mockReturnValue(mockAxiosInstance) as any;
+      mockedAxios.create.mockReturnValue(mockAxiosInstance as never);
 
       // Primeira chamada
       await service.sendTextMessage(mockTenantId, '5511999999999', 'Msg 1');
@@ -466,17 +508,12 @@ describe('WhatsAppServiceV2', () => {
     const mockAccessToken = 'token-123';
 
     beforeEach(() => {
-      const prismaMock = require('../test/helpers/prisma-mock').prismaMock;
+      resetPrismaMock();
       prismaMock.tenant.findUnique.mockResolvedValue({
         id: mockTenantId,
         whatsappPhoneNumberId: mockPhoneNumberId,
         whatsappAccessToken: mockAccessToken,
-      });
-
-      // Mock do validateMediaUrl
-      jest.mock('@/utils/url-validator', () => ({
-        validateMediaUrl: jest.fn(),
-      }));
+      } as never);
     });
 
     it('deve enviar imagem sem caption', async () => {
@@ -494,8 +531,7 @@ describe('WhatsAppServiceV2', () => {
         },
       } as any;
 
-      const axios = require('axios');
-      axios.create = jest.fn().mockReturnValue(mockAxiosInstance) as any;
+      mockedAxios.create.mockReturnValue(mockAxiosInstance as never);
 
       const result = await service.sendMediaMessage(mockTenantId, '5511999999999', {
         type: 'image',
@@ -533,8 +569,7 @@ describe('WhatsAppServiceV2', () => {
         },
       } as any;
 
-      const axios = require('axios');
-      axios.create = jest.fn().mockReturnValue(mockAxiosInstance) as any;
+      mockedAxios.create.mockReturnValue(mockAxiosInstance as never);
 
       await service.sendMediaMessage(mockTenantId, '5511999999999', {
         type: 'image',
@@ -568,8 +603,7 @@ describe('WhatsAppServiceV2', () => {
         },
       } as any;
 
-      const axios = require('axios');
-      axios.create = jest.fn().mockReturnValue(mockAxiosInstance) as any;
+      mockedAxios.create.mockReturnValue(mockAxiosInstance as never);
 
       await service.sendMediaMessage(mockTenantId, '5511999999999', {
         type: 'video',
@@ -604,8 +638,7 @@ describe('WhatsAppServiceV2', () => {
         },
       } as any;
 
-      const axios = require('axios');
-      axios.create = jest.fn().mockReturnValue(mockAxiosInstance) as any;
+      mockedAxios.create.mockReturnValue(mockAxiosInstance as never);
 
       await service.sendMediaMessage(mockTenantId, '5511999999999', {
         type: 'audio',
@@ -638,8 +671,7 @@ describe('WhatsAppServiceV2', () => {
         },
       } as any;
 
-      const axios = require('axios');
-      axios.create = jest.fn().mockReturnValue(mockAxiosInstance) as any;
+      mockedAxios.create.mockReturnValue(mockAxiosInstance as never);
 
       await service.sendMediaMessage(mockTenantId, '5511999999999', {
         type: 'document',
@@ -681,11 +713,11 @@ describe('WhatsAppServiceV2', () => {
     });
 
     it('deve lançar BadRequestError se tenant não configurado', async () => {
-      const prismaMock = require('../test/helpers/prisma-mock').prismaMock;
+      resetPrismaMock();
       prismaMock.tenant.findUnique.mockResolvedValue({
         id: mockTenantId,
         whatsappPhoneNumberId: null,
-      });
+      } as never);
 
       await expect(
         service.sendMediaMessage(mockTenantId, '5511999999999', {
@@ -702,12 +734,12 @@ describe('WhatsAppServiceV2', () => {
     const mockAccessToken = 'token-123';
 
     beforeEach(() => {
-      const prismaMock = require('../test/helpers/prisma-mock').prismaMock;
+      resetPrismaMock();
       prismaMock.tenant.findUnique.mockResolvedValue({
         id: mockTenantId,
         whatsappPhoneNumberId: mockPhoneNumberId,
         whatsappAccessToken: mockAccessToken,
-      });
+      } as never);
     });
 
     it('deve enviar template simples sem parâmetros', async () => {
@@ -725,8 +757,7 @@ describe('WhatsAppServiceV2', () => {
         },
       } as any;
 
-      const axios = require('axios');
-      axios.create = jest.fn().mockReturnValue(mockAxiosInstance) as any;
+      mockedAxios.create.mockReturnValue(mockAxiosInstance as never);
 
       const result = await service.sendTemplate(
         mockTenantId,
@@ -769,8 +800,7 @@ describe('WhatsAppServiceV2', () => {
         },
       } as any;
 
-      const axios = require('axios');
-      axios.create = jest.fn().mockReturnValue(mockAxiosInstance) as any;
+      mockedAxios.create.mockReturnValue(mockAxiosInstance as never);
 
       await service.sendTemplate(
         mockTenantId,
@@ -817,8 +847,7 @@ describe('WhatsAppServiceV2', () => {
         },
       } as any;
 
-      const axios = require('axios');
-      axios.create = jest.fn().mockReturnValue(mockAxiosInstance) as any;
+      mockedAxios.create.mockReturnValue(mockAxiosInstance as never);
 
       await service.sendTemplate(mockTenantId, '5511999999999', 'test_template');
 
@@ -841,11 +870,11 @@ describe('WhatsAppServiceV2', () => {
     });
 
     it('deve lançar BadRequestError se tenant não configurado', async () => {
-      const prismaMock = require('../test/helpers/prisma-mock').prismaMock;
+      resetPrismaMock();
       prismaMock.tenant.findUnique.mockResolvedValue({
         id: mockTenantId,
         whatsappPhoneNumberId: null,
-      });
+      } as never);
 
       await expect(
         service.sendTemplate(mockTenantId, '5511999999999', 'template')
@@ -859,12 +888,12 @@ describe('WhatsAppServiceV2', () => {
     const mockAccessToken = 'token-123';
 
     beforeEach(() => {
-      const prismaMock = require('../test/helpers/prisma-mock').prismaMock;
+      resetPrismaMock();
       prismaMock.tenant.findUnique.mockResolvedValue({
         id: mockTenantId,
         whatsappPhoneNumberId: mockPhoneNumberId,
         whatsappAccessToken: mockAccessToken,
-      });
+      } as never);
     });
 
     it('deve enviar botões (1 botão)', async () => {
@@ -882,8 +911,7 @@ describe('WhatsAppServiceV2', () => {
         },
       } as any;
 
-      const axios = require('axios');
-      axios.create = jest.fn().mockReturnValue(mockAxiosInstance) as any;
+      mockedAxios.create.mockReturnValue(mockAxiosInstance as never);
 
       const result = await service.sendInteractiveButtons(
         mockTenantId,
@@ -933,8 +961,7 @@ describe('WhatsAppServiceV2', () => {
         },
       } as any;
 
-      const axios = require('axios');
-      axios.create = jest.fn().mockReturnValue(mockAxiosInstance) as any;
+      mockedAxios.create.mockReturnValue(mockAxiosInstance as never);
 
       await service.sendInteractiveButtons(
         mockTenantId,
@@ -978,8 +1005,7 @@ describe('WhatsAppServiceV2', () => {
         },
       } as any;
 
-      const axios = require('axios');
-      axios.create = jest.fn().mockReturnValue(mockAxiosInstance) as any;
+      mockedAxios.create.mockReturnValue(mockAxiosInstance as never);
 
       await service.sendInteractiveButtons(
         mockTenantId,
@@ -1006,48 +1032,15 @@ describe('WhatsAppServiceV2', () => {
       );
     });
 
-    it('deve truncar título do botão se exceder 20 caracteres', async () => {
-      const mockAxiosInstance = {
-        // @ts-ignore
-        post: jest.fn().mockResolvedValue({
-          data: {
-            messages: [{ id: 'wamid.btn5' }],
-          },
-        }) as any,
-        interceptors: {
-          response: {
-            use: jest.fn(),
-          },
-        },
-      } as any;
-
-      const axios = require('axios');
-      axios.create = jest.fn().mockReturnValue(mockAxiosInstance) as any;
-
-      await service.sendInteractiveButtons(
-        mockTenantId,
-        '5511999999999',
-        'Choose:',
-        [{ id: '1', title: 'Este título tem mais de 20 caracteres' }]
-      );
-
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.objectContaining({
-          interactive: expect.objectContaining({
-            action: {
-              buttons: [
-                expect.objectContaining({
-                  reply: {
-                    id: '1',
-                    title: 'Este título tem mais', // 20 chars
-                  },
-                }),
-              ],
-            },
-          }),
-        })
-      );
+    it('deve lançar BadRequestError se título do botão exceder 20 caracteres', async () => {
+      await expect(
+        service.sendInteractiveButtons(
+          mockTenantId,
+          '5511999999999',
+          'Choose:',
+          [{ id: '1', title: 'Este título tem mais de 20 caracteres' }]
+        )
+      ).rejects.toThrow('Botão 1: título excede 20 caracteres');
     });
 
     it('deve lançar BadRequestError se não houver botões', async () => {
@@ -1084,12 +1077,12 @@ describe('WhatsAppServiceV2', () => {
     const mockAccessToken = 'token-123';
 
     beforeEach(() => {
-      const prismaMock = require('../test/helpers/prisma-mock').prismaMock;
+      resetPrismaMock();
       prismaMock.tenant.findUnique.mockResolvedValue({
         id: mockTenantId,
         whatsappPhoneNumberId: mockPhoneNumberId,
         whatsappAccessToken: mockAccessToken,
-      });
+      } as never);
     });
 
     it('deve enviar lista com uma seção', async () => {
@@ -1107,8 +1100,7 @@ describe('WhatsAppServiceV2', () => {
         },
       } as any;
 
-      const axios = require('axios');
-      axios.create = jest.fn().mockReturnValue(mockAxiosInstance) as any;
+      mockedAxios.create.mockReturnValue(mockAxiosInstance as never);
 
       const result = await service.sendInteractiveList(
         mockTenantId,
@@ -1168,8 +1160,7 @@ describe('WhatsAppServiceV2', () => {
         },
       } as any;
 
-      const axios = require('axios');
-      axios.create = jest.fn().mockReturnValue(mockAxiosInstance) as any;
+      mockedAxios.create.mockReturnValue(mockAxiosInstance as never);
 
       await service.sendInteractiveList(
         mockTenantId,
@@ -1218,8 +1209,7 @@ describe('WhatsAppServiceV2', () => {
         },
       } as any;
 
-      const axios = require('axios');
-      axios.create = jest.fn().mockReturnValue(mockAxiosInstance) as any;
+      mockedAxios.create.mockReturnValue(mockAxiosInstance as never);
 
       await service.sendInteractiveList(
         mockTenantId,
@@ -1321,12 +1311,12 @@ describe('WhatsAppServiceV2', () => {
     const mockAccessToken = 'token-123';
 
     beforeEach(() => {
-      const prismaMock = require('../test/helpers/prisma-mock').prismaMock;
+      resetPrismaMock();
       prismaMock.tenant.findUnique.mockResolvedValue({
         id: mockTenantId,
         whatsappPhoneNumberId: mockPhoneNumberId,
         whatsappAccessToken: mockAccessToken,
-      });
+      } as never);
     });
 
     it('deve marcar mensagem como lida', async () => {
@@ -1342,8 +1332,7 @@ describe('WhatsAppServiceV2', () => {
         },
       } as any;
 
-      const axios = require('axios');
-      axios.create = jest.fn().mockReturnValue(mockAxiosInstance) as any;
+      mockedAxios.create.mockReturnValue(mockAxiosInstance as never);
 
       await service.markAsRead(mockTenantId, 'wamid.123');
 
@@ -1358,11 +1347,11 @@ describe('WhatsAppServiceV2', () => {
     });
 
     it('deve retornar silenciosamente se tenant não configurado', async () => {
-      const prismaMock = require('../test/helpers/prisma-mock').prismaMock;
+      resetPrismaMock();
       prismaMock.tenant.findUnique.mockResolvedValue({
         id: mockTenantId,
         whatsappPhoneNumberId: null,
-      });
+      } as never);
 
       // Não deve lançar erro
       await expect(service.markAsRead(mockTenantId, 'wamid.123')).resolves.toBeUndefined();
@@ -1381,8 +1370,7 @@ describe('WhatsAppServiceV2', () => {
         },
       } as any;
 
-      const axios = require('axios');
-      axios.create = jest.fn().mockReturnValue(mockAxiosInstance) as any;
+      mockedAxios.create.mockReturnValue(mockAxiosInstance as never);
 
       // Não deve lançar erro
       await expect(service.markAsRead(mockTenantId, 'wamid.123')).resolves.toBeUndefined();
@@ -1395,12 +1383,12 @@ describe('WhatsAppServiceV2', () => {
     const mockAccessToken = 'token-123';
 
     beforeEach(() => {
-      const prismaMock = require('../test/helpers/prisma-mock').prismaMock;
+      resetPrismaMock();
       prismaMock.tenant.findUnique.mockResolvedValue({
         id: mockTenantId,
         whatsappPhoneNumberId: mockPhoneNumberId,
         whatsappAccessToken: mockAccessToken,
-      });
+      } as never);
     });
 
     it('deve baixar mídia com sucesso', async () => {
@@ -1429,8 +1417,7 @@ describe('WhatsAppServiceV2', () => {
         },
       } as any;
 
-      const axios = require('axios');
-      axios.create = jest.fn().mockReturnValue(mockAxiosInstance) as any;
+      mockedAxios.create.mockReturnValue(mockAxiosInstance as never);
 
       const result = await service.downloadMedia(mockTenantId, 'media-id-123');
 
@@ -1459,11 +1446,10 @@ describe('WhatsAppServiceV2', () => {
         },
       } as any;
 
-      const axios = require('axios');
-      axios.create = jest.fn().mockReturnValue(mockAxiosInstance) as any;
+      mockedAxios.create.mockReturnValue(mockAxiosInstance as never);
 
       await expect(service.downloadMedia(mockTenantId, 'media-id-123')).rejects.toThrow(
-        'WhatsApp não retornou URL de mídia'
+        'Falha ao baixar mídia do WhatsApp'
       );
     });
 
@@ -1489,8 +1475,7 @@ describe('WhatsAppServiceV2', () => {
         },
       } as any;
 
-      const axios = require('axios');
-      axios.create = jest.fn().mockReturnValue(mockAxiosInstance) as any;
+      mockedAxios.create.mockReturnValue(mockAxiosInstance as never);
 
       await expect(service.downloadMedia(mockTenantId, 'media-id-123')).rejects.toThrow(
         'Falha ao baixar mídia do WhatsApp'

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import { prismaMock, resetPrismaMock } from '../test/helpers/prisma-mock';
+import { prismaMock, resetPrismaMock, mockMessageGroupBy } from '../test/helpers/prisma-mock';
 import { ConversationService } from './conversation.service';
 import { NotFoundError, ForbiddenError } from '@/utils/errors';
 import { ConversationStatus, Priority } from '@prisma/client';
@@ -22,6 +22,8 @@ describe('ConversationService', () => {
     resetPrismaMock();
     jest.clearAllMocks();
     conversationService = new ConversationService();
+    // Mock padrão para groupBy (usado em listConversations para contar mensagens não lidas)
+    mockMessageGroupBy([]);
   });
 
   describe('listConversations', () => {
@@ -90,9 +92,9 @@ describe('ConversationService', () => {
 
     it('deve listar conversas com paginação padrão', async () => {
       // Arrange
-      prismaMock.conversation.findMany.mockResolvedValue(mockConversations as any);
+      prismaMock.conversation.findMany.mockResolvedValue(mockConversations as never);
       prismaMock.conversation.count.mockResolvedValue(2);
-      prismaMock.message.count.mockResolvedValue(3);
+      mockMessageGroupBy([{ conversationId: 'conv-1', _count: { id: 3 } }]);
 
       // Act
       const result = await conversationService.listConversations({
@@ -123,9 +125,8 @@ describe('ConversationService', () => {
 
     it('deve listar conversas com paginação customizada', async () => {
       // Arrange
-      prismaMock.conversation.findMany.mockResolvedValue([mockConversations[0]] as any);
+      prismaMock.conversation.findMany.mockResolvedValue([mockConversations[0]] as never);
       prismaMock.conversation.count.mockResolvedValue(10);
-      prismaMock.message.count.mockResolvedValue(0);
 
       // Act
       const result = await conversationService.listConversations({
@@ -274,12 +275,12 @@ describe('ConversationService', () => {
         userRole: 'ATTENDANT',
       });
 
-      // Assert
+      // Assert - ATTENDANT só vê conversas atribuídas a ele (via OR)
       expect(prismaMock.conversation.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: {
             tenantId: 'tenant-123',
-            assignedToId: 'user-1',
+            OR: [{ assignedToId: 'user-1' }],
           },
         })
       );
@@ -309,9 +310,13 @@ describe('ConversationService', () => {
 
     it('deve incluir lastMessage e unreadCount', async () => {
       // Arrange
-      prismaMock.conversation.findMany.mockResolvedValue(mockConversations as any);
+      prismaMock.conversation.findMany.mockResolvedValue(mockConversations as never);
       prismaMock.conversation.count.mockResolvedValue(2);
-      prismaMock.message.count.mockResolvedValueOnce(3).mockResolvedValueOnce(0);
+      // Mock groupBy para retornar contagem de mensagens não lidas por conversa
+      mockMessageGroupBy([
+        { conversationId: 'conv-1', _count: { id: 3 } },
+        // conv-2 não tem mensagens não lidas
+      ]);
 
       // Act
       const result = await conversationService.listConversations({
@@ -374,7 +379,7 @@ describe('ConversationService', () => {
 
     it('deve buscar conversa por ID com sucesso', async () => {
       // Arrange
-      prismaMock.conversation.findFirst.mockResolvedValue(mockConversation as any);
+      prismaMock.conversation.findFirst.mockResolvedValue(mockConversation as never);
 
       // Act
       const result = await conversationService.getConversationById('conv-123', 'tenant-123');
@@ -436,7 +441,7 @@ describe('ConversationService', () => {
 
     it('deve permitir ADMIN acessar qualquer conversa do tenant', async () => {
       // Arrange
-      prismaMock.conversation.findFirst.mockResolvedValue(mockConversation as any);
+      prismaMock.conversation.findFirst.mockResolvedValue(mockConversation as never);
 
       // Act
       const result = await conversationService.getConversationById(
@@ -452,7 +457,7 @@ describe('ConversationService', () => {
 
     it('deve permitir ATTENDANT acessar sua própria conversa', async () => {
       // Arrange
-      prismaMock.conversation.findFirst.mockResolvedValue(mockConversation as any);
+      prismaMock.conversation.findFirst.mockResolvedValue(mockConversation as never);
 
       // Act
       const result = await conversationService.getConversationById(
@@ -468,7 +473,7 @@ describe('ConversationService', () => {
 
     it('deve lançar ForbiddenError quando ATTENDANT tenta acessar conversa de outro', async () => {
       // Arrange
-      prismaMock.conversation.findFirst.mockResolvedValue(mockConversation as any);
+      prismaMock.conversation.findFirst.mockResolvedValue(mockConversation as never);
 
       // Act & Assert
       await expect(
@@ -518,7 +523,7 @@ describe('ConversationService', () => {
 
     it('deve retornar conversa existente quando já existe (OPEN)', async () => {
       // Arrange
-      prismaMock.conversation.findFirst.mockResolvedValue(mockExistingConversation as any);
+      prismaMock.conversation.findFirst.mockResolvedValue(mockExistingConversation as never);
 
       // Act
       const result = await conversationService.getOrCreateConversation('tenant-123', 'contact-1');
@@ -548,7 +553,7 @@ describe('ConversationService', () => {
         ...mockExistingConversation,
         status: 'IN_PROGRESS' as ConversationStatus,
       };
-      prismaMock.conversation.findFirst.mockResolvedValue(inProgressConversation as any);
+      prismaMock.conversation.findFirst.mockResolvedValue(inProgressConversation as never);
 
       // Act
       const result = await conversationService.getOrCreateConversation('tenant-123', 'contact-1');
@@ -564,7 +569,7 @@ describe('ConversationService', () => {
         ...mockExistingConversation,
         status: 'WAITING' as ConversationStatus,
       };
-      prismaMock.conversation.findFirst.mockResolvedValue(waitingConversation as any);
+      prismaMock.conversation.findFirst.mockResolvedValue(waitingConversation as never);
 
       // Act
       const result = await conversationService.getOrCreateConversation('tenant-123', 'contact-1');
@@ -577,7 +582,7 @@ describe('ConversationService', () => {
     it('deve criar nova conversa quando não existe conversa aberta', async () => {
       // Arrange
       prismaMock.conversation.findFirst.mockResolvedValue(null);
-      prismaMock.conversation.create.mockResolvedValue(mockNewConversation as any);
+      prismaMock.conversation.create.mockResolvedValue(mockNewConversation as never);
 
       // Act
       const result = await conversationService.getOrCreateConversation('tenant-123', 'contact-1');
@@ -605,7 +610,7 @@ describe('ConversationService', () => {
     it('deve criar nova conversa quando todas as conversas estão fechadas', async () => {
       // Arrange
       prismaMock.conversation.findFirst.mockResolvedValue(null); // Não encontra OPEN/IN_PROGRESS/WAITING
-      prismaMock.conversation.create.mockResolvedValue(mockNewConversation as any);
+      prismaMock.conversation.create.mockResolvedValue(mockNewConversation as never);
 
       // Act
       const result = await conversationService.getOrCreateConversation('tenant-123', 'contact-1');
@@ -618,7 +623,7 @@ describe('ConversationService', () => {
     it('deve respeitar isolamento de tenant', async () => {
       // Arrange
       prismaMock.conversation.findFirst.mockResolvedValue(null);
-      prismaMock.conversation.create.mockResolvedValue(mockNewConversation as any);
+      prismaMock.conversation.create.mockResolvedValue(mockNewConversation as never);
 
       // Act
       await conversationService.getOrCreateConversation('tenant-456', 'contact-1');
@@ -675,9 +680,9 @@ describe('ConversationService', () => {
 
     it('deve atribuir conversa a um atendente com sucesso', async () => {
       // Arrange
-      prismaMock.conversation.findFirst.mockResolvedValue(mockConversation as any);
-      prismaMock.user.findFirst.mockResolvedValue(mockUser as any);
-      prismaMock.conversation.update.mockResolvedValue(mockUpdatedConversation as any);
+      prismaMock.conversation.findFirst.mockResolvedValue(mockConversation as never);
+      prismaMock.user.findFirst.mockResolvedValue(mockUser as never);
+      prismaMock.conversation.update.mockResolvedValue(mockUpdatedConversation as never);
 
       // Act
       const result = await conversationService.assignConversation('conv-123', 'tenant-123', 'user-1');
@@ -725,12 +730,12 @@ describe('ConversationService', () => {
         ...mockConversation,
         status: 'IN_PROGRESS' as ConversationStatus,
       };
-      prismaMock.conversation.findFirst.mockResolvedValue(inProgressConversation as any);
-      prismaMock.user.findFirst.mockResolvedValue(mockUser as any);
+      prismaMock.conversation.findFirst.mockResolvedValue(inProgressConversation as never);
+      prismaMock.user.findFirst.mockResolvedValue(mockUser as never);
       prismaMock.conversation.update.mockResolvedValue({
         ...inProgressConversation,
         assignedToId: 'user-1',
-      } as any);
+      } as never);
 
       // Act
       await conversationService.assignConversation('conv-123', 'tenant-123', 'user-1');
@@ -762,7 +767,7 @@ describe('ConversationService', () => {
 
     it('deve lançar NotFoundError quando usuário não existe', async () => {
       // Arrange
-      prismaMock.conversation.findFirst.mockResolvedValue(mockConversation as any);
+      prismaMock.conversation.findFirst.mockResolvedValue(mockConversation as never);
       prismaMock.user.findFirst.mockResolvedValue(null);
 
       // Act & Assert
@@ -777,7 +782,7 @@ describe('ConversationService', () => {
 
     it('deve lançar NotFoundError quando usuário está inativo', async () => {
       // Arrange
-      prismaMock.conversation.findFirst.mockResolvedValue(mockConversation as any);
+      prismaMock.conversation.findFirst.mockResolvedValue(mockConversation as never);
       prismaMock.user.findFirst.mockResolvedValue(null); // User inativo não será encontrado
 
       // Act & Assert
@@ -805,7 +810,7 @@ describe('ConversationService', () => {
 
     it('deve respeitar isolamento de tenant no usuário', async () => {
       // Arrange
-      prismaMock.conversation.findFirst.mockResolvedValue(mockConversation as any);
+      prismaMock.conversation.findFirst.mockResolvedValue(mockConversation as never);
       prismaMock.user.findFirst.mockResolvedValue(null); // User de outro tenant
 
       // Act & Assert
@@ -837,11 +842,11 @@ describe('ConversationService', () => {
 
     it('deve atualizar status da conversa com sucesso', async () => {
       // Arrange
-      prismaMock.conversation.findFirst.mockResolvedValue(mockConversation as any);
+      prismaMock.conversation.findFirst.mockResolvedValue(mockConversation as never);
       prismaMock.conversation.update.mockResolvedValue({
         ...mockConversation,
         status: 'IN_PROGRESS',
-      } as any);
+      } as never);
 
       // Act
       const result = await conversationService.updateConversationStatus(
@@ -864,12 +869,12 @@ describe('ConversationService', () => {
 
     it('deve definir closedAt quando status é CLOSED', async () => {
       // Arrange
-      prismaMock.conversation.findFirst.mockResolvedValue(mockConversation as any);
+      prismaMock.conversation.findFirst.mockResolvedValue(mockConversation as never);
       prismaMock.conversation.update.mockResolvedValue({
         ...mockConversation,
         status: 'CLOSED',
         closedAt: new Date(),
-      } as any);
+      } as never);
 
       // Act
       await conversationService.updateConversationStatus('conv-123', 'tenant-123', 'CLOSED');
@@ -886,11 +891,11 @@ describe('ConversationService', () => {
 
     it('deve definir closedAt como null quando status não é CLOSED', async () => {
       // Arrange
-      prismaMock.conversation.findFirst.mockResolvedValue(mockConversation as any);
+      prismaMock.conversation.findFirst.mockResolvedValue(mockConversation as never);
       prismaMock.conversation.update.mockResolvedValue({
         ...mockConversation,
         status: 'WAITING',
-      } as any);
+      } as never);
 
       // Act
       await conversationService.updateConversationStatus('conv-123', 'tenant-123', 'WAITING');
@@ -921,11 +926,11 @@ describe('ConversationService', () => {
 
     it('deve permitir ADMIN atualizar qualquer conversa', async () => {
       // Arrange
-      prismaMock.conversation.findFirst.mockResolvedValue(mockConversation as any);
+      prismaMock.conversation.findFirst.mockResolvedValue(mockConversation as never);
       prismaMock.conversation.update.mockResolvedValue({
         ...mockConversation,
         status: 'CLOSED',
-      } as any);
+      } as never);
 
       // Act
       const result = await conversationService.updateConversationStatus(
@@ -942,11 +947,11 @@ describe('ConversationService', () => {
 
     it('deve permitir ATTENDANT atualizar sua própria conversa', async () => {
       // Arrange
-      prismaMock.conversation.findFirst.mockResolvedValue(mockConversation as any);
+      prismaMock.conversation.findFirst.mockResolvedValue(mockConversation as never);
       prismaMock.conversation.update.mockResolvedValue({
         ...mockConversation,
         status: 'CLOSED',
-      } as any);
+      } as never);
 
       // Act
       const result = await conversationService.updateConversationStatus(
@@ -963,7 +968,7 @@ describe('ConversationService', () => {
 
     it('deve lançar ForbiddenError quando ATTENDANT tenta atualizar conversa de outro', async () => {
       // Arrange
-      prismaMock.conversation.findFirst.mockResolvedValue(mockConversation as any);
+      prismaMock.conversation.findFirst.mockResolvedValue(mockConversation as never);
 
       // Act & Assert
       await expect(
@@ -1017,7 +1022,7 @@ describe('ConversationService', () => {
       prismaMock.conversation.update.mockResolvedValue({
         ...mockConversation,
         priority: 'HIGH',
-      } as any);
+      } as never);
 
       // Act
       const result = await conversationService.updatePriority('conv-123', 'tenant-123', 'HIGH');
@@ -1039,7 +1044,7 @@ describe('ConversationService', () => {
       prismaMock.conversation.update.mockResolvedValue({
         ...mockConversation,
         priority: 'LOW',
-      } as any);
+      } as never);
 
       // Act
       const result = await conversationService.updatePriority('conv-123', 'tenant-123', 'LOW');
@@ -1053,7 +1058,7 @@ describe('ConversationService', () => {
       prismaMock.conversation.update.mockResolvedValue({
         ...mockConversation,
         priority: 'URGENT',
-      } as any);
+      } as never);
 
       // Act
       const result = await conversationService.updatePriority('conv-123', 'tenant-123', 'URGENT');
@@ -1064,7 +1069,7 @@ describe('ConversationService', () => {
 
     it('deve respeitar isolamento de tenant', async () => {
       // Arrange
-      prismaMock.conversation.update.mockResolvedValue(mockConversation as any);
+      prismaMock.conversation.update.mockResolvedValue(mockConversation as never);
 
       // Act
       await conversationService.updatePriority('conv-123', 'tenant-456', 'HIGH');
@@ -1094,8 +1099,8 @@ describe('ConversationService', () => {
 
     it('deve atualizar tags da conversa com sucesso', async () => {
       // Arrange
-      prismaMock.tag.findMany.mockResolvedValue(mockTags as any);
-      prismaMock.conversation.update.mockResolvedValue(mockUpdatedConversation as any);
+      prismaMock.tag.findMany.mockResolvedValue(mockTags as never);
+      prismaMock.conversation.update.mockResolvedValue(mockUpdatedConversation as never);
 
       // Act
       const result = await conversationService.updateTags('conv-123', 'tenant-123', [
@@ -1136,7 +1141,7 @@ describe('ConversationService', () => {
         id: 'conv-123',
         tenantId: 'tenant-123',
         tags: [],
-      } as any);
+      } as never);
 
       // Act
       const result = await conversationService.updateTags('conv-123', 'tenant-123', []);
@@ -1157,7 +1162,7 @@ describe('ConversationService', () => {
 
     it('deve lançar NotFoundError quando alguma tag não pertence ao tenant', async () => {
       // Arrange
-      prismaMock.tag.findMany.mockResolvedValue([mockTags[0]] as any); // Apenas 1 tag encontrada
+      prismaMock.tag.findMany.mockResolvedValue([mockTags[0]] as never); // Apenas 1 tag encontrada
 
       // Act & Assert
       await expect(
@@ -1198,8 +1203,8 @@ describe('ConversationService', () => {
 
     it('deve respeitar isolamento de tenant na conversa', async () => {
       // Arrange
-      prismaMock.tag.findMany.mockResolvedValue(mockTags as any);
-      prismaMock.conversation.update.mockResolvedValue(mockUpdatedConversation as any);
+      prismaMock.tag.findMany.mockResolvedValue(mockTags as never);
+      prismaMock.conversation.update.mockResolvedValue(mockUpdatedConversation as never);
 
       // Act
       await conversationService.updateTags('conv-123', 'tenant-456', ['tag-1', 'tag-2']);
@@ -1226,12 +1231,12 @@ describe('ConversationService', () => {
 
     it('deve fechar conversa com sucesso', async () => {
       // Arrange
-      prismaMock.conversation.findFirst.mockResolvedValue(mockConversation as any);
+      prismaMock.conversation.findFirst.mockResolvedValue(mockConversation as never);
       prismaMock.conversation.update.mockResolvedValue({
         ...mockConversation,
         status: 'CLOSED',
         closedAt: new Date(),
-      } as any);
+      } as never);
 
       // Act
       const result = await conversationService.closeConversation('conv-123', 'tenant-123');

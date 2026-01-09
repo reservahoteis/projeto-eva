@@ -19,8 +19,11 @@ describe('ContactService', () => {
         name: 'João Silva',
         email: 'joao@email.com',
         profilePictureUrl: null,
+        metadata: {},
         createdAt: new Date('2024-01-01'),
+        updatedAt: new Date('2024-01-01'),
         _count: { conversations: 5 },
+        conversations: [{ id: 'conv-1', status: 'OPEN', lastMessageAt: new Date('2024-01-15') }],
       },
       {
         id: 'contact-2',
@@ -28,20 +31,18 @@ describe('ContactService', () => {
         name: 'Maria Santos',
         email: 'maria@email.com',
         profilePictureUrl: null,
+        metadata: {},
         createdAt: new Date('2024-01-02'),
+        updatedAt: new Date('2024-01-02'),
         _count: { conversations: 3 },
+        conversations: [{ id: 'conv-2', status: 'OPEN', lastMessageAt: new Date('2024-01-16') }],
       },
     ];
 
     it('deve listar contatos com paginação padrão', async () => {
       // Arrange
-      prismaMock.contact.findMany.mockResolvedValue(mockContacts as any);
+      prismaMock.contact.findMany.mockResolvedValue(mockContacts as never);
       prismaMock.contact.count.mockResolvedValue(2);
-      prismaMock.conversation.findFirst.mockResolvedValue({
-        id: 'conv-1',
-        status: 'OPEN',
-        lastMessageAt: new Date(),
-      } as any);
 
       // Act
       const result = await contactService.listContacts('tenant-123');
@@ -66,9 +67,8 @@ describe('ContactService', () => {
 
     it('deve listar contatos com paginação customizada', async () => {
       // Arrange
-      prismaMock.contact.findMany.mockResolvedValue([mockContacts[0]] as any);
+      prismaMock.contact.findMany.mockResolvedValue([mockContacts[0]] as never);
       prismaMock.contact.count.mockResolvedValue(10);
-      prismaMock.conversation.findFirst.mockResolvedValue(null);
 
       // Act
       const result = await contactService.listContacts('tenant-123', {
@@ -112,9 +112,8 @@ describe('ContactService', () => {
 
     it('deve buscar contatos por nome', async () => {
       // Arrange
-      prismaMock.contact.findMany.mockResolvedValue([mockContacts[0]] as any);
+      prismaMock.contact.findMany.mockResolvedValue([mockContacts[0]] as never);
       prismaMock.contact.count.mockResolvedValue(1);
-      prismaMock.conversation.findFirst.mockResolvedValue(null);
 
       // Act
       await contactService.listContacts('tenant-123', {
@@ -138,13 +137,8 @@ describe('ContactService', () => {
 
     it('deve incluir conversationsCount e lastConversationAt', async () => {
       // Arrange
-      prismaMock.contact.findMany.mockResolvedValue([mockContacts[0]] as any);
+      prismaMock.contact.findMany.mockResolvedValue([mockContacts[0]] as never);
       prismaMock.contact.count.mockResolvedValue(1);
-      prismaMock.conversation.findFirst.mockResolvedValue({
-        id: 'conv-1',
-        status: 'OPEN',
-        lastMessageAt: new Date('2024-01-15'),
-      } as any);
 
       // Act
       const result = await contactService.listContacts('tenant-123');
@@ -152,14 +146,17 @@ describe('ContactService', () => {
       // Assert
       expect(result.data[0]).toHaveProperty('conversationsCount', 5);
       expect(result.data[0]).toHaveProperty('lastConversationAt');
-      expect(result.data[0]?._count).toBeUndefined();
+      expect((result.data[0] as Record<string, unknown>)?._count).toBeUndefined();
     });
 
     it('deve retornar lastConversationAt null quando não há conversas', async () => {
-      // Arrange
-      prismaMock.contact.findMany.mockResolvedValue([mockContacts[0]] as any);
+      // Arrange - contato sem conversas
+      const contactWithoutConversations = {
+        ...mockContacts[0],
+        conversations: [],
+      };
+      prismaMock.contact.findMany.mockResolvedValue([contactWithoutConversations] as never);
       prismaMock.contact.count.mockResolvedValue(1);
-      prismaMock.conversation.findFirst.mockResolvedValue(null);
 
       // Act
       const result = await contactService.listContacts('tenant-123');
@@ -180,20 +177,18 @@ describe('ContactService', () => {
       createdAt: new Date(),
       updatedAt: new Date(),
       metadata: null,
+      _count: { conversations: 1 },
       conversations: [
         {
           id: 'conv-1',
-          status: 'OPEN',
-          priority: 'MEDIUM',
-          createdAt: new Date(),
-          closedAt: null,
+          lastMessageAt: new Date(),
         },
       ],
     };
 
     it('deve buscar contato por ID com sucesso', async () => {
       // Arrange
-      prismaMock.contact.findFirst.mockResolvedValue(mockContact as any);
+      prismaMock.contact.findFirst.mockResolvedValue(mockContact as never);
 
       // Act
       const result = await contactService.getContactById('contact-123', 'tenant-123');
@@ -205,36 +200,35 @@ describe('ContactService', () => {
           tenantId: 'tenant-123',
         },
         include: {
+          _count: {
+            select: {
+              conversations: true,
+            },
+          },
           conversations: {
-            orderBy: { createdAt: 'desc' },
-            take: 10,
+            orderBy: { lastMessageAt: 'desc' },
+            take: 1,
             select: {
               id: true,
-              status: true,
-              priority: true,
-              createdAt: true,
-              closedAt: true,
+              lastMessageAt: true,
             },
           },
         },
       });
 
-      expect(result.id).toBe('contact-123');
-      expect(result.conversations).toHaveLength(1);
+      expect(result!.id).toBe('contact-123');
+      expect(result!.lastConversation).toBeDefined();
     });
 
-    it('deve lançar NotFoundError quando contato não existe', async () => {
+    it('deve retornar null quando contato não existe', async () => {
       // Arrange
       prismaMock.contact.findFirst.mockResolvedValue(null);
 
-      // Act & Assert
-      await expect(
-        contactService.getContactById('nonexistent-contact', 'tenant-123')
-      ).rejects.toThrow(NotFoundError);
+      // Act
+      const result = await contactService.getContactById('nonexistent-contact', 'tenant-123');
 
-      await expect(
-        contactService.getContactById('nonexistent-contact', 'tenant-123')
-      ).rejects.toThrow('Contato não encontrado');
+      // Assert
+      expect(result).toBeNull();
     });
 
     it('deve respeitar isolamento de tenant', async () => {
@@ -242,11 +236,10 @@ describe('ContactService', () => {
       prismaMock.contact.findFirst.mockResolvedValue(null);
 
       // Act
-      await expect(
-        contactService.getContactById('contact-123', 'wrong-tenant')
-      ).rejects.toThrow(NotFoundError);
+      const result = await contactService.getContactById('contact-123', 'wrong-tenant');
 
       // Assert
+      expect(result).toBeNull();
       expect(prismaMock.contact.findFirst).toHaveBeenCalledWith(
         expect.objectContaining({
           where: {
@@ -328,10 +321,11 @@ describe('ContactService', () => {
         profilePictureUrl: null,
         createdAt: new Date(),
         updatedAt: new Date(),
-        metadata: null,
+        metadata: {},
+        _count: { conversations: 0 },
       };
 
-      prismaMock.contact.create.mockResolvedValue(mockCreatedContact as any);
+      prismaMock.contact.create.mockResolvedValue(mockCreatedContact as never);
 
       // Act
       const result = await contactService.createContact(contactData);
@@ -342,7 +336,16 @@ describe('ContactService', () => {
           phoneNumber: contactData.phoneNumber,
           name: contactData.name,
           email: contactData.email,
+          profilePictureUrl: null,
+          metadata: {},
           tenantId: contactData.tenantId,
+        },
+        include: {
+          _count: {
+            select: {
+              conversations: true,
+            },
+          },
         },
       });
 
@@ -366,10 +369,11 @@ describe('ContactService', () => {
         profilePictureUrl: null,
         createdAt: new Date(),
         updatedAt: new Date(),
-        metadata: null,
+        metadata: {},
+        _count: { conversations: 0 },
       };
 
-      prismaMock.contact.create.mockResolvedValue(mockCreatedContact as any);
+      prismaMock.contact.create.mockResolvedValue(mockCreatedContact as never);
 
       // Act
       const result = await contactService.createContact(contactData);
@@ -380,7 +384,16 @@ describe('ContactService', () => {
           phoneNumber: contactData.phoneNumber,
           name: null,
           email: null,
+          profilePictureUrl: null,
+          metadata: {},
           tenantId: contactData.tenantId,
+        },
+        include: {
+          _count: {
+            select: {
+              conversations: true,
+            },
+          },
         },
       });
 
@@ -404,12 +417,13 @@ describe('ContactService', () => {
         email: 'joao.pedro@email.com',
       };
 
-      prismaMock.contact.findFirst.mockResolvedValue(existingContact as any);
+      prismaMock.contact.findFirst.mockResolvedValue(existingContact as never);
       prismaMock.contact.update.mockResolvedValue({
         ...existingContact,
         ...updateData,
         updatedAt: new Date(),
-      } as any);
+        _count: { conversations: 0 },
+      } as never);
 
       // Act
       const result = await contactService.updateContact('contact-123', 'tenant-123', updateData);
@@ -427,6 +441,13 @@ describe('ContactService', () => {
         data: {
           ...updateData,
           updatedAt: expect.any(Date),
+        },
+        include: {
+          _count: {
+            select: {
+              conversations: true,
+            },
+          },
         },
       });
 
@@ -462,6 +483,13 @@ describe('ContactService', () => {
         data: {
           name: 'João Pedro',
           updatedAt: expect.any(Date),
+        },
+        include: {
+          _count: {
+            select: {
+              conversations: true,
+            },
+          },
         },
       });
     });
@@ -523,6 +551,13 @@ describe('ContactService', () => {
         data: {
           metadata: updateData.metadata,
           updatedAt: expect.any(Date),
+        },
+        include: {
+          _count: {
+            select: {
+              conversations: true,
+            },
+          },
         },
       });
     });

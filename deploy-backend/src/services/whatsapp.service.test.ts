@@ -26,6 +26,12 @@ jest.mock('@/config/env', () => ({
   },
 }));
 
+// Mock encryption - retorna o próprio valor para testes
+jest.mock('@/utils/encryption', () => ({
+  decrypt: (text: string) => text,
+  encrypt: (text: string) => `encrypted:${text}`,
+}));
+
 describe('WhatsAppService', () => {
   let whatsappService: WhatsAppService;
   let mockAxiosInstance: any;

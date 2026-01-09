@@ -51,6 +51,7 @@ describe('AuthService', () => {
       status: 'ACTIVE' as const,
       tenantId: 'tenant-123',
       avatarUrl: null,
+      hotelUnit: null,
       createdAt: new Date(),
       updatedAt: new Date(),
       lastLogin: null,
