@@ -272,6 +272,45 @@ class ContactService {
     const index = Math.abs(hash) % colors.length;
     return colors[index] ?? '#3B82F6';
   }
+
+  /**
+   * Exportar contatos para Excel ou CSV
+   */
+  async export(format: 'xlsx' | 'csv' = 'xlsx', search?: string): Promise<void> {
+    try {
+      const params = new URLSearchParams();
+      params.append('format', format);
+      if (search) {
+        params.append('search', search);
+      }
+
+      const response = await api.get(`${CONTACT_API_BASE_URL}/export?${params.toString()}`, {
+        responseType: 'blob',
+      });
+
+      // Criar blob e fazer download
+      const blob = new Blob([response.data], {
+        type: format === 'csv'
+          ? 'text/csv;charset=utf-8'
+          : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+
+      const date = new Date().toISOString().split('T')[0];
+      link.download = `contatos-${date}.${format}`;
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Erro ao exportar contatos:', error);
+      throw error;
+    }
+  }
 }
 
 export const contactService = new ContactService();

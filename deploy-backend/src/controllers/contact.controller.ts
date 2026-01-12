@@ -431,44 +431,63 @@ class ContactController {
   }
 
   /**
-   * Exportar contatos para Excel
+   * Exportar contatos para Excel ou CSV
    */
   async exportExcel(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const tenantId = requireTenantId(req, res);
       if (!tenantId) return;
 
-      const { search } = req.query as { search?: string };
+      const { search, format = 'xlsx' } = req.query as { search?: string; format?: string };
 
       logger.info({
         tenantId,
         userId: req.user?.id,
         search,
-      }, 'Exportando contatos para Excel');
-
-      const excelBuffer = await contactService.exportContactsToExcel(tenantId, { search });
+        format,
+      }, 'Exportando contatos');
 
       // Gerar nome do arquivo com data
       const date = new Date().toISOString().split('T')[0];
-      const filename = `contatos-${date}.xlsx`;
 
-      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-      res.setHeader('Content-Length', excelBuffer.length);
+      if (format === 'csv') {
+        const csvBuffer = await contactService.exportContactsToCsv(tenantId, { search });
+        const filename = `contatos-${date}.csv`;
 
-      logger.info({
-        tenantId,
-        userId: req.user?.id,
-        filename,
-        size: excelBuffer.length,
-      }, 'Contatos exportados com sucesso');
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.setHeader('Content-Length', csvBuffer.length);
 
-      res.send(excelBuffer);
+        logger.info({
+          tenantId,
+          userId: req.user?.id,
+          filename,
+          size: csvBuffer.length,
+        }, 'Contatos exportados em CSV');
+
+        res.send(csvBuffer);
+      } else {
+        const excelBuffer = await contactService.exportContactsToExcel(tenantId, { search });
+        const filename = `contatos-${date}.xlsx`;
+
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.setHeader('Content-Length', excelBuffer.length);
+
+        logger.info({
+          tenantId,
+          userId: req.user?.id,
+          filename,
+          size: excelBuffer.length,
+        }, 'Contatos exportados em Excel');
+
+        res.send(excelBuffer);
+      }
     } catch (error) {
       logger.error({
         error,
         tenantId: req.user?.tenantId,
-      }, 'Erro ao exportar contatos para Excel');
+      }, 'Erro ao exportar contatos');
       next(error);
     }
   }

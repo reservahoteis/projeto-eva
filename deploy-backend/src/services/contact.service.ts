@@ -460,6 +460,95 @@ export class ContactService {
     const buffer = await workbook.xlsx.writeBuffer();
     return Buffer.from(buffer);
   }
+
+  /**
+   * Exportar contatos para CSV
+   */
+  async exportContactsToCsv(
+    tenantId: string,
+    params?: {
+      search?: string;
+    }
+  ): Promise<Buffer> {
+    const where: any = { tenantId };
+
+    if (params?.search) {
+      where.OR = [
+        { name: { contains: params.search, mode: 'insensitive' } },
+        { phoneNumber: { contains: params.search } },
+        { email: { contains: params.search, mode: 'insensitive' } },
+      ];
+    }
+
+    // Buscar todos os contatos (sem paginação para exportação)
+    const contacts = await prisma.contact.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        phoneNumber: true,
+        name: true,
+        email: true,
+        createdAt: true,
+        updatedAt: true,
+        _count: {
+          select: {
+            conversations: true,
+          },
+        },
+        conversations: {
+          orderBy: { lastMessageAt: 'desc' },
+          take: 1,
+          select: {
+            lastMessageAt: true,
+            status: true,
+          },
+        },
+      },
+    });
+
+    // Cabeçalho CSV
+    const headers = [
+      'Nome',
+      'Telefone',
+      'Email',
+      'Conversas',
+      'Última Conversa',
+      'Status Última Conversa',
+      'Criado em',
+      'Atualizado em',
+    ];
+
+    // Função para escapar valores CSV
+    const escapeCsv = (value: string): string => {
+      if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+        return `"${value.replace(/"/g, '""')}"`;
+      }
+      return value;
+    };
+
+    // Gerar linhas
+    const rows = contacts.map((contact) => [
+      escapeCsv(contact.name || 'Sem nome'),
+      escapeCsv(contact.phoneNumber),
+      escapeCsv(contact.email || '-'),
+      contact._count.conversations.toString(),
+      escapeCsv(
+        contact.conversations[0]?.lastMessageAt
+          ? new Date(contact.conversations[0].lastMessageAt).toLocaleString('pt-BR')
+          : '-'
+      ),
+      escapeCsv(contact.conversations[0]?.status || '-'),
+      escapeCsv(new Date(contact.createdAt).toLocaleString('pt-BR')),
+      escapeCsv(new Date(contact.updatedAt).toLocaleString('pt-BR')),
+    ]);
+
+    // Montar CSV com BOM para Excel reconhecer UTF-8
+    const bom = '\uFEFF';
+    const csv = bom + [headers.join(','), ...rows.map((row) => row.join(','))].join('\n');
+
+    return Buffer.from(csv, 'utf-8');
+  }
 }
 
 export const contactService = new ContactService();

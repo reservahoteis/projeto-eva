@@ -59,6 +59,8 @@ import {
   RefreshCw,
   Download,
   Upload,
+  FileSpreadsheet,
+  FileText,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
@@ -75,6 +77,7 @@ export default function ContactsPage() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
   const [deletingContact, setDeletingContact] = useState<Contact | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   // Debounce da busca
   const debouncedSearch = useDebounce(searchTerm, 500);
@@ -196,6 +199,20 @@ export default function ContactsPage() {
     };
   }, [socket, queryClient, currentPage, debouncedSearch]);
 
+  // Handler de exportação
+  const handleExport = async (format: 'xlsx' | 'csv') => {
+    try {
+      setIsExporting(true);
+      await contactService.export(format, debouncedSearch || undefined);
+      toast.success(`Contatos exportados em ${format.toUpperCase()} com sucesso!`);
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Erro ao exportar contatos';
+      toast.error(message);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   // Handlers
   const handleCreateContact = async (data: any) => {
     const metadata = data.notes ? { notes: data.notes } : undefined;
@@ -300,14 +317,30 @@ export default function ContactsPage() {
           >
             <Upload className="h-4 w-4" />
           </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            disabled
-            className="glass-btn hidden sm:flex"
-          >
-            <Download className="h-4 w-4" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                disabled={isExporting || !contactsData?.data.length}
+                className="glass-btn hidden sm:flex"
+              >
+                <Download className={`h-4 w-4 ${isExporting ? 'animate-pulse' : ''}`} />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="glass-card border-[var(--glass-border)]">
+              <DropdownMenuLabel>Exportar Contatos</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => handleExport('xlsx')} disabled={isExporting}>
+                <FileSpreadsheet className="mr-2 h-4 w-4 text-green-600" />
+                Excel (.xlsx)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('csv')} disabled={isExporting}>
+                <FileText className="mr-2 h-4 w-4 text-blue-600" />
+                CSV (.csv)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button onClick={() => setIsCreateOpen(true)} className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg">
             <Plus className="mr-2 h-4 w-4" />
             <span className="hidden sm:inline">Novo Contato</span>
