@@ -98,8 +98,12 @@ jobs:
             echo "Building Docker image..."
             docker compose -f docker-compose.dev.yml build backend-dev
 
-            echo "Restarting container..."
-            docker compose -f docker-compose.dev.yml up -d --no-deps --force-recreate backend-dev
+            echo "Stopping and removing old container..."
+            docker stop crm-backend-dev 2>/dev/null || true
+            docker rm -f crm-backend-dev 2>/dev/null || true
+
+            echo "Starting new container..."
+            docker compose -f docker-compose.dev.yml up -d --no-deps backend-dev
 
             echo "Waiting for container..."
             sleep 10

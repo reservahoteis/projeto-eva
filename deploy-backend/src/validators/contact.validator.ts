@@ -99,41 +99,40 @@ export const updateContactSchema = z.object({
 
 /**
  * Schema de validação para listagem de contatos
+ * NOTA: Não usar wrapper { query: ... } pois o middleware já extrai req.query
  */
 export const listContactsSchema = z.object({
-  query: z.object({
-    page: z
-      .coerce
-      .number()
-      .int('Página deve ser um número inteiro')
-      .min(1, 'Página deve ser maior que 0')
-      .default(1)
-      .optional(),
+  page: z
+    .coerce
+    .number()
+    .int('Página deve ser um número inteiro')
+    .min(1, 'Página deve ser maior que 0')
+    .default(1)
+    .optional(),
 
-    limit: z
-      .coerce
-      .number()
-      .int('Limite deve ser um número inteiro')
-      .min(1, 'Limite mínimo é 1')
-      .max(100, 'Limite máximo é 100')
-      .default(20)
-      .optional(),
+  limit: z
+    .coerce
+    .number()
+    .int('Limite deve ser um número inteiro')
+    .min(1, 'Limite mínimo é 1')
+    .max(100, 'Limite máximo é 100')
+    .default(20)
+    .optional(),
 
-    search: z
-      .string()
-      .trim()
-      .optional(),
+  search: z
+    .string()
+    .trim()
+    .optional(),
 
-    sortBy: z
-      .enum(['name', 'createdAt', 'updatedAt', 'phoneNumber'])
-      .default('createdAt')
-      .optional(),
+  sortBy: z
+    .enum(['name', 'createdAt', 'updatedAt', 'phoneNumber'])
+    .default('createdAt')
+    .optional(),
 
-    sortOrder: z
-      .enum(['asc', 'desc'])
-      .default('desc')
-      .optional(),
-  }),
+  sortOrder: z
+    .enum(['asc', 'desc'])
+    .default('desc')
+    .optional(),
 });
 
 /**
@@ -196,5 +195,5 @@ export const bulkImportContactsSchema = z.object({
 
 export type CreateContactInput = z.infer<typeof createContactSchema>['body'];
 export type UpdateContactInput = z.infer<typeof updateContactSchema>['body'];
-export type ListContactsQuery = z.infer<typeof listContactsSchema>['query'];
+export type ListContactsQuery = z.infer<typeof listContactsSchema>;
 export type BulkImportInput = z.infer<typeof bulkImportContactsSchema>['body'];

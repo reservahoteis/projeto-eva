@@ -84,7 +84,7 @@ export class ContactService {
         page,
         limit,
         total,
-        pages: Math.ceil(total / limit),
+        totalPages: Math.ceil(total / limit),
       },
     };
   }
@@ -276,10 +276,12 @@ export class ContactService {
 
     return {
       data: contacts,
-      total,
-      page,
-      limit,
-      pages: Math.ceil(total / limit),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
     };
   }
 
