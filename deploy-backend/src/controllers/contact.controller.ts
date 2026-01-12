@@ -429,6 +429,49 @@ class ContactController {
       next(error);
     }
   }
+
+  /**
+   * Exportar contatos para Excel
+   */
+  async exportExcel(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const tenantId = requireTenantId(req, res);
+      if (!tenantId) return;
+
+      const { search } = req.query as { search?: string };
+
+      logger.info({
+        tenantId,
+        userId: req.user?.id,
+        search,
+      }, 'Exportando contatos para Excel');
+
+      const excelBuffer = await contactService.exportContactsToExcel(tenantId, { search });
+
+      // Gerar nome do arquivo com data
+      const date = new Date().toISOString().split('T')[0];
+      const filename = `contatos-${date}.xlsx`;
+
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Length', excelBuffer.length);
+
+      logger.info({
+        tenantId,
+        userId: req.user?.id,
+        filename,
+        size: excelBuffer.length,
+      }, 'Contatos exportados com sucesso');
+
+      res.send(excelBuffer);
+    } catch (error) {
+      logger.error({
+        error,
+        tenantId: req.user?.tenantId,
+      }, 'Erro ao exportar contatos para Excel');
+      next(error);
+    }
+  }
 }
 
 export const contactController = new ContactController();

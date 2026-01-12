@@ -39,6 +39,16 @@ router.get(
 );
 
 /**
+ * GET /api/contacts/export
+ * Exportar contatos para Excel
+ * Nota: Esta rota deve vir antes de /:id para evitar conflito
+ */
+router.get(
+  '/export',
+  contactController.exportExcel
+);
+
+/**
  * GET /api/contacts/phone/:phoneNumber
  * Buscar contato por número de telefone
  */
