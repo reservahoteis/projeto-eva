@@ -61,7 +61,7 @@ describe('ContactService', () => {
         page: 1,
         limit: 20,
         total: 2,
-        pages: 1,
+        totalPages: 1,
       });
     });
 
@@ -88,7 +88,7 @@ describe('ContactService', () => {
         page: 2,
         limit: 5,
         total: 10,
-        pages: 2,
+        totalPages: 2,
       });
     });
 
