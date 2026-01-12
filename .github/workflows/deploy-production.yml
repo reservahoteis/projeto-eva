@@ -3,7 +3,7 @@ name: Deploy to Production VPS
 on:
   push:
     branches:
-      - master
+      - main
     paths:
       - 'deploy-backend/**'
       - '.github/workflows/deploy-production.yml'
@@ -45,7 +45,7 @@ jobs:
 
       - name: Run tests
         working-directory: deploy-backend
-        run: npm run test -- --coverage --passWithNoTests
+        run: npm run test -- --passWithNoTests
         env:
           NODE_ENV: test
 
@@ -74,20 +74,32 @@ jobs:
         run: |
           ssh -i ~/.ssh/deploy_key -o ConnectTimeout=10 ${{ env.VPS_USER }}@${{ env.VPS_HOST }} "echo 'SSH OK'"
 
-      - name: Create backup
+      - name: Create backup and save current image
         run: |
           ssh -i ~/.ssh/deploy_key ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'EOF'
+            set -e
             cd /root/deploy-backend
             mkdir -p backups
+
+            # Backup do banco de dados
             if docker ps | grep -q crm-postgres; then
-              docker exec crm-postgres pg_dump -U crm_user crm_whatsapp_saas > "backups/pre-deploy-$(date +%Y%m%d-%H%M%S).sql" 2>/dev/null || true
+              echo "Creating database backup..."
+              docker exec crm-postgres pg_dump -U crm_user crm_whatsapp_saas > "backups/pre-deploy-$(date +%Y%m%d-%H%M%S).sql" 2>/dev/null || echo "Warning: Database backup failed"
             fi
+
+            # Salvar imagem atual para rollback
+            if docker images | grep -q "deploy-backend-backend"; then
+              echo "Saving current image for rollback..."
+              docker tag deploy-backend-backend:latest deploy-backend-backend:rollback 2>/dev/null || true
+            fi
+
+            # Limpar backups antigos (manter ultimos 5)
             ls -t backups/*.sql 2>/dev/null | tail -n +6 | xargs -r rm -f || true
           EOF
 
       - name: Sync files to VPS
         run: |
-          rsync -avz --delete \
+          rsync -avz \
             --exclude 'node_modules' \
             --exclude 'dist' \
             --exclude '.env' \
@@ -97,6 +109,8 @@ jobs:
             --exclude 'certbot' \
             --exclude '*.test.ts' \
             --exclude 'src/test' \
+            --exclude 'logs' \
+            --exclude 'uploads' \
             -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
             deploy-backend/ \
             ${{ env.VPS_USER }}@${{ env.VPS_HOST }}:${{ env.VPS_PATH }}/
@@ -113,30 +127,58 @@ jobs:
             echo "Restarting container..."
             docker compose -f docker-compose.production.yml up -d --no-deps --force-recreate backend
 
-            echo "Waiting for container..."
+            echo "Waiting for container to start..."
             sleep 10
 
             echo "Running migrations..."
-            docker compose -f docker-compose.production.yml exec -T backend npx prisma migrate deploy || true
+            if ! docker compose -f docker-compose.production.yml exec -T backend npx prisma migrate deploy; then
+              echo "ERROR: Migration failed!"
+              echo "Rolling back to previous image..."
+              if docker images | grep -q "deploy-backend-backend:rollback"; then
+                docker tag deploy-backend-backend:rollback deploy-backend-backend:latest
+                docker compose -f docker-compose.production.yml up -d --no-deps --force-recreate backend
+                echo "Rollback completed. Please check migrations manually."
+              fi
+              exit 1
+            fi
 
             echo "Container status:"
             docker compose -f docker-compose.production.yml ps backend
           EOF
 
-      - name: Health check
+      - name: Health check with rollback
         run: |
           for i in {1..30}; do
             RESPONSE=$(curl -s -o /dev/null -w '%{http_code}' https://api.botreserva.com.br/api/health || echo "000")
             if [ "$RESPONSE" = "200" ]; then
               echo "Health check OK!"
               curl -s https://api.botreserva.com.br/api/health | jq '.' || true
+
+              # Limpar imagem de rollback apos sucesso
+              ssh -i ~/.ssh/deploy_key ${{ env.VPS_USER }}@${{ env.VPS_HOST }} "docker rmi deploy-backend-backend:rollback 2>/dev/null || true"
               exit 0
             fi
             echo "Attempt $i/30 - Status: $RESPONSE"
             sleep 5
           done
-          echo "Health check failed"
-          ssh -i ~/.ssh/deploy_key ${{ env.VPS_USER }}@${{ env.VPS_HOST }} "docker logs crm-backend --tail=50"
+
+          echo "Health check failed! Initiating rollback..."
+          ssh -i ~/.ssh/deploy_key ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'EOF'
+            cd /root/deploy-backend
+            echo "Container logs before rollback:"
+            docker logs crm-backend --tail=50
+
+            if docker images | grep -q "deploy-backend-backend:rollback"; then
+              echo "Rolling back to previous version..."
+              docker tag deploy-backend-backend:rollback deploy-backend-backend:latest
+              docker compose -f docker-compose.production.yml up -d --no-deps --force-recreate backend
+              sleep 10
+              echo "Rollback completed. Checking health..."
+              docker compose -f docker-compose.production.yml ps backend
+            else
+              echo "No rollback image available!"
+            fi
+          EOF
           exit 1
 
       - name: Cleanup
