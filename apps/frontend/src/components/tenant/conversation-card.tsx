@@ -187,16 +187,6 @@ export function ConversationCard({ conversation, onUpdate }: ConversationCardPro
           </Badge>
         )}
 
-        {/* Tags */}
-        {conversation.tags && conversation.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {conversation.tags.map((tag) => (
-              <Badge key={tag.id} variant="secondary" className="text-xs" style={{ backgroundColor: tag.color }}>
-                {tag.name}
-              </Badge>
-            ))}
-          </div>
-        )}
       </CardContent>
     </Card>
   );

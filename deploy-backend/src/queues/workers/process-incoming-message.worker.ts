@@ -120,7 +120,7 @@ const MEDIA_DOWNLOAD_TIMEOUT_MS = 15000; // 15 segundos
 
 // Unidades hoteleiras válidas para detecção automática
 const VALID_HOTEL_UNITS = [
-  'Ilha Bela',
+  'Ilhabela',
   'Campos do Jordão',
   'Camburi',
   'Santo Antônio do Pinhal',
@@ -128,8 +128,8 @@ const VALID_HOTEL_UNITS = [
 
 // Mapeamento de IDs/aliases para nomes de unidades (caso o N8N use IDs diferentes)
 const HOTEL_UNIT_ALIASES: Record<string, string> = {
-  'ilha_bela': 'Ilha Bela',
-  'ilhabela': 'Ilha Bela',
+  'ilha_bela': 'Ilhabela',
+  'ilhabela': 'Ilhabela',
   'campos_jordao': 'Campos do Jordão',
   'camposdojordao': 'Campos do Jordão',
   'camburi': 'Camburi',
@@ -804,19 +804,8 @@ function detectHotelUnitSelection(message: WhatsAppMessage): string | null {
 }
 
 /**
- * Mapeamento de cores por unidade hoteleira
- * Cores consistentes em todo o sistema
- */
-const HOTEL_UNIT_COLORS: Record<string, string> = {
-  'Ilha Bela': '#3B82F6',           // Azul
-  'Campos do Jordão': '#10B981',    // Verde
-  'Camburi': '#F59E0B',             // Amarelo/Laranja
-  'Santo Antônio do Pinhal': '#8B5CF6', // Roxo
-};
-
-/**
  * Processa a seleção de unidade hoteleira
- * Atualiza a conversa, cria/vincula tag e emite eventos Socket.io
+ * Atualiza apenas o campo hotelUnit da conversa e emite eventos Socket.io
  */
 async function handleHotelUnitSelection(
   tenantId: string,
@@ -825,40 +814,11 @@ async function handleHotelUnitSelection(
   _contact: { id: string; phoneNumber: string; name: string | null; profilePictureUrl: string | null }
 ): Promise<void> {
   try {
-    // 1. Buscar ou criar a tag para a unidade hoteleira
-    let tag = await prisma.tag.findUnique({
-      where: {
-        tenantId_name: {
-          tenantId,
-          name: hotelUnit,
-        },
-      },
-    });
-
-    if (!tag) {
-      tag = await prisma.tag.create({
-        data: {
-          tenantId,
-          name: hotelUnit,
-          color: HOTEL_UNIT_COLORS[hotelUnit] || '#6B7280', // Cinza como fallback
-        },
-      });
-      logger.info({
-        tenantId,
-        tagId: tag.id,
-        tagName: tag.name,
-        tagColor: tag.color,
-      }, 'Created new tag for hotel unit');
-    }
-
-    // 2. Atualizar conversa com a unidade hoteleira E vincular a tag
+    // 1. Atualizar conversa apenas com a unidade hoteleira (sem tags coloridas)
     const updatedConversation = await prisma.conversation.update({
       where: { id: conversationId },
       data: {
         hotelUnit,
-        tags: {
-          set: [{ id: tag.id }],
-        },
       },
       include: {
         contact: {
@@ -876,13 +836,6 @@ async function handleHotelUnitSelection(
             email: true,
           },
         },
-        tags: {
-          select: {
-            id: true,
-            name: true,
-            color: true,
-          },
-        },
       },
     });
 
@@ -890,19 +843,16 @@ async function handleHotelUnitSelection(
       conversationId,
       hotelUnit,
       tenantId,
-      tagId: tag.id,
-      tagName: tag.name,
-    }, 'Conversation updated with hotel unit and tag from client selection');
+    }, 'Conversation updated with hotel unit from client selection');
 
-    // 3. Emitir evento para room da unidade (atendentes vão ver a conversa aparecer)
+    // 2. Emitir evento para room da unidade (atendentes vão ver a conversa aparecer)
     try {
       const io = getSocketIO();
       const unitRoom = `tenant:${tenantId}:unit:${hotelUnit}`;
 
-      // Dados atualizados incluindo tag
+      // Dados atualizados
       const updateData = {
         hotelUnit,
-        tags: updatedConversation.tags,
       };
 
       // Emitir conversation:new para a room da unidade
@@ -911,13 +861,13 @@ async function handleHotelUnitSelection(
         hotelUnit,
       });
 
-      // Emitir conversation:update para garantir atualização (inclui tags)
+      // Emitir conversation:update para garantir atualização
       io.to(unitRoom).emit('conversation:update', {
         conversationId,
         updates: updateData,
       });
 
-      // Emitir para admins também (para atualizar hotelUnit e tags no painel)
+      // Emitir para admins também (para atualizar hotelUnit no painel)
       io.to(`tenant:${tenantId}:admins`).emit('conversation:update', {
         conversationId,
         updates: updateData,
@@ -934,8 +884,7 @@ async function handleHotelUnitSelection(
         hotelUnit,
         unitRoom,
         tenantId,
-        tagId: tag.id,
-      }, 'Hotel unit and tag selection events emitted via Socket.io');
+      }, 'Hotel unit selection events emitted via Socket.io');
     } catch (socketError) {
       logger.warn({ error: socketError, conversationId }, 'Failed to emit hotel unit selection events');
     }

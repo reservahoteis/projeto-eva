@@ -109,7 +109,7 @@ model User {
   avatarUrl String?
 
   // Unidade hoteleira (para ATTENDANT - filtra conversas automaticamente)
-  // Valores: "Ilha Bela", "Campos do Jordão", "Camburi", "Santo Antônio do Pinhal"
+  // Valores: "Ilhabela", "Campos do Jordão", "Camburi", "Santo Antônio do Pinhal"
   // NULL = TENANT_ADMIN vê todas as unidades
   hotelUnit String?
 
@@ -188,7 +188,7 @@ model Conversation {
   source String? // "n8n", "manual", "webhook", "whatsapp"
 
   // Unidade hoteleira da conversa (para filtrar por atendente)
-  // Valores: "Ilha Bela", "Campos do Jordão", "Camburi", "Santo Antônio do Pinhal"
+  // Valores: "Ilhabela", "Campos do Jordão", "Camburi", "Santo Antônio do Pinhal"
   hotelUnit String?
 
   // Controle de IA - quando true, IA não responde esta conversa

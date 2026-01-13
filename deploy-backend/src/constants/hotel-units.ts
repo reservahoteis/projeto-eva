@@ -3,7 +3,7 @@
  * Usado para filtrar conversas por atendente
  */
 export const HOTEL_UNITS = [
-  'Ilha Bela',
+  'Ilhabela',
   'Campos do Jordão',
   'Camburi',
   'Santo Antônio do Pinhal',

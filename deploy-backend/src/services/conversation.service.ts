@@ -614,7 +614,7 @@ export class ConversationService {
     priority?: Priority;
     metadata?: any;
     assignedToId?: string;
-    hotelUnit?: string; // Unidade hoteleira (Ilha Bela, Campos do Jordão, etc)
+    hotelUnit?: string; // Unidade hoteleira (Ilhabela, Campos do Jordão, etc)
   }) {
     // 1. Buscar Contact por phoneNumber + tenantId
     let contact = await prisma.contact.findFirst({

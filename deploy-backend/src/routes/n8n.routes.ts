@@ -923,11 +923,11 @@ router.post('/send-carousel', async (req: Request, res: Response) => {
  * Payload:
  * {
  *   "phone": "5511999999999",
- *   "hotelUnit": "Ilha Bela"
+ *   "hotelUnit": "Ilhabela"
  * }
  *
  * Valores válidos para hotelUnit:
- * - "Ilha Bela"
+ * - "Ilhabela"
  * - "Campos do Jordão"
  * - "Camburi"
  * - "Santo Antônio do Pinhal"
@@ -949,19 +949,18 @@ router.post('/set-hotel-unit', async (req: Request, res: Response) => {
       });
     }
 
-    // Mapeamento de unidades para cores das tags
-    const HOTEL_UNIT_COLORS: Record<string, string> = {
-      'Ilha Bela': '#3B82F6',           // Azul
-      'Campos do Jordão': '#10B981',    // Verde
-      'Camburi': '#F59E0B',             // Amarelo/Laranja
-      'Santo Antônio do Pinhal': '#8B5CF6', // Roxo
-    };
+    // Unidades hoteleiras válidas
+    const VALID_HOTEL_UNITS = [
+      'Ilhabela',
+      'Campos do Jordão',
+      'Camburi',
+      'Santo Antônio do Pinhal',
+    ];
 
     // Validar hotelUnit
-    const validUnits = Object.keys(HOTEL_UNIT_COLORS);
-    if (!validUnits.includes(hotelUnit)) {
+    if (!VALID_HOTEL_UNITS.includes(hotelUnit)) {
       return res.status(400).json({
-        error: `hotelUnit inválido. Valores válidos: ${validUnits.join(', ')}`,
+        error: `hotelUnit inválido. Valores válidos: ${VALID_HOTEL_UNITS.join(', ')}`,
       });
     }
 
@@ -1016,40 +1015,11 @@ router.post('/set-hotel-unit', async (req: Request, res: Response) => {
       });
     }
 
-    // Buscar ou criar a tag para a unidade hoteleira
-    let tag = await prisma.tag.findUnique({
-      where: {
-        tenantId_name: {
-          tenantId: req.tenantId!,
-          name: hotelUnit,
-        },
-      },
-    });
-
-    if (!tag) {
-      tag = await prisma.tag.create({
-        data: {
-          tenantId: req.tenantId!,
-          name: hotelUnit,
-          color: HOTEL_UNIT_COLORS[hotelUnit] ?? '#6B7280', // Fallback para cinza
-        },
-      });
-      logger.info({
-        tenantId: req.tenantId,
-        tagId: tag.id,
-        tagName: tag.name,
-      }, 'N8N: Created new tag for hotel unit');
-    }
-
-    // Atualizar hotelUnit da conversa e vincular a tag
+    // Atualizar apenas o hotelUnit da conversa (sem tags coloridas)
     const updatedConversation = await prisma.conversation.update({
       where: { id: conversation.id },
       data: {
         hotelUnit,
-        tags: {
-          // Desconectar tags de outras unidades e conectar a tag atual
-          set: [{ id: tag.id }],
-        },
       },
       include: {
         contact: {
@@ -1067,7 +1037,6 @@ router.post('/set-hotel-unit', async (req: Request, res: Response) => {
             email: true,
           },
         },
-        tags: true,
       },
     });
 
@@ -1098,11 +1067,6 @@ router.post('/set-hotel-unit', async (req: Request, res: Response) => {
       success: true,
       conversationId: conversation.id,
       hotelUnit,
-      tag: {
-        id: tag.id,
-        name: tag.name,
-        color: tag.color,
-      },
       message: `Unidade hoteleira definida como: ${hotelUnit}`,
     });
   } catch (error: any) {

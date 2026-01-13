@@ -17,7 +17,7 @@ import { UserRole, type User } from '@/types';
 
 // Unidades hoteleiras disponíveis
 const HOTEL_UNITS = [
-  'Ilha Bela',
+  'Ilhabela',
   'Campos do Jordão',
   'Camburi',
   'Santo Antônio do Pinhal',
