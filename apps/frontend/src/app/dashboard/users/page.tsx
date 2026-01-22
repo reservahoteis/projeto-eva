@@ -159,7 +159,7 @@ function UsersPageContent() {
       return <Badge className="bg-gradient-to-r from-purple-500 to-violet-600 text-white border-0">Super Admin</Badge>;
     }
     if (role === UserRole.HEAD) {
-      return <Badge className="bg-gradient-to-r from-amber-500 to-orange-600 text-white border-0">Supervisor</Badge>;
+      return <Badge className="bg-gradient-to-r from-amber-500 to-orange-600 text-white border-0">HEAD</Badge>;
     }
     return <Badge variant="secondary">Atendente</Badge>;
   };
@@ -237,7 +237,7 @@ function UsersPageContent() {
       iconBoxClass: 'icon-box icon-box-rose',
     },
     {
-      title: 'SUPERVISORES',
+      title: 'HEADs',
       value: headCount,
       icon: UserCheck,
       iconBoxClass: 'icon-box icon-box-amber',

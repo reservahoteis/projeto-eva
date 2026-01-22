@@ -89,8 +89,8 @@ export function UserForm({
     if (!payload.avatarUrl) {
       delete payload.avatarUrl;
     }
-    // Se não for atendente, limpar hotelUnit
-    if (payload.role !== UserRole.ATTENDANT) {
+    // Se for admin, limpar hotelUnit (HEADs e atendentes podem ter)
+    if (payload.role === UserRole.TENANT_ADMIN) {
       payload.hotelUnit = null;
     }
     await onSubmit(payload);
@@ -140,8 +140,8 @@ export function UserForm({
           value={selectedRole}
           onValueChange={(value) => {
             setValue('role', value as UserRole);
-            // Limpar unidade se mudar para admin ou HEAD
-            if (value === UserRole.TENANT_ADMIN || value === UserRole.HEAD) {
+            // Limpar unidade se mudar para admin
+            if (value === UserRole.TENANT_ADMIN) {
               setValue('hotelUnit', null);
             }
           }}
@@ -152,7 +152,7 @@ export function UserForm({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={UserRole.TENANT_ADMIN}>Administrador</SelectItem>
-            <SelectItem value={UserRole.HEAD}>Supervisor</SelectItem>
+            <SelectItem value={UserRole.HEAD}>HEAD</SelectItem>
             <SelectItem value={UserRole.ATTENDANT}>Atendente</SelectItem>
           </SelectContent>
         </Select>
@@ -161,21 +161,25 @@ export function UserForm({
         )}
       </div>
 
-      {/* Unidade Hoteleira (apenas para atendentes) */}
-      {selectedRole === UserRole.ATTENDANT && (
+      {/* Unidade Hoteleira (para atendentes e HEADs) */}
+      {(selectedRole === UserRole.ATTENDANT || selectedRole === UserRole.HEAD) && (
         <div className="space-y-2">
           <Label htmlFor="hotelUnit">
-            Unidade Hoteleira <span className="text-destructive">*</span>
+            Unidade Hoteleira {selectedRole === UserRole.ATTENDANT && <span className="text-destructive">*</span>}
+            {selectedRole === UserRole.HEAD && <span className="text-muted-foreground text-xs"> (opcional - HEAD geral se vazio)</span>}
           </Label>
           <Select
             value={selectedHotelUnit || ''}
-            onValueChange={(value) => setValue('hotelUnit', value)}
+            onValueChange={(value) => setValue('hotelUnit', value === '_none' ? null : value)}
             disabled={isLoading}
           >
             <SelectTrigger>
               <SelectValue placeholder="Selecione a unidade" />
             </SelectTrigger>
             <SelectContent>
+              {selectedRole === UserRole.HEAD && (
+                <SelectItem value="_none">Todas as unidades (HEAD geral)</SelectItem>
+              )}
               {HOTEL_UNITS.map((unit) => (
                 <SelectItem key={unit} value={unit}>
                   {unit}
