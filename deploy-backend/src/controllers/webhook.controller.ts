@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { prisma } from '@/config/database';
 import { messageService } from '@/services/message.service';
 import { whatsAppService } from '@/services/whatsapp.service';
+import { webhookReplicatorService } from '@/services/webhook-replicator.service';
 import logger from '@/config/logger';
 import { decrypt } from '@/utils/encryption';
 
@@ -51,6 +52,11 @@ export class WebhookController {
    */
   async handleWhatsApp(req: Request, res: Response) {
     try {
+      // 0. REPLICAR PARA AMBIENTE DE DESENVOLVIMENTO (fire-and-forget)
+      // Isso acontece ANTES de qualquer processamento para garantir
+      // que o dev receba o webhook mesmo se houver erro no prod
+      webhookReplicatorService.replicateWebhook(req.body, req.headers);
+
       // 1. IDENTIFICAR TENANT
       let tenantId = req.tenantId;
 
