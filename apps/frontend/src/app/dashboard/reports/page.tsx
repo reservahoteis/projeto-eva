@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { reportService } from '@/services/report.service';
+import { ProtectedRoute } from '@/components/layout/protected-route';
+import { UserRole } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -24,7 +26,7 @@ import {
 
 type Period = '7d' | '30d' | '90d' | '1y';
 
-export default function ReportsPage() {
+function ReportsPageContent() {
   const [period, setPeriod] = useState<Period>('30d');
 
   // Query para overview
@@ -291,5 +293,14 @@ export default function ReportsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+// HEAD não pode acessar esta página - apenas TENANT_ADMIN e SUPER_ADMIN
+export default function ReportsPage() {
+  return (
+    <ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.TENANT_ADMIN]}>
+      <ReportsPageContent />
+    </ProtectedRoute>
   );
 }

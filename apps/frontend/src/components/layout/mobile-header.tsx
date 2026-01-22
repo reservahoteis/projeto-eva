@@ -42,7 +42,7 @@ type NavigationItem =
 const tenantNavigation: NavigationItem[] = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Conversas', href: '/dashboard/conversations', icon: MessageSquare, badge: 3 },
-  { name: 'Contatos', href: '/dashboard/contacts', icon: Phone },
+  { name: 'Contatos', href: '/dashboard/contacts', icon: Phone, adminOnly: true }, // HEAD não pode ver
   { name: 'Usuários', href: '/dashboard/users', icon: Users, adminOnly: true },
   { name: 'Relatórios', href: '/dashboard/reports', icon: BarChart3, adminOnly: true },
   { name: 'Configurações', href: '/dashboard/settings', icon: Settings, adminOnly: true },
@@ -64,7 +64,8 @@ export function MobileHeader({ variant = 'tenant' }: MobileHeaderProps) {
   const { user, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
 
-  const isAdmin = user?.role === UserRole.TENANT_ADMIN || user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.HEAD;
+  // HEAD não é admin - só pode ver Dashboard e Conversas
+  const isAdmin = user?.role === UserRole.TENANT_ADMIN || user?.role === UserRole.SUPER_ADMIN;
   const navigation = variant === 'super-admin' ? superAdminNavigation : tenantNavigation;
 
   return (

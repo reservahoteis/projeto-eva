@@ -37,8 +37,9 @@ import { UserRole, UserStatus, type User } from '@/types';
 import { toast } from 'sonner';
 import { UserForm } from '@/components/tenant/user-form';
 import { ResetPasswordForm } from '@/components/tenant/reset-password-form';
+import { ProtectedRoute } from '@/components/layout/protected-route';
 
-export default function UsersPage() {
+function UsersPageContent() {
   const queryClient = useQueryClient();
   const [page, _setPage] = useState(1); // TODO: Implement pagination UI
 
@@ -467,5 +468,14 @@ export default function UsersPage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+// Wrap with ProtectedRoute - HEAD não pode acessar esta página
+export default function UsersPage() {
+  return (
+    <ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.TENANT_ADMIN]}>
+      <UsersPageContent />
+    </ProtectedRoute>
   );
 }

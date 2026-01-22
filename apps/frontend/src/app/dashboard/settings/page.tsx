@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { settingsService } from '@/services/settings.service';
+import { ProtectedRoute } from '@/components/layout/protected-route';
+import { UserRole } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,7 +36,7 @@ const whatsappConfigSchema = z.object({
 
 type WhatsAppConfigData = z.infer<typeof whatsappConfigSchema>;
 
-export default function SettingsPage() {
+function SettingsPageContent() {
   const queryClient = useQueryClient();
   const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false);
 
@@ -405,5 +407,14 @@ export default function SettingsPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+// HEAD não pode acessar esta página - apenas TENANT_ADMIN e SUPER_ADMIN
+export default function SettingsPage() {
+  return (
+    <ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.TENANT_ADMIN]}>
+      <SettingsPageContent />
+    </ProtectedRoute>
   );
 }
