@@ -52,6 +52,7 @@ const navigation = [
     name: 'Contatos',
     href: '/dashboard/contacts',
     icon: Phone,
+    adminOnly: true, // HEAD não pode ver contatos
   },
   {
     name: 'Usuários',
@@ -78,6 +79,7 @@ export function TenantSidebar() {
   const { user, logout } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(true);
 
+  // HEAD não é admin - só pode ver Dashboard e Conversas
   const isAdmin = user?.role === UserRole.TENANT_ADMIN || user?.role === UserRole.SUPER_ADMIN;
 
   return (
@@ -210,6 +212,8 @@ export function TenantSidebar() {
                           ? 'Super Admin'
                           : user?.role === UserRole.TENANT_ADMIN
                           ? 'Administrador'
+                          : user?.role === UserRole.HEAD
+                          ? 'Supervisor'
                           : 'Atendente'}
                       </span>
                     </div>

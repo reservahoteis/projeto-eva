@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useDebounce } from '@/hooks/use-debounce';
 import { contactService } from '@/services/contact.service';
+import { ProtectedRoute } from '@/components/layout/protected-route';
+import { UserRole } from '@/types';
 import { useSocketContext } from '@/contexts/socket-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -67,7 +69,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { Contact } from '@/types';
 
-export default function ContactsPage() {
+function ContactsPageContent() {
   const queryClient = useQueryClient();
   const socket = useSocketContext();
 
@@ -695,5 +697,14 @@ export default function ContactsPage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+// HEAD não pode acessar esta página - apenas TENANT_ADMIN e SUPER_ADMIN
+export default function ContactsPage() {
+  return (
+    <ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.TENANT_ADMIN]}>
+      <ContactsPageContent />
+    </ProtectedRoute>
   );
 }

@@ -11,6 +11,7 @@ import type { ContactMetadata, MessageMetadata, ConversationMetadata } from './m
 export enum UserRole {
   SUPER_ADMIN = 'SUPER_ADMIN',
   TENANT_ADMIN = 'TENANT_ADMIN',
+  HEAD = 'HEAD',
   ATTENDANT = 'ATTENDANT',
 }
 
