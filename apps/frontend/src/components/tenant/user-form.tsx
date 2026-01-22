@@ -140,8 +140,8 @@ export function UserForm({
           value={selectedRole}
           onValueChange={(value) => {
             setValue('role', value as UserRole);
-            // Limpar unidade se mudar para admin
-            if (value === UserRole.TENANT_ADMIN) {
+            // Limpar unidade se mudar para admin ou HEAD
+            if (value === UserRole.TENANT_ADMIN || value === UserRole.HEAD) {
               setValue('hotelUnit', null);
             }
           }}
@@ -151,8 +151,9 @@ export function UserForm({
             <SelectValue placeholder="Selecione o perfil" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={UserRole.ATTENDANT}>Atendente</SelectItem>
             <SelectItem value={UserRole.TENANT_ADMIN}>Administrador</SelectItem>
+            <SelectItem value={UserRole.HEAD}>Supervisor</SelectItem>
+            <SelectItem value={UserRole.ATTENDANT}>Atendente</SelectItem>
           </SelectContent>
         </Select>
         {errors.role && (

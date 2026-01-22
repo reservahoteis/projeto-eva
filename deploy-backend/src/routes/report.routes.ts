@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import * as reportController from '../controllers/report.controller';
-import { authenticate } from '../middlewares/auth.middleware';
+import { authenticate, authorize } from '../middlewares/auth.middleware';
 import { validate } from '../middlewares/validate.middleware';
 import { reportQuerySchema } from '../validators/report.validator';
 
@@ -10,6 +10,12 @@ const router = Router();
  * Todas as rotas requerem autenticação
  */
 router.use(authenticate);
+
+/**
+ * Apenas TENANT_ADMIN e SUPER_ADMIN podem acessar relatórios
+ * HEAD e ATTENDANT não têm acesso a esta seção
+ */
+router.use(authorize(['TENANT_ADMIN', 'SUPER_ADMIN']));
 
 /**
  * GET /api/reports/overview

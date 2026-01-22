@@ -157,6 +157,9 @@ export default function UsersPage() {
     if (role === UserRole.SUPER_ADMIN) {
       return <Badge className="bg-gradient-to-r from-purple-500 to-violet-600 text-white border-0">Super Admin</Badge>;
     }
+    if (role === UserRole.HEAD) {
+      return <Badge className="bg-gradient-to-r from-amber-500 to-orange-600 text-white border-0">Supervisor</Badge>;
+    }
     return <Badge variant="secondary">Atendente</Badge>;
   };
 
@@ -182,8 +185,8 @@ export default function UsersPage() {
           <Skeleton className="h-10 w-32" />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-5">
-          {[1, 2, 3].map((i) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-5">
+          {[1, 2, 3, 4].map((i) => (
             <div key={i} className="glass-card p-6">
               <Skeleton className="h-20 w-full" />
             </div>
@@ -216,6 +219,7 @@ export default function UsersPage() {
   const users = usersData?.data || [];
   const totalUsers = users.length;
   const adminCount = users.filter((u) => u.role === UserRole.TENANT_ADMIN).length;
+  const headCount = users.filter((u) => u.role === UserRole.HEAD).length;
   const attendantCount = users.filter((u) => u.role === UserRole.ATTENDANT).length;
 
   const statsCards = [
@@ -230,6 +234,12 @@ export default function UsersPage() {
       value: adminCount,
       icon: Shield,
       iconBoxClass: 'icon-box icon-box-rose',
+    },
+    {
+      title: 'SUPERVISORES',
+      value: headCount,
+      icon: UserCheck,
+      iconBoxClass: 'icon-box icon-box-amber',
     },
     {
       title: 'ATENDENTES',
@@ -266,7 +276,7 @@ export default function UsersPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-5">
         {statsCards.map((stat, index) => {
           const Icon = stat.icon;
           return (

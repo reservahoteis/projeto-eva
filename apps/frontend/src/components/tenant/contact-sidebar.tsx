@@ -49,7 +49,7 @@ export function ContactSidebar({ conversation, onIaLockChange, onArchive, onDele
   const [isUpdating, setIsUpdating] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string>('');
 
-  const isAdmin = user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.TENANT_ADMIN;
+  const isAdmin = user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.TENANT_ADMIN || user?.role === UserRole.HEAD;
 
   const { data: usersData } = useQuery({
     queryKey: ['users', 'active'],
@@ -304,7 +304,7 @@ export function ContactSidebar({ conversation, onIaLockChange, onArchive, onDele
                             </Avatar>
                             <span>{u.name}</span>
                             <Badge variant="outline" className="text-xs ml-1">
-                              {u.role === UserRole.TENANT_ADMIN ? 'Admin' : 'Atendente'}
+                              {u.role === UserRole.TENANT_ADMIN ? 'Admin' : u.role === UserRole.HEAD ? 'Supervisor' : 'Atendente'}
                             </Badge>
                           </div>
                         </SelectItem>

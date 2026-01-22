@@ -23,9 +23,10 @@ export const createUserSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório').max(100),
   role: z.nativeEnum(Role).optional().default(Role.ATTENDANT),
   avatarUrl: z.string().url('URL inválida').optional(),
-  hotelUnit: z.enum(HOTEL_UNITS).nullable().optional(), // Unidade hoteleira (obrigatória para ATTENDANT)
+  hotelUnit: z.enum(HOTEL_UNITS).nullable().optional(), // Unidade hoteleira (obrigatória para ATTENDANT, opcional para HEAD/TENANT_ADMIN)
 }).refine((data) => {
-  // Atendentes devem ter unidade hoteleira definida
+  // Apenas ATTENDANT deve ter unidade hoteleira obrigatória
+  // HEAD e TENANT_ADMIN veem todas as unidades, então hotelUnit deve ser null
   if (data.role === Role.ATTENDANT && !data.hotelUnit) {
     return false;
   }
@@ -50,8 +51,8 @@ export const updateUserBodySchema = z.object({
   password: z.string().min(8).optional(), // Opcional - apenas se quiser alterar
   hotelUnit: z.enum(HOTEL_UNITS).nullable().optional(), // Unidade hoteleira
 }).refine((data) => {
-  // Se role for ATTENDANT e hotelUnit está sendo definido, deve ser válido
-  // Esta validação só se aplica se role está sendo atualizado para ATTENDANT
+  // Apenas ATTENDANT deve ter unidade hoteleira obrigatória
+  // Se role for ATTENDANT e hotelUnit está sendo definido como null, deve falhar
   if (data.role === Role.ATTENDANT && data.hotelUnit === null) {
     return false;
   }

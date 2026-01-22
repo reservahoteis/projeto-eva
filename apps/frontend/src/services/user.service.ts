@@ -135,6 +135,7 @@ class UserService {
     const labels: Record<UserRole, string> = {
       SUPER_ADMIN: 'Super Admin',
       TENANT_ADMIN: 'Administrador',
+      HEAD: 'Supervisor',
       ATTENDANT: 'Atendente',
     };
     return labels[role] || role;

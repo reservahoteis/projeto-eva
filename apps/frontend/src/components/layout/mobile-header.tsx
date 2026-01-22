@@ -64,7 +64,7 @@ export function MobileHeader({ variant = 'tenant' }: MobileHeaderProps) {
   const { user, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
 
-  const isAdmin = user?.role === UserRole.TENANT_ADMIN || user?.role === UserRole.SUPER_ADMIN;
+  const isAdmin = user?.role === UserRole.TENANT_ADMIN || user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.HEAD;
   const navigation = variant === 'super-admin' ? superAdminNavigation : tenantNavigation;
 
   return (

@@ -78,7 +78,7 @@ export function TenantSidebar() {
   const { user, logout } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(true);
 
-  const isAdmin = user?.role === UserRole.TENANT_ADMIN || user?.role === UserRole.SUPER_ADMIN;
+  const isAdmin = user?.role === UserRole.TENANT_ADMIN || user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.HEAD;
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -210,6 +210,8 @@ export function TenantSidebar() {
                           ? 'Super Admin'
                           : user?.role === UserRole.TENANT_ADMIN
                           ? 'Administrador'
+                          : user?.role === UserRole.HEAD
+                          ? 'Supervisor'
                           : 'Atendente'}
                       </span>
                     </div>

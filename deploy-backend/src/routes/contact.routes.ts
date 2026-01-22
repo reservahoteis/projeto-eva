@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { contactController } from '@/controllers/contact.controller';
-import { authenticate } from '@/middlewares/auth.middleware';
+import { authenticate, authorize } from '@/middlewares/auth.middleware';
 import { validate } from '@/middlewares/validate.middleware';
 import {
   createContactSchema,
@@ -17,6 +17,12 @@ const router = Router();
  * Todas as rotas requerem autenticação
  */
 router.use(authenticate);
+
+/**
+ * Apenas TENANT_ADMIN e SUPER_ADMIN podem acessar contatos
+ * HEAD não tem acesso a esta seção
+ */
+router.use(authorize(['TENANT_ADMIN', 'SUPER_ADMIN']));
 
 /**
  * GET /api/contacts

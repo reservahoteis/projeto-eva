@@ -132,6 +132,7 @@ model User {
 enum Role {
   SUPER_ADMIN  // Acesso total ao sistema (você/empresa)
   TENANT_ADMIN // Admin do hotel (gerencia atendentes)
+  HEAD         // Supervisor (vê todas conversas, não gerencia usuários)
   ATTENDANT    // Atendente do hotel (responde conversas)
 }
 
