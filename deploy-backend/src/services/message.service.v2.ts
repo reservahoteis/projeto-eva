@@ -291,6 +291,7 @@ export class MessageServiceV2 {
 
     // 5. ✅ EMITIR SOCKET.IO IMEDIATAMENTE (ANTES DE ENFILEIRAR)
     // Isso garante que o frontend vê a mensagem instantaneamente, mesmo que o worker falhe
+    // FIX: Formatar datas como ISO strings para o frontend
     try {
       emitNewMessage(
         tenantId,
@@ -304,7 +305,9 @@ export class MessageServiceV2 {
           content: message.content,
           metadata: message.metadata,
           status: message.status,
-          timestamp: message.timestamp,
+          timestamp: message.timestamp.toISOString(), // FIX: Converter para ISO string
+          createdAt: message.createdAt.toISOString(), // FIX: Adicionar createdAt como ISO string
+          updatedAt: message.updatedAt?.toISOString() || message.createdAt.toISOString(), // FIX: Adicionar updatedAt
           sentById: message.sentById,
         },
         {
@@ -824,8 +827,8 @@ export class MessageServiceV2 {
       );
     }
 
-    // 2. BUSCAR OU CRIAR CONVERSA
-    const conversation = await conversationService.getOrCreateConversation(
+    // 2. BUSCAR OU CRIAR CONVERSA - FIX: Usar novo formato { conversation, isNew }
+    const { conversation, isNew: isNewConversation } = await conversationService.getOrCreateConversation(
       data.tenantId,
       contact.id
     );
@@ -877,12 +880,34 @@ export class MessageServiceV2 {
         conversationId: conversation.id,
         contactId: contact.id,
         whatsappMessageId: data.whatsappMessageId,
+        isNewConversation,
       },
       'Message received and saved'
     );
 
-    // TODO: Emitir evento WebSocket para atendentes conectados
-    // await this.notifyAttendants(tenantId, conversation.id, message);
+    // 6. EMITIR EVENTOS SOCKET.IO
+    try {
+      const { emitNewConversation } = await import('@/config/socket');
+
+      // Se conversa é nova, emitir conversation:new primeiro
+      if (isNewConversation) {
+        emitNewConversation(data.tenantId, conversation);
+        logger.debug({ conversationId: conversation.id }, 'Socket.io: New conversation emitted');
+      }
+
+      // Formatar mensagem com datas como ISO strings para o frontend
+      const messageForSocket = {
+        ...message,
+        timestamp: message.timestamp.toISOString(),
+        createdAt: message.createdAt.toISOString(),
+        updatedAt: message.updatedAt?.toISOString() || message.createdAt.toISOString(),
+      };
+
+      // Emitir nova mensagem
+      emitNewMessage(data.tenantId, conversation.id, messageForSocket, conversation);
+    } catch (socketError) {
+      logger.warn({ error: socketError }, 'Failed to emit Socket.io events for inbound message');
+    }
 
     return message;
   }

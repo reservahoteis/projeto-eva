@@ -774,7 +774,7 @@ describe('MessageService', () => {
     it('deve receber mensagem de contato existente', async () => {
       // Arrange
       prismaMock.contact.findFirst.mockResolvedValue(mockContact);
-      conversationServiceMock.getOrCreateConversation.mockResolvedValue(mockConversation as any);
+      conversationServiceMock.getOrCreateConversation.mockResolvedValue({ conversation: mockConversation, isNew: false } as any);
       prismaMock.message.findUnique.mockResolvedValue(null);
       prismaMock.message.create.mockResolvedValue(mockMessage);
       prismaMock.conversation.update.mockResolvedValue(mockConversation as any);
@@ -815,7 +815,7 @@ describe('MessageService', () => {
 
       prismaMock.contact.findFirst.mockResolvedValue(null);
       prismaMock.contact.create.mockResolvedValue(mockContact);
-      conversationServiceMock.getOrCreateConversation.mockResolvedValue(mockConversation as any);
+      conversationServiceMock.getOrCreateConversation.mockResolvedValue({ conversation: mockConversation, isNew: false } as any);
       prismaMock.message.findUnique.mockResolvedValue(null);
       prismaMock.message.create.mockResolvedValue(newMessage);
       prismaMock.conversation.update.mockResolvedValue(mockConversation as any);
@@ -850,7 +850,7 @@ describe('MessageService', () => {
         ...mockContact,
         name: null,
       });
-      conversationServiceMock.getOrCreateConversation.mockResolvedValue(mockConversation as any);
+      conversationServiceMock.getOrCreateConversation.mockResolvedValue({ conversation: mockConversation, isNew: false } as any);
       prismaMock.message.findUnique.mockResolvedValue(null);
       prismaMock.message.create.mockResolvedValue(mockMessage);
       prismaMock.conversation.update.mockResolvedValue(mockConversation as any);
@@ -885,7 +885,7 @@ describe('MessageService', () => {
         ...mockContact,
         name: 'Nome Atualizado',
       });
-      conversationServiceMock.getOrCreateConversation.mockResolvedValue(mockConversation as any);
+      conversationServiceMock.getOrCreateConversation.mockResolvedValue({ conversation: mockConversation, isNew: false } as any);
       prismaMock.message.findUnique.mockResolvedValue(null);
       prismaMock.message.create.mockResolvedValue(mockMessage);
       prismaMock.conversation.update.mockResolvedValue(mockConversation as any);
@@ -911,7 +911,7 @@ describe('MessageService', () => {
     it('não deve atualizar nome do contato se já existe', async () => {
       // Arrange
       prismaMock.contact.findFirst.mockResolvedValue(mockContact);
-      conversationServiceMock.getOrCreateConversation.mockResolvedValue(mockConversation as any);
+      conversationServiceMock.getOrCreateConversation.mockResolvedValue({ conversation: mockConversation, isNew: false } as any);
       prismaMock.message.findUnique.mockResolvedValue(null);
       prismaMock.message.create.mockResolvedValue(mockMessage);
       prismaMock.conversation.update.mockResolvedValue(mockConversation as any);
@@ -934,7 +934,7 @@ describe('MessageService', () => {
     it('deve garantir idempotência retornando mensagem existente', async () => {
       // Arrange
       prismaMock.contact.findFirst.mockResolvedValue(mockContact);
-      conversationServiceMock.getOrCreateConversation.mockResolvedValue(mockConversation as any);
+      conversationServiceMock.getOrCreateConversation.mockResolvedValue({ conversation: mockConversation, isNew: false } as any);
       prismaMock.message.findUnique.mockResolvedValue(mockMessage);
 
       // Act
@@ -955,7 +955,7 @@ describe('MessageService', () => {
     it('deve criar mensagem com tipo IMAGE', async () => {
       // Arrange
       prismaMock.contact.findFirst.mockResolvedValue(mockContact);
-      conversationServiceMock.getOrCreateConversation.mockResolvedValue(mockConversation as any);
+      conversationServiceMock.getOrCreateConversation.mockResolvedValue({ conversation: mockConversation, isNew: false } as any);
       prismaMock.message.findUnique.mockResolvedValue(null);
       prismaMock.message.create.mockResolvedValue({
         ...mockMessage,
@@ -987,7 +987,7 @@ describe('MessageService', () => {
     it('deve criar mensagem com metadata', async () => {
       // Arrange
       prismaMock.contact.findFirst.mockResolvedValue(mockContact);
-      conversationServiceMock.getOrCreateConversation.mockResolvedValue(mockConversation as any);
+      conversationServiceMock.getOrCreateConversation.mockResolvedValue({ conversation: mockConversation, isNew: false } as any);
       prismaMock.message.findUnique.mockResolvedValue(null);
       prismaMock.message.create.mockResolvedValue(mockMessage);
       prismaMock.conversation.update.mockResolvedValue(mockConversation as any);
@@ -1018,7 +1018,7 @@ describe('MessageService', () => {
     it('deve atualizar lastMessageAt da conversa', async () => {
       // Arrange
       prismaMock.contact.findFirst.mockResolvedValue(mockContact);
-      conversationServiceMock.getOrCreateConversation.mockResolvedValue(mockConversation as any);
+      conversationServiceMock.getOrCreateConversation.mockResolvedValue({ conversation: mockConversation, isNew: false } as any);
       prismaMock.message.findUnique.mockResolvedValue(null);
       prismaMock.message.create.mockResolvedValue(mockMessage);
       prismaMock.conversation.update.mockResolvedValue(mockConversation as any);
@@ -1049,7 +1049,7 @@ describe('MessageService', () => {
         ...mockContact,
         tenantId: 'tenant-999',
       });
-      conversationServiceMock.getOrCreateConversation.mockResolvedValue(mockConversation as any);
+      conversationServiceMock.getOrCreateConversation.mockResolvedValue({ conversation: mockConversation, isNew: false } as any);
       prismaMock.message.findUnique.mockResolvedValue(null);
       prismaMock.message.create.mockResolvedValue(mockMessage);
       prismaMock.conversation.update.mockResolvedValue(mockConversation as any);

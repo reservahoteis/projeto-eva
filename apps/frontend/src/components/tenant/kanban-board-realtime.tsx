@@ -47,6 +47,41 @@ export function KanbanBoardRealtime({ initialConversations, onUpdate, selectedSt
   useEffect(() => {
     if (!isConnected) return;
 
+    // Handle new conversation - add to Kanban (FIX: bug "conversas do bot não aparecem")
+    const handleNewConversation = ({ conversation }: { conversation: Conversation }) => {
+      console.log('🆕 Socket.io: conversation:new received', {
+        conversationId: conversation?.id,
+        status: conversation?.status,
+        contactName: conversation?.contact?.name,
+      });
+
+      // Validação: precisa ter conversation válida
+      if (!conversation?.id) {
+        console.warn('handleNewConversation: conversation is undefined or has no id');
+        return;
+      }
+
+      // Não adicionar conversas BOT_HANDLING ao Kanban
+      if (conversation.status === ConversationStatus.BOT_HANDLING) {
+        console.log('handleNewConversation: ignoring BOT_HANDLING conversation');
+        return;
+      }
+
+      setConversations((prev) => {
+        // Verificar se já existe (idempotência)
+        const exists = prev.find((conv) => conv.id === conversation.id);
+        if (exists) {
+          console.log('handleNewConversation: conversation already exists, updating...');
+          // Atualizar conversa existente
+          return prev.map((conv) => (conv.id === conversation.id ? { ...conv, ...conversation } : conv));
+        }
+
+        console.log('✅ handleNewConversation: adding NEW conversation to Kanban!');
+        // Adicionar no início da lista (mais recente)
+        return [conversation, ...prev];
+      });
+    };
+
     // Handle new message - update conversation
     const handleNewMessage = ({ message, conversation, conversationId }: { message: Message; conversation?: Conversation; conversationId?: string }) => {
       // Validação: precisa ter message e pelo menos conversation ou conversationId
@@ -75,8 +110,14 @@ export function KanbanBoardRealtime({ initialConversations, onUpdate, selectedSt
         });
 
         // If conversation is new AND we have full conversation data, add it to the list
+        // (backup case - conversation:new handler should handle this primarily)
         const exists = prev.find((conv) => conv.id === targetConversationId);
         if (!exists && conversation && conversation.id) {
+          // Não adicionar BOT_HANDLING ao Kanban
+          if (conversation.status === ConversationStatus.BOT_HANDLING) {
+            return updated;
+          }
+          console.log('handleNewMessage: adding new conversation (fallback)');
           return [conversation, ...updated];
         }
 
@@ -109,12 +150,15 @@ export function KanbanBoardRealtime({ initialConversations, onUpdate, selectedSt
       );
     };
 
+    // Subscribe to all events
+    on('conversation:new', handleNewConversation);  // FIX: Adicionado handler para novas conversas
     on('message:new', handleNewMessage);
     on('conversation:updated', handleConversationUpdate);
     on('conversation:assign', handleConversationAssign);
 
     // Cleanup
     return () => {
+      off('conversation:new', handleNewConversation);
       off('message:new', handleNewMessage);
       off('conversation:updated', handleConversationUpdate);
       off('conversation:assign', handleConversationAssign);

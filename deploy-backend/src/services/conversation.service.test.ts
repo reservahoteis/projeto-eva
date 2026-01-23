@@ -544,7 +544,8 @@ describe('ConversationService', () => {
       });
 
       expect(prismaMock.conversation.create).not.toHaveBeenCalled();
-      expect(result.id).toBe('conv-existing');
+      expect(result.conversation.id).toBe('conv-existing');
+      expect(result.isNew).toBe(false);
     });
 
     it('deve retornar conversa existente quando já existe (IN_PROGRESS)', async () => {
@@ -559,7 +560,8 @@ describe('ConversationService', () => {
       const result = await conversationService.getOrCreateConversation('tenant-123', 'contact-1');
 
       // Assert
-      expect(result.status).toBe('IN_PROGRESS');
+      expect(result.conversation.status).toBe('IN_PROGRESS');
+      expect(result.isNew).toBe(false);
       expect(prismaMock.conversation.create).not.toHaveBeenCalled();
     });
 
@@ -575,7 +577,8 @@ describe('ConversationService', () => {
       const result = await conversationService.getOrCreateConversation('tenant-123', 'contact-1');
 
       // Assert
-      expect(result.status).toBe('WAITING');
+      expect(result.conversation.status).toBe('WAITING');
+      expect(result.isNew).toBe(false);
       expect(prismaMock.conversation.create).not.toHaveBeenCalled();
     });
 
@@ -602,9 +605,10 @@ describe('ConversationService', () => {
         },
       });
 
-      expect(result.id).toBe('conv-new');
-      expect(result.status).toBe('OPEN');
-      expect(result.priority).toBe('MEDIUM');
+      expect(result.conversation.id).toBe('conv-new');
+      expect(result.conversation.status).toBe('OPEN');
+      expect(result.conversation.priority).toBe('MEDIUM');
+      expect(result.isNew).toBe(true);
     });
 
     it('deve criar nova conversa quando todas as conversas estão fechadas', async () => {
@@ -617,7 +621,8 @@ describe('ConversationService', () => {
 
       // Assert
       expect(prismaMock.conversation.create).toHaveBeenCalled();
-      expect(result.id).toBe('conv-new');
+      expect(result.conversation.id).toBe('conv-new');
+      expect(result.isNew).toBe(true);
     });
 
     it('deve respeitar isolamento de tenant', async () => {
