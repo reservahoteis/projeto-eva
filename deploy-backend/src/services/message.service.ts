@@ -253,7 +253,6 @@ export class MessageService {
         ...message,
         timestamp: message.timestamp.toISOString(),
         createdAt: message.createdAt.toISOString(),
-        updatedAt: message.updatedAt?.toISOString() || message.createdAt.toISOString(),
       };
 
       // Emitir nova mensagem
@@ -421,7 +420,6 @@ export class MessageService {
         ...message,
         timestamp: message.timestamp.toISOString(),
         createdAt: message.createdAt.toISOString(),
-        updatedAt: message.updatedAt?.toISOString() || message.createdAt.toISOString(),
       };
 
       // Emitir nova mensagem com conversation completa para contexto

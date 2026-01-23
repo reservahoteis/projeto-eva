@@ -307,7 +307,6 @@ export class MessageServiceV2 {
           status: message.status,
           timestamp: message.timestamp.toISOString(), // FIX: Converter para ISO string
           createdAt: message.createdAt.toISOString(), // FIX: Adicionar createdAt como ISO string
-          updatedAt: message.updatedAt?.toISOString() || message.createdAt.toISOString(), // FIX: Adicionar updatedAt
           sentById: message.sentById,
         },
         {
@@ -900,7 +899,6 @@ export class MessageServiceV2 {
         ...message,
         timestamp: message.timestamp.toISOString(),
         createdAt: message.createdAt.toISOString(),
-        updatedAt: message.updatedAt?.toISOString() || message.createdAt.toISOString(),
       };
 
       // Emitir nova mensagem
