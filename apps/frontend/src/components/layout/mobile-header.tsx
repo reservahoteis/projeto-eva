@@ -36,12 +36,12 @@ import { UserRole } from '@/types';
 import type { LucideIcon } from 'lucide-react';
 
 type NavigationItem =
-  | { name: string; href: string; icon: LucideIcon; badge?: number; adminOnly?: boolean }
+  | { name: string; href: string; icon: LucideIcon; badge?: number; adminOnly?: boolean; hiddenForSales?: boolean }
   | { name: 'divider'; label: string };
 
 const tenantNavigation: NavigationItem[] = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Conversas', href: '/dashboard/conversations', icon: MessageSquare, badge: 3 },
+  { name: 'Conversas', href: '/dashboard/conversations', icon: MessageSquare, badge: 3, hiddenForSales: true }, // SALES não vê por enquanto
   { name: 'Contatos', href: '/dashboard/contacts', icon: Phone, adminOnly: true }, // HEAD não pode ver
   { name: 'Usuários', href: '/dashboard/users', icon: Users, adminOnly: true },
   { name: 'Relatórios', href: '/dashboard/reports', icon: BarChart3, adminOnly: true },
@@ -65,7 +65,9 @@ export function MobileHeader({ variant = 'tenant' }: MobileHeaderProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   // HEAD não é admin - só pode ver Dashboard e Conversas
+  // SALES não tem acesso por enquanto - só Dashboard
   const isAdmin = user?.role === UserRole.TENANT_ADMIN || user?.role === UserRole.SUPER_ADMIN;
+  const isSales = user?.role === UserRole.SALES;
   const navigation = variant === 'super-admin' ? superAdminNavigation : tenantNavigation;
 
   return (
@@ -104,7 +106,8 @@ export function MobileHeader({ variant = 'tenant' }: MobileHeaderProps) {
               {navigation
                 .filter((item) => {
                   if (item.name === 'divider') return true;
-                  if ('adminOnly' in item && item.adminOnly) return isAdmin;
+                  if ('adminOnly' in item && item.adminOnly && !isAdmin) return false;
+                  if ('hiddenForSales' in item && item.hiddenForSales && isSales) return false;
                   return true;
                 })
                 .map((item, index) => {

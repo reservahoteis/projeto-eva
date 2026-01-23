@@ -154,6 +154,7 @@ export function UserForm({
             <SelectItem value={UserRole.TENANT_ADMIN}>Administrador</SelectItem>
             <SelectItem value={UserRole.HEAD}>HEAD</SelectItem>
             <SelectItem value={UserRole.ATTENDANT}>Atendente</SelectItem>
+            <SelectItem value={UserRole.SALES}>Vendas</SelectItem>
           </SelectContent>
         </Select>
         {errors.role && (
@@ -161,12 +162,13 @@ export function UserForm({
         )}
       </div>
 
-      {/* Unidade Hoteleira (para atendentes e HEADs) */}
-      {(selectedRole === UserRole.ATTENDANT || selectedRole === UserRole.HEAD) && (
+      {/* Unidade Hoteleira (para atendentes, HEADs e Vendas) */}
+      {(selectedRole === UserRole.ATTENDANT || selectedRole === UserRole.HEAD || selectedRole === UserRole.SALES) && (
         <div className="space-y-2">
           <Label htmlFor="hotelUnit">
             Unidade Hoteleira {selectedRole === UserRole.ATTENDANT && <span className="text-destructive">*</span>}
             {selectedRole === UserRole.HEAD && <span className="text-muted-foreground text-xs"> (opcional - HEAD geral se vazio)</span>}
+            {selectedRole === UserRole.SALES && <span className="text-muted-foreground text-xs"> (opcional - Vendas geral se vazio)</span>}
           </Label>
           <Select
             value={selectedHotelUnit || ''}
@@ -177,8 +179,8 @@ export function UserForm({
               <SelectValue placeholder="Selecione a unidade" />
             </SelectTrigger>
             <SelectContent>
-              {selectedRole === UserRole.HEAD && (
-                <SelectItem value="_none">Todas as unidades (HEAD geral)</SelectItem>
+              {(selectedRole === UserRole.HEAD || selectedRole === UserRole.SALES) && (
+                <SelectItem value="_none">Todas as unidades ({selectedRole === UserRole.HEAD ? 'HEAD' : 'Vendas'} geral)</SelectItem>
               )}
               {HOTEL_UNITS.map((unit) => (
                 <SelectItem key={unit} value={unit}>

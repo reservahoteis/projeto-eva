@@ -134,6 +134,7 @@ enum Role {
   TENANT_ADMIN // Admin do hotel (gerencia atendentes)
   HEAD         // Supervisor (vê todas conversas, não gerencia usuários)
   ATTENDANT    // Atendente do hotel (responde conversas)
+  SALES        // Vendas (vê apenas oportunidades de venda)
 }
 
 enum UserStatus {
@@ -197,6 +198,10 @@ model Conversation {
   iaLockedAt DateTime? // Quando a IA foi travada
   iaLockedBy String?   // User ID que travou (ou "system" se automático)
 
+  // Oportunidade de venda - quando cliente não converteu no follow-up
+  isOpportunity   Boolean   @default(false) // true = oportunidade para time de vendas
+  opportunityAt   DateTime? // Quando foi marcada como oportunidade
+
   // Timestamps importantes
   lastMessageAt DateTime @default(now())
   createdAt     DateTime @default(now())
@@ -222,6 +227,7 @@ model Conversation {
   @@index([tenantId, iaLocked])
   @@index([tenantId, hotelUnit])
   @@index([tenantId, hotelUnit, status, lastMessageAt])
+  @@index([tenantId, isOpportunity, opportunityAt]) // Para consultas de oportunidades do time de vendas
   @@index([contactId])
   @@map("conversations")
 }

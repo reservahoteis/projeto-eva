@@ -11,8 +11,9 @@ import { ChatInput } from '@/components/chat/chat-input';
 import { useRouter } from 'next/navigation';
 import { useSocketContext } from '@/contexts/socket-context';
 import { useEffect, useState, useRef } from 'react';
-import { Message, MessageType } from '@/types';
+import { Message, MessageType, UserRole } from '@/types';
 import { toast } from 'sonner';
+import { ProtectedRoute } from '@/components/layout/protected-route';
 
 interface ConversationPageProps {
   params: {
@@ -20,7 +21,7 @@ interface ConversationPageProps {
   };
 }
 
-export default function ConversationPage({ params }: ConversationPageProps) {
+function ConversationPageContent({ params }: ConversationPageProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { on, off, subscribeToConversation, unsubscribeFromConversation, isConnected, sendTypingStatus, isUserTyping, setActiveConversationId: setSocketActiveConversationId } = useSocketContext();
@@ -378,5 +379,14 @@ export default function ConversationPage({ params }: ConversationPageProps) {
         />
       </div>
     </div>
+  );
+}
+
+// Wrap with ProtectedRoute - SALES não pode acessar esta página (usará Oportunidades futuramente)
+export default function ConversationPage({ params }: ConversationPageProps) {
+  return (
+    <ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.TENANT_ADMIN, UserRole.HEAD, UserRole.ATTENDANT]}>
+      <ConversationPageContent params={params} />
+    </ProtectedRoute>
   );
 }

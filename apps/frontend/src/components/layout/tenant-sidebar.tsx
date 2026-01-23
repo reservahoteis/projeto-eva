@@ -47,6 +47,7 @@ const navigation = [
     icon: MessageSquare,
     badge: 3,
     badgeColor: 'bg-rose-500',
+    hiddenForSales: true, // SALES não vê conversas por enquanto
   },
   {
     name: 'Contatos',
@@ -80,7 +81,9 @@ export function TenantSidebar() {
   const [isCollapsed, setIsCollapsed] = useState(true);
 
   // HEAD não é admin - só pode ver Dashboard e Conversas
+  // SALES não tem acesso por enquanto - só Dashboard
   const isAdmin = user?.role === UserRole.TENANT_ADMIN || user?.role === UserRole.SUPER_ADMIN;
+  const isSales = user?.role === UserRole.SALES;
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -126,7 +129,13 @@ export function TenantSidebar() {
         {/* Navigation */}
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {navigation
-            .filter((item) => !item.adminOnly || isAdmin)
+            .filter((item) => {
+              // Admin só pode ver itens adminOnly
+              if (item.adminOnly && !isAdmin) return false;
+              // SALES não pode ver itens hiddenForSales
+              if (item.hiddenForSales && isSales) return false;
+              return true;
+            })
             .map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href;
@@ -213,7 +222,9 @@ export function TenantSidebar() {
                           : user?.role === UserRole.TENANT_ADMIN
                           ? 'Administrador'
                           : user?.role === UserRole.HEAD
-                          ? 'Supervisor'
+                          ? 'HEAD'
+                          : user?.role === UserRole.SALES
+                          ? 'Vendas'
                           : 'Atendente'}
                       </span>
                     </div>

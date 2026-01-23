@@ -194,7 +194,7 @@ export class MessageService {
     }
 
     // 2. Buscar ou criar conversa
-    const conversation = await conversationService.getOrCreateConversation(
+    const { conversation, isNew: isNewConversation } = await conversationService.getOrCreateConversation(
       data.tenantId,
       contact.id
     );
@@ -238,7 +238,29 @@ export class MessageService {
 
     logger.info({ messageId: message.id, conversationId: conversation.id }, 'Message received');
 
-    // TODO: Emitir evento WebSocket para atendentes conectados
+    // 6. Emitir eventos Socket.io
+    try {
+      const { emitNewMessage, emitNewConversation } = await import('@/config/socket');
+
+      // Se conversa é nova, emitir conversation:new primeiro
+      if (isNewConversation) {
+        emitNewConversation(data.tenantId, conversation);
+        logger.debug({ conversationId: conversation.id }, 'Socket.io: New conversation emitted');
+      }
+
+      // Formatar mensagem com datas como ISO strings para o frontend
+      const messageForSocket = {
+        ...message,
+        timestamp: message.timestamp.toISOString(),
+        createdAt: message.createdAt.toISOString(),
+        updatedAt: message.updatedAt?.toISOString() || message.createdAt.toISOString(),
+      };
+
+      // Emitir nova mensagem
+      emitNewMessage(data.tenantId, conversation.id, messageForSocket, conversation);
+    } catch (error) {
+      logger.warn({ error }, 'Failed to emit Socket.io events for inbound message');
+    }
 
     return message;
   }
@@ -297,6 +319,10 @@ export class MessageService {
   /**
    * Salvar mensagem enviada pela IA (via N8N)
    * Cria contato e conversa automaticamente se não existirem
+   *
+   * CORREÇÕES APLICADAS:
+   * - FIX #1: Emitir conversation:new quando nova conversa é criada (antes só emitia message:new)
+   * - FIX #2: Formatar datas como ISO strings (timestamp, createdAt) para o frontend
    */
   async saveOutboundMessage(data: {
     tenantId: string;
@@ -324,8 +350,8 @@ export class MessageService {
       logger.info({ contactId: contact.id, phoneNumber: data.phoneNumber }, 'Contact created for AI message');
     }
 
-    // 2. Buscar ou criar conversa
-    const conversation = await conversationService.getOrCreateConversation(
+    // 2. Buscar ou criar conversa - CORREÇÃO: capturar se é nova conversa
+    const { conversation, isNew: isNewConversation } = await conversationService.getOrCreateConversation(
       data.tenantId,
       contact.id
     );
@@ -357,9 +383,13 @@ export class MessageService {
     });
 
     // 5. Atualizar lastMessageAt da conversa
-    await prisma.conversation.update({
+    const updatedConversation = await prisma.conversation.update({
       where: { id: conversation.id },
       data: { lastMessageAt: new Date() },
+      include: {
+        contact: true,
+        assignedTo: true,
+      },
     });
 
     logger.info({
@@ -367,12 +397,41 @@ export class MessageService {
       conversationId: conversation.id,
       whatsappMessageId: data.whatsappMessageId,
       phoneNumber: data.phoneNumber,
+      isNewConversation,
     }, 'AI outbound message saved');
 
-    // 6. Emitir evento Socket.io para atualizar o painel em tempo real
+    // 6. Emitir eventos Socket.io para atualizar o painel em tempo real
+    // CORREÇÃO: Emitir conversation:new ANTES de message:new se for nova conversa
     try {
-      const { emitNewMessage } = await import('@/config/socket');
-      emitNewMessage(data.tenantId, conversation.id, message);
+      const { emitNewMessage, emitNewConversation } = await import('@/config/socket');
+
+      // FIX #1: Se conversa é nova, emitir conversation:new primeiro
+      // Isso garante que o Kanban do frontend receba a nova conversa
+      if (isNewConversation) {
+        emitNewConversation(data.tenantId, updatedConversation);
+        logger.info({
+          conversationId: conversation.id,
+          tenantId: data.tenantId,
+        }, '✅ Socket.io: NEW conversation emitted to frontend (conversation:new)');
+      }
+
+      // FIX #2: Formatar mensagem com datas como ISO strings para o frontend
+      // O frontend espera createdAt como string, não como Date object
+      const messageForSocket = {
+        ...message,
+        timestamp: message.timestamp.toISOString(),
+        createdAt: message.createdAt.toISOString(),
+        updatedAt: message.updatedAt?.toISOString() || message.createdAt.toISOString(),
+      };
+
+      // Emitir nova mensagem com conversation completa para contexto
+      emitNewMessage(data.tenantId, conversation.id, messageForSocket, updatedConversation);
+
+      logger.debug({
+        messageId: message.id,
+        conversationId: conversation.id,
+        hasCreatedAt: !!messageForSocket.createdAt,
+      }, 'Socket.io: Message emitted with ISO date strings');
     } catch (error) {
       logger.warn({ error }, 'Failed to emit Socket.io event for AI message');
     }

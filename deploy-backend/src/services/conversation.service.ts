@@ -239,8 +239,12 @@ export class ConversationService {
 
   /**
    * Criar ou buscar conversa existente para um contato
+   * @returns { conversation, isNew } - conversation e flag indicando se foi criada agora
    */
-  async getOrCreateConversation(tenantId: string, contactId: string) {
+  async getOrCreateConversation(tenantId: string, contactId: string): Promise<{
+    conversation: Awaited<ReturnType<typeof prisma.conversation.findFirst>> & { contact: any; assignedTo: any };
+    isNew: boolean;
+  }> {
     // Buscar conversa aberta existente
     let conversation = await prisma.conversation.findFirst({
       where: {
@@ -273,9 +277,11 @@ export class ConversationService {
       });
 
       logger.info({ conversationId: conversation.id, contactId }, 'New conversation created');
+
+      return { conversation: conversation as any, isNew: true };
     }
 
-    return conversation;
+    return { conversation: conversation as any, isNew: false };
   }
 
   /**
