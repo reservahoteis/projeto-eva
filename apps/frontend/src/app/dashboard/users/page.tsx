@@ -32,7 +32,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Plus, MoreVertical, Users, Shield, UserCheck, RefreshCw } from 'lucide-react';
+import { Plus, MoreVertical, Users, Shield, UserCheck, RefreshCw, TrendingUp } from 'lucide-react';
 import { UserRole, UserStatus, type User } from '@/types';
 import { toast } from 'sonner';
 import { UserForm } from '@/components/tenant/user-form';
@@ -161,6 +161,9 @@ function UsersPageContent() {
     if (role === UserRole.HEAD) {
       return <Badge className="bg-gradient-to-r from-amber-500 to-orange-600 text-white border-0">HEAD</Badge>;
     }
+    if (role === UserRole.SALES) {
+      return <Badge className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white border-0">Vendas</Badge>;
+    }
     return <Badge variant="secondary">Atendente</Badge>;
   };
 
@@ -186,8 +189,8 @@ function UsersPageContent() {
           <Skeleton className="h-10 w-32" />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-5">
-          {[1, 2, 3, 4].map((i) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 md:gap-5">
+          {[1, 2, 3, 4, 5].map((i) => (
             <div key={i} className="glass-card p-6">
               <Skeleton className="h-20 w-full" />
             </div>
@@ -222,6 +225,7 @@ function UsersPageContent() {
   const adminCount = users.filter((u) => u.role === UserRole.TENANT_ADMIN).length;
   const headCount = users.filter((u) => u.role === UserRole.HEAD).length;
   const attendantCount = users.filter((u) => u.role === UserRole.ATTENDANT).length;
+  const salesCount = users.filter((u) => u.role === UserRole.SALES).length;
 
   const statsCards = [
     {
@@ -247,6 +251,12 @@ function UsersPageContent() {
       value: attendantCount,
       icon: UserCheck,
       iconBoxClass: 'icon-box icon-box-green',
+    },
+    {
+      title: 'VENDAS',
+      value: salesCount,
+      icon: TrendingUp,
+      iconBoxClass: 'icon-box icon-box-cyan',
     },
   ];
 
@@ -277,7 +287,7 @@ function UsersPageContent() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 md:gap-5">
         {statsCards.map((stat, index) => {
           const Icon = stat.icon;
           return (

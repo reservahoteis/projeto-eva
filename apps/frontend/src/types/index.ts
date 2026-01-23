@@ -13,6 +13,7 @@ export enum UserRole {
   TENANT_ADMIN = 'TENANT_ADMIN',
   HEAD = 'HEAD',
   ATTENDANT = 'ATTENDANT',
+  SALES = 'SALES',
 }
 
 export enum UserStatus {
@@ -139,6 +140,9 @@ export interface Conversation {
   iaLocked: boolean;
   iaLockedAt?: string;
   iaLockedBy?: string;
+  // Oportunidade de venda
+  isOpportunity: boolean;
+  opportunityAt?: string;
   lastMessageAt: string;
   lastMessage?: Message;
   unreadCount: number;

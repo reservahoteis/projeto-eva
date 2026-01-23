@@ -3,18 +3,20 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { conversationService } from '@/services/conversation.service';
-import { ConversationStatus } from '@/types';
+import { ConversationStatus, UserRole } from '@/types';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { KanbanBoardRealtime } from '@/components/tenant/kanban-board-realtime';
 import { ConversationList } from '@/components/tenant/conversation-list';
 import { Button } from '@/components/ui/button';
 import { LayoutGrid, List } from 'lucide-react';
+import { ProtectedRoute } from '@/components/layout/protected-route';
 
 /**
  * Página de Conversas com Kanban Board
  * Usa KanbanBoardRealtime para atualizações em tempo real via Socket.io
+ * SALES não tem acesso - só verá oportunidades futuramente
  */
-export default function ConversationsPage() {
+function ConversationsPageContent() {
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
   const [selectedStatus, setSelectedStatus] = useState<ConversationStatus | 'all'>('all');
 
@@ -131,5 +133,14 @@ export default function ConversationsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+// Wrap with ProtectedRoute - SALES não pode acessar esta página (usará Oportunidades futuramente)
+export default function ConversationsPage() {
+  return (
+    <ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.TENANT_ADMIN, UserRole.HEAD, UserRole.ATTENDANT]}>
+      <ConversationsPageContent />
+    </ProtectedRoute>
   );
 }
