@@ -52,10 +52,15 @@ export default function DashboardPage() {
   ];
 
   // Stats cards para SALES (oportunidades)
+  // Mapeamos os stats existentes para o contexto de vendas:
+  // - open = novas oportunidades aguardando atendimento
+  // - inProgress = em atendimento pelo vendedor
+  // - resolved/closed = convertidas (vendas realizadas)
+  // - pending = aguardando retorno do cliente
   const salesStatsCards = [
     {
       title: 'OPORTUNIDADES',
-      value: stats?.opportunities || 0,
+      value: stats?.open || 0,
       icon: Target,
       iconBoxClass: 'icon-box icon-box-purple',
       trend: 'Novas',
@@ -71,7 +76,7 @@ export default function DashboardPage() {
     },
     {
       title: 'CONVERTIDAS',
-      value: stats?.resolved || 0,
+      value: stats?.closed || 0,
       icon: DollarSign,
       iconBoxClass: 'icon-box icon-box-green',
       trend: 'Sucesso',
@@ -79,7 +84,7 @@ export default function DashboardPage() {
     },
     {
       title: 'AGUARDANDO',
-      value: stats?.waiting || 0,
+      value: stats?.pending || 0,
       icon: UserCheck,
       iconBoxClass: 'icon-box icon-box-amber',
       trend: 'Retorno',
@@ -261,7 +266,7 @@ export default function DashboardPage() {
             <div className="flex items-start gap-3 p-3 rounded-lg bg-[var(--glass-bg-hover)]">
               <div className="w-2 h-2 rounded-full bg-green-500 mt-2" />
               <p className="text-sm text-[var(--text-secondary)]">
-                <strong>Ao finalizar:</strong> Marque a conversa como "Fechada" quando concluir o atendimento.
+                <strong>Ao finalizar:</strong> Marque a conversa como &quot;Fechada&quot; quando concluir o atendimento.
               </p>
             </div>
           </div>
