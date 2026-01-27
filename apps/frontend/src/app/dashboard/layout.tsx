@@ -8,7 +8,7 @@ import { UserRole } from '@/types';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
-    <ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.TENANT_ADMIN, UserRole.HEAD, UserRole.ATTENDANT]}>
+    <ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.TENANT_ADMIN, UserRole.HEAD, UserRole.ATTENDANT, UserRole.SALES]}>
       <EscalationNotificationProvider>
         <div className="flex h-screen">
           {/* Desktop Sidebar */}
