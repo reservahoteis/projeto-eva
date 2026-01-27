@@ -137,6 +137,7 @@ class UserService {
       TENANT_ADMIN: 'Administrador',
       HEAD: 'Supervisor',
       ATTENDANT: 'Atendente',
+      SALES: 'Vendas',
     };
     return labels[role] || role;
   }
