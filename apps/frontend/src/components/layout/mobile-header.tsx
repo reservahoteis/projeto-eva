@@ -65,9 +65,8 @@ export function MobileHeader({ variant = 'tenant' }: MobileHeaderProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   // HEAD não é admin - só pode ver Dashboard e Conversas
-  // SALES não tem acesso por enquanto - só Dashboard
+  // SALES pode ver Dashboard e Conversas (apenas oportunidades)
   const isAdmin = user?.role === UserRole.TENANT_ADMIN || user?.role === UserRole.SUPER_ADMIN;
-  const isSales = user?.role === UserRole.SALES;
   const navigation = variant === 'super-admin' ? superAdminNavigation : tenantNavigation;
 
   return (
@@ -107,7 +106,6 @@ export function MobileHeader({ variant = 'tenant' }: MobileHeaderProps) {
                 .filter((item) => {
                   if (item.name === 'divider') return true;
                   if ('adminOnly' in item && item.adminOnly && !isAdmin) return false;
-                  if ('hiddenForSales' in item && item.hiddenForSales && isSales) return false;
                   return true;
                 })
                 .map((item, index) => {
