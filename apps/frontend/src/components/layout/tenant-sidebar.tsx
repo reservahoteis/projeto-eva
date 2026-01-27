@@ -47,7 +47,7 @@ const navigation = [
     icon: MessageSquare,
     badge: 3,
     badgeColor: 'bg-rose-500',
-    hiddenForSales: true, // SALES não vê conversas por enquanto
+    // SALES pode ver conversas - só aparece oportunidades (isOpportunity=true)
   },
   {
     name: 'Contatos',

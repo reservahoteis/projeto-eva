@@ -41,7 +41,7 @@ type NavigationItem =
 
 const tenantNavigation: NavigationItem[] = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Conversas', href: '/dashboard/conversations', icon: MessageSquare, badge: 3, hiddenForSales: true }, // SALES não vê por enquanto
+  { name: 'Conversas', href: '/dashboard/conversations', icon: MessageSquare, badge: 3 }, // SALES pode ver - só aparece oportunidades
   { name: 'Contatos', href: '/dashboard/contacts', icon: Phone, adminOnly: true }, // HEAD não pode ver
   { name: 'Usuários', href: '/dashboard/users', icon: Users, adminOnly: true },
   { name: 'Relatórios', href: '/dashboard/reports', icon: BarChart3, adminOnly: true },

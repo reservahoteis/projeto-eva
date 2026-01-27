@@ -1078,4 +1078,158 @@ router.post('/set-hotel-unit', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * POST /api/n8n/mark-opportunity
+ * Marca uma conversa como oportunidade de venda (para time de vendas)
+ * Chamado pelo N8N quando cliente responde negativamente no follow-up
+ *
+ * Payload:
+ * {
+ *   "phone": "5511999999999",
+ *   "reason": "not_completed" | "needs_help" | "wants_human",
+ *   "flowType": "comercial" | "duvidas",
+ *   "followupResponse": "2" | "3" | "4"
+ * }
+ *
+ * Ações:
+ * - Marca isOpportunity = true na conversa
+ * - Muda status para OPEN (para aparecer no Kanban do time de vendas)
+ * - Desbloqueia IA (iaLocked = false) para permitir atendimento humano
+ */
+router.post('/mark-opportunity', async (req: Request, res: Response) => {
+  try {
+    const { phone, phoneNumber, reason, flowType, followupResponse } = req.body;
+    const phoneToUse = phone || phoneNumber;
+
+    if (!phoneToUse) {
+      return res.status(400).json({
+        error: 'Campo obrigatório: phone',
+      });
+    }
+
+    const normalizedPhone = phoneToUse.replace(/\D/g, '');
+
+    // Buscar contato
+    const contact = await prisma.contact.findFirst({
+      where: {
+        tenantId: req.tenantId!,
+        phoneNumber: normalizedPhone,
+      },
+    });
+
+    if (!contact) {
+      return res.status(404).json({
+        error: 'Contato não encontrado',
+      });
+    }
+
+    // Buscar conversa ativa do contato (inclui BOT_HANDLING)
+    const conversation = await prisma.conversation.findFirst({
+      where: {
+        tenantId: req.tenantId!,
+        contactId: contact.id,
+        status: {
+          in: ['BOT_HANDLING', 'OPEN', 'IN_PROGRESS', 'WAITING'],
+        },
+      },
+      orderBy: { lastMessageAt: 'desc' },
+    });
+
+    if (!conversation) {
+      return res.status(404).json({
+        error: 'Conversa ativa não encontrada para este contato',
+      });
+    }
+
+    // Mapear reason para descrição legível
+    const reasonDescriptions: Record<string, string> = {
+      not_completed: 'Cliente não conseguiu completar a reserva',
+      needs_help: 'Cliente ainda tem dúvidas',
+      wants_human: 'Cliente quer falar com humano',
+      wants_reservation: 'Cliente quer fazer reserva',
+    };
+
+    // Atualizar conversa: marcar como oportunidade e mudar status para OPEN
+    const updatedConversation = await prisma.conversation.update({
+      where: { id: conversation.id },
+      data: {
+        isOpportunity: true,
+        opportunityAt: new Date(),
+        status: 'OPEN', // Muda para OPEN para aparecer no Kanban
+        iaLocked: true, // Trava IA para atendimento humano
+        iaLockedAt: new Date(),
+        iaLockedBy: 'system:followup',
+        metadata: {
+          ...(conversation.metadata as object || {}),
+          opportunityReason: reason || 'followup_negative',
+          opportunityReasonDescription: reasonDescriptions[reason] || 'Resposta negativa no follow-up',
+          flowType: flowType || 'unknown',
+          followupResponse: followupResponse || 'unknown',
+          markedAsOpportunityAt: new Date().toISOString(),
+        },
+      },
+      include: {
+        contact: {
+          select: {
+            id: true,
+            phoneNumber: true,
+            name: true,
+            profilePictureUrl: true,
+          },
+        },
+        assignedTo: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        tags: true,
+      },
+    });
+
+    // Emitir evento Socket.io para notificar o time de vendas
+    try {
+      // Emitir conversation:new para aparecer no Kanban do SALES
+      emitNewConversation(req.tenantId!, updatedConversation);
+
+      // Emitir conversation:updated para atualizar em tempo real
+      emitConversationUpdate(
+        req.tenantId!,
+        conversation.id,
+        {
+          isOpportunity: true,
+          status: 'OPEN',
+        }
+      );
+
+      logger.info({
+        tenantId: req.tenantId,
+        conversationId: conversation.id,
+        phone: normalizedPhone,
+        reason,
+        flowType,
+        followupResponse,
+      }, 'N8N: Conversation marked as sales opportunity');
+    } catch (socketError) {
+      logger.warn({ error: socketError }, 'Failed to emit Socket.io events for opportunity');
+    }
+
+    return res.json({
+      success: true,
+      conversationId: conversation.id,
+      isOpportunity: true,
+      status: 'OPEN',
+      message: 'Conversa marcada como oportunidade de venda',
+      reason: reasonDescriptions[reason] || reason,
+    });
+  } catch (error: any) {
+    logger.error({ error, tenantId: req.tenantId }, 'N8N: Failed to mark opportunity');
+    return res.status(500).json({
+      error: 'Falha ao marcar oportunidade',
+      message: error.message,
+    });
+  }
+});
+
 export default router;

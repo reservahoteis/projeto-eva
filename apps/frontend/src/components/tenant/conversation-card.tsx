@@ -18,6 +18,8 @@ import { MessageSquare, MoreVertical, User, Clock, CheckCircle2, Archive, Trash2
 import { getInitials, formatTime } from '@/lib/utils';
 import { conversationService } from '@/services/conversation.service';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/auth-context';
+import { UserRole } from '@/types';
 
 interface ConversationCardProps {
   conversation: Conversation;
@@ -26,7 +28,11 @@ interface ConversationCardProps {
 
 export function ConversationCard({ conversation, onUpdate }: ConversationCardProps) {
   const router = useRouter();
+  const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+
+  // SALES não pode arquivar nem excluir conversas
+  const isSales = user?.role === UserRole.SALES;
 
   const handleClose = async () => {
     setIsLoading(true);
@@ -110,15 +116,20 @@ export function ConversationCard({ conversation, onUpdate }: ConversationCardPro
                 <CheckCircle2 className="mr-2 h-4 w-4" />
                 Fechar conversa
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleArchive} disabled={isLoading}>
-                <Archive className="mr-2 h-4 w-4" />
-                Arquivar
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleDelete} disabled={isLoading} className="text-red-600 focus:text-red-600">
-                <Trash2 className="mr-2 h-4 w-4" />
-                Excluir
-              </DropdownMenuItem>
+              {/* SALES não pode arquivar nem excluir */}
+              {!isSales && (
+                <>
+                  <DropdownMenuItem onClick={handleArchive} disabled={isLoading}>
+                    <Archive className="mr-2 h-4 w-4" />
+                    Arquivar
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleDelete} disabled={isLoading} className="text-red-600 focus:text-red-600">
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Excluir
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -150,33 +161,35 @@ export function ConversationCard({ conversation, onUpdate }: ConversationCardPro
               <span>{formatTime(conversation.lastMessageAt)}</span>
             </div>
 
-            {/* Quick Actions */}
-            <div className="flex items-center gap-0.5">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleArchive();
-                }}
-                disabled={isLoading}
-                className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
-                title="Arquivar"
-              >
-                <Archive className="h-3.5 w-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDelete();
-                }}
-                disabled={isLoading}
-                className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
-                title="Excluir"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
-            </div>
+            {/* Quick Actions - SALES não pode arquivar nem excluir */}
+            {!isSales && (
+              <div className="flex items-center gap-0.5">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleArchive();
+                  }}
+                  disabled={isLoading}
+                  className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+                  title="Arquivar"
+                >
+                  <Archive className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete();
+                  }}
+                  disabled={isLoading}
+                  className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
+                  title="Excluir"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
