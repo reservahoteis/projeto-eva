@@ -88,6 +88,13 @@ export class ConversationService {
       where.OR = orConditions;
     }
 
+    // Se é SALES, filtrar APENAS por conversas marcadas como oportunidade
+    // SALES só vê conversas onde isOpportunity = true (clientes que não converteram no follow-up)
+    if (params.userRole === 'SALES') {
+      where.isOpportunity = true;
+      logger.debug({ userId: params.userId }, 'Filtering conversations for SALES role - only opportunities');
+    }
+
     // Busca por nome/telefone do contato
     if (params.search) {
       where.contact = {
