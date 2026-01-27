@@ -81,9 +81,8 @@ export function TenantSidebar() {
   const [isCollapsed, setIsCollapsed] = useState(true);
 
   // HEAD não é admin - só pode ver Dashboard e Conversas
-  // SALES não tem acesso por enquanto - só Dashboard
+  // SALES pode ver Dashboard e Conversas (apenas oportunidades)
   const isAdmin = user?.role === UserRole.TENANT_ADMIN || user?.role === UserRole.SUPER_ADMIN;
-  const isSales = user?.role === UserRole.SALES;
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -132,8 +131,6 @@ export function TenantSidebar() {
             .filter((item) => {
               // Admin só pode ver itens adminOnly
               if (item.adminOnly && !isAdmin) return false;
-              // SALES não pode ver itens hiddenForSales
-              if (item.hiddenForSales && isSales) return false;
               return true;
             })
             .map((item) => {
