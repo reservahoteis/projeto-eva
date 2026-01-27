@@ -1079,6 +1079,102 @@ router.post('/set-hotel-unit', async (req: Request, res: Response) => {
 });
 
 /**
+ * POST /api/n8n/mark-followup-sent
+ * Marca que o follow-up foi enviado para uma conversa
+ * Chamado pelo N8N após enviar a mensagem de follow-up (5 min após término)
+ *
+ * Payload:
+ * {
+ *   "phone": "5511999999999",
+ *   "flowType": "comercial" | "duvidas"
+ * }
+ *
+ * Ações:
+ * - Marca metadata.followupSent = true na conversa
+ * - Registra timestamp do envio
+ */
+router.post('/mark-followup-sent', async (req: Request, res: Response) => {
+  try {
+    const { phone, phoneNumber, flowType } = req.body;
+    const phoneToUse = phone || phoneNumber;
+
+    if (!phoneToUse) {
+      return res.status(400).json({
+        error: 'Campo obrigatório: phone',
+      });
+    }
+
+    const normalizedPhone = phoneToUse.replace(/\D/g, '');
+
+    // Buscar contato
+    const contact = await prisma.contact.findFirst({
+      where: {
+        tenantId: req.tenantId!,
+        phoneNumber: normalizedPhone,
+      },
+    });
+
+    if (!contact) {
+      return res.status(404).json({
+        error: 'Contato não encontrado',
+      });
+    }
+
+    // Buscar conversa ativa do contato (inclui BOT_HANDLING)
+    const conversation = await prisma.conversation.findFirst({
+      where: {
+        tenantId: req.tenantId!,
+        contactId: contact.id,
+        status: {
+          in: ['BOT_HANDLING', 'OPEN', 'IN_PROGRESS', 'WAITING'],
+        },
+      },
+      orderBy: { lastMessageAt: 'desc' },
+    });
+
+    if (!conversation) {
+      return res.status(404).json({
+        error: 'Conversa ativa não encontrada para este contato',
+      });
+    }
+
+    // Atualizar conversa: marcar follow-up como enviado
+    const updatedConversation = await prisma.conversation.update({
+      where: { id: conversation.id },
+      data: {
+        metadata: {
+          ...(conversation.metadata as object || {}),
+          followupSent: true,
+          followupSentAt: new Date().toISOString(),
+          followupFlowType: flowType || 'unknown',
+        },
+      },
+    });
+
+    logger.info({
+      tenantId: req.tenantId,
+      conversationId: conversation.id,
+      phone: normalizedPhone,
+      flowType,
+    }, 'N8N: Follow-up marked as sent');
+
+    return res.json({
+      success: true,
+      conversationId: conversation.id,
+      message: 'Follow-up marcado como enviado',
+      followupSent: true,
+      followupSentAt: new Date().toISOString(),
+    });
+  } catch (error: any) {
+    logger.error({ error, tenantId: req.tenantId }, 'N8N: Failed to mark followup sent');
+    return res.status(500).json({
+      error: 'Falha ao marcar follow-up enviado',
+      message: error.message,
+    });
+  }
+});
+
+/**
  * POST /api/n8n/mark-opportunity
  * Marca uma conversa como oportunidade de venda (para time de vendas)
  * Chamado pelo N8N quando cliente responde negativamente no follow-up

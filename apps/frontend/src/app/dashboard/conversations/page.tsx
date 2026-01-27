@@ -136,10 +136,10 @@ function ConversationsPageContent() {
   );
 }
 
-// Wrap with ProtectedRoute - SALES não pode acessar esta página (usará Oportunidades futuramente)
+// Wrap with ProtectedRoute - SALES pode acessar para ver oportunidades (isOpportunity = true)
 export default function ConversationsPage() {
   return (
-    <ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.TENANT_ADMIN, UserRole.HEAD, UserRole.ATTENDANT]}>
+    <ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.TENANT_ADMIN, UserRole.HEAD, UserRole.ATTENDANT, UserRole.SALES]}>
       <ConversationsPageContent />
     </ProtectedRoute>
   );
