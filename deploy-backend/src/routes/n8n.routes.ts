@@ -1092,6 +1092,9 @@ router.post('/set-hotel-unit', async (req: Request, res: Response) => {
  * Ações:
  * - Marca metadata.followupSent = true na conversa
  * - Registra timestamp do envio
+ * - Marca como oportunidade (isOpportunity = true) para time SALES
+ * - Muda status para OPEN (aparecer no Kanban)
+ * - Emite evento Socket.io para notificar time SALES
  */
 router.post('/mark-followup-sent', async (req: Request, res: Response) => {
   try {
@@ -1138,32 +1141,80 @@ router.post('/mark-followup-sent', async (req: Request, res: Response) => {
       });
     }
 
-    // Atualizar conversa: marcar follow-up como enviado
+    // Atualizar conversa: marcar follow-up como enviado E como oportunidade para SALES
     const updatedConversation = await prisma.conversation.update({
       where: { id: conversation.id },
       data: {
+        // Marcar como oportunidade para time SALES ver imediatamente
+        isOpportunity: true,
+        opportunityAt: new Date(),
+        status: 'OPEN', // Muda para OPEN para aparecer no Kanban
+        iaLocked: true, // Trava IA para atendimento humano
+        iaLockedAt: new Date(),
+        iaLockedBy: 'system:followup',
         metadata: {
           ...(conversation.metadata as object || {}),
           followupSent: true,
           followupSentAt: new Date().toISOString(),
           followupFlowType: flowType || 'unknown',
+          opportunityReason: 'followup_sent',
+          opportunityReasonDescription: 'Follow-up enviado - aguardando resposta do cliente',
+          markedAsOpportunityAt: new Date().toISOString(),
         },
+      },
+      include: {
+        contact: {
+          select: {
+            id: true,
+            phoneNumber: true,
+            name: true,
+            profilePictureUrl: true,
+          },
+        },
+        assignedTo: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        tags: true,
       },
     });
 
-    logger.info({
-      tenantId: req.tenantId,
-      conversationId: conversation.id,
-      phone: normalizedPhone,
-      flowType,
-    }, 'N8N: Follow-up marked as sent');
+    // Emitir evento Socket.io para notificar o time de vendas
+    try {
+      // Emitir conversation:new para aparecer no Kanban do SALES
+      emitNewConversation(req.tenantId!, updatedConversation);
+
+      // Emitir conversation:updated para atualizar em tempo real
+      emitConversationUpdate(
+        req.tenantId!,
+        conversation.id,
+        {
+          isOpportunity: true,
+          status: 'OPEN',
+          followupSent: true,
+        }
+      );
+
+      logger.info({
+        tenantId: req.tenantId,
+        conversationId: conversation.id,
+        phone: normalizedPhone,
+        flowType,
+      }, 'N8N: Follow-up sent - conversation marked as opportunity for SALES');
+    } catch (socketError) {
+      logger.warn({ error: socketError }, 'Failed to emit Socket.io events for followup opportunity');
+    }
 
     return res.json({
       success: true,
       conversationId: conversation.id,
-      message: 'Follow-up marcado como enviado',
+      message: 'Follow-up marcado como enviado e oportunidade criada para time de vendas',
       followupSent: true,
       followupSentAt: new Date().toISOString(),
+      isOpportunity: true,
     });
   } catch (error: any) {
     logger.error({ error, tenantId: req.tenantId }, 'N8N: Failed to mark followup sent');
@@ -1176,21 +1227,23 @@ router.post('/mark-followup-sent', async (req: Request, res: Response) => {
 
 /**
  * POST /api/n8n/mark-opportunity
- * Marca uma conversa como oportunidade de venda (para time de vendas)
- * Chamado pelo N8N quando cliente responde negativamente no follow-up
+ * Atualiza motivo da oportunidade quando cliente responde ao follow-up
+ *
+ * NOTA: A oportunidade já é criada em /mark-followup-sent (quando follow-up é enviado).
+ * Este endpoint atualiza o motivo específico quando cliente responde negativamente.
  *
  * Payload:
  * {
  *   "phone": "5511999999999",
- *   "reason": "not_completed" | "needs_help" | "wants_human",
+ *   "reason": "not_completed" | "needs_help" | "wants_human" | "wants_reservation",
  *   "flowType": "comercial" | "duvidas",
  *   "followupResponse": "2" | "3" | "4"
  * }
  *
  * Ações:
- * - Marca isOpportunity = true na conversa
- * - Muda status para OPEN (para aparecer no Kanban do time de vendas)
- * - Desbloqueia IA (iaLocked = false) para permitir atendimento humano
+ * - Atualiza metadata com motivo específico da resposta do cliente
+ * - Mantém isOpportunity = true (já definido em mark-followup-sent)
+ * - Emite evento Socket.io para atualizar em tempo real
  */
 router.post('/mark-opportunity', async (req: Request, res: Response) => {
   try {
