@@ -29,8 +29,20 @@ RUN npm run build
 FROM node:20-alpine AS production
 WORKDIR /app
 
-# Install runtime dependencies
-RUN apk add --no-cache dumb-init openssl
+# Install runtime dependencies including Chromium for Puppeteer
+RUN apk add --no-cache \
+    dumb-init \
+    openssl \
+    chromium \
+    nss \
+    freetype \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont
+
+# Configure Puppeteer to use system Chromium instead of downloading
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \

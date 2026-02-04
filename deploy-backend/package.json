@@ -39,6 +39,7 @@
     "jsonwebtoken": "^9.0.3",
     "pino": "^8.16.2",
     "pino-pretty": "^10.3.0",
+    "puppeteer": "^24.36.1",
     "sharp": "^0.33.5",
     "socket.io": "^4.8.1",
     "zod": "^3.22.4"
