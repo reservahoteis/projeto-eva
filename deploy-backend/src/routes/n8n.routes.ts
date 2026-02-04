@@ -1419,11 +1419,27 @@ router.get('/check-availability', async (req: Request, res: Response) => {
   try {
     const { unidade, checkin, checkout, adults, children, childrenAges } = req.query;
 
-    // Validar parâmetros obrigatórios
+    // Se faltar parâmetros obrigatórios, retorna success: false em vez de erro
+    // Isso permite que o fluxo N8N continue sem quebrar
     if (!unidade || !checkin || !checkout || !adults) {
-      return res.status(400).json({
-        error: 'Parâmetros obrigatórios: unidade, checkin, checkout, adults',
-        example: '/api/n8n/check-availability?unidade=Ilhabela&checkin=10/02/2026&checkout=15/02/2026&adults=2',
+      logger.info({
+        tenantId: req.tenantId,
+        unidade,
+        checkin,
+        checkout,
+        adults,
+      }, 'N8N: Check availability - missing parameters, returning empty');
+
+      return res.json({
+        success: false,
+        companyId: '',
+        unidade: unidade || '',
+        checkin: checkin || '',
+        checkout: checkout || '',
+        adults: adults ? parseInt(adults as string, 10) : 0,
+        rooms: [],
+        scrapedAt: new Date().toISOString(),
+        error: 'Parâmetros incompletos (datas não informadas)',
       });
     }
 
