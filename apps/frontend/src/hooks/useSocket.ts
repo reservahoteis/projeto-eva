@@ -3,7 +3,8 @@ import io, { Socket } from 'socket.io-client';
 import { toast } from 'sonner';
 
 // Socket.io URL - remove /api do final se existir
-const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.botreserva.com.br';
+// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+const apiUrl: string = process.env.NEXT_PUBLIC_API_URL ?? 'https://api.botreserva.com.br';
 const SOCKET_URL = apiUrl.replace(/\/api\/?$/, '');
 
 export interface UseSocketOptions {
@@ -49,13 +50,6 @@ export function useSocket(options: UseSocketOptions = {}) {
 
   // Função para conectar ao socket
   const connect = useCallback(() => {
-    // ⚠️⚠️⚠️ LOG DE VERSÃO PARA DEBUG - VERSÃO d329972 ⚠️⚠️⚠️
-    console.log('═══════════════════════════════════════════════');
-    console.log('🚀 USESOCKET.TS CARREGADO - VERSÃO: d329972');
-    console.log('📅 Timestamp:', new Date().toISOString());
-    console.log('🌐 Window location:', window.location.href);
-    console.log('═══════════════════════════════════════════════');
-
     if (!enabled || typeof window === 'undefined') {
       return null;
     }
@@ -65,18 +59,15 @@ export function useSocket(options: UseSocketOptions = {}) {
     const tenantSlug = propTenantSlug || localStorage.getItem('tenantSlug') || 'hoteis-reserva';
 
     if (!token) {
-      console.log('No auth token found, skipping socket connection');
       setError('Token de autenticação não encontrado');
       return null;
     }
 
     // Se já está conectado, não reconectar
     if (socketRef.current?.connected) {
-      console.log('Socket already connected');
       return socketRef.current;
     }
 
-    console.log('Connecting to socket server:', SOCKET_URL);
     setConnectionStatus('connecting');
 
     // Create socket connection with enhanced options
@@ -103,23 +94,10 @@ export function useSocket(options: UseSocketOptions = {}) {
 
     // Connection event handlers
     socket.on('connect', () => {
-      console.log('═══════════════════════════════════════════════');
-      console.log('✅ SOCKET CONECTADO - VERSÃO d329972');
-      console.log('🆔 Socket ID:', socket.id);
-      console.log('📡 Tenant Slug:', tenantSlug);
-      console.log('═══════════════════════════════════════════════');
-
-      console.log('✅ Socket connected:', socket.id);
       setIsConnected(true);
       setConnectionStatus('connected');
       setError(null);
       reconnectAttemptsRef.current = 0;
-
-      // EXPOSE SOCKET GLOBALLY FOR DEBUGGING
-      if (typeof window !== 'undefined') {
-        (window as any).socket = socket;
-        console.log('🔧 Socket exposed globally as window.socket for debugging');
-      }
 
       // Join tenant room
       socket.emit('join-tenant', { tenantSlug });
@@ -133,7 +111,6 @@ export function useSocket(options: UseSocketOptions = {}) {
     });
 
     socket.on('disconnect', (reason) => {
-      console.log('❌ Socket disconnected:', reason);
       setIsConnected(false);
       setConnectionStatus('disconnected');
 
@@ -145,14 +122,10 @@ export function useSocket(options: UseSocketOptions = {}) {
         });
         // Try to reconnect
         socket.connect();
-      } else if (reason === 'io client disconnect') {
-        // Client intentionally disconnected
-        console.log('Client disconnected intentionally');
       }
     });
 
     socket.on('connect_error', (err) => {
-      console.error('❌ Socket connection error:', err.message);
       setError(err.message);
       setIsConnected(false);
       setConnectionStatus('error');
@@ -167,8 +140,7 @@ export function useSocket(options: UseSocketOptions = {}) {
       }
     });
 
-    socket.on('reconnect', (attemptNumber) => {
-      console.log('🔄 Socket reconnected after', attemptNumber, 'attempts');
+    socket.on('reconnect', () => {
       toast.success('Reconectado ao servidor', {
         duration: 2000,
         position: 'bottom-right'
@@ -176,7 +148,6 @@ export function useSocket(options: UseSocketOptions = {}) {
     });
 
     socket.on('reconnect_attempt', (attemptNumber) => {
-      console.log('🔄 Socket reconnection attempt', attemptNumber);
       setConnectionStatus('connecting');
 
       if (attemptNumber === 1) {
@@ -188,7 +159,6 @@ export function useSocket(options: UseSocketOptions = {}) {
     });
 
     socket.on('reconnect_failed', () => {
-      console.error('❌ Socket reconnection failed');
       setConnectionStatus('error');
       toast.error('Falha ao reconectar. Por favor, recarregue a página.', {
         duration: 5000,
@@ -201,10 +171,9 @@ export function useSocket(options: UseSocketOptions = {}) {
     });
 
     // Custom error handler
-    socket.on('error', (error: any) => {
-      console.error('Socket error:', error);
-      if (error.message) {
-        toast.error(error.message, {
+    socket.on('error', (socketError: { message?: string }) => {
+      if (socketError.message) {
+        toast.error(socketError.message, {
           duration: 3000,
           position: 'bottom-right'
         });
@@ -217,7 +186,6 @@ export function useSocket(options: UseSocketOptions = {}) {
   // Disconnect function
   const disconnect = useCallback(() => {
     if (socketRef.current) {
-      console.log('Disconnecting socket...');
       socketRef.current.removeAllListeners();
       socketRef.current.disconnect();
       socketRef.current = null;
@@ -240,30 +208,14 @@ export function useSocket(options: UseSocketOptions = {}) {
   // Enhanced emit function with connection check
   const emit = useCallback((event: string, data?: any, callback?: (...args: any[]) => void) => {
     if (socketRef.current && socketRef.current.connected) {
-      console.log('📤📤📤 EMIT SOCKET.IO:', {
-        event,
-        data,
-        hasCallback: !!callback,
-        socketId: socketRef.current.id,
-        timestamp: new Date().toISOString()
-      });
-
       if (callback) {
         socketRef.current.emit(event, data, callback);
       } else {
         socketRef.current.emit(event, data);
       }
-      console.log(`✅ Evento ${event} emitido com sucesso`);
       return true;
-    } else {
-      console.error('❌❌❌ Socket não conectado, não pode emitir:', {
-        event,
-        data,
-        socketExists: !!socketRef.current,
-        isConnected: socketRef.current?.connected
-      });
-      return false;
     }
+    return false;
   }, []);
 
   // Enhanced on function with type safety
@@ -272,24 +224,7 @@ export function useSocket(options: UseSocketOptions = {}) {
     handler: K extends keyof SocketEvents ? SocketEvents[K] : (...args: any[]) => void
   ) => {
     if (socketRef.current) {
-      console.log('👂 Adding listener for event:', event);
-
-      // Wrap handler to log when event is received
-      const wrappedHandler = (...args: any[]) => {
-        console.log(`🎯🎯🎯 EVENTO RECEBIDO [${event}]:`, {
-          event,
-          data: args[0],
-          timestamp: new Date().toISOString(),
-          socketId: socketRef.current?.id,
-          isConnected: socketRef.current?.connected
-        });
-        return (handler as any)(...args);
-      };
-
-      socketRef.current.on(event as string, wrappedHandler as any);
-      console.log(`✅ Listener registrado para: ${event}`);
-    } else {
-      console.error(`❌ Não foi possível adicionar listener para ${event} - socket não inicializado`);
+      socketRef.current.on(event as string, handler as any);
     }
   }, []);
 
@@ -299,7 +234,6 @@ export function useSocket(options: UseSocketOptions = {}) {
     handler?: K extends keyof SocketEvents ? SocketEvents[K] : (...args: any[]) => void
   ) => {
     if (socketRef.current) {
-      console.log('🔇 Removing listener for event:', event);
       if (handler) {
         socketRef.current.off(event as string, handler as any);
       } else {
@@ -314,7 +248,6 @@ export function useSocket(options: UseSocketOptions = {}) {
     handler: K extends keyof SocketEvents ? SocketEvents[K] : (...args: any[]) => void
   ) => {
     if (socketRef.current) {
-      console.log('👂 Adding one-time listener for event:', event);
       socketRef.current.once(event as string, handler as any);
     }
   }, []);

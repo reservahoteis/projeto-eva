@@ -72,7 +72,10 @@ class WebhookReplicatorService {
       for (const header of relevantHeaders) {
         const value = originalHeaders[header];
         if (value) {
-          headersToReplicate[header] = Array.isArray(value) ? value[0] : value;
+          const headerValue = Array.isArray(value) ? value[0] : value;
+          if (headerValue) {
+            headersToReplicate[header] = headerValue;
+          }
         }
       }
 

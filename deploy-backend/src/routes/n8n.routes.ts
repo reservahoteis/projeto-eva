@@ -3,6 +3,7 @@ import { n8nAuthMiddleware } from '@/middlewares/n8n-auth.middleware';
 import { whatsAppService } from '@/services/whatsapp.service';
 import { escalationService } from '@/services/escalation.service';
 import { messageService } from '@/services/message.service';
+import { hbookScraperService } from '@/services/hbook-scraper.service';
 import { prisma } from '@/config/database';
 import { emitNewConversation, emitConversationUpdate } from '@/config/socket';
 import logger from '@/config/logger';
@@ -1376,6 +1377,192 @@ router.post('/mark-opportunity', async (req: Request, res: Response) => {
     logger.error({ error, tenantId: req.tenantId }, 'N8N: Failed to mark opportunity');
     return res.status(500).json({
       error: 'Falha ao marcar oportunidade',
+      message: error.message,
+    });
+  }
+});
+
+/**
+ * GET /api/n8n/check-availability
+ * Verifica disponibilidade de quartos no HBook (motor de reservas)
+ * Usa web scraping com Puppeteer para extrair dados em tempo real
+ *
+ * Query params:
+ * - unidade: Nome da unidade (Ilhabela, Camburi, Campos, Santo Antonio)
+ * - checkin: Data de check-in (DD/MM/YYYY)
+ * - checkout: Data de check-out (DD/MM/YYYY)
+ * - adults: Número de adultos
+ * - children: (opcional) Número de crianças
+ * - childrenAges: (opcional) Idades das crianças separadas por vírgula (ex: "5,8,12")
+ *
+ * Response:
+ * {
+ *   "success": true,
+ *   "companyId": "5f15f591ab41d43ac0fed67e",
+ *   "unidade": "Ilhabela",
+ *   "checkin": "10/02/2026",
+ *   "checkout": "15/02/2026",
+ *   "adults": 2,
+ *   "rooms": [
+ *     {
+ *       "id": "room-123",
+ *       "name": "Suíte Master",
+ *       "price": 450,
+ *       "available": true,
+ *       "imageUrl": "https://..."
+ *     }
+ *   ],
+ *   "scrapedAt": "2026-02-04T12:00:00.000Z"
+ * }
+ */
+router.get('/check-availability', async (req: Request, res: Response) => {
+  try {
+    const { unidade, checkin, checkout, adults, children, childrenAges } = req.query;
+
+    // Validar parâmetros obrigatórios
+    if (!unidade || !checkin || !checkout || !adults) {
+      return res.status(400).json({
+        error: 'Parâmetros obrigatórios: unidade, checkin, checkout, adults',
+        example: '/api/n8n/check-availability?unidade=Ilhabela&checkin=10/02/2026&checkout=15/02/2026&adults=2',
+      });
+    }
+
+    // Parsear parâmetros
+    const parsedAdults = parseInt(adults as string, 10);
+    const parsedChildren = children ? parseInt(children as string, 10) : undefined;
+    const parsedChildrenAges = childrenAges
+      ? (childrenAges as string).split(',').map(age => parseInt(age.trim(), 10)).filter(age => !isNaN(age))
+      : undefined;
+
+    if (isNaN(parsedAdults) || parsedAdults < 1) {
+      return res.status(400).json({
+        error: 'Parâmetro "adults" deve ser um número maior que 0',
+      });
+    }
+
+    logger.info({
+      tenantId: req.tenantId,
+      unidade,
+      checkin,
+      checkout,
+      adults: parsedAdults,
+      children: parsedChildren,
+      childrenAges: parsedChildrenAges,
+    }, 'N8N: Check availability request');
+
+    // Executar scraping
+    const result = await hbookScraperService.checkAvailability(
+      unidade as string,
+      checkin as string,
+      checkout as string,
+      parsedAdults,
+      parsedChildren,
+      parsedChildrenAges
+    );
+
+    if (!result.success) {
+      logger.warn({
+        tenantId: req.tenantId,
+        unidade,
+        error: result.error,
+      }, 'N8N: Check availability failed');
+
+      return res.status(result.error?.includes('não encontrada') ? 400 : 500).json(result);
+    }
+
+    logger.info({
+      tenantId: req.tenantId,
+      unidade,
+      roomsFound: result.rooms.length,
+    }, 'N8N: Check availability success');
+
+    return res.json(result);
+  } catch (error: any) {
+    logger.error({ error, tenantId: req.tenantId }, 'N8N: Failed to check availability');
+    return res.status(500).json({
+      success: false,
+      error: 'Falha ao verificar disponibilidade',
+      message: error.message,
+    });
+  }
+});
+
+/**
+ * GET /api/n8n/check-room-availability
+ * Verifica se um quarto específico está disponível
+ *
+ * Query params:
+ * - unidade: Nome da unidade
+ * - roomName: Nome do quarto a verificar
+ * - checkin: Data de check-in (DD/MM/YYYY)
+ * - checkout: Data de check-out (DD/MM/YYYY)
+ * - adults: Número de adultos
+ * - children: (opcional) Número de crianças
+ * - childrenAges: (opcional) Idades das crianças separadas por vírgula
+ *
+ * Response:
+ * {
+ *   "available": true,
+ *   "room": { ... } // dados do quarto se disponível
+ * }
+ */
+router.get('/check-room-availability', async (req: Request, res: Response) => {
+  try {
+    const { unidade, roomName, checkin, checkout, adults, children, childrenAges } = req.query;
+
+    // Validar parâmetros obrigatórios
+    if (!unidade || !roomName || !checkin || !checkout || !adults) {
+      return res.status(400).json({
+        error: 'Parâmetros obrigatórios: unidade, roomName, checkin, checkout, adults',
+        example: '/api/n8n/check-room-availability?unidade=Ilhabela&roomName=Suite Master&checkin=10/02/2026&checkout=15/02/2026&adults=2',
+      });
+    }
+
+    const parsedAdults = parseInt(adults as string, 10);
+    const parsedChildren = children ? parseInt(children as string, 10) : undefined;
+    const parsedChildrenAges = childrenAges
+      ? (childrenAges as string).split(',').map(age => parseInt(age.trim(), 10)).filter(age => !isNaN(age))
+      : undefined;
+
+    if (isNaN(parsedAdults) || parsedAdults < 1) {
+      return res.status(400).json({
+        error: 'Parâmetro "adults" deve ser um número maior que 0',
+      });
+    }
+
+    logger.info({
+      tenantId: req.tenantId,
+      unidade,
+      roomName,
+      checkin,
+      checkout,
+      adults: parsedAdults,
+    }, 'N8N: Check room availability request');
+
+    // Verificar disponibilidade do quarto específico
+    const result = await hbookScraperService.isRoomAvailable(
+      unidade as string,
+      roomName as string,
+      checkin as string,
+      checkout as string,
+      parsedAdults,
+      parsedChildren,
+      parsedChildrenAges
+    );
+
+    logger.info({
+      tenantId: req.tenantId,
+      unidade,
+      roomName,
+      available: result.available,
+    }, 'N8N: Check room availability result');
+
+    return res.json(result);
+  } catch (error: any) {
+    logger.error({ error, tenantId: req.tenantId }, 'N8N: Failed to check room availability');
+    return res.status(500).json({
+      available: false,
+      error: 'Falha ao verificar disponibilidade do quarto',
       message: error.message,
     });
   }

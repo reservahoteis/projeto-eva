@@ -27,11 +27,25 @@ interface JWTPayload {
 export class AuthService {
   /**
    * Login de usuário
+   *
+   * MULTI-TENANT SECURITY:
+   * - Quando tenantId é fornecido, a query DEVE incluir tenantId
+   * - Isso previne timing attacks e garante isolamento de dados
+   * - SUPER_ADMIN pode logar sem tenantId (acesso global)
    */
   async login(email: string, password: string, tenantId?: string | null): Promise<LoginResult> {
-    // Buscar usuário
-    const user = await prisma.user.findUnique({
-      where: { email },
+    // Construir where clause com tenantId quando fornecido
+    // Isso garante isolamento multi-tenant na query (nao apenas verificacao posterior)
+    const whereClause: { email: string; tenantId?: string } = { email };
+
+    // Se tenantId foi fornecido, incluir na query para isolamento multi-tenant
+    if (tenantId !== undefined && tenantId !== null) {
+      whereClause.tenantId = tenantId;
+    }
+
+    // Buscar usuário (findFirst porque email+tenantId nao eh unique key)
+    const user = await prisma.user.findFirst({
+      where: whereClause,
       select: {
         id: true,
         email: true,
@@ -52,8 +66,9 @@ export class AuthService {
       throw new UnauthorizedError('Usuário inativo');
     }
 
-    // Se não é super admin, verificar se pertence ao tenant correto
-    if (user.role !== 'SUPER_ADMIN' && tenantId !== undefined && user.tenantId !== tenantId) {
+    // Verificacao adicional: se nao eh SUPER_ADMIN e tenantId foi fornecido,
+    // garantir que usuario pertence ao tenant (double-check)
+    if (user.role !== 'SUPER_ADMIN' && tenantId !== undefined && tenantId !== null && user.tenantId !== tenantId) {
       throw new UnauthorizedError('Usuário não pertence a este tenant');
     }
 
