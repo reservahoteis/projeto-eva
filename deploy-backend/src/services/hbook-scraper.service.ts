@@ -273,7 +273,14 @@ class HBookScraperService {
       });
 
       // Filtrar apenas quartos com preço > 0 (disponíveis)
-      const availableRoomsFiltered = rooms.filter(r => r.price && r.price > 0);
+      // Price pode ser número ou objeto {TotalValue: number}
+      const availableRoomsFiltered = rooms.filter(r => {
+        const price = r.price as number | { TotalValue?: number } | undefined;
+        if (!price) return false;
+        if (typeof price === 'number') return price > 0;
+        if (typeof price === 'object' && price.TotalValue) return price.TotalValue > 0;
+        return false;
+      });
 
       logger.info({
         unidade,
