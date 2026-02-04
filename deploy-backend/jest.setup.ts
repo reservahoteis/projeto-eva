@@ -54,6 +54,7 @@ jest.mock('@/config/database', () => ({
       findMany: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
+      delete: jest.fn(),
     },
     message: {
       findUnique: jest.fn(),
