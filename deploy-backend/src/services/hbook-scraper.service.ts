@@ -214,25 +214,13 @@ class HBookScraperService {
 
               if (Array.isArray(availableRooms)) {
                 availableRooms.forEach((room: any, index: number) => {
-                  // Extrair preço - pode ser número direto ou objeto com TotalValue
-                  let price = 0;
-                  if (typeof room.TotalValue === 'number') {
-                    price = room.TotalValue;
-                  } else if (typeof room.BestPrice === 'number') {
-                    price = room.BestPrice;
-                  } else if (room.Price && typeof room.Price === 'object') {
-                    price = room.Price.TotalValue || room.Price.FullTotalValue || 0;
-                  } else if (typeof room.Price === 'number') {
-                    price = room.Price;
-                  }
-
                   extractedRooms.push({
                     id: room.RoomTypeId || room.Id || `room-${index}`,
                     name: room.RoomTypeName || room.Name || `Quarto ${index + 1}`,
                     description: room.Description || room.RoomTypeDescription || '',
-                    price,
+                    price: room.TotalValue || room.BestPrice || room.Price || 0,
                     originalPrice: room.OriginalPrice || undefined,
-                    available: price > 0, // Disponível apenas se tiver preço > 0
+                    available: true,
                     maxAdults: room.MaxAdults || room.MaxOccupancy || undefined,
                     maxChildren: room.MaxChildren || undefined,
                     amenities: room.Amenities || [],
@@ -272,21 +260,10 @@ class HBookScraperService {
         return extractedRooms;
       });
 
-      // Filtrar apenas quartos com preço > 0 (disponíveis)
-      // Price pode ser número ou objeto {TotalValue: number}
-      const availableRoomsFiltered = rooms.filter(r => {
-        const price = r.price as number | { TotalValue?: number } | undefined;
-        if (!price) return false;
-        if (typeof price === 'number') return price > 0;
-        if (typeof price === 'object' && price.TotalValue) return price.TotalValue > 0;
-        return false;
-      });
-
       logger.info({
         unidade,
         companyId,
         roomsFound: rooms.length,
-        roomsAvailable: availableRoomsFiltered.length,
       }, 'HBook Scraper: Availability check completed');
 
       return {
@@ -298,7 +275,7 @@ class HBookScraperService {
         adults,
         children,
         childrenAges,
-        rooms: availableRoomsFiltered,
+        rooms,
         scrapedAt: new Date().toISOString(),
       };
     } catch (error: any) {
