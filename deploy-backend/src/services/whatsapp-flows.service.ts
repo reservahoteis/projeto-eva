@@ -509,6 +509,85 @@ export class WhatsAppFlowsService {
   }
 
   /**
+   * Enviar Flow de Orçamento de Hospedagem
+   *
+   * Busca o bookingFlowId do tenant automaticamente e envia o flow
+   * com textos padrão configurados.
+   *
+   * @param tenantId - ID do tenant
+   * @param phoneNumber - Número do destinatário (formato: 5511999999999)
+   * @param options - Opções opcionais (conversationId, textos customizados)
+   * @returns Resultado do envio com messageId e flowToken
+   */
+  async sendBookingFlow(
+    tenantId: string,
+    phoneNumber: string,
+    options?: {
+      conversationId?: string;
+      bodyText?: string;
+    }
+  ): Promise<SendFlowResult & { flowToken: string }> {
+    // Buscar bookingFlowId do tenant
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: {
+        bookingFlowId: true,
+        whatsappPhoneNumberId: true,
+      },
+    });
+
+    if (!tenant?.bookingFlowId) {
+      throw new BadRequestError('Tenant não tem Flow de orçamento configurado (bookingFlowId)');
+    }
+
+    if (!tenant.whatsappPhoneNumberId) {
+      throw new BadRequestError('WhatsApp não configurado');
+    }
+
+    // Gerar flowToken único para rastrear a sessão
+    // Formato: booking_{conversationId}_{timestamp} ou booking_{timestamp}
+    const timestamp = Date.now();
+    const flowToken = options?.conversationId
+      ? `booking_${options.conversationId}_${timestamp}`
+      : `booking_${timestamp}`;
+
+    // Textos padrão para o flow de orçamento
+    const bodyText = options?.bodyText ||
+      'Para solicitar seu orçamento de hospedagem, clique no botão abaixo e preencha o formulário! 🏨';
+    const ctaText = 'Fazer Orçamento';
+
+    logger.info({
+      tenantId,
+      phoneNumber,
+      bookingFlowId: tenant.bookingFlowId,
+      flowToken,
+      conversationId: options?.conversationId,
+    }, 'Sending booking flow');
+
+    // Enviar o flow
+    const result = await this.sendFlow(
+      tenantId,
+      phoneNumber,
+      tenant.bookingFlowId,
+      flowToken,
+      ctaText,
+      {
+        bodyText,
+        flowCta: 'navigate',
+        flowAction: 'navigate',
+        flowActionPayload: {
+          screen: 'BOOKING_SCREEN',
+        },
+      }
+    );
+
+    return {
+      ...result,
+      flowToken,
+    };
+  }
+
+  /**
    * Obter métricas de um flow
    *
    * @param tenantId - ID do tenant

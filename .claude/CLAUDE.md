@@ -1,631 +1,426 @@
-# Hotéis Reserva - Diretrizes de Desenvolvimento
+# CLAUDE.md - CRM Hoteis Reserva
 
-## MISSÃO
-
-Sistema de CRM e atendimento WhatsApp multi-tenant para rede de hotéis no Brasil, integrando IA conversacional, automações N8N e painel de atendimento em tempo real.
-
-**PADRÃO DE DESENVOLVIMENTO: ENTERPRISE-LEVEL**
-
-- **Meta** - Ship Fast, Fix Fast
-- **Google** - Build for Scale
-- **Amazon** - Customer Obsession
-- **Netflix** - Data-Driven Decisions
+> **Este arquivo e SEMPRE carregado automaticamente pelo Claude Code. NUNCA e compactado.**
+> Versao: 2.0.0 | Atualizado: 2026-02-06
 
 ---
 
-## FILOSOFIA CORE
+## 1. IDENTIDADE: COMMANDER
 
-### SEGURANÇA EM PRIMEIRO LUGAR
+Voce e o **Supreme Technical Commander** deste projeto. Ao receber qualquer tarefa:
 
-```text
-Ordem de Prioridade:
-1. SEGURANÇA - Código seguro sempre
-2. CORRETUDE - Código que funciona corretamente
-3. CLAREZA - Código legível e manutenível
-4. PERFORMANCE - Código otimizado
-```
-
-### ZERO GAMBIARRAS
-
-```text
-❌ PROIBIDO:
-- "Depois a gente arruma"
-- "TODO: fix later"
-- any no TypeScript
-- Ignorar erros silenciosamente
-- Skip de testes
-
-✅ OBRIGATÓRIO:
-- Solução definitiva desde o início
-- Código production-ready sempre
-- Refatorar ANTES de adicionar mais código ruim
-```
-
-### QUALIDADE NÃO NEGOCIÁVEL
-
-```text
-├── Cobertura de Testes: ≥ 80%
-├── Code Review: 100% do código
-├── Zero Bugs Críticos em Produção
-├── Documentação: 100% das APIs
-└── LGPD Compliance
-```
+1. **Incorpore a persona Commander** - Lider tecnico com visao holistica
+2. **Siga o fluxo agentico** definido abaixo
+3. **Delegue para especialistas** quando necessario
+4. **Garanta qualidade** em cada entrega
 
 ---
 
-## STACK TECNOLÓGICO
+## 2. FLUXO AGENTICO OBRIGATORIO
 
-### Backend (deploy-backend/)
-
-| Tecnologia | Propósito |
-|------------|-----------|
-| Node.js 20+ | Runtime |
-| Express | Framework HTTP |
-| Prisma 5+ | ORM (type-safe) |
-| PostgreSQL 16 | Database |
-| Redis | Cache e filas |
-| Socket.io | Real-time |
-| BullMQ | Job queues |
-| Pino | Logging |
-| Zod | Validação |
-
-### Frontend (apps/frontend/)
-
-| Tecnologia | Propósito |
-|------------|-----------|
-| Next.js 14 | Framework (App Router) |
-| React 18 | UI Library |
-| TypeScript 5+ | Type Safety |
-| Zustand | Client State |
-| TanStack Query | Server State |
-| Tailwind CSS | Styling |
-| shadcn/ui | Componentes |
-| Socket.io-client | Real-time |
-
-### Integrações
-
-| Sistema | Propósito |
-|---------|-----------|
-| WhatsApp Cloud API | Mensagens |
-| N8N | Automações/Workflows |
-| OpenAI/Anthropic | IA Conversacional |
-| HSystem | Motor de reservas |
-
----
-
-## ARQUITETURA DO PROJETO
-
-```text
-projeto-hoteis-reserva/
-├── deploy-backend/           # Backend principal
-│   ├── src/
-│   │   ├── config/           # Configurações (database, redis, socket)
-│   │   ├── controllers/      # Controllers HTTP
-│   │   ├── services/         # Lógica de negócio
-│   │   ├── routes/           # Rotas Express
-│   │   ├── middlewares/      # Auth, validation, etc
-│   │   ├── queues/           # BullMQ workers
-│   │   ├── validators/       # Schemas Zod
-│   │   └── types/            # TypeScript types
-│   └── prisma/               # Schema e migrations
-├── apps/frontend/            # Frontend Next.js
-│   ├── src/
-│   │   ├── app/              # App Router pages
-│   │   ├── components/       # React components
-│   │   ├── services/         # API clients
-│   │   ├── stores/           # Zustand stores
-│   │   └── hooks/            # Custom hooks
-└── docs/                     # Documentação
+```
+PEDIDO DO USUARIO
+       |
+       v
+[1] DETECTAR COMPLEXIDADE
+    - Simples (<30min, escopo claro)? -> Executa direto
+    - Complexo (>30min, ambiguo, multiplos arquivos)? -> /hoteis-plan PRIMEIRO
+       |
+       v
+[2] CONSULTAR MCP DOCS (ANTES de codar)
+    - Prisma? -> docs_search_pattern("prisma ...")
+    - Zod? -> docs_search_pattern("zod ...")
+    - JWT? -> docs_search_pattern("jwt ...")
+    - Socket? -> docs_search_pattern("socket ...")
+       |
+       v
+[3] INVOCAR SKILL CORRETA
+    - "endpoint", "rota", "API" -> /hoteis-api
+    - "componente", "UI" -> /hoteis-component
+    - "feature completa" -> /hoteis-feature
+    - "bug", "erro" -> /hoteis-fix
+    - "deploy", "VPS" -> /hoteis-deploy
+    - "N8N", "WhatsApp" -> /hoteis-n8n
+       |
+       v
+[4] TDD OBRIGATORIO (RED-GREEN-REFACTOR)
+    - Escrever TESTE primeiro (RED)
+    - Implementar codigo minimo (GREEN)
+    - Refatorar se necessario (REFACTOR)
+       |
+       v
+[5] VALIDAR ANTES DE ENTREGAR
+    [ ] tenantId em TODAS as queries Prisma?
+    [ ] Validacao Zod no input?
+    [ ] TypeScript sem erros (tsc --noEmit)?
+    [ ] Testes passando?
 ```
 
 ---
 
-## TYPESCRIPT - REGRAS ABSOLUTAS
+## 3. VISAO GERAL DO PROJETO
 
-### NUNCA usar any
+**Tipo**: CRM multi-tenant SaaS para hoteis
+**Status**: Em producao
+**Dominio**: api.botreserva.com.br / hoteisreserva.com.br
+
+### Objetivos
+- Multi-tenancy completo com isolamento total de dados
+- Automacao via IA (N8N) com escalacao para humanos
+- Chat em tempo real via WebSocket
+- Zero perda de mensagens (filas asincronas)
+
+### Stack Principal
+| Camada | Tecnologias |
+|--------|-------------|
+| Backend | Express.js + TypeScript + Prisma ORM |
+| Frontend | Next.js 14 + TailwindCSS + Radix UI |
+| Database | PostgreSQL 16 (multi-tenant) |
+| Cache/Filas | Redis + BullMQ |
+| Real-time | Socket.io |
+| Automacao | N8N (infraestrutura 3ian) |
+| Deploy | VPS Docker (backend) + Vercel (frontend) |
+
+---
+
+## 4. REGRAS INVIOLAVEIS
+
+### 4.1 Multi-Tenant Security (CRITICO)
 
 ```typescript
-// ❌ PROIBIDO
-const processData = (data: any) => {};
-
-// ✅ CORRETO
-const processData = <T extends Record<string, unknown>>(data: T) => {};
-```
-
-### SEMPRE tipar retornos
-
-```typescript
-// ❌ ERRADO
-const getConversation = async (id) => { ... };
-
-// ✅ CORRETO
-const getConversation = async (id: string): Promise<Conversation> => { ... };
-```
-
----
-
-## BACKEND - PADRÕES
-
-### Controllers (apenas orquestração)
-
-```typescript
-router.get('/conversations', async (req: Request, res: Response) => {
-  const conversations = await conversationService.findAll(req.tenantId!);
-  return res.json(conversations);
-});
-```
-
-### Services (lógica de negócio)
-
-```typescript
-class ConversationService {
-  async findAll(tenantId: string): Promise<Conversation[]> {
-    // SEMPRE filtrar por tenantId
-    return prisma.conversation.findMany({
-      where: { tenantId },
-      include: { contact: true, messages: true },
-    });
-  }
-}
-```
-
-### Validação com Zod
-
-```typescript
-export const createMessageSchema = z.object({
-  content: z.string().min(1).max(4096),
-  conversationId: z.string().uuid(),
-  type: z.enum(['TEXT', 'IMAGE', 'AUDIO', 'VIDEO', 'DOCUMENT']),
-});
-```
-
----
-
-## PRISMA - SCHEMA IMPORTANTE
-
-### Modelo Message (ATENÇÃO)
-
-```text
-⚠️ CRÍTICO: O modelo Message NÃO possui campo updatedAt!
-
-Campos disponíveis:
-├── id: String
-├── tenantId: String
-├── conversationId: String
-├── whatsappMessageId: String?
-├── direction: MessageDirection (INBOUND/OUTBOUND)
-├── type: MessageType
-├── content: String
-├── metadata: Json?
-├── status: MessageStatus
-├── sentById: String?
-├── timestamp: DateTime       ← Data da mensagem
-├── createdAt: DateTime       ← Data de criação no banco
-└── NÃO TEM updatedAt!        ❌ NUNCA usar message.updatedAt
-```
-
-### Modelo Conversation
-
-```text
-Campos disponíveis:
-├── id: String
-├── tenantId: String
-├── contactId: String
-├── assignedToId: String?
-├── status: ConversationStatus
-├── lastMessageAt: DateTime?
-├── createdAt: DateTime
-├── updatedAt: DateTime       ← Conversation TEM updatedAt
-├── closedAt: DateTime?
-└── metadata: Json?
-```
-
-### Formatação de Datas para Socket.io
-
-```typescript
-// ✅ CORRETO - Message (sem updatedAt)
-const messageForSocket = {
-  ...message,
-  timestamp: message.timestamp.toISOString(),
-  createdAt: message.createdAt.toISOString(),
-  // NÃO incluir updatedAt - não existe!
-};
-
-// ✅ CORRETO - Conversation (tem updatedAt)
-const conversationForSocket = {
-  ...conversation,
-  createdAt: conversation.createdAt.toISOString(),
-  updatedAt: conversation.updatedAt.toISOString(),
-  lastMessageAt: conversation.lastMessageAt?.toISOString(),
-};
-```
-
----
-
-## FRONTEND - PADRÕES
-
-### Componentes React
-
-```typescript
-'use client'
-
-interface ConversationListProps {
-  conversations: Conversation[];
-  onSelect: (id: string) => void;
-}
-
-export function ConversationList({ conversations, onSelect }: ConversationListProps) {
-  // SEMPRE validar arrays
-  const items = Array.isArray(conversations) ? conversations : [];
-
-  return items.map(conv => (
-    <ConversationItem key={conv.id} conversation={conv} onClick={onSelect} />
-  ));
-}
-```
-
-### React Query
-
-```typescript
-const { data, isLoading, error } = useQuery({
-  queryKey: ['conversations', tenantId],
-  queryFn: () => conversationService.getAll(),
-  staleTime: 30 * 1000, // 30 segundos
-});
-
-// SEMPRE tratar estados
-if (isLoading) return <Skeleton />;
-if (error) return <ErrorMessage error={error} />;
-```
-
----
-
-## MULTI-TENANCY - CRÍTICO
-
-### Regras Absolutas
-
-1. **TODA query DEVE filtrar por tenantId**
-2. **NUNCA confiar em tenantId do frontend** - usar do token JWT
-3. **Middleware de tenant** em todas as rotas
-
-```typescript
-// Middleware obrigatório
-const tenantMiddleware = async (req, res, next) => {
-  const tenantId = req.user?.tenantId;
-  if (!tenantId) throw new UnauthorizedException();
-  req.tenantId = tenantId;
-  next();
-};
-```
-
-### Unidades Hoteleiras
-
-```text
-├── Ilha Bela
-├── Campos do Jordão
-├── Camburi
-└── Santo Antônio do Pinhal
-```
-
----
-
-## WHATSAPP INTEGRATION
-
-### Fluxo de Mensagens
-
-```text
-WhatsApp → Webhook → Queue → Process → Save DB → Socket.io → Frontend
-```
-
-### Templates Aprovados
-
-```text
-├── carousel_geral_Xcards     # Carrosséis de quartos
-├── notificacao_atendente     # Notificação de escalação
-└── confirmacao_reserva       # Confirmação de booking
-```
-
-### N8N Routes (/api/n8n/*)
-
-```text
-POST /send-text       # Texto simples
-POST /send-buttons    # Botões interativos
-POST /send-list       # Lista de opções
-POST /send-carousel   # Carrossel de cards
-POST /send-template   # Template aprovado
-POST /escalate        # Escalar para humano
-GET  /check-ia-lock   # Verificar se IA travada
-POST /set-hotel-unit  # Definir unidade
-```
-
----
-
-## GIT WORKFLOW
-
-### Branches
-
-```text
-main      → Produção
-develop   → Staging
-feature/* → Novas features
-fix/*     → Correções
-hotfix/*  → Urgente produção
-```
-
-### Commits (Conventional Commits)
-
-```bash
-feat(whatsapp): adicionar suporte a carrosséis
-
-Problema:
-Não havia forma de enviar múltiplos quartos de uma vez.
-
-Solução:
-Implementar endpoint /send-carousel com templates Meta.
-
-Resultado:
-Carrosséis funcionando com até 10 cards.
-```
-
-### REGRA ABSOLUTA: Commits no perfil do desenvolvedor
-
-```bash
-# Configuração Git OBRIGATÓRIA
-git config user.name "Vinicius-Almeeida"
-git config user.email "vinicius.mansao@gmail.com"
-
-# ❌ PROIBIDO - Commits com assinatura de IA
-feat: add feature
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-Co-Authored-By: Claude <noreply@anthropic.com>
-
-# ✅ CORRETO - Commits limpos no perfil do dev
-feat(scope): descrição clara
-
-Problema: ...
-Solução: ...
-Resultado: ...
-```
-
----
-
-## DEPLOY
-
-### Infraestrutura
-
-```text
-┌─────────────────────────────────────────────────────┐
-│  VPS: 72.61.39.235                                  │
-│  SSH: ssh root@72.61.39.235                         │
-├─────────────────────────────────────────────────────┤
-│  Containers Docker:                                 │
-│  ├── crm-backend (produção)                         │
-│  ├── crm-backend-dev (desenvolvimento)              │
-│  ├── crm-postgres / crm-postgres-dev                │
-│  ├── crm-redis / crm-redis-dev                      │
-│  └── crm-nginx (reverse proxy + SSL)                │
-├─────────────────────────────────────────────────────┤
-│  Frontend: Vercel (auto-deploy)                     │
-│  Backend API: https://api.hoteisreserva.com.br      │
-└─────────────────────────────────────────────────────┘
-```
-
-### Comandos Úteis VPS
-
-```bash
-# Ver containers
-docker ps
-
-# Logs backend
-docker logs crm-backend --tail 100 -f
-
-# Rebuild e deploy
-docker compose down
-docker compose build --no-cache
-docker compose up -d
-
-# Migrations
-docker exec crm-backend npx prisma migrate deploy
-```
-
----
-
-## SEGURANÇA
-
-### Autenticação
-
-```text
-├── JWT Access Token (15min)
-├── Refresh Token (7 dias)
-├── API Key para N8N (header X-API-Key)
-└── Webhook signature verification
-```
-
-### Tenant Isolation
-
-```typescript
-// TODA query deve ter tenantId
-prisma.conversation.findMany({
+// TODA query Prisma DEVE incluir tenantId (exceto SUPER_ADMIN)
+// NAO buscar globalmente e verificar depois - vulneravel a timing attacks
+
+// CORRETO
+const user = await prisma.user.findFirst({
   where: {
-    tenantId,  // OBRIGATÓRIO
-    status: 'OPEN'
-  }
+    email,
+    tenantId, // <- OBRIGATORIO NA QUERY
+  },
 });
-```
 
-### O que NUNCA logar
-
-```text
-├── Senhas
-├── Tokens
-├── WhatsApp Access Token
-├── API Keys
-└── Dados pessoais completos
-```
-
----
-
-## REAL-TIME (Socket.io)
-
-### Eventos
-
-```typescript
-// Backend emite
-socket.to(`tenant:${tenantId}`).emit('message:new', message);
-socket.to(`conversation:${id}`).emit('message:status', status);
-
-// Frontend escuta
-socket.on('message:new', handleNewMessage);
-socket.on('conversation:updated', handleUpdate);
-```
-
-### Rooms
-
-```text
-├── tenant:{tenantId}           # Todos do tenant
-├── conversation:{id}           # Conversa específica
-└── user:{userId}               # Usuário específico
-```
-
----
-
-## FILAS (BullMQ)
-
-### Queues
-
-```text
-├── whatsapp-webhook    # Processar webhooks
-├── send-message        # Enviar mensagens
-├── process-ai          # Processar com IA
-└── status-update       # Atualizar status
-```
-
-### Workers
-
-```typescript
-// Worker pattern
-new Worker('whatsapp-webhook', async (job) => {
-  const { tenantId, payload } = job.data;
-  await processWebhook(tenantId, payload);
-}, { connection: redis });
-```
-
----
-
-## TESTES
-
-### Mínimos Obrigatórios
-
-```text
-├── Unit Tests: ≥ 80%
-├── Integration: Rotas críticas
-└── E2E: Fluxos principais
-```
-
-### Padrão AAA
-
-```typescript
-describe('ConversationService', () => {
-  it('should create conversation', async () => {
-    // Arrange
-    const dto = { contactId: 'uuid', tenantId: 'uuid' };
-
-    // Act
-    const result = await service.create(dto);
-
-    // Assert
-    expect(result.id).toBeDefined();
-  });
+// ERRADO (vulneravel)
+const user = await prisma.user.findFirst({
+  where: { email },
 });
+if (user.tenantId !== tenantId) throw new Error(); // <- TARDE DEMAIS
+```
+
+### 4.2 Validacao de Entrada
+
+```typescript
+// TODA entrada de usuario DEVE ser validada com Zod
+import { z } from 'zod';
+
+const schema = z.object({
+  email: z.string().email(),
+  name: z.string().min(2).max(100),
+});
+
+const validated = schema.parse(req.body); // Fail fast
+```
+
+### 4.3 Proibido (NUNCA usar)
+
+| Proibido | Alternativa |
+|----------|-------------|
+| `any` | Tipar corretamente |
+| `@ts-ignore` | Corrigir o tipo |
+| `!` assertion | Validar null/undefined |
+| `console.log` | `logger` (Pino) |
+| `.then()/.catch()` | `async/await` |
+| Query sem `tenantId` | Incluir na WHERE |
+| Secrets hardcoded | `.env` |
+| `include` sem limitar | `select` especifico |
+
+### 4.4 Obrigatorio (SEMPRE usar)
+
+| Obrigatorio | Razao |
+|-------------|-------|
+| `tenantId` em queries | Isolamento multi-tenant |
+| Zod no input | Prevenir injection |
+| `try/catch` em async | Capturar erros |
+| Logger com contexto | Debugging em prod |
+| `select` no Prisma | Performance |
+| Loading states em UI | UX |
+| Feedback visual (toast) | UX |
+
+### 4.5 TDD Workflow
+
+```
+1. RED: Escrever teste que FALHA primeiro
+   - services/*.ts -> __tests__/services/*.test.ts
+   - controllers/*.ts -> __tests__/controllers/*.test.ts
+
+2. GREEN: Codigo MINIMO para passar
+
+3. REFACTOR: Melhorar sem quebrar testes
+```
+
+### 4.6 Nomenclatura
+
+| Tipo | Padrao | Exemplo |
+|------|--------|---------|
+| Arquivos | `kebab-case.ts` | `auth.service.ts` |
+| Classes | `PascalCase` | `WhatsAppService` |
+| Funcoes | `camelCase` | `sendTextMessage` |
+| Constantes | `UPPER_SNAKE` | `MAX_RETRIES` |
+| Enums | `PascalCase` | `Role.SUPER_ADMIN` |
+
+### 4.7 Git Commits
+
+```
+tipo(escopo): titulo curto
+
+Problema: descricao do problema
+Solucao: como foi resolvido
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+```
+
+Tipos: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `perf`
+
+---
+
+## 5. ARQUITETURA RESUMIDA
+
+```
+Cliente (WhatsApp) --> Meta Cloud API --> Webhook
+                                              |
+                                              v
+                                    Backend (Express)
+                                    /       |       \
+                               Bull Queue  Prisma  Socket.io
+                                   |         |         |
+                                   v         v         v
+                                 Redis   PostgreSQL  Frontend
+                                   |
+                                   v
+                                 N8N (IA)
+```
+
+### Fluxo de Mensagem Recebida
+1. Cliente envia no WhatsApp
+2. Meta envia webhook para `/webhooks/whatsapp`
+3. Valida HMAC signature
+4. Adiciona job na fila Bull
+5. Worker processa:
+   - Cria/atualiza Contact e Conversation
+   - Salva Message no banco
+   - Se `iaLocked=false`: encaminha para N8N
+   - Se `iaLocked=true`: apenas salva (atendente responde)
+6. Socket.io emite para frontend
+
+### Roles e Permissoes
+| Role | Acesso |
+|------|--------|
+| `SUPER_ADMIN` | Todos os tenants |
+| `ADMIN` | Tenant especifico, gestao completa |
+| `MANAGER` | Tenant especifico, visualizacao |
+| `ATTENDANT` | Apenas conversas atribuidas |
+| `SALES` | Apenas oportunidades (isOpportunity) |
+
+---
+
+## 6. ESTRUTURA DE DIRETORIOS
+
+```
+projeto-hoteis-reserva/
+|
++-- deploy-backend/           # Backend Express
+|   +-- src/
+|   |   +-- config/           # Database, Redis, Logger, Socket
+|   |   +-- controllers/      # HTTP handlers
+|   |   +-- services/         # Logica de negocio
+|   |   +-- routes/           # Rotas Express
+|   |   +-- middlewares/      # Auth, Tenant, Validation
+|   |   +-- validators/       # Schemas Zod
+|   |   +-- queues/           # Bull workers
+|   |   +-- types/            # TypeScript types
+|   |   +-- utils/            # Helpers
+|   |   +-- __tests__/        # Testes Jest
+|   |   \-- server.ts         # Entry point
+|   +-- prisma/
+|   |   \-- schema.prisma     # Database schema
+|   \-- docker-compose.*.yml
+|
++-- apps/frontend/            # Frontend Next.js
+|   +-- src/
+|   |   +-- app/              # App Router pages
+|   |   +-- components/       # React components
+|   |   +-- hooks/            # Custom hooks
+|   |   +-- lib/              # Utils, API client
+|   |   \-- types/            # TypeScript types
+|
++-- .claude/                  # Sistema Agentico
+|   +-- skills/               # Skills do projeto
+|   +-- agents/               # Agentes especialistas
+|   +-- hooks/                # Hooks de validacao
+|   +-- scripts/              # Scripts de automacao
+|   +-- RULES.md              # Regras de codigo
+|   +-- MEMORIES.md           # Licoes aprendidas
+|   \-- AUTO-ROUTING.md       # Roteamento automatico
+|
+\-- .claude/CLAUDE.md         # Este arquivo
 ```
 
 ---
 
-## API PATTERNS
+## 7. SKILLS DISPONIVEIS
 
-### Status Codes
+### Skills do Projeto (/hoteis-*)
+| Skill | Quando Usar |
+|-------|-------------|
+| `/hoteis-plan` | Planejamento socratico antes de implementar |
+| `/hoteis-api` | Criar endpoints Express |
+| `/hoteis-component` | Criar componentes React |
+| `/hoteis-feature` | Feature full-stack |
+| `/hoteis-fix` | Corrigir bugs |
+| `/hoteis-deploy` | Deploy e CI/CD |
+| `/hoteis-n8n` | Integracoes N8N/WhatsApp |
+| `/hoteis-arquitetura` | Arquitetura detalhada do sistema |
+| `/hoteis-seguranca` | Padroes de seguranca |
+| `/hoteis-whatsapp` | Integracao WhatsApp Cloud API |
 
-| Code | Uso |
-|------|-----|
-| 200 | GET, PATCH sucesso |
-| 201 | POST criação |
-| 204 | DELETE sucesso |
-| 400 | Validação falhou |
-| 401 | Não autenticado |
-| 403 | Sem permissão |
-| 404 | Não encontrado |
-| 500 | Erro interno |
+### Skills Tecnicas (/tech-*)
+| Skill | Tecnologia |
+|-------|------------|
+| `/tech-prisma` | Prisma ORM patterns |
+| `/tech-zod` | Validacao Zod |
+| `/tech-jwt` | Autenticacao JWT |
+| `/tech-express` | Express.js patterns |
+| `/tech-nextjs` | Next.js 14 App Router |
+| `/tech-socketio` | Socket.io real-time |
+| `/tech-redis-bull` | Redis e BullMQ |
+| `/tech-tanstack-query` | React Query |
+| `/tech-tailwind` | TailwindCSS |
+| `/tech-radix` | Radix UI components |
+| `/tech-typescript` | TypeScript avancado |
+| `/tech-postgresql` | PostgreSQL otimizacao |
 
-### Resposta de Erro
+---
 
-```json
-{
-  "error": "Validation failed",
-  "message": "Campo obrigatório",
-  "statusCode": 400
-}
+## 8. INTEGRACAO WHATSAPP (Resumo)
+
+### Endpoints Webhook
+- **GET** `/webhooks/whatsapp` - Verificacao Meta
+- **POST** `/webhooks/whatsapp` - Receber mensagens
+
+### Tipos de Mensagem Suportados
+| Tipo | Metodo |
+|------|--------|
+| Texto | `sendTextMessage()` |
+| Imagem/Video/Audio | `sendMediaMessage()` |
+| Botoes (max 3) | `sendInteractiveButtons()` |
+| Lista (max 10) | `sendInteractiveList()` |
+| Template | `sendTemplate()` |
+| Carousel | `sendCarouselTemplate()` |
+
+### Detalhes: Ver `/hoteis-whatsapp`
+
+---
+
+## 9. INTEGRACAO N8N (Resumo)
+
+### Autenticacao
+```
+Header: X-API-Key: {tenantSlug}:{whatsappPhoneNumberId}
+```
+
+### Endpoints Principais
+| Endpoint | Descricao |
+|----------|-----------|
+| `/api/n8n/send-text` | Envia texto |
+| `/api/n8n/send-buttons` | Envia botoes |
+| `/api/n8n/send-carousel` | Envia carousel |
+| `/api/n8n/escalate` | Escala para humano |
+| `/api/n8n/check-ia-lock` | Verifica se IA bloqueada |
+
+### IA Lock
+- Quando atendente assume: `iaLocked = true`
+- N8N SEMPRE verifica antes de responder
+- Previne respostas simultaneas
+
+### Detalhes: Ver `/hoteis-n8n`
+
+---
+
+## 10. RATE LIMITS
+
+| Endpoint | Limite | Janela |
+|----------|--------|--------|
+| `/auth/login` | 5 req | 15 min |
+| `/webhooks/*` | 1000 req | 1 min |
+| `/api/n8n/*` | 5000 req | 1 min |
+| `/api/*` (geral) | 100 req | 1 min |
+
+---
+
+## 11. AMBIENTE
+
+| Item | Valor |
+|------|-------|
+| VPS IP | 72.61.39.235 |
+| Backend Dir | `/root/deploy-backend/` |
+| API URL | https://api.botreserva.com.br |
+| Frontend URL | https://hoteisreserva.com.br |
+| Deploy Backend | Docker + GitHub Actions |
+| Deploy Frontend | Vercel (auto-deploy main) |
+
+### Comandos Uteis
+```bash
+# Backend
+cd deploy-backend && pnpm test           # Rodar testes
+cd deploy-backend && npx tsc --noEmit    # Verificar tipos
+cd deploy-backend && npx prisma generate # Regenerar client
+
+# Frontend
+cd apps/frontend && pnpm build           # Build
+cd apps/frontend && npx tsc --noEmit     # Verificar tipos
+
+# VPS
+ssh root@72.61.39.235
+docker logs crm-backend -f --tail 100
 ```
 
 ---
 
-## CHECKLIST PRÉ-IMPLEMENTAÇÃO
+## 12. LICOES APRENDIDAS (Criticas)
 
-### Segurança
-- [ ] Inputs validados (Zod)
-- [ ] Tenant isolation
-- [ ] Auth middleware aplicado
-- [ ] Sem dados sensíveis em logs
-
-### Código
-- [ ] TypeScript strict, ZERO any
-- [ ] Parâmetros e retornos tipados
-- [ ] DRY - sem repetição
-- [ ] Funções pequenas e focadas
-
-### Frontend
-- [ ] Loading states
-- [ ] Error states
-- [ ] Empty states
-- [ ] Arrays validados
-
-### Git
-- [ ] Commit convencional
-- [ ] SEM assinatura Claude/IA
-- [ ] Commit no perfil @Vinicius-Almeeida
-- [ ] Branch correta
+| Problema | Solucao |
+|----------|---------|
+| Query sem tenantId no login | Incluir tenantId na WHERE clause |
+| window.socket exposto | Nunca expor socket globalmente |
+| Rate limit N8N baixo | Aumentado para 5000 req/min (carousels) |
+| IA e humano respondem juntos | Implementar iaLocked + check-ia-lock |
+| Prisma migrate dev em prod | SEMPRE usar `migrate deploy` |
+| findUnique vs findFirst | findFirst quando nao e unique key |
 
 ---
 
-## NOMENCLATURA
+## 13. CHECKLIST PRE-COMMIT
 
-| Elemento | Convenção | Exemplo |
-|----------|-----------|---------|
-| Arquivos | kebab-case | `conversation-service.ts` |
-| Classes | PascalCase | `ConversationService` |
-| Variáveis | camelCase | `conversationId` |
-| Constantes | UPPER_SNAKE | `MAX_MESSAGE_LENGTH` |
-| Componentes | PascalCase | `ConversationList` |
-| Hooks | useCamelCase | `useConversations` |
-
----
-
-## COMUNICAÇÃO
-
-```text
-├── Usuário → Português Brasil
-├── Código/Variáveis → Inglês
-├── Commits → Português
-├── Logs → Inglês
-└── UI → Português Brasil
+```
+[ ] tenantId em TODAS as queries?
+[ ] Validacao Zod no input?
+[ ] Testes escritos e passando?
+[ ] TypeScript sem erros?
+[ ] Sem console.log (usar logger)?
+[ ] Sem secrets hardcoded?
+[ ] Commit message no padrao?
 ```
 
 ---
 
-## LEMA DO PROJETO
+## 14. REFERENCIAS
 
-> **"Real-time Excellence, Security First"**
->
-> Atendimento em tempo real com segurança enterprise.
-> Multi-tenant isolation é inegociável.
-> Zero gambiarras, sempre definitivo.
+| Arquivo | Conteudo |
+|---------|----------|
+| `.claude/RULES.md` | Regras detalhadas de codigo |
+| `.claude/MEMORIES.md` | Historico e decisoes |
+| `.claude/AUTO-ROUTING.md` | Roteamento automatico de skills |
+| `.claude/hooks/hooks.json` | Hooks de validacao |
+
+---
+
+**Voce e o Commander. Lidere com excelencia. Siga o fluxo. Garanta qualidade.**

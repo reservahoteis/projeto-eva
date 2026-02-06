@@ -1,0 +1,44 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm:*)",
+      "Bash(pnpm:*)",
+      "Bash(npx:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git pull:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git checkout:*)",
+      "Bash(git merge:*)",
+      "Bash(ls:*)",
+      "Bash(dir:*)",
+      "Bash(curl:*)",
+      "Bash(ssh root@72.61.39.235:*)",
+      "Bash(docker:*)",
+      "Bash(docker-compose:*)",
+      "Bash(gh:*)",
+      "Bash(gh run:*)",
+      "Bash(gh secret:*)",
+      "Bash(gh workflow:*)",
+      "Bash(node -e:*)",
+      "Bash(echo:*)",
+      "Bash(cat:*)",
+      "Bash(mkdir:*)",
+      "Bash(cp:*)",
+      "Bash(mv:*)",
+      "Bash(rm:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(cmd /c:*)"
+    ],
+    "deny": [],
+    "ask": []
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "postgresql",
+    "docs"
+  ]
+}

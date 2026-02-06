@@ -1,0 +1,143 @@
+{
+  "$schema": "https://claude.ai/schemas/hooks.json",
+  "version": "2.1.0",
+  "description": "Sistema de hooks ENFORCED do CRM Hoteis Reserva - Atualizado com TDD Rigoroso (superpowers pattern)",
+  "hooks": [
+    {
+      "name": "pre-edit-reminder",
+      "description": "ANTES de editar codigo, lembra de consultar MCP e seguir TDD",
+      "event": "PreToolUse",
+      "matcher": {
+        "tool_name": "Edit",
+        "file_path": "**/*.{ts,tsx}"
+      },
+      "command": "echo '⚠️  ANTES DE EDITAR: 1) Consultou MCP docs? 2) Escreveu teste primeiro (TDD)?'",
+      "timeout": 1000,
+      "on_failure": "ignore"
+    },
+    {
+      "name": "pre-write-service-tdd",
+      "description": "ANTES de criar service, lembra do TDD",
+      "event": "PreToolUse",
+      "matcher": {
+        "tool_name": "Write",
+        "file_path": "**/services/**/*.ts"
+      },
+      "command": "echo '🔴 TDD OBRIGATORIO: Escreva o TESTE primeiro em tests/services/'",
+      "timeout": 1000,
+      "on_failure": "ignore"
+    },
+    {
+      "name": "tdd-enforcement-services",
+      "description": "TDD RIGOROSO: Verifica se teste existe ANTES de criar/editar service",
+      "event": "PreToolUse",
+      "matcher": {
+        "tool_name": "Write",
+        "file_path": "**/services/**/*.ts"
+      },
+      "command": "node .claude/scripts/enforce-tdd.js \"${file_path}\" write",
+      "timeout": 5000,
+      "on_failure": "warn"
+    },
+    {
+      "name": "tdd-enforcement-controllers",
+      "description": "TDD RIGOROSO: Verifica se teste existe ANTES de criar/editar controller",
+      "event": "PreToolUse",
+      "matcher": {
+        "tool_name": "Write",
+        "file_path": "**/controllers/**/*.ts"
+      },
+      "command": "node .claude/scripts/enforce-tdd.js \"${file_path}\" write",
+      "timeout": 5000,
+      "on_failure": "warn"
+    },
+    {
+      "name": "tdd-enforcement-hooks",
+      "description": "TDD RIGOROSO: Verifica se teste existe ANTES de criar/editar hook React",
+      "event": "PreToolUse",
+      "matcher": {
+        "tool_name": "Write",
+        "file_path": "**/hooks/**/*.ts"
+      },
+      "command": "node .claude/scripts/enforce-tdd.js \"${file_path}\" write",
+      "timeout": 5000,
+      "on_failure": "warn"
+    },
+    {
+      "name": "typescript-validation",
+      "description": "Valida TypeScript apos cada edicao",
+      "event": "PostToolUse",
+      "matcher": {
+        "tool_name": "Edit",
+        "file_path": "**/*.{ts,tsx}"
+      },
+      "command": "node .claude/scripts/validate-typescript.js \"${file_path}\"",
+      "timeout": 30000,
+      "on_failure": "warn"
+    },
+    {
+      "name": "tenant-id-check-controllers",
+      "description": "Verifica tenantId em controllers",
+      "event": "PostToolUse",
+      "matcher": {
+        "tool_name": "Edit",
+        "file_path": "**/controllers/**/*.ts"
+      },
+      "command": "node .claude/scripts/verify-tenant-id.js \"${file_path}\"",
+      "timeout": 10000,
+      "on_failure": "warn"
+    },
+    {
+      "name": "tenant-id-check-services",
+      "description": "Verifica tenantId em services",
+      "event": "PostToolUse",
+      "matcher": {
+        "tool_name": "Edit",
+        "file_path": "**/services/**/*.ts"
+      },
+      "command": "node .claude/scripts/verify-tenant-id.js \"${file_path}\"",
+      "timeout": 10000,
+      "on_failure": "warn"
+    },
+    {
+      "name": "commit-format-check",
+      "description": "Valida formato de commit",
+      "event": "PostToolUse",
+      "matcher": {
+        "tool_name": "Bash",
+        "command": "git commit*"
+      },
+      "command": "node .claude/scripts/validate-commit.js",
+      "timeout": 5000,
+      "on_failure": "warn"
+    },
+    {
+      "name": "session-summary",
+      "description": "Salva resumo da sessao",
+      "event": "Stop",
+      "command": "node .claude/scripts/save-session.js",
+      "timeout": 60000,
+      "on_failure": "ignore"
+    },
+    {
+      "name": "session-start-context",
+      "description": "Carrega contexto ao iniciar",
+      "event": "SessionStart",
+      "command": "node .claude/scripts/load-context.js",
+      "timeout": 30000,
+      "on_failure": "ignore"
+    },
+    {
+      "name": "extract-patterns",
+      "description": "Extrai padroes apos push",
+      "event": "PostToolUse",
+      "matcher": {
+        "tool_name": "Bash",
+        "command": "git push*"
+      },
+      "command": "node .claude/scripts/extract-patterns.js",
+      "timeout": 30000,
+      "on_failure": "ignore"
+    }
+  ]
+}
