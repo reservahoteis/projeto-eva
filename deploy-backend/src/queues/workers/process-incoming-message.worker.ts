@@ -735,9 +735,8 @@ function extractMessageData(message: ProcessMessageJobData['message']): Extracte
       conversationId = flowTokenMatch[1];
     }
 
-    // Content é um resumo legível dos dados do flow
-    const fieldCount = Object.keys(responseData).length;
-    const content = `[Flow completo: ${nfmReply.name}] - ${fieldCount} campo(s) preenchido(s)`;
+    // Formatar resposta do Flow em texto legível para o N8N
+    const content = formatFlowResponseToText(responseData, nfmReply.name);
 
     return {
       type: MessageType.INTERACTIVE,
@@ -1044,4 +1043,82 @@ async function handleFlowResponse(
       stack: error instanceof Error ? error.stack : undefined,
     }, 'Failed to handle flow response');
   }
+}
+
+/**
+ * Formata resposta de WhatsApp Flow em texto legível
+ * Converte os campos do formulário em uma mensagem estruturada para o N8N
+ */
+function formatFlowResponseToText(
+  responseData: Record<string, unknown>,
+  flowName: string
+): string {
+  const lines: string[] = [];
+
+  // Mapeamento de campos conhecidos para labels legíveis
+  const fieldLabels: Record<string, string> = {
+    check_in_date: 'Check-in',
+    check_out_date: 'Check-out',
+    adults: 'Adultos',
+    children: 'Crianças',
+    has_children: 'Tem crianças',
+    hotel_unit: 'Unidade',
+    room_type: 'Tipo de quarto',
+    name: 'Nome',
+    email: 'Email',
+    phone: 'Telefone',
+    observations: 'Observações',
+    special_requests: 'Pedidos especiais',
+  };
+
+  // Processar cada campo
+  for (const [key, value] of Object.entries(responseData)) {
+    if (value === undefined || value === null || value === '') continue;
+
+    const label = fieldLabels[key] || key;
+    let formattedValue: string;
+
+    // Formatar datas (vem em milliseconds como string)
+    if (key.includes('date') && typeof value === 'string') {
+      try {
+        const timestamp = parseInt(value, 10);
+        if (!isNaN(timestamp)) {
+          const date = new Date(timestamp);
+          formattedValue = date.toLocaleDateString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+          });
+        } else {
+          formattedValue = String(value);
+        }
+      } catch {
+        formattedValue = String(value);
+      }
+    }
+    // Formatar booleanos em português
+    else if (key === 'has_children' || typeof value === 'boolean') {
+      if (value === 'sim' || value === true || value === 'true') {
+        formattedValue = 'Sim';
+      } else if (value === 'nao' || value === 'não' || value === false || value === 'false') {
+        formattedValue = 'Não';
+      } else {
+        formattedValue = String(value);
+      }
+    }
+    // Outros valores
+    else {
+      formattedValue = String(value);
+    }
+
+    lines.push(`${label}: ${formattedValue}`);
+  }
+
+  // Se não há campos, retornar mensagem padrão
+  if (lines.length === 0) {
+    return `[Formulário ${flowName} enviado - sem dados]`;
+  }
+
+  // Retornar texto formatado
+  return `📋 Orçamento de Hospedagem:\n${lines.join('\n')}`;
 }
