@@ -1,9 +1,11 @@
 import { Router, Request, Response } from 'express';
 import { n8nAuthMiddleware } from '@/middlewares/n8n-auth.middleware';
 import { whatsAppService } from '@/services/whatsapp.service';
+import { whatsAppFlowsService } from '@/services/whatsapp-flows.service';
 import { escalationService } from '@/services/escalation.service';
 import { messageService } from '@/services/message.service';
 import { hbookScraperService } from '@/services/hbook-scraper.service';
+import { sendFlowSchema } from '@/validators/whatsapp-flows.validator';
 import { prisma } from '@/config/database';
 import { emitNewConversation, emitConversationUpdate } from '@/config/socket';
 import logger from '@/config/logger';
@@ -1579,6 +1581,143 @@ router.get('/check-room-availability', async (req: Request, res: Response) => {
     return res.status(500).json({
       available: false,
       error: 'Falha ao verificar disponibilidade do quarto',
+      message: error.message,
+    });
+  }
+});
+
+/**
+ * POST /api/n8n/send-flow
+ * Envia WhatsApp Flow (formulário interativo nativo)
+ *
+ * WhatsApp Flows permite criar formulários nativos no WhatsApp com:
+ * - Validação de campos
+ * - Navegação entre telas
+ * - Campos customizados (texto, número, dropdown, etc)
+ *
+ * Payload:
+ * {
+ *   "phoneNumber": "5511999999999",
+ *   "flowId": "uuid-do-flow",
+ *   "flowToken": "token-unico-para-tracking",
+ *   "ctaText": "Fazer Orçamento",
+ *   "headerText": "Orçamento Rápido",
+ *   "bodyText": "Preencha o formulário para receber seu orçamento",
+ *   "conversationId": "uuid-opcional"
+ * }
+ *
+ * Validação:
+ * - phoneNumber: formato brasileiro 5511999999999 (55 + DDD + 9 dígitos)
+ * - flowId: UUID do flow publicado no WhatsApp Business Manager
+ * - flowToken: token único para identificar a sessão (usado para rastrear respostas)
+ * - ctaText: texto do botão (máx 20 caracteres)
+ * - headerText: opcional, texto do cabeçalho (máx 60 caracteres)
+ * - bodyText: opcional, texto do corpo (máx 1024 caracteres)
+ * - conversationId: opcional, ID da conversa para vincular ao histórico
+ *
+ * Response:
+ * {
+ *   "success": true,
+ *   "messageId": "wamid.xxx",
+ *   "flowToken": "token-unico",
+ *   "botReservaResponse": {
+ *     "messageId": "wamid.xxx",
+ *     "id": "wamid.xxx"
+ *   }
+ * }
+ */
+router.post('/send-flow', async (req: Request, res: Response) => {
+  try {
+    // Validar payload com Zod
+    const validation = sendFlowSchema.safeParse({ body: req.body });
+
+    if (!validation.success) {
+      const errors = validation.error.errors.map(err => ({
+        field: err.path.join('.'),
+        message: err.message,
+      }));
+
+      return res.status(400).json({
+        error: 'Validação falhou',
+        details: errors,
+      });
+    }
+
+    const {
+      phoneNumber,
+      flowId,
+      flowToken,
+      ctaText,
+      headerText,
+      bodyText,
+      conversationId,
+    } = validation.data.body;
+
+    // Normalizar telefone (remover caracteres especiais se houver)
+    const normalizedPhone = phoneNumber.replace(/\D/g, '');
+
+    logger.info({
+      tenantId: req.tenantId,
+      phone: normalizedPhone,
+      flowId,
+      flowToken,
+      conversationId,
+    }, 'N8N: Send flow request');
+
+    // Enviar flow via WhatsApp Flows API
+    const result = await whatsAppFlowsService.sendFlow(
+      req.tenantId!,
+      normalizedPhone,
+      flowId,
+      flowToken,
+      ctaText,
+      {
+        headerText,
+        bodyText,
+        flowCta: 'navigate', // Tipo de CTA (navigate ou data_exchange)
+        flowAction: 'navigate', // Ação inicial do flow
+      }
+    );
+
+    // Salvar mensagem no banco para aparecer no painel
+    await messageService.saveOutboundMessage({
+      tenantId: req.tenantId!,
+      phoneNumber: normalizedPhone,
+      whatsappMessageId: result.whatsappMessageId,
+      type: 'INTERACTIVE',
+      content: bodyText || 'Toque no botão abaixo para começar',
+      metadata: {
+        interactiveType: 'flow',
+        flowId,
+        flowToken,
+        ctaText,
+        headerText,
+        bodyText,
+        conversationId,
+      },
+    });
+
+    logger.info({
+      tenantId: req.tenantId,
+      phone: normalizedPhone,
+      flowId,
+      flowToken,
+      messageId: result.whatsappMessageId,
+    }, 'N8N: Flow sent and saved');
+
+    return res.json({
+      success: true,
+      messageId: result.whatsappMessageId,
+      flowToken,
+      botReservaResponse: {
+        messageId: result.whatsappMessageId,
+        id: result.whatsappMessageId,
+      },
+    });
+  } catch (error: any) {
+    logger.error({ error, tenantId: req.tenantId }, 'N8N: Failed to send flow');
+    return res.status(500).json({
+      error: 'Falha ao enviar flow',
       message: error.message,
     });
   }

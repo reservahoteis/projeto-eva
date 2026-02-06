@@ -122,6 +122,15 @@ const ListReplySchema = z.object({
   }),
 });
 
+// WhatsApp Flow Reply (nfm_reply)
+const NfmReplySchema = z.object({
+  nfm_reply: z.object({
+    response_json: z.string(), // JSON string com respostas do formulário
+    body: z.string().optional(), // Texto opcional (ex: "Sent")
+    name: z.string(), // Nome do flow
+  }),
+});
+
 // Context (Reply/Quote or Forwarded Message)
 // Quando é reply: tem from e id
 // Quando é forwarded: tem apenas forwarded: true (ou frequently_forwarded: true)
@@ -181,7 +190,7 @@ export const WhatsAppMessageSchema = z.object({
   contacts: ContactMessageSchema.optional(),
   // button pode ser ButtonReplySchema (interactive button reply) ou TemplateButtonSchema (carousel template quick reply)
   button: z.union([ButtonReplySchema, TemplateButtonSchema]).optional(),
-  interactive: z.union([ButtonReplySchema, ListReplySchema]).optional(),
+  interactive: z.union([ButtonReplySchema, ListReplySchema, NfmReplySchema]).optional(),
   reaction: ReactionMessageSchema.optional(),
 
   // Context (reply/quote)
@@ -409,4 +418,12 @@ export function isInteractiveButtonReply(message: WhatsAppMessage): boolean {
  */
 export function isTemplateButtonReply(message: WhatsAppMessage): boolean {
   return message.type === 'button' && !!message.button && 'payload' in message.button && 'text' in message.button;
+}
+
+/**
+ * Verifica se é resposta de WhatsApp Flow (nfm_reply)
+ * Formato: type: 'interactive' com interactive.nfm_reply
+ */
+export function isNfmReply(message: WhatsAppMessage): boolean {
+  return message.type === 'interactive' && !!message.interactive && 'nfm_reply' in message.interactive;
 }
