@@ -18,7 +18,8 @@ export const sendFlowSchema = z.object({
 
     flowId: z
       .string()
-      .uuid('flowId deve ser um UUID válido'),
+      .min(1, 'flowId é obrigatório')
+      .regex(/^[a-zA-Z0-9_-]+$/, 'flowId deve conter apenas letras, números, hífens e underscores'),
 
     flowToken: z
       .string()
@@ -222,8 +223,43 @@ export const deleteFlowSchema = z.object({
   }),
 });
 
+/**
+ * Schema de validação para envio de Flow de Orçamento de Hospedagem
+ * Endpoint: POST /api/n8n/send-booking-flow
+ *
+ * Usa o bookingFlowId do tenant automaticamente, não precisa enviar flowId
+ */
+export const sendBookingFlowSchema = z.object({
+  body: z.object({
+    phoneNumber: z
+      .string()
+      .regex(/^55\d{10,11}$/, 'Número deve estar no formato brasileiro: 5511999999999')
+      .optional(),
+
+    phone: z
+      .string()
+      .regex(/^\d{10,15}$/, 'Número deve conter apenas dígitos')
+      .optional(), // Alias para phoneNumber (compatibilidade N8N)
+
+    conversationId: z
+      .string()
+      .uuid('conversationId deve ser um UUID válido')
+      .optional(),
+
+    bodyText: z
+      .string()
+      .max(1024, 'Texto do body deve ter no máximo 1024 caracteres')
+      .trim()
+      .optional(),
+  }).refine((data) => {
+    // Aceita phoneNumber ou phone
+    return data.phoneNumber || data.phone;
+  }, 'Informe phoneNumber ou phone'),
+});
+
 // Tipos inferidos dos schemas
 export type SendFlowInput = z.infer<typeof sendFlowSchema>['body'];
+export type SendBookingFlowInput = z.infer<typeof sendBookingFlowSchema>['body'];
 export type CreateFlowInput = z.infer<typeof createFlowSchema>['body'];
 export type FlowResponseInput = z.infer<typeof flowResponseSchema>['body'];
 export type UpdateFlowInput = z.infer<typeof updateFlowSchema>['body'];

@@ -1723,4 +1723,94 @@ router.post('/send-flow', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * POST /api/n8n/send-booking-flow
+ * Envia WhatsApp Flow de Orçamento de Hospedagem (simplificado)
+ *
+ * Busca automaticamente o bookingFlowId do tenant - não precisa enviar flowId
+ * O Flow já deve estar publicado na Meta (ID: 3052481088276895)
+ *
+ * Payload:
+ * {
+ *   "phone": "5511999999999",
+ *   "conversationId": "uuid-opcional" // Para rastrear resposta na conversa
+ * }
+ *
+ * Response:
+ * {
+ *   "success": true,
+ *   "messageId": "wamid.xxx",
+ *   "flowToken": "booking_{conversationId}_{timestamp}"
+ * }
+ */
+router.post('/send-booking-flow', async (req: Request, res: Response) => {
+  try {
+    const { phone, phoneNumber, conversationId, bodyText } = req.body;
+    const phoneToUse = phoneNumber || phone;
+
+    if (!phoneToUse) {
+      return res.status(400).json({
+        error: 'Campo obrigatório: phone ou phoneNumber',
+      });
+    }
+
+    // Normalizar telefone (remover caracteres especiais)
+    const normalizedPhone = phoneToUse.replace(/\D/g, '');
+
+    logger.info({
+      tenantId: req.tenantId,
+      phone: normalizedPhone,
+      conversationId,
+    }, 'N8N: Send booking flow request');
+
+    // Enviar flow de orçamento usando bookingFlowId do tenant
+    const result = await whatsAppFlowsService.sendBookingFlow(
+      req.tenantId!,
+      normalizedPhone,
+      {
+        conversationId,
+        bodyText,
+      }
+    );
+
+    // Salvar mensagem no banco para aparecer no painel
+    await messageService.saveOutboundMessage({
+      tenantId: req.tenantId!,
+      phoneNumber: normalizedPhone,
+      whatsappMessageId: result.whatsappMessageId,
+      type: 'INTERACTIVE',
+      content: bodyText || 'Para solicitar seu orçamento de hospedagem, clique no botão abaixo e preencha o formulário! 🏨',
+      metadata: {
+        interactiveType: 'booking_flow',
+        flowToken: result.flowToken,
+        conversationId,
+      },
+    });
+
+    logger.info({
+      tenantId: req.tenantId,
+      phone: normalizedPhone,
+      flowToken: result.flowToken,
+      messageId: result.whatsappMessageId,
+    }, 'N8N: Booking flow sent and saved');
+
+    return res.json({
+      success: true,
+      messageId: result.whatsappMessageId,
+      flowToken: result.flowToken,
+      botReservaResponse: {
+        messageId: result.whatsappMessageId,
+        id: result.whatsappMessageId,
+        flowToken: result.flowToken,
+      },
+    });
+  } catch (error: any) {
+    logger.error({ error, tenantId: req.tenantId }, 'N8N: Failed to send booking flow');
+    return res.status(500).json({
+      error: 'Falha ao enviar flow de orçamento',
+      message: error.message,
+    });
+  }
+});
+
 export default router;
