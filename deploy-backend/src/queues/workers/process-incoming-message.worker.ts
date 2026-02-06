@@ -13,6 +13,7 @@ import {
   isListReply,
   isInteractiveButtonReply,
   isTemplateButtonReply,
+  isNfmReply,
   type WhatsAppMessage,
 } from '@/validators/whatsapp-webhook.validator';
 import { enqueueMediaDownload } from '../whatsapp-webhook.queue';
@@ -52,6 +53,12 @@ interface MediaMessageMetadata {
   context?: MessageContext;
   button?: { id: string; title: string };
   list?: { id: string; title: string; description?: string };
+  nfmReply?: {
+    flowName: string;
+    flowToken?: string;
+    responseData: Record<string, unknown>;
+    conversationId?: string;
+  };
   contacts?: Array<{ name?: string; phones?: string[]; emails?: string[] }>;
   rawMessage?: Prisma.InputJsonValue;
   mediaUrl?: string;
@@ -198,6 +205,16 @@ export async function processIncomingMessage(job: Job<ProcessMessageJobData>): P
     const detectedHotelUnit = detectHotelUnitSelection(message);
     if (detectedHotelUnit) {
       await handleHotelUnitSelection(tenantId, conversation.id, detectedHotelUnit, contact);
+    }
+
+    // 5.2 PROCESSAR RESPOSTA DE WHATSAPP FLOW (nfm_reply)
+    if (messageData.metadata?.nfmReply) {
+      await handleFlowResponse(
+        tenantId,
+        conversation.id,
+        messageData.metadata.nfmReply,
+        savedMessage.id
+      );
     }
 
     // 6. SE FOR MÍDIA, BAIXAR SINCRONAMENTE PARA INCLUIR URL NO PAYLOAD DO N8N
@@ -695,6 +712,49 @@ function extractMessageData(message: ProcessMessageJobData['message']): Extracte
     };
   }
 
+  // NFM REPLY (WhatsApp Flow Response)
+  if (isNfmReply(message) && message.interactive && 'nfm_reply' in message.interactive) {
+    const nfmReply = message.interactive.nfm_reply;
+
+    // Parse response_json (dados do formulário)
+    let responseData: Record<string, unknown> = {};
+    try {
+      responseData = JSON.parse(nfmReply.response_json);
+    } catch (parseError) {
+      logger.warn({
+        messageId: message.id,
+        error: parseError instanceof Error ? parseError.message : 'Unknown error',
+        rawJson: nfmReply.response_json,
+      }, 'Failed to parse nfm_reply response_json');
+    }
+
+    // Extrair conversationId do flowToken se seguir padrão booking_{conversationId}_{timestamp}
+    let conversationId: string | undefined;
+    const flowTokenMatch = message.context?.id?.match(/^booking_([a-f0-9-]{36})_\d+$/);
+    if (flowTokenMatch) {
+      conversationId = flowTokenMatch[1];
+    }
+
+    // Content é um resumo legível dos dados do flow
+    const fieldCount = Object.keys(responseData).length;
+    const content = `[Flow completo: ${nfmReply.name}] - ${fieldCount} campo(s) preenchido(s)`;
+
+    return {
+      type: MessageType.INTERACTIVE,
+      content,
+      metadata: {
+        nfmReply: {
+          flowName: nfmReply.name,
+          flowToken: message.context?.id,
+          responseData,
+          conversationId,
+        },
+        context: message.context,
+      },
+      shouldDownload: false,
+    };
+  }
+
   // CONTACTS
   if (message.type === 'contacts' && message.contacts) {
     const contactsData = message.contacts.contacts || [];
@@ -894,5 +954,94 @@ async function handleHotelUnitSelection(
       conversationId,
       hotelUnit,
     }, 'Failed to handle hotel unit selection');
+  }
+}
+
+/**
+ * Processa resposta de WhatsApp Flow (nfm_reply)
+ * Atualiza conversa e emite eventos Socket.io se houver conversationId no flowToken
+ */
+async function handleFlowResponse(
+  tenantId: string,
+  conversationId: string,
+  nfmReply: NonNullable<MediaMessageMetadata['nfmReply']>,
+  messageId: string
+): Promise<void> {
+  try {
+    logger.info({
+      tenantId,
+      conversationId,
+      flowName: nfmReply.flowName,
+      flowToken: nfmReply.flowToken,
+      extractedConversationId: nfmReply.conversationId,
+      fieldsCount: Object.keys(nfmReply.responseData).length,
+    }, 'Processing WhatsApp Flow response');
+
+    // Se o flowToken contém conversationId, atualizar a conversa específica
+    if (nfmReply.conversationId && nfmReply.conversationId !== conversationId) {
+      logger.info({
+        currentConversationId: conversationId,
+        targetConversationId: nfmReply.conversationId,
+      }, 'Flow response references different conversation, updating target conversation');
+
+      // Atualizar conversa alvo com status e última mensagem
+      await prisma.conversation.update({
+        where: {
+          id: nfmReply.conversationId,
+          tenantId, // Validação de segurança
+        },
+        data: {
+          lastMessageAt: new Date(),
+          // Opcional: mudar status para IN_PROGRESS se estava WAITING
+          status: 'IN_PROGRESS',
+        },
+      });
+
+      // Emitir evento Socket.io para a conversa alvo
+      try {
+        const io = getSocketIO();
+        io.to(`conversation:${nfmReply.conversationId}`).emit('conversation:update', {
+          conversationId: nfmReply.conversationId,
+          updates: {
+            lastMessageAt: new Date(),
+            status: 'IN_PROGRESS',
+          },
+        });
+
+        io.to(`tenant:${tenantId}`).emit('conversation:update', {
+          conversationId: nfmReply.conversationId,
+          updates: {
+            lastMessageAt: new Date(),
+            status: 'IN_PROGRESS',
+          },
+        });
+
+        logger.debug({
+          conversationId: nfmReply.conversationId,
+          tenantId,
+        }, 'Flow response events emitted via Socket.io');
+      } catch (socketError) {
+        logger.warn({
+          error: socketError,
+          conversationId: nfmReply.conversationId,
+        }, 'Failed to emit flow response events');
+      }
+    }
+
+    // Log dos dados recebidos para auditoria/debug
+    logger.info({
+      tenantId,
+      conversationId,
+      messageId,
+      flowName: nfmReply.flowName,
+      responseData: nfmReply.responseData,
+    }, 'WhatsApp Flow response processed successfully');
+  } catch (error) {
+    logger.error({
+      error: error instanceof Error ? error.message : 'Unknown error',
+      conversationId,
+      flowName: nfmReply.flowName,
+      stack: error instanceof Error ? error.stack : undefined,
+    }, 'Failed to handle flow response');
   }
 }

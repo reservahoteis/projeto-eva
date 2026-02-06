@@ -47,6 +47,9 @@ model Tenant {
   n8nApiKey     String? // Chave de API para integracao N8N
   n8nWebhookUrl String? // URL do webhook do N8N para encaminhar mensagens
 
+  // WhatsApp Flows
+  bookingFlowId String? // ID do Flow de orcamento publicado na Meta
+
   // Metadata
   metadata Json? // Dados customizados
 
