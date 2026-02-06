@@ -43,8 +43,8 @@ Thumbs.db
 *.swo
 *~
 
-# Claude Code
-.claude/
+# Claude Code - Versionado (skills e agentes do projeto)
+# .claude/ - NAO ignorar, contem skills importantes
 
 # Documentos sensíveis
 documentos.env/
@@ -77,3 +77,4 @@ github_actions_deploy
 docs/DBEAVER-SETUP.md
 nul
 COLINHA-APRESENTACAO.md
+lixo/

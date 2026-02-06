@@ -357,7 +357,7 @@ curl "https://api.seudominio.com/webhooks/whatsapp?hub.mode=subscribe&hub.verify
 - ✅ `contacts` - Contato compartilhado
 - ✅ `sticker` - Sticker/figurinha
 - ✅ `button` - Resposta de botão
-- ✅ `interactive` - Resposta de lista
+- ✅ `interactive` - Resposta de lista ou flow (nfm_reply)
 
 **Processamento:**
 1. Enfileirado em `whatsapp:incoming:message` (prioridade alta)
@@ -365,6 +365,98 @@ curl "https://api.seudominio.com/webhooks/whatsapp?hub.mode=subscribe&hub.verify
 3. Worker cria/reabre Conversation
 4. Worker salva Message
 5. Se mídia, enfileira download
+6. Se flow response (nfm_reply), processa dados e atualiza conversa alvo
+
+---
+
+### 1.1. WhatsApp Flow Response (nfm_reply)
+
+Quando o usuário completa um WhatsApp Flow, o webhook recebe uma mensagem interativa com tipo `nfm_reply`:
+
+```json
+{
+  "field": "messages",
+  "value": {
+    "messages": [
+      {
+        "from": "5511888888888",
+        "id": "wamid.xxxxx",
+        "timestamp": "1699999999",
+        "type": "interactive",
+        "interactive": {
+          "type": "nfm_reply",
+          "nfm_reply": {
+            "response_json": "{\"nome\":\"João Silva\",\"email\":\"joao@example.com\",\"telefone\":\"5511999999999\"}",
+            "body": "Sent",
+            "name": "flow"
+          }
+        }
+      }
+    ]
+  }
+}
+```
+
+**Estrutura do nfm_reply:**
+- `response_json` - JSON string com respostas do formulário
+- `body` - Texto opcional (geralmente "Sent")
+- `name` - Nome do flow
+
+**Processamento Automático:**
+1. Parse do `response_json` para extrair dados estruturados
+2. Salva mensagem com type `INTERACTIVE`
+3. Metadata inclui:
+   - `flowName` - Nome do flow
+   - `flowToken` - Token de rastreamento (se fornecido via context)
+   - `responseData` - Dados parseados do formulário
+   - `conversationId` - ID da conversa (se flowToken seguir padrão `booking_{conversationId}_{timestamp}`)
+4. Se flowToken contém conversationId válido:
+   - Atualiza conversa alvo com status `IN_PROGRESS`
+   - Atualiza `lastMessageAt`
+   - Emite eventos Socket.io para atualizar frontend em tempo real
+
+**Flow Token Pattern:**
+```typescript
+// Padrão recomendado para rastreamento
+const flowToken = `booking_${conversationId}_${Date.now()}`;
+
+// Exemplo: "booking_a1b2c3d4-e5f6-7890-abcd-ef1234567890_1699999999000"
+```
+
+**Exemplo de Metadata Salvo:**
+```json
+{
+  "nfmReply": {
+    "flowName": "guest_registration",
+    "flowToken": "booking_a1b2c3d4-e5f6-7890-abcd-ef1234567890_1699999999000",
+    "conversationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "responseData": {
+      "nome": "João Silva",
+      "email": "joao@example.com",
+      "telefone": "5511999999999",
+      "cpf": "12345678900",
+      "data_nascimento": "1990-01-15"
+    }
+  }
+}
+```
+
+**Logs Estruturados:**
+```
+INFO: Processing WhatsApp Flow response
+  - tenantId: "tenant-123"
+  - conversationId: "current-conv-id"
+  - flowName: "guest_registration"
+  - extractedConversationId: "target-conv-id"
+  - fieldsCount: 5
+
+INFO: Flow response references different conversation, updating target conversation
+  - currentConversationId: "current-conv-id"
+  - targetConversationId: "target-conv-id"
+
+INFO: WhatsApp Flow response processed successfully
+  - responseData: { nome: "João Silva", ... }
+```
 
 ---
 
@@ -454,6 +546,9 @@ Status de templates de mensagem (aprovado, rejeitado, etc).
 - `isLocationMessage()`
 - `isButtonReply()`
 - `isListReply()`
+- `isInteractiveButtonReply()`
+- `isTemplateButtonReply()`
+- `isNfmReply()` - Detecta respostas de WhatsApp Flows
 
 ---
 

@@ -1056,12 +1056,21 @@ function formatFlowResponseToText(
   const lines: string[] = [];
 
   // Mapeamento de campos conhecidos para labels legíveis
+  // Suporta tanto v3 (check_in_date) quanto v4 (checkin)
   const fieldLabels: Record<string, string> = {
+    // Campos v4 do Flow
+    checkin: 'Check-in',
+    checkout: 'Check-out',
+    guests: 'Adultos',
+    has_children: 'Tem crianças',
+    children_count: 'Quantidade de crianças',
+    children_age: 'Faixa etária das crianças',
+    // Campos v3 (compatibilidade)
     check_in_date: 'Check-in',
     check_out_date: 'Check-out',
     adults: 'Adultos',
     children: 'Crianças',
-    has_children: 'Tem crianças',
+    // Campos gerais
     hotel_unit: 'Unidade',
     room_type: 'Tipo de quarto',
     name: 'Nome',
@@ -1071,6 +1080,9 @@ function formatFlowResponseToText(
     special_requests: 'Pedidos especiais',
   };
 
+  // Campos que são datas (em milliseconds)
+  const dateFields = ['checkin', 'checkout', 'check_in_date', 'check_out_date'];
+
   // Processar cada campo
   for (const [key, value] of Object.entries(responseData)) {
     if (value === undefined || value === null || value === '') continue;
@@ -1079,7 +1091,7 @@ function formatFlowResponseToText(
     let formattedValue: string;
 
     // Formatar datas (vem em milliseconds como string)
-    if (key.includes('date') && typeof value === 'string') {
+    if (dateFields.includes(key) && typeof value === 'string') {
       try {
         const timestamp = parseInt(value, 10);
         if (!isNaN(timestamp)) {
