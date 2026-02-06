@@ -342,9 +342,9 @@ export class WhatsAppFlowsService {
         };
       }
 
-      // Adicionar CTA button text
+      // Adicionar CTA button text (parâmetro correto da Meta é flow_cta)
       if (ctaText) {
-        payload.interactive.action.parameters.flow_cta_text = ctaText;
+        payload.interactive.action.parameters.flow_cta = ctaText;
       }
 
       const response = await axiosInstance.post(
