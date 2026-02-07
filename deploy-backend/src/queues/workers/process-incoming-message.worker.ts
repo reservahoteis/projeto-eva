@@ -1046,91 +1046,120 @@ async function handleFlowResponse(
 }
 
 /**
- * Formata resposta de WhatsApp Flow em texto legível
- * Converte os campos do formulário em uma mensagem estruturada para o N8N
+ * Formata resposta de WhatsApp Flow em texto legível para o N8N
+ *
+ * Formato de saída: "de 10/02/2026 a 13/02/2026, 2 adultos e 1 criança de 4 anos"
+ * Ou sem crianças: "de 10/02/2026 a 13/02/2026, 2 adultos, sem crianças"
+ *
+ * Regras:
+ * - guests = total de hóspedes (adultos + crianças)
+ * - adultos = guests - children_count
+ * - children_age vem como faixa (ex: "3-5"), calcular média
  */
 function formatFlowResponseToText(
   responseData: Record<string, unknown>,
-  flowName: string
+  _flowName: string
 ): string {
-  const lines: string[] = [];
+  // Extrair valores do formulário
+  const checkinRaw = responseData.checkin || responseData.check_in_date;
+  const checkoutRaw = responseData.checkout || responseData.check_out_date;
+  const guestsRaw = responseData.guests || responseData.adults;
+  const hasChildren = responseData.has_children;
+  const childrenCountRaw = responseData.children_count || responseData.children;
+  const childrenAgeRaw = responseData.children_age;
 
-  // Mapeamento de campos conhecidos para labels legíveis
-  // Suporta tanto v3 (check_in_date) quanto v4 (checkin)
-  const fieldLabels: Record<string, string> = {
-    // Campos v4 do Flow
-    checkin: 'Check-in',
-    checkout: 'Check-out',
-    guests: 'Adultos',
-    has_children: 'Tem crianças',
-    children_count: 'Quantidade de crianças',
-    children_age: 'Faixa etária das crianças',
-    // Campos v3 (compatibilidade)
-    check_in_date: 'Check-in',
-    check_out_date: 'Check-out',
-    adults: 'Adultos',
-    children: 'Crianças',
-    // Campos gerais
-    hotel_unit: 'Unidade',
-    room_type: 'Tipo de quarto',
-    name: 'Nome',
-    email: 'Email',
-    phone: 'Telefone',
-    observations: 'Observações',
-    special_requests: 'Pedidos especiais',
-  };
+  // Formatar datas
+  const checkinDate = parseFlowDate(checkinRaw);
+  const checkoutDate = parseFlowDate(checkoutRaw);
 
-  // Campos que são datas (em milliseconds)
-  const dateFields = ['checkin', 'checkout', 'check_in_date', 'check_out_date'];
-
-  // Processar cada campo
-  for (const [key, value] of Object.entries(responseData)) {
-    if (value === undefined || value === null || value === '') continue;
-
-    const label = fieldLabels[key] || key;
-    let formattedValue: string;
-
-    // Formatar datas (vem em milliseconds como string)
-    if (dateFields.includes(key) && typeof value === 'string') {
-      try {
-        const timestamp = parseInt(value, 10);
-        if (!isNaN(timestamp)) {
-          const date = new Date(timestamp);
-          formattedValue = date.toLocaleDateString('pt-BR', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-          });
-        } else {
-          formattedValue = String(value);
-        }
-      } catch {
-        formattedValue = String(value);
-      }
-    }
-    // Formatar booleanos em português
-    else if (key === 'has_children' || typeof value === 'boolean') {
-      if (value === 'sim' || value === true || value === 'true') {
-        formattedValue = 'Sim';
-      } else if (value === 'nao' || value === 'não' || value === false || value === 'false') {
-        formattedValue = 'Não';
-      } else {
-        formattedValue = String(value);
-      }
-    }
-    // Outros valores
-    else {
-      formattedValue = String(value);
-    }
-
-    lines.push(`${label}: ${formattedValue}`);
+  if (!checkinDate || !checkoutDate) {
+    // Fallback: retornar dados brutos se não conseguir parsear datas
+    return `Orçamento recebido: ${JSON.stringify(responseData)}`;
   }
 
-  // Se não há campos, retornar mensagem padrão
-  if (lines.length === 0) {
-    return `[Formulário ${flowName} enviado - sem dados]`;
+  // Calcular número de adultos e crianças
+  const totalGuests = parseInt(String(guestsRaw), 10) || 0;
+  const childrenCount = hasChildren === 'sim' ? (parseInt(String(childrenCountRaw), 10) || 0) : 0;
+  const adultsCount = Math.max(totalGuests - childrenCount, 0);
+
+  // Formatar texto de adultos
+  const adultsText = adultsCount === 1 ? '1 adulto' : `${adultsCount} adultos`;
+
+  // Formatar texto de crianças
+  let childrenText: string;
+  if (hasChildren !== 'sim' || childrenCount === 0) {
+    childrenText = 'sem crianças';
+  } else {
+    // Calcular idade média da faixa etária
+    const averageAge = calculateAverageAge(String(childrenAgeRaw || ''));
+    const ageText = averageAge ? ` de ${averageAge} anos` : '';
+    childrenText = childrenCount === 1
+      ? `1 criança${ageText}`
+      : `${childrenCount} crianças${ageText}`;
   }
 
-  // Retornar texto formatado
-  return `📋 Orçamento de Hospedagem:\n${lines.join('\n')}`;
+  // Montar texto final
+  return `de ${checkinDate} a ${checkoutDate}, ${adultsText} e ${childrenText}`;
+}
+
+/**
+ * Parseia data do Flow (vem em milliseconds como string)
+ * Retorna no formato dd/mm/yyyy
+ */
+function parseFlowDate(value: unknown): string | null {
+  if (!value) return null;
+
+  try {
+    let timestamp = parseInt(String(value), 10);
+    if (isNaN(timestamp)) return null;
+
+    // Se o timestamp for muito pequeno, pode estar em segundos
+    // Timestamps em ms para 2020+ são > 1577836800000 (1 Jan 2020)
+    // Timestamps em segundos para 2020+ são > 1577836800
+    if (timestamp < 1000000000000 && timestamp > 1000000000) {
+      // Provavelmente em segundos, converter para ms
+      timestamp = timestamp * 1000;
+    }
+
+    const date = new Date(timestamp);
+
+    // Verificar se a data é válida e razoável (entre 2020 e 2030)
+    const year = date.getFullYear();
+    if (year < 2020 || year > 2035) {
+      return null;
+    }
+
+    return date.toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Calcula idade média de uma faixa etária
+ * Ex: "3-5" -> "4.0", "0-2" -> "1.0", "6-12" -> "9.0"
+ */
+function calculateAverageAge(ageRange: string): string | null {
+  if (!ageRange) return null;
+
+  // Tentar extrair números da faixa (ex: "3-5", "3 a 5", "3 - 5")
+  const match = ageRange.match(/(\d+)\s*[-a]\s*(\d+)/);
+  if (match && match[1] && match[2]) {
+    const min = parseInt(match[1], 10);
+    const max = parseInt(match[2], 10);
+    const average = (min + max) / 2;
+    return average.toFixed(1);
+  }
+
+  // Se for apenas um número, retornar ele
+  const singleNumber = ageRange.match(/^(\d+)$/);
+  if (singleNumber && singleNumber[1]) {
+    return `${singleNumber[1]}.0`;
+  }
+
+  return null;
 }
