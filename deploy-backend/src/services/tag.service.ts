@@ -1,6 +1,7 @@
 import { prisma } from '@/config/database';
 import { NotFoundError, BadRequestError } from '@/utils/errors';
 import logger from '@/config/logger';
+import type { CreateTagInput, UpdateTagBody } from '@/validators/tag.validator';
 
 export class TagService {
   /**
@@ -73,7 +74,7 @@ export class TagService {
   /**
    * Criar tag
    */
-  async createTag(tenantId: string, data: { name: string; color: string }) {
+  async createTag(tenantId: string, data: CreateTagInput) {
     // Verificar se nome ja existe no tenant (@@unique([tenantId, name]))
     const existing = await prisma.tag.findFirst({
       where: {
@@ -108,7 +109,7 @@ export class TagService {
   /**
    * Atualizar tag
    */
-  async updateTag(id: string, tenantId: string, data: { name?: string; color?: string }) {
+  async updateTag(id: string, tenantId: string, data: UpdateTagBody) {
     const existing = await prisma.tag.findFirst({
       where: { id, tenantId },
     });
