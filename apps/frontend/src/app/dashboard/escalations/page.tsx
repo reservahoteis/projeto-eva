@@ -47,6 +47,19 @@ function getStatusBadge(status: string) {
   return <Badge variant={config.variant}>{config.label}</Badge>;
 }
 
+function getReasonLabel(reason: string) {
+  const labels: Record<string, string> = {
+    USER_REQUESTED: 'Solicitado pelo cliente',
+    AI_UNABLE: 'IA nao conseguiu resolver',
+    COMPLEX_QUERY: 'Consulta complexa',
+    COMPLAINT: 'Reclamacao',
+    SALES_OPPORTUNITY: 'Oportunidade de venda',
+    URGENCY: 'Urgencia',
+    OTHER: 'Outro motivo',
+  };
+  return labels[reason] || reason;
+}
+
 // ============================================
 // MAIN COMPONENT
 // ============================================
@@ -242,7 +255,7 @@ function EscalationsPageContent() {
           <div className="text-sm text-muted-foreground">
             {escalationsData && (
               <span>
-                Mostrando {escalationsData.data.length} de {escalationsData.total} escalações
+                Mostrando {escalationsData.data.length} de {escalationsData.pagination.total} escalações
               </span>
             )}
           </div>
@@ -275,32 +288,44 @@ function EscalationsPageContent() {
         ) : (
           <div className="divide-y">
             {escalationsData?.data.map((escalation: Escalation) => (
-              <div key={escalation.id} className="flex items-center gap-4 p-4 hover:bg-accent/5">
+              <div key={escalation.id} className="flex flex-col gap-3 p-4 hover:bg-accent/5 sm:flex-row sm:items-center sm:gap-4">
                 {/* Icon */}
-                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-orange-100 text-orange-600">
-                  <AlertTriangle className="h-6 w-6" />
+                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-orange-100 text-orange-600">
+                  <AlertTriangle className="h-5 w-5" />
                 </div>
 
                 {/* Informacoes */}
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <h4 className="font-semibold">{escalation.reason}</h4>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h4 className="font-semibold text-sm">
+                      {escalation.conversation?.contact?.name || escalation.conversation?.contact?.phoneNumber || 'Contato'}
+                    </h4>
+                    {getStatusBadge(escalation.status)}
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    Criada{' '}
-                    {formatDistanceToNow(new Date(escalation.createdAt), {
-                      addSuffix: true,
-                      locale: ptBR,
-                    })}
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    {getReasonLabel(escalation.reason)}
                   </p>
                   {escalation.reasonDetail && (
-                    <p className="mt-1 text-sm text-muted-foreground italic">{escalation.reasonDetail}</p>
+                    <p className="text-xs text-muted-foreground italic mt-0.5 truncate">{escalation.reasonDetail}</p>
                   )}
+                  <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
+                    <span>
+                      {formatDistanceToNow(new Date(escalation.createdAt), {
+                        addSuffix: true,
+                        locale: ptBR,
+                      })}
+                    </span>
+                    {escalation.hotelUnit && (
+                      <span className="text-xs bg-muted px-1.5 py-0.5 rounded">{escalation.hotelUnit}</span>
+                    )}
+                    {escalation.conversation?.assignedTo && (
+                      <span>Atendente: {escalation.conversation.assignedTo.name}</span>
+                    )}
+                  </div>
                 </div>
 
-                {/* Status e Ações */}
-                <div className="flex items-center gap-3">
-                  {getStatusBadge(escalation.status)}
+                {/* Acoes */}
+                <div className="flex items-center gap-2 flex-shrink-0">
                   <Select
                     value={escalation.status}
                     onValueChange={(value) =>
@@ -308,7 +333,7 @@ function EscalationsPageContent() {
                     }
                     disabled={updateMutation.isPending}
                   >
-                    <SelectTrigger className="w-40">
+                    <SelectTrigger className="w-36 h-8 text-xs">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -325,7 +350,7 @@ function EscalationsPageContent() {
       </div>
 
       {/* Paginacao */}
-      {escalationsData && escalationsData.pages > 1 && (
+      {escalationsData && escalationsData.pagination.pages > 1 && (
         <div className="flex items-center justify-between">
           <Button
             variant="outline"
@@ -338,14 +363,14 @@ function EscalationsPageContent() {
           </Button>
 
           <span className="text-sm text-muted-foreground">
-            Página {escalationsData.page} de {escalationsData.pages}
+            Página {escalationsData.pagination.page} de {escalationsData.pagination.pages}
           </span>
 
           <Button
             variant="outline"
             size="sm"
             onClick={() => handlePageChange(currentPage + 1)}
-            disabled={currentPage >= escalationsData.pages || isLoadingList}
+            disabled={currentPage >= escalationsData.pagination.pages || isLoadingList}
           >
             Próxima
             <ChevronRight className="ml-2 h-4 w-4" />

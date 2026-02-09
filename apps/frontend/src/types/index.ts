@@ -244,6 +244,21 @@ export interface Escalation {
   attendedAt?: string;
   createdAt: string;
   resolvedAt?: string;
+  conversation?: {
+    id: string;
+    status: string;
+    contact: {
+      id: string;
+      phoneNumber: string;
+      name?: string;
+      profilePictureUrl?: string;
+    };
+    assignedTo?: {
+      id: string;
+      name: string;
+      email: string;
+    };
+  };
 }
 
 // ============================================

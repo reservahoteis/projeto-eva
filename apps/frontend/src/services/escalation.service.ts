@@ -39,10 +39,12 @@ export interface EscalationListParams {
 
 export interface EscalationListResponse {
   data: Escalation[];
-  total: number;
-  page: number;
-  limit: number;
-  pages: number;
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+  };
 }
 
 export interface EscalationStats {

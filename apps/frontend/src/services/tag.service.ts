@@ -1,10 +1,13 @@
 import api from '@/lib/axios';
-import type { Tag, PaginatedResponse } from '@/types';
+import type { Tag } from '@/types';
 
 interface ListTagsParams {
-  page?: number;
-  limit?: number;
   search?: string;
+}
+
+/** Resposta do GET /api/tags - backend retorna array simples sem paginacao */
+export interface TagListResponse {
+  data: Tag[];
 }
 
 interface CreateTagData {
@@ -24,17 +27,16 @@ const TAG_API_BASE_URL = '/api/tags' as const;
 
 class TagService {
   /**
-   * Listar tags com paginação e busca
+   * Listar tags com busca (backend retorna array completo, sem paginacao)
    */
-  async list(params?: ListTagsParams): Promise<PaginatedResponse<Tag>> {
+  async list(params?: ListTagsParams): Promise<TagListResponse> {
     try {
-      const { data } = await api.get<PaginatedResponse<Tag>>(
+      const { data } = await api.get<TagListResponse>(
         TAG_API_BASE_URL,
         { params }
       );
       return data;
     } catch (error) {
-      console.error('Erro ao listar tags:', error);
       throw error;
     }
   }
@@ -47,7 +49,6 @@ class TagService {
       const { data } = await api.get<Tag>(`${TAG_API_BASE_URL}/${id}`);
       return data;
     } catch (error) {
-      console.error('Erro ao buscar tag:', error);
       throw error;
     }
   }
@@ -69,7 +70,6 @@ class TagService {
       const { data } = await api.post<Tag>(TAG_API_BASE_URL, tagData);
       return data;
     } catch (error) {
-      console.error('Erro ao criar tag:', error);
       throw error;
     }
   }
@@ -98,7 +98,6 @@ class TagService {
 
       return data;
     } catch (error) {
-      console.error('Erro ao atualizar tag:', error);
       throw error;
     }
   }
@@ -110,7 +109,6 @@ class TagService {
     try {
       await api.delete(`${TAG_API_BASE_URL}/${id}`);
     } catch (error) {
-      console.error('Erro ao deletar tag:', error);
       throw error;
     }
   }

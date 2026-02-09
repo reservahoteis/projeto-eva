@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
+import { useState, useEffect, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useDebounce } from '@/hooks/use-debounce';
 import { tagService } from '@/services/tag.service';
 import { ProtectedRoute } from '@/components/layout/protected-route';
@@ -286,7 +286,6 @@ function TagsPageContent() {
 
   // Estados locais
   const [searchTerm, setSearchTerm] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingTag, setEditingTag] = useState<Tag | null>(null);
   const [deletingTag, setDeletingTag] = useState<Tag | null>(null);
@@ -294,17 +293,17 @@ function TagsPageContent() {
   // Debounce da busca
   const debouncedSearch = useDebounce(searchTerm, 500);
 
-  // Query para listar tags
+  // Query para listar tags (backend retorna array completo)
   const { data: tagsData, isLoading, error, refetch } = useQuery({
-    queryKey: ['tags', currentPage, debouncedSearch],
+    queryKey: ['tags', debouncedSearch],
     queryFn: () =>
       tagService.list({
-        page: currentPage,
-        limit: 20,
         search: debouncedSearch || undefined,
       }),
-    placeholderData: keepPreviousData,
   });
+
+  // Tags filtradas para exibicao
+  const tags = useMemo(() => tagsData?.data || [], [tagsData]);
 
   // Mutation para criar tag
   const createMutation = useMutation({
@@ -360,7 +359,7 @@ function TagsPageContent() {
 
     const handleTagUpdated = ({ tag }: { tag: Tag }) => {
       queryClient.setQueryData(
-        ['tags', currentPage, debouncedSearch],
+        ['tags', debouncedSearch],
         (oldData: any) => {
           if (!oldData) return oldData;
           return {
@@ -375,13 +374,12 @@ function TagsPageContent() {
 
     const handleTagDeleted = ({ tagId }: { tagId: string }) => {
       queryClient.setQueryData(
-        ['tags', currentPage, debouncedSearch],
+        ['tags', debouncedSearch],
         (oldData: any) => {
           if (!oldData) return oldData;
           return {
             ...oldData,
             data: oldData.data.filter((t: Tag) => t.id !== tagId),
-            total: oldData.total - 1,
           };
         }
       );
@@ -396,7 +394,7 @@ function TagsPageContent() {
       socket.off('tag:updated', handleTagUpdated);
       socket.off('tag:deleted', handleTagDeleted);
     };
-  }, [socket, queryClient, currentPage, debouncedSearch]);
+  }, [socket, queryClient, debouncedSearch]);
 
   // Handlers
   const handleCreateTag = async (data: TagFormData) => {
@@ -481,7 +479,7 @@ function TagsPageContent() {
               TOTAL DE TAGS
             </p>
             <p className="text-3xl font-bold text-[var(--text-primary)]">
-              {tagsData?.pagination.total || 0}
+              {tags.length}
             </p>
           </div>
           <div className="icon-box icon-box-purple">
@@ -516,7 +514,7 @@ function TagsPageContent() {
               Tentar novamente
             </Button>
           </div>
-        ) : !tagsData?.data.length ? (
+        ) : !tags.length ? (
           <div className="text-center py-8 text-[var(--text-muted)]">
             {debouncedSearch ? (
               <p>Nenhuma tag encontrada para &quot;{debouncedSearch}&quot;</p>
@@ -537,7 +535,7 @@ function TagsPageContent() {
           <>
             {/* Mobile View - Cards */}
             <div className="md:hidden space-y-3">
-              {tagsData.data.map((tag) => (
+              {tags.map((tag) => (
                 <div
                   key={tag.id}
                   className="p-4 rounded-ios-xs border border-[var(--glass-border)] bg-[var(--glass-bg-hover)]"
@@ -627,7 +625,7 @@ function TagsPageContent() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {tagsData.data.map((tag) => (
+                  {tags.map((tag) => (
                     <TableRow
                       key={tag.id}
                       className="hover:bg-[var(--glass-bg-hover)] transition-colors"
@@ -707,33 +705,11 @@ function TagsPageContent() {
           </>
         )}
 
-        {/* Paginação */}
-        {tagsData && tagsData.pagination.totalPages > 1 && (
-          <div className="flex items-center justify-between mt-4">
-            <p className="text-sm text-[var(--text-muted)]">
-              Mostrando {tagsData.data.length} de {tagsData.pagination.total} tags
-            </p>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(currentPage - 1)}
-                disabled={currentPage === 1}
-                className="glass-btn"
-              >
-                Anterior
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(currentPage + 1)}
-                disabled={currentPage === tagsData.pagination.totalPages}
-                className="glass-btn"
-              >
-                Próximo
-              </Button>
-            </div>
-          </div>
+        {/* Info total */}
+        {tags.length > 0 && (
+          <p className="text-sm text-[var(--text-muted)] mt-4">
+            {tags.length} tag{tags.length !== 1 ? 's' : ''} encontrada{tags.length !== 1 ? 's' : ''}
+          </p>
         )}
       </div>
 
