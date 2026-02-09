@@ -8,7 +8,7 @@ interface RegisterRequest {
 }
 
 interface ChangePasswordRequest {
-  currentPassword: string;
+  oldPassword: string;
   newPassword: string;
 }
 

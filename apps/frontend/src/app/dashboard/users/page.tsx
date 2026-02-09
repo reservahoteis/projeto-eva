@@ -32,7 +32,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Plus, MoreVertical, Users, Shield, UserCheck, RefreshCw, TrendingUp } from 'lucide-react';
+import { Plus, MoreVertical, Users, Shield, UserCheck, RefreshCw, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
 import { UserRole, UserStatus, type User } from '@/types';
 import { toast } from 'sonner';
 import { UserForm } from '@/components/tenant/user-form';
@@ -41,7 +41,7 @@ import { ProtectedRoute } from '@/components/layout/protected-route';
 
 function UsersPageContent() {
   const queryClient = useQueryClient();
-  const [page, _setPage] = useState(1); // TODO: Implement pagination UI
+  const [page, setPage] = useState(1);
 
   // Estados dos dialogs
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -52,7 +52,7 @@ function UsersPageContent() {
   // Query para listar usuários
   const { data: usersData, isLoading, error, refetch } = useQuery({
     queryKey: ['users', page],
-    queryFn: () => userService.list({ page, limit: 50 }),
+    queryFn: () => userService.list({ page, limit: 10 }),
   });
 
   // Mutation para criar usuário
@@ -390,6 +390,37 @@ function UsersPageContent() {
               </div>
             </div>
           ))}
+
+          {/* Pagination */}
+          {usersData && usersData.pagination.totalPages > 1 && (
+            <div className="flex items-center justify-between glass-card p-4">
+              <p className="text-sm text-[var(--text-muted)]">
+                Página {page} de {usersData.pagination.totalPages} ({usersData.pagination.total} usuários)
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page <= 1}
+                  className="glass-btn"
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  Anterior
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.min(usersData.pagination.totalPages, p + 1))}
+                  disabled={page >= usersData.pagination.totalPages}
+                  className="glass-btn"
+                >
+                  Próximo
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

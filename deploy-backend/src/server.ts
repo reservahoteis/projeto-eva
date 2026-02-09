@@ -3,6 +3,8 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import { createServer } from 'http';
+import swaggerUi from 'swagger-ui-express';
+import { swaggerSpec } from './config/swagger';
 import { env, isDev } from './config/env';
 import { testDatabaseConnection } from './config/database';
 import { testRedisConnection } from './config/redis';
@@ -79,6 +81,33 @@ if (isDev) {
 
 // Tenant isolation (CRÍTICO)
 app.use(tenantIsolationMiddleware);
+
+// ============================================
+// SWAGGER/OPENAPI DOCUMENTATION
+// ============================================
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  swaggerOptions: {
+    urls: [
+      {
+        url: '/api/docs/swagger.json',
+        name: 'CRM Hoteis API',
+      },
+    ],
+    defaultModelsExpandDepth: 1,
+    docExpansion: 'list',
+    filter: true,
+    showRequestHeaders: true,
+    persistAuthorization: true,
+  },
+  customCss: '.swagger-ui .topbar { display: none } .swagger-ui .info { margin: 20px 0; }',
+  customSiteTitle: 'CRM Hoteis API - Documentação',
+}));
+
+// Endpoint para download da spec OpenAPI
+app.get('/api/docs/swagger.json', (_req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(swaggerSpec);
+});
 
 // ============================================
 // HEALTH CHECK

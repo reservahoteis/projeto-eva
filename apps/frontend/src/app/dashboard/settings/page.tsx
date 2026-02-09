@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { settingsService } from '@/services/settings.service';
+import { authService } from '@/services/auth.service';
 import { ProtectedRoute } from '@/components/layout/protected-route';
 import { UserRole } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -11,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Switch } from '@/components/ui/switch';
 import {
   Dialog,
   DialogContent,
@@ -19,7 +21,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { MessageSquare, Bell, Users, Shield, RefreshCw } from 'lucide-react';
+import { MessageSquare, Bell, Users, Shield, RefreshCw, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -36,9 +38,22 @@ const whatsappConfigSchema = z.object({
 
 type WhatsAppConfigData = z.infer<typeof whatsappConfigSchema>;
 
+const changePasswordSchema = z.object({
+  oldPassword: z.string().min(1, 'Senha atual é obrigatória'),
+  newPassword: z.string().min(8, 'Nova senha deve ter pelo menos 8 caracteres'),
+  confirmPassword: z.string().min(1, 'Confirmação é obrigatória'),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: 'As senhas não coincidem',
+  path: ['confirmPassword'],
+});
+
+type ChangePasswordData = z.infer<typeof changePasswordSchema>;
+
 function SettingsPageContent() {
   const queryClient = useQueryClient();
   const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false);
+  const [showOldPassword, setShowOldPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
 
   // Query para carregar config do WhatsApp
   const {
@@ -72,6 +87,35 @@ function SettingsPageContent() {
   } = useForm<WhatsAppConfigData>({
     resolver: zodResolver(whatsappConfigSchema),
   });
+
+  // Change password mutation
+  const changePasswordMutation = useMutation({
+    mutationFn: authService.changePassword,
+    onSuccess: () => {
+      toast.success('Senha alterada com sucesso');
+      resetPasswordForm();
+    },
+    onError: (error: any) => {
+      const message = error.response?.data?.error || error.response?.data?.message || 'Erro ao alterar senha';
+      toast.error(message);
+    },
+  });
+
+  const {
+    register: registerPassword,
+    handleSubmit: handleSubmitPassword,
+    formState: { errors: passwordErrors },
+    reset: resetPasswordForm,
+  } = useForm<ChangePasswordData>({
+    resolver: zodResolver(changePasswordSchema),
+  });
+
+  const handleChangePassword = async (data: ChangePasswordData) => {
+    await changePasswordMutation.mutateAsync({
+      oldPassword: data.oldPassword,
+      newPassword: data.newPassword,
+    });
+  };
 
   const handleConfigSubmit = async (data: WhatsAppConfigData) => {
     await updateConfigMutation.mutateAsync(data);
@@ -217,7 +261,7 @@ function SettingsPageContent() {
         {/* Notifications */}
         <TabsContent value="notifications" className="space-y-4">
           <div className="glass-card p-6 animate-slideUp">
-            <div className="flex items-center gap-4 mb-4">
+            <div className="flex items-center gap-4 mb-6">
               <div className="icon-box icon-box-blue">
                 <Bell className="w-6 h-6 text-white" />
               </div>
@@ -226,7 +270,52 @@ function SettingsPageContent() {
                 <p className="text-sm text-[var(--text-muted)]">Escolha como deseja ser notificado</p>
               </div>
             </div>
-            <p className="text-sm text-[var(--text-muted)]">Configurações de notificação em desenvolvimento...</p>
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 rounded-ios-xs bg-[var(--glass-bg-hover)]">
+                <div>
+                  <Label className="text-[var(--text-primary)] font-medium">Novas mensagens</Label>
+                  <p className="text-sm text-[var(--text-muted)]">Notificar quando receber novas mensagens</p>
+                </div>
+                <Switch defaultChecked />
+              </div>
+
+              <div className="flex items-center justify-between p-4 rounded-ios-xs bg-[var(--glass-bg-hover)]">
+                <div>
+                  <Label className="text-[var(--text-primary)] font-medium">Conversas atribuídas</Label>
+                  <p className="text-sm text-[var(--text-muted)]">Notificar quando uma conversa for atribuída a você</p>
+                </div>
+                <Switch defaultChecked />
+              </div>
+
+              <div className="flex items-center justify-between p-4 rounded-ios-xs bg-[var(--glass-bg-hover)]">
+                <div>
+                  <Label className="text-[var(--text-primary)] font-medium">Escalações</Label>
+                  <p className="text-sm text-[var(--text-muted)]">Notificar quando uma conversa for escalada</p>
+                </div>
+                <Switch defaultChecked />
+              </div>
+
+              <div className="flex items-center justify-between p-4 rounded-ios-xs bg-[var(--glass-bg-hover)]">
+                <div>
+                  <Label className="text-[var(--text-primary)] font-medium">Sons</Label>
+                  <p className="text-sm text-[var(--text-muted)]">Reproduzir som ao receber notificações</p>
+                </div>
+                <Switch defaultChecked />
+              </div>
+
+              <div className="flex items-center justify-between p-4 rounded-ios-xs bg-[var(--glass-bg-hover)]">
+                <div>
+                  <Label className="text-[var(--text-primary)] font-medium">Notificações do navegador</Label>
+                  <p className="text-sm text-[var(--text-muted)]">Permitir notificações push do navegador</p>
+                </div>
+                <Switch />
+              </div>
+            </div>
+
+            <p className="text-xs text-[var(--text-muted)] mt-4">
+              As preferências de notificação são salvas localmente no seu navegador.
+            </p>
           </div>
         </TabsContent>
 
@@ -266,16 +355,88 @@ function SettingsPageContent() {
             </div>
 
             <div className="space-y-6">
-              <div className="p-4 rounded-ios-xs bg-[var(--glass-bg-hover)]">
-                <Label className="text-[var(--text-primary)] font-medium">Senha</Label>
-                <p className="text-sm text-[var(--text-muted)] mb-3">
+              {/* Change Password Form */}
+              <form onSubmit={handleSubmitPassword(handleChangePassword)} className="p-4 rounded-ios-xs bg-[var(--glass-bg-hover)]">
+                <Label className="text-[var(--text-primary)] font-medium">Alterar Senha</Label>
+                <p className="text-sm text-[var(--text-muted)] mb-4">
                   Altere sua senha de acesso ao sistema
                 </p>
-                <Button variant="outline" disabled className="glass-btn">
-                  Alterar Senha (em breve)
-                </Button>
-              </div>
 
+                <div className="space-y-3 max-w-md">
+                  <div className="space-y-1">
+                    <Label htmlFor="oldPassword" className="text-[var(--text-secondary)] text-sm">Senha atual</Label>
+                    <div className="relative">
+                      <Input
+                        id="oldPassword"
+                        type={showOldPassword ? 'text' : 'password'}
+                        {...registerPassword('oldPassword')}
+                        placeholder="Digite sua senha atual"
+                        disabled={changePasswordMutation.isPending}
+                        className="glass-input pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowOldPassword(!showOldPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                      >
+                        {showOldPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    {passwordErrors.oldPassword && (
+                      <p className="text-xs text-red-500">{passwordErrors.oldPassword.message}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label htmlFor="newPassword" className="text-[var(--text-secondary)] text-sm">Nova senha</Label>
+                    <div className="relative">
+                      <Input
+                        id="newPassword"
+                        type={showNewPassword ? 'text' : 'password'}
+                        {...registerPassword('newPassword')}
+                        placeholder="Mínimo 8 caracteres"
+                        disabled={changePasswordMutation.isPending}
+                        className="glass-input pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                      >
+                        {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    {passwordErrors.newPassword && (
+                      <p className="text-xs text-red-500">{passwordErrors.newPassword.message}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label htmlFor="confirmPassword" className="text-[var(--text-secondary)] text-sm">Confirmar nova senha</Label>
+                    <Input
+                      id="confirmPassword"
+                      type="password"
+                      {...registerPassword('confirmPassword')}
+                      placeholder="Repita a nova senha"
+                      disabled={changePasswordMutation.isPending}
+                      className="glass-input"
+                    />
+                    {passwordErrors.confirmPassword && (
+                      <p className="text-xs text-red-500">{passwordErrors.confirmPassword.message}</p>
+                    )}
+                  </div>
+
+                  <Button
+                    type="submit"
+                    disabled={changePasswordMutation.isPending}
+                    className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white mt-2"
+                  >
+                    {changePasswordMutation.isPending ? 'Alterando...' : 'Alterar Senha'}
+                  </Button>
+                </div>
+              </form>
+
+              {/* 2FA */}
               <div className="p-4 rounded-ios-xs bg-[var(--glass-bg-hover)]">
                 <Label className="text-[var(--text-primary)] font-medium">Autenticação de Dois Fatores</Label>
                 <p className="text-sm text-[var(--text-muted)] mb-3">
