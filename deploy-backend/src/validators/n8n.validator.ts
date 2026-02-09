@@ -253,6 +253,19 @@ export const checkAvailabilitySchema = z.object({
 });
 
 /**
+ * Schema para GET /api/n8n/check-room-availability
+ */
+export const checkRoomAvailabilitySchema = z.object({
+  unidade: z.string().min(1),
+  roomName: z.string().min(1),
+  checkin: z.string().min(1),
+  checkout: z.string().min(1),
+  adults: z.coerce.number().int().positive(),
+  children: z.coerce.number().int().nonnegative().optional(),
+  childrenAges: z.string().optional(),
+});
+
+/**
  * Schema para POST /api/n8n/send-booking-flow
  */
 export const sendBookingFlowSchema = z.object({

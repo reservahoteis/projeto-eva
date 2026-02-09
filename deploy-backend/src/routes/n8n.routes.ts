@@ -6,7 +6,8 @@ import { whatsAppFlowsService } from '@/services/whatsapp-flows.service';
 import { escalationService } from '@/services/escalation.service';
 import { messageService } from '@/services/message.service';
 import { hbookScraperService } from '@/services/hbook-scraper.service';
-import { sendFlowSchema } from '@/validators/whatsapp-flows.validator';
+import { sendFlowSchema as sendFlowFullSchema } from '@/validators/whatsapp-flows.validator';
+const sendFlowBodySchema = sendFlowFullSchema.shape.body;
 import {
   sendTextSchema,
   sendButtonsSchema,
@@ -21,6 +22,8 @@ import {
   markReadSchema,
   checkIaLockSchema,
   sendBookingFlowSchema,
+  checkAvailabilitySchema,
+  checkRoomAvailabilitySchema,
 } from '@/validators/n8n.validator';
 import { prisma } from '@/config/database';
 import { emitNewConversation, emitConversationUpdate } from '@/config/socket';
@@ -1433,7 +1436,7 @@ router.post('/mark-opportunity', validate(markOpportunitySchema), async (req: Re
  *   "scrapedAt": "2026-02-04T12:00:00.000Z"
  * }
  */
-router.get('/check-availability', async (req: Request, res: Response) => {
+router.get('/check-availability', validate(checkAvailabilitySchema, 'query'), async (req: Request, res: Response) => {
   try {
     const { unidade, checkin, checkout, adults, children, childrenAges } = req.query;
 
@@ -1540,7 +1543,7 @@ router.get('/check-availability', async (req: Request, res: Response) => {
  *   "room": { ... } // dados do quarto se disponível
  * }
  */
-router.get('/check-room-availability', async (req: Request, res: Response) => {
+router.get('/check-room-availability', validate(checkRoomAvailabilitySchema, 'query'), async (req: Request, res: Response) => {
   try {
     const { unidade, roomName, checkin, checkout, adults, children, childrenAges } = req.query;
 
@@ -1642,23 +1645,8 @@ router.get('/check-room-availability', async (req: Request, res: Response) => {
  *   }
  * }
  */
-router.post('/send-flow', async (req: Request, res: Response) => {
+router.post('/send-flow', validate(sendFlowBodySchema), async (req: Request, res: Response) => {
   try {
-    // Validar payload com Zod
-    const validation = sendFlowSchema.safeParse({ body: req.body });
-
-    if (!validation.success) {
-      const errors = validation.error.errors.map(err => ({
-        field: err.path.join('.'),
-        message: err.message,
-      }));
-
-      return res.status(400).json({
-        error: 'Validação falhou',
-        details: errors,
-      });
-    }
-
     const {
       phoneNumber,
       flowId,
@@ -1667,7 +1655,7 @@ router.post('/send-flow', async (req: Request, res: Response) => {
       headerText,
       bodyText,
       conversationId,
-    } = validation.data.body;
+    } = req.body;
 
     // Normalizar telefone (remover caracteres especiais se houver)
     const normalizedPhone = phoneNumber.replace(/\D/g, '');
