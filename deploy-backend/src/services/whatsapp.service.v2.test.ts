@@ -290,8 +290,7 @@ describe('WhatsAppServiceV2', () => {
     });
 
     it('deve enviar mensagem de texto simples com sucesso', async () => {
-      // @ts-ignore
-      const mockPost = jest.fn().mockResolvedValue({
+      const mockPost = (jest.fn() as jest.Mock<any>).mockResolvedValue({
         data: {
           messages: [{ id: 'wamid.123' }],
         },
@@ -336,8 +335,7 @@ describe('WhatsAppServiceV2', () => {
 
     it('deve enviar mensagem com preview_url habilitado', async () => {
       const mockAxiosInstance = {
-        // @ts-ignore
-        post: jest.fn().mockResolvedValue({
+        post: (jest.fn() as jest.Mock<any>).mockResolvedValue({
           data: {
             messages: [{ id: 'wamid.456' }],
           },
@@ -371,8 +369,7 @@ describe('WhatsAppServiceV2', () => {
 
     it('deve formatar número de telefone antes de enviar', async () => {
       const mockAxiosInstance = {
-        // @ts-ignore
-        post: jest.fn().mockResolvedValue({
+        post: (jest.fn() as jest.Mock<any>).mockResolvedValue({
           data: {
             messages: [{ id: 'wamid.789' }],
           },
@@ -448,8 +445,7 @@ describe('WhatsAppServiceV2', () => {
       } as never);
 
       const mockAxiosInstance = {
-        // @ts-ignore
-        post: jest.fn().mockResolvedValue({
+        post: (jest.fn() as jest.Mock<any>).mockResolvedValue({
           data: {
             messages: [], // Sem ID
           },
@@ -477,8 +473,7 @@ describe('WhatsAppServiceV2', () => {
       } as never);
 
       const mockAxiosInstance = {
-        // @ts-ignore
-        post: jest.fn().mockResolvedValue({
+        post: (jest.fn() as jest.Mock<any>).mockResolvedValue({
           data: {
             messages: [{ id: 'wamid.cache' }],
           },
@@ -518,8 +513,7 @@ describe('WhatsAppServiceV2', () => {
 
     it('deve enviar imagem sem caption', async () => {
       const mockAxiosInstance = {
-        // @ts-ignore
-        post: jest.fn().mockResolvedValue({
+        post: (jest.fn() as jest.Mock<any>).mockResolvedValue({
           data: {
             messages: [{ id: 'wamid.img1' }],
           },
@@ -556,8 +550,7 @@ describe('WhatsAppServiceV2', () => {
 
     it('deve enviar imagem com caption', async () => {
       const mockAxiosInstance = {
-        // @ts-ignore
-        post: jest.fn().mockResolvedValue({
+        post: (jest.fn() as jest.Mock<any>).mockResolvedValue({
           data: {
             messages: [{ id: 'wamid.img2' }],
           },
@@ -590,8 +583,7 @@ describe('WhatsAppServiceV2', () => {
 
     it('deve enviar vídeo', async () => {
       const mockAxiosInstance = {
-        // @ts-ignore
-        post: jest.fn().mockResolvedValue({
+        post: (jest.fn() as jest.Mock<any>).mockResolvedValue({
           data: {
             messages: [{ id: 'wamid.vid1' }],
           },
@@ -625,8 +617,7 @@ describe('WhatsAppServiceV2', () => {
 
     it('deve enviar áudio (PTT)', async () => {
       const mockAxiosInstance = {
-        // @ts-ignore
-        post: jest.fn().mockResolvedValue({
+        post: (jest.fn() as jest.Mock<any>).mockResolvedValue({
           data: {
             messages: [{ id: 'wamid.aud1' }],
           },
@@ -658,8 +649,7 @@ describe('WhatsAppServiceV2', () => {
 
     it('deve enviar documento com filename', async () => {
       const mockAxiosInstance = {
-        // @ts-ignore
-        post: jest.fn().mockResolvedValue({
+        post: (jest.fn() as jest.Mock<any>).mockResolvedValue({
           data: {
             messages: [{ id: 'wamid.doc1' }],
           },
@@ -744,8 +734,7 @@ describe('WhatsAppServiceV2', () => {
 
     it('deve enviar template simples sem parâmetros', async () => {
       const mockAxiosInstance = {
-        // @ts-ignore
-        post: jest.fn().mockResolvedValue({
+        post: (jest.fn() as jest.Mock<any>).mockResolvedValue({
           data: {
             messages: [{ id: 'wamid.tpl1' }],
           },
@@ -787,8 +776,7 @@ describe('WhatsAppServiceV2', () => {
 
     it('deve enviar template com parâmetros', async () => {
       const mockAxiosInstance = {
-        // @ts-ignore
-        post: jest.fn().mockResolvedValue({
+        post: (jest.fn() as jest.Mock<any>).mockResolvedValue({
           data: {
             messages: [{ id: 'wamid.tpl2' }],
           },
@@ -834,8 +822,7 @@ describe('WhatsAppServiceV2', () => {
 
     it('deve usar linguageCode padrão pt_BR se não especificado', async () => {
       const mockAxiosInstance = {
-        // @ts-ignore
-        post: jest.fn().mockResolvedValue({
+        post: (jest.fn() as jest.Mock<any>).mockResolvedValue({
           data: {
             messages: [{ id: 'wamid.tpl3' }],
           },
@@ -898,8 +885,7 @@ describe('WhatsAppServiceV2', () => {
 
     it('deve enviar botões (1 botão)', async () => {
       const mockAxiosInstance = {
-        // @ts-ignore
-        post: jest.fn().mockResolvedValue({
+        post: (jest.fn() as jest.Mock<any>).mockResolvedValue({
           data: {
             messages: [{ id: 'wamid.btn1' }],
           },
@@ -948,8 +934,7 @@ describe('WhatsAppServiceV2', () => {
 
     it('deve enviar botões (3 botões - máximo)', async () => {
       const mockAxiosInstance = {
-        // @ts-ignore
-        post: jest.fn().mockResolvedValue({
+        post: (jest.fn() as jest.Mock<any>).mockResolvedValue({
           data: {
             messages: [{ id: 'wamid.btn3' }],
           },
@@ -992,8 +977,7 @@ describe('WhatsAppServiceV2', () => {
 
     it('deve incluir header e footer se fornecidos', async () => {
       const mockAxiosInstance = {
-        // @ts-ignore
-        post: jest.fn().mockResolvedValue({
+        post: (jest.fn() as jest.Mock<any>).mockResolvedValue({
           data: {
             messages: [{ id: 'wamid.btn4' }],
           },
@@ -1087,8 +1071,7 @@ describe('WhatsAppServiceV2', () => {
 
     it('deve enviar lista com uma seção', async () => {
       const mockAxiosInstance = {
-        // @ts-ignore
-        post: jest.fn().mockResolvedValue({
+        post: (jest.fn() as jest.Mock<any>).mockResolvedValue({
           data: {
             messages: [{ id: 'wamid.list1' }],
           },
@@ -1147,8 +1130,7 @@ describe('WhatsAppServiceV2', () => {
 
     it('deve enviar lista com múltiplas seções', async () => {
       const mockAxiosInstance = {
-        // @ts-ignore
-        post: jest.fn().mockResolvedValue({
+        post: (jest.fn() as jest.Mock<any>).mockResolvedValue({
           data: {
             messages: [{ id: 'wamid.list2' }],
           },
@@ -1196,8 +1178,7 @@ describe('WhatsAppServiceV2', () => {
 
     it('deve truncar textos longos (title 24 chars, description 72 chars)', async () => {
       const mockAxiosInstance = {
-        // @ts-ignore
-        post: jest.fn().mockResolvedValue({
+        post: (jest.fn() as jest.Mock<any>).mockResolvedValue({
           data: {
             messages: [{ id: 'wamid.list3' }],
           },
@@ -1320,8 +1301,7 @@ describe('WhatsAppServiceV2', () => {
     });
 
     it('deve marcar mensagem como lida', async () => {
-      // @ts-ignore
-      const mockPost = (jest.fn() as jest.Mock).mockResolvedValue({ data: { success: true } });
+      const mockPost = (jest.fn() as jest.Mock<any>).mockResolvedValue({ data: { success: true } });
 
       const mockAxiosInstance = {
         post: mockPost,
@@ -1358,8 +1338,7 @@ describe('WhatsAppServiceV2', () => {
     });
 
     it('não deve falhar se API retornar erro (não crítico)', async () => {
-      // @ts-ignore
-      const mockPost = (jest.fn() as jest.Mock).mockRejectedValue(new Error('API Error'));
+      const mockPost = (jest.fn() as jest.Mock<any>).mockRejectedValue(new Error('API Error'));
 
       const mockAxiosInstance = {
         post: mockPost,
@@ -1394,16 +1373,12 @@ describe('WhatsAppServiceV2', () => {
     it('deve baixar mídia com sucesso', async () => {
       const mockBuffer = Buffer.from('fake-image-data');
 
-      // @ts-ignore
-      const mockGet = (jest
-        .fn() as jest.Mock)
-        // @ts-ignore
+      const mockGet = (jest.fn() as jest.Mock<any>)
         .mockResolvedValueOnce({
           data: {
             url: 'https://cdn.whatsapp.com/media/12345',
           },
         })
-        // @ts-ignore
         .mockResolvedValueOnce({
           data: mockBuffer,
         });
@@ -1430,8 +1405,7 @@ describe('WhatsAppServiceV2', () => {
     });
 
     it('deve lançar InternalServerError se WhatsApp não retornar URL', async () => {
-      // @ts-ignore
-      const mockGet = (jest.fn() as jest.Mock).mockResolvedValue({
+      const mockGet = (jest.fn() as jest.Mock<any>).mockResolvedValue({
         data: {
           url: null, // Sem URL
         },
@@ -1454,16 +1428,12 @@ describe('WhatsAppServiceV2', () => {
     });
 
     it('deve lançar InternalServerError se download falhar', async () => {
-      // @ts-ignore
-      const mockGet = (jest
-        .fn() as jest.Mock)
-        // @ts-ignore
+      const mockGet = (jest.fn() as jest.Mock<any>)
         .mockResolvedValueOnce({
           data: {
             url: 'https://cdn.whatsapp.com/media/12345',
           },
         })
-        // @ts-ignore
         .mockRejectedValueOnce(new Error('Download failed'));
 
       const mockAxiosInstance = {

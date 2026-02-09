@@ -228,8 +228,7 @@ export class ConversationService {
           select: { hotelUnit: true },
         });
 
-        // @ts-ignore - hotelUnit pode não existir ainda no tipo
-        const conversationUnit = (conversation as any).hotelUnit;
+        const conversationUnit = conversation.hotelUnit;
         const userUnit = user?.hotelUnit;
 
         // Se conversa não está atribuída a mim E não é da minha unidade
@@ -675,9 +674,7 @@ export class ConversationService {
         contactId: contact.id,
         status: (data.status || 'OPEN') as ConversationStatus,
         priority: data.priority || 'MEDIUM',
-        // @ts-ignore - Campo source pode não existir ainda no Prisma schema
         source: data.source,
-        // @ts-ignore - Campo hotelUnit será adicionado após migration
         hotelUnit: data.hotelUnit,
         metadata: data.metadata,
         assignedToId: data.assignedToId,
@@ -720,7 +717,6 @@ export class ConversationService {
 
     // 5. Emitir evento Socket.io (apenas se status != BOT_HANDLING)
     // Conversas BOT_HANDLING não devem notificar atendentes
-    // @ts-ignore - BOT_HANDLING será adicionado após migration
     if (conversation.status !== 'BOT_HANDLING') {
       try {
         const { emitNewConversation } = await import('@/config/socket');
