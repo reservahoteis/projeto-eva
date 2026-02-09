@@ -4,6 +4,7 @@ export const listConversationsSchema = z.object({
   status: z.enum(['BOT_HANDLING', 'OPEN', 'IN_PROGRESS', 'WAITING', 'CLOSED']).optional(),
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
   assignedToId: z.string().uuid().optional(),
+  isOpportunity: z.enum(['true', 'false']).transform(v => v === 'true').optional(),
   search: z.string().optional(),
   page: z.coerce.number().int().min(1).optional(),
   limit: z.coerce.number().int().min(1).max(100).optional(),

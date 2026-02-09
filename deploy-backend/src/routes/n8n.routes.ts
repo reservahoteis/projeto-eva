@@ -817,6 +817,7 @@ router.post('/send-carousel', validate(sendCarouselSchema), async (req: Request,
           cardsCount: cards.length,
           cards: cards.map((card: any) => ({
             imageUrl: card.imageUrl,
+            bodyParams: card.bodyParams,
             buttonPayloads: card.buttonPayloads,
           })),
         },

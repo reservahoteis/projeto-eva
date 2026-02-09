@@ -349,11 +349,27 @@ export class MessageService {
       logger.info({ contactId: contact.id, phoneNumber: data.phoneNumber }, 'Contact created for AI message');
     }
 
-    // 2. Buscar ou criar conversa - CORREÇÃO: capturar se é nova conversa
+    // 2. Buscar ou criar conversa
+    logger.debug({
+      tenantId: data.tenantId,
+      contactId: contact.id,
+      phoneNumber: data.phoneNumber,
+      whatsappMessageId: data.whatsappMessageId,
+    }, 'saveOutboundMessage: Looking for conversation');
+
     const { conversation, isNew: isNewConversation } = await conversationService.getOrCreateConversation(
       data.tenantId,
       contact.id
     );
+
+    if (isNewConversation) {
+      logger.warn({
+        tenantId: data.tenantId,
+        conversationId: conversation.id,
+        contactId: contact.id,
+        phoneNumber: data.phoneNumber,
+      }, 'saveOutboundMessage: Created NEW conversation for outbound - this may indicate inbound/outbound mismatch');
+    }
 
     // 3. Verificar se mensagem já existe (idempotência)
     const existingMessage = await prisma.message.findUnique({

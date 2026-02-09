@@ -22,6 +22,7 @@ import {
   MessageSquare,
   Users,
   RefreshCw,
+  MoonStar,
 } from 'lucide-react';
 
 type Period = '7d' | '30d' | '90d' | '1y';
@@ -260,34 +261,65 @@ function ReportsPageContent() {
         </div>
       </div>
 
-      {/* Horários de Pico */}
+      {/* Horários de Pico - 24h completo */}
       <div className="glass-card p-6 animate-slideUp" style={{ animationDelay: '0.6s' }}>
-        <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4">Horários de Pico</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-[var(--text-primary)]">Volume por Hora (24h)</h2>
+          {hourlyData?.businessHoursMetrics && (
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-3 rounded-sm bg-gradient-to-t from-blue-500 to-indigo-500" />
+                <span className="text-xs text-[var(--text-muted)]">Comercial (8h-20h)</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-3 rounded-sm bg-gradient-to-t from-amber-500 to-orange-500" />
+                <span className="text-xs text-[var(--text-muted)]">Fora do horário</span>
+              </div>
+            </div>
+          )}
+        </div>
         {isLoadingHourly ? (
           <Skeleton className="h-40 w-full" />
         ) : (
           <>
-            <p className="text-sm text-[var(--text-muted)] mb-4">Volume de conversas por hora</p>
-            <div className="flex items-end justify-between gap-2 h-40">
-              {hourlyData?.hourlyVolume
-                .filter((item) => item.hour >= 8 && item.hour <= 19)
-                .map((item) => {
-                  const maxCount = Math.max(
-                    ...hourlyData.hourlyVolume.map((h) => h.count),
-                    1
-                  );
-                  const height = maxCount > 0 ? (item.count / maxCount) * 100 : 0;
-                  return (
-                    <div key={item.hour} className="flex-1 flex flex-col items-center gap-2">
-                      <div
-                        className="w-full bg-gradient-to-t from-blue-500 to-indigo-500 rounded-t-lg shadow-lg"
-                        style={{ height: `${height}%`, minHeight: height > 0 ? '4px' : '0' }}
-                        title={`${item.count} conversas às ${item.hour}h`}
-                      />
-                      <span className="text-xs text-[var(--text-muted)]">{item.hour}h</span>
-                    </div>
-                  );
-                })}
+            {/* Metricas de fora do horario */}
+            {hourlyData?.businessHoursMetrics && hourlyData.businessHoursMetrics.outsideCount > 0 && (
+              <div className="flex items-center gap-4 mb-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                <MoonStar className="w-5 h-5 text-amber-500 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-[var(--text-primary)]">
+                    {hourlyData.businessHoursMetrics.outsidePercentage}% fora do horário comercial
+                  </p>
+                  <p className="text-xs text-[var(--text-muted)]">
+                    {hourlyData.businessHoursMetrics.outsideCount} conversas fora do horário ({hourlyData.businessHoursMetrics.businessHoursStart}h-{hourlyData.businessHoursMetrics.businessHoursEnd}h)
+                  </p>
+                </div>
+              </div>
+            )}
+            <div className="flex items-end justify-between gap-1 h-40">
+              {hourlyData?.hourlyVolume.map((item) => {
+                const maxCount = Math.max(
+                  ...hourlyData.hourlyVolume.map((h) => h.count),
+                  1
+                );
+                const height = maxCount > 0 ? (item.count / maxCount) * 100 : 0;
+                return (
+                  <div key={item.hour} className="flex-1 flex flex-col items-center gap-1">
+                    <div
+                      className={`w-full rounded-t-sm shadow-sm ${
+                        item.isBusinessHour
+                          ? 'bg-gradient-to-t from-blue-500 to-indigo-500'
+                          : 'bg-gradient-to-t from-amber-500 to-orange-500'
+                      }`}
+                      style={{ height: `${height}%`, minHeight: height > 0 ? '4px' : '0' }}
+                      title={`${item.count} conversas às ${item.hour}h${!item.isBusinessHour ? ' (fora do horário)' : ''}`}
+                    />
+                    <span className={`text-[10px] ${item.isBusinessHour ? 'text-[var(--text-muted)]' : 'text-amber-500'}`}>
+                      {item.hour}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </>
         )}

@@ -37,7 +37,15 @@ interface HourlyVolumeResult {
   hourlyVolume: Array<{
     hour: number;
     count: number;
+    isBusinessHour: boolean;
   }>;
+  businessHoursMetrics: {
+    businessHoursStart: number;
+    businessHoursEnd: number;
+    insideCount: number;
+    outsideCount: number;
+    outsidePercentage: number;
+  };
 }
 
 export class ReportService {
@@ -303,19 +311,41 @@ export class ReportService {
       }
     });
 
-    const hourlyVolume = Object.entries(hourlyData).map(([hour, count]) => ({
-      hour: parseInt(hour),
-      count,
-    }));
+    // Horario comercial padrao para hoteis (8h-20h)
+    const businessHoursStart = 8;
+    const businessHoursEnd = 20;
+
+    let insideCount = 0;
+    let outsideCount = 0;
+
+    const hourlyVolume = Object.entries(hourlyData).map(([hour, count]) => {
+      const h = parseInt(hour);
+      const isBusinessHour = h >= businessHoursStart && h < businessHoursEnd;
+      if (isBusinessHour) {
+        insideCount += count;
+      } else {
+        outsideCount += count;
+      }
+      return { hour: h, count, isBusinessHour };
+    });
+
+    const total = insideCount + outsideCount;
 
     logger.info(
-      { tenantId, period, totalConversations: conversations.length },
+      { tenantId, period, totalConversations: conversations.length, insideCount, outsideCount },
       'Hourly volume report generated'
     );
 
     return {
       period,
       hourlyVolume,
+      businessHoursMetrics: {
+        businessHoursStart,
+        businessHoursEnd,
+        insideCount,
+        outsideCount,
+        outsidePercentage: total > 0 ? Math.round((outsideCount / total) * 100) : 0,
+      },
     };
   }
 }

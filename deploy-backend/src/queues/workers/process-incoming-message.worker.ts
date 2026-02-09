@@ -17,7 +17,7 @@ import {
   type WhatsAppMessage,
 } from '@/validators/whatsapp-webhook.validator';
 import { enqueueMediaDownload } from '../whatsapp-webhook.queue';
-import { emitNewMessage, getSocketIO } from '@/config/socket';
+import { emitNewMessage, emitConversationUpdate, getSocketIO } from '@/config/socket';
 import { whatsAppService } from '@/services/whatsapp.service';
 import { n8nService } from '@/services/n8n.service';
 import { ConversationStatus, MessageType, Prisma } from '@prisma/client';
@@ -133,6 +133,26 @@ const VALID_HOTEL_UNITS = [
   'Santo Antônio do Pinhal',
 ];
 
+// Keywords que indicam que o cliente quer falar com um humano
+// Quando detectadas, a conversa e marcada como oportunidade e escalada para o time de vendas
+const HUMAN_REQUEST_KEYWORDS = [
+  'humano',
+  'atendente',
+  'vendedor',
+  'pessoa',
+  'falar com alguem',
+  'falar com alguém',
+  'quero falar',
+  'atendimento humano',
+  'pessoa real',
+  'falar com uma pessoa',
+  'quero atendente',
+  'me transfere',
+  'transferir',
+  'operador',
+  'falar com gente',
+];
+
 // Mapeamento de IDs/aliases para nomes de unidades (caso o N8N use IDs diferentes)
 const HOTEL_UNIT_ALIASES: Record<string, string> = {
   'ilha_bela': 'Ilhabela',
@@ -207,7 +227,13 @@ export async function processIncomingMessage(job: Job<ProcessMessageJobData>): P
       await handleHotelUnitSelection(tenantId, conversation.id, detectedHotelUnit, contact);
     }
 
-    // 5.2 PROCESSAR RESPOSTA DE WHATSAPP FLOW (nfm_reply)
+    // 5.2 DETECTAR PEDIDO DE ATENDENTE HUMANO (keywords: "humano", "atendente", etc.)
+    // Marca como oportunidade para o time de vendas e trava a IA
+    if (!conversation.iaLocked && detectHumanRequest(message)) {
+      await handleHumanRequest(tenantId, conversation.id, messageData.content || '');
+    }
+
+    // 5.3 PROCESSAR RESPOSTA DE WHATSAPP FLOW (nfm_reply)
     if (messageData.metadata?.nfmReply) {
       await handleFlowResponse(
         tenantId,
@@ -470,19 +496,20 @@ async function findOrCreateContact(
 async function findOrCreateConversation(
   tenantId: string,
   contactId: string
-): Promise<{ id: string; status: string }> {
-  // Buscar conversa aberta ou em progresso
+): Promise<{ id: string; status: string; iaLocked: boolean }> {
+  // Buscar conversa ativa (inclui BOT_HANDLING para consistencia com getOrCreateConversation)
   let conversation = await prisma.conversation.findFirst({
     where: {
       tenantId,
       contactId,
       status: {
-        in: ['OPEN', 'IN_PROGRESS', 'WAITING'],
+        in: ['BOT_HANDLING', 'OPEN', 'IN_PROGRESS', 'WAITING'],
       },
     },
     select: {
       id: true,
       status: true,
+      iaLocked: true,
     },
     orderBy: {
       lastMessageAt: 'desc',
@@ -502,6 +529,7 @@ async function findOrCreateConversation(
       select: {
         id: true,
         status: true,
+        iaLocked: true,
       },
     });
 
@@ -811,51 +839,97 @@ function extractMessageData(message: ProcessMessageJobData['message']): Extracte
  * @param message - Mensagem WhatsApp com possível list_reply
  * @returns Nome da unidade hoteleira se detectada, null caso contrário
  */
-function detectHotelUnitSelection(message: WhatsAppMessage): string | null {
-  // Verificar se é um list_reply
-  if (!isListReply(message) || !message.interactive || !('list_reply' in message.interactive)) {
-    return null;
+/**
+ * Tenta fazer match de um ID e/ou titulo com unidades hoteleiras validas
+ * Retorna o nome da unidade se encontrado, null caso contrario
+ */
+function matchHotelUnit(id?: string | null, title?: string | null, source?: string): string | null {
+  // 1. Titulo exato
+  if (title) {
+    const exactMatch = VALID_HOTEL_UNITS.find(
+      (unit) => unit.toLowerCase() === title.toLowerCase().trim()
+    );
+    if (exactMatch) {
+      logger.info({ detectedUnit: exactMatch, source: `${source}_title_exact`, title }, 'Hotel unit detected');
+      return exactMatch;
+    }
   }
 
-  const listReply = message.interactive.list_reply;
-  const id = listReply.id?.toLowerCase()?.trim();
-  const title = listReply.title?.trim();
-
-  logger.debug({ id, title }, 'Checking list_reply for hotel unit selection');
-
-  // 1. Verificar se o título corresponde exatamente a uma unidade válida
-  const exactMatch = VALID_HOTEL_UNITS.find(
-    (unit) => unit.toLowerCase() === title?.toLowerCase()
-  );
-  if (exactMatch) {
-    logger.info({ detectedUnit: exactMatch, source: 'title_exact' }, 'Hotel unit detected from list_reply title');
-    return exactMatch;
+  // 2. ID alias
+  const normalizedId = id?.toLowerCase()?.trim();
+  if (normalizedId && HOTEL_UNIT_ALIASES[normalizedId]) {
+    logger.info({ detectedUnit: HOTEL_UNIT_ALIASES[normalizedId], source: `${source}_id_alias`, id }, 'Hotel unit detected');
+    return HOTEL_UNIT_ALIASES[normalizedId];
   }
 
-  // 2. Verificar se o ID corresponde a um alias
-  if (id && HOTEL_UNIT_ALIASES[id]) {
-    logger.info({ detectedUnit: HOTEL_UNIT_ALIASES[id], source: 'id_alias', id }, 'Hotel unit detected from list_reply id alias');
-    return HOTEL_UNIT_ALIASES[id];
+  // 3. Titulo parcial
+  if (title) {
+    const partialMatch = VALID_HOTEL_UNITS.find(
+      (unit) => title.toLowerCase().includes(unit.toLowerCase())
+    );
+    if (partialMatch) {
+      logger.info({ detectedUnit: partialMatch, source: `${source}_title_partial`, title }, 'Hotel unit detected');
+      return partialMatch;
+    }
   }
 
-  // 3. Verificar se o título contém o nome de uma unidade (match parcial)
-  const partialMatch = VALID_HOTEL_UNITS.find(
-    (unit) => title?.toLowerCase().includes(unit.toLowerCase())
-  );
-  if (partialMatch) {
-    logger.info({ detectedUnit: partialMatch, source: 'title_partial', title }, 'Hotel unit detected from list_reply title (partial match)');
-    return partialMatch;
-  }
-
-  // 4. Verificar se o ID contém o nome de uma unidade (sem underscores/hifens)
-  if (id) {
-    const normalizedId = id.replace(/[_-]/g, ' ');
+  // 4. ID parcial (sem underscores/hifens)
+  if (normalizedId) {
+    const cleanId = normalizedId.replace(/[_-]/g, ' ');
     const idPartialMatch = VALID_HOTEL_UNITS.find(
-      (unit) => normalizedId.includes(unit.toLowerCase()) || unit.toLowerCase().replace(/ /g, '').includes(normalizedId.replace(/ /g, ''))
+      (unit) => cleanId.includes(unit.toLowerCase()) || unit.toLowerCase().replace(/ /g, '').includes(cleanId.replace(/ /g, ''))
     );
     if (idPartialMatch) {
-      logger.info({ detectedUnit: idPartialMatch, source: 'id_partial', id }, 'Hotel unit detected from list_reply id (partial match)');
+      logger.info({ detectedUnit: idPartialMatch, source: `${source}_id_partial`, id }, 'Hotel unit detected');
       return idPartialMatch;
+    }
+  }
+
+  return null;
+}
+
+function detectHotelUnitSelection(message: WhatsAppMessage): string | null {
+  // 1. LIST REPLY (lista interativa)
+  if (isListReply(message) && message.interactive && 'list_reply' in message.interactive) {
+    const listReply = message.interactive.list_reply;
+    const result = matchHotelUnit(listReply.id, listReply.title, 'list_reply');
+    if (result) return result;
+  }
+
+  // 2. INTERACTIVE BUTTON REPLY (botoes interativos)
+  if (isInteractiveButtonReply(message) && message.interactive && 'button_reply' in message.interactive) {
+    const buttonReply = message.interactive.button_reply;
+    const result = matchHotelUnit(buttonReply.id, buttonReply.title, 'interactive_button');
+    if (result) return result;
+  }
+
+  // 3. BUTTON REPLY (formato antigo)
+  if (isButtonReply(message) && message.button) {
+    const button = message.button as { button_reply?: { id: string; title: string }; payload?: string; text?: string };
+    if (button.button_reply) {
+      const result = matchHotelUnit(button.button_reply.id, button.button_reply.title, 'button_reply');
+      if (result) return result;
+    }
+    if (button.payload || button.text) {
+      const result = matchHotelUnit(button.payload, button.text, 'template_button');
+      if (result) return result;
+    }
+  }
+
+  // 4. TEMPLATE BUTTON REPLY (Quick Reply de template/carousel)
+  if (isTemplateButtonReply(message) && message.button) {
+    const button = message.button as { payload: string; text: string };
+    const result = matchHotelUnit(button.payload, button.text, 'template_quick_reply');
+    if (result) return result;
+  }
+
+  // 5. TEXTO PURO (cliente digita o nome da unidade)
+  if (isTextMessage(message) && message.text?.body) {
+    const text = message.text.body.trim();
+    // So detecta se o texto e curto (para nao pegar mensagens longas que mencionam uma unidade)
+    if (text.length <= 40) {
+      const result = matchHotelUnit(null, text, 'text_message');
+      if (result) return result;
     }
   }
 
@@ -953,6 +1027,99 @@ async function handleHotelUnitSelection(
       conversationId,
       hotelUnit,
     }, 'Failed to handle hotel unit selection');
+  }
+}
+
+/**
+ * Detecta se o cliente esta pedindo para falar com um humano
+ * Verifica keywords no texto da mensagem (case-insensitive, sem acentos)
+ */
+function detectHumanRequest(message: WhatsAppMessage): boolean {
+  if (!isTextMessage(message) || !message.text?.body) {
+    return false;
+  }
+
+  const text = message.text.body
+    .toLowerCase()
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, ''); // Remove acentos
+
+  // So detecta em mensagens curtas (evita falso positivo em textos longos)
+  if (text.length > 80) return false;
+
+  return HUMAN_REQUEST_KEYWORDS.some((keyword) => {
+    const normalizedKeyword = keyword
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+    return text.includes(normalizedKeyword);
+  });
+}
+
+/**
+ * Escala a conversa para atendimento humano (time de vendas)
+ * Marca como oportunidade, trava a IA e muda status para OPEN
+ */
+async function handleHumanRequest(
+  tenantId: string,
+  conversationId: string,
+  messageContent: string
+): Promise<void> {
+  try {
+    const now = new Date();
+
+    const updatedConversation = await prisma.conversation.update({
+      where: { id: conversationId },
+      data: {
+        isOpportunity: true,
+        opportunityAt: now,
+        iaLocked: true,
+        iaLockedAt: now,
+        iaLockedBy: 'system',
+        status: 'OPEN',
+      } as any,
+      include: {
+        contact: {
+          select: {
+            id: true,
+            phoneNumber: true,
+            name: true,
+            profilePictureUrl: true,
+          },
+        },
+        assignedTo: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    // Emitir atualizacao via Socket.io para o frontend
+    try {
+      emitConversationUpdate(tenantId, conversationId, {
+        isOpportunity: true,
+        iaLocked: true,
+        iaLockedAt: now.toISOString(),
+        iaLockedBy: 'system',
+        status: 'OPEN',
+      }, updatedConversation.hotelUnit ?? undefined);
+    } catch (socketError) {
+      logger.warn({ error: socketError }, 'Failed to emit human request escalation via Socket.io');
+    }
+
+    logger.info({
+      tenantId,
+      conversationId,
+      trigger: messageContent,
+    }, 'Conversation escalated to human - client requested attendant (isOpportunity=true, iaLocked=true)');
+  } catch (error) {
+    logger.error({
+      error: error instanceof Error ? error.message : 'Unknown error',
+      conversationId,
+    }, 'Failed to handle human request escalation');
   }
 }
 

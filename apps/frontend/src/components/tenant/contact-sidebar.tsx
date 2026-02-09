@@ -20,6 +20,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import {
   User,
+  UserMinus,
   Phone,
   Mail,
   Calendar,
@@ -94,8 +95,21 @@ export function ContactSidebar({ conversation, onIaLockChange, onArchive, onDele
     },
   });
 
+  const unassignMutation = useMutation({
+    mutationFn: () => conversationService.unassign(conversation.id),
+    onSuccess: () => {
+      toast.success('Atribuição removida!');
+      setSelectedUserId('');
+    },
+    onError: () => {
+      toast.error('Erro ao remover atribuição');
+    },
+  });
+
   const handleAssignToUser = (userId: string) => {
-    if (userId === 'me') {
+    if (userId === 'unassign') {
+      unassignMutation.mutate();
+    } else if (userId === 'me') {
       assignToMeMutation.mutate();
     } else if (userId) {
       assignToUserMutation.mutate(userId);
@@ -277,7 +291,7 @@ export function ContactSidebar({ conversation, onIaLockChange, onArchive, onDele
                 <Select
                   value={selectedUserId}
                   onValueChange={handleAssignToUser}
-                  disabled={assignToMeMutation.isPending || assignToUserMutation.isPending}
+                  disabled={assignToMeMutation.isPending || assignToUserMutation.isPending || unassignMutation.isPending}
                 >
                   <SelectTrigger className="w-full glass-input-sidebar">
                     <div className="flex items-center gap-2">
@@ -286,6 +300,14 @@ export function ContactSidebar({ conversation, onIaLockChange, onArchive, onDele
                     </div>
                   </SelectTrigger>
                   <SelectContent>
+                    {conversation.assignedTo && (
+                      <SelectItem value="unassign">
+                        <div className="flex items-center gap-2 text-red-400">
+                          <UserMinus className="h-4 w-4" />
+                          Remover atribuição
+                        </div>
+                      </SelectItem>
+                    )}
                     <SelectItem value="me">
                       <div className="flex items-center gap-2">
                         <User className="h-4 w-4" />

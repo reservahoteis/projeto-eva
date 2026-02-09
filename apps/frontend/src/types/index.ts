@@ -144,6 +144,7 @@ export interface Conversation {
   isOpportunity: boolean;
   opportunityAt?: string;
   lastMessageAt: string;
+  lastInboundAt?: string;
   lastMessage?: Message;
   unreadCount: number;
   tags: Tag[];

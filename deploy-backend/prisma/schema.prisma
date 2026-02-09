@@ -72,15 +72,15 @@ model Tenant {
 }
 
 enum TenantStatus {
-  TRIAL     // Período de teste (14 dias grátis)
-  ACTIVE    // Ativo e pagando
+  TRIAL // Período de teste (14 dias grátis)
+  ACTIVE // Ativo e pagando
   SUSPENDED // Suspenso por falta de pagamento
   CANCELLED // Cancelado
 }
 
 enum Plan {
-  BASIC      // Plano único inicial
-  PRO        // Futuro
+  BASIC // Plano único inicial
+  PRO // Futuro
   ENTERPRISE // Futuro
 }
 
@@ -117,8 +117,8 @@ model User {
   hotelUnit String?
 
   // Timestamps
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   lastLogin DateTime?
 
   // Relações
@@ -133,11 +133,11 @@ model User {
 }
 
 enum Role {
-  SUPER_ADMIN  // Acesso total ao sistema (você/empresa)
+  SUPER_ADMIN // Acesso total ao sistema (você/empresa)
   TENANT_ADMIN // Admin do hotel (gerencia atendentes)
-  HEAD         // Supervisor (vê todas conversas, não gerencia usuários)
-  ATTENDANT    // Atendente do hotel (responde conversas)
-  SALES        // Vendas (vê apenas oportunidades de venda)
+  HEAD // Supervisor (vê todas conversas, não gerencia usuários)
+  ATTENDANT // Atendente do hotel (responde conversas)
+  SALES // Vendas (vê apenas oportunidades de venda)
 }
 
 enum UserStatus {
@@ -199,15 +199,15 @@ model Conversation {
   // Controle de IA - quando true, IA não responde esta conversa
   iaLocked   Boolean   @default(false)
   iaLockedAt DateTime? // Quando a IA foi travada
-  iaLockedBy String?   // User ID que travou (ou "system" se automático)
+  iaLockedBy String? // User ID que travou (ou "system" se automático)
 
   // Oportunidade de venda - quando cliente não converteu no follow-up
-  isOpportunity   Boolean   @default(false) // true = oportunidade para time de vendas
-  opportunityAt   DateTime? // Quando foi marcada como oportunidade
+  isOpportunity Boolean   @default(false) // true = oportunidade para time de vendas
+  opportunityAt DateTime? // Quando foi marcada como oportunidade
 
   // Timestamps importantes
-  lastMessageAt DateTime @default(now())
-  createdAt     DateTime @default(now())
+  lastMessageAt DateTime  @default(now())
+  createdAt     DateTime  @default(now())
   closedAt      DateTime?
 
   // Metadata
@@ -237,11 +237,11 @@ model Conversation {
 
 enum ConversationStatus {
   BOT_HANDLING // Sendo atendida pela IA (não aparece no Kanban)
-  OPEN        // Nova conversa, aguardando atendimento
+  OPEN // Nova conversa, aguardando atendimento
   IN_PROGRESS // Atendente está conversando
-  WAITING     // Aguardando resposta do cliente
-  CLOSED      // Finalizada
-  ARCHIVED    // Arquivada (não aparece em listas)
+  WAITING // Aguardando resposta do cliente
+  CLOSED // Finalizada
+  ARCHIVED // Arquivada (não aparece em listas)
 }
 
 enum Priority {
@@ -271,8 +271,8 @@ model Message {
   // Metadata (mídia URLs, location data, etc)
   metadata Json?
 
-  status    MessageStatus @default(SENT)
-  sentById  String? // User que enviou (se OUTBOUND)
+  status   MessageStatus @default(SENT)
+  sentById String? // User que enviou (se OUTBOUND)
 
   // Timestamp real da mensagem (não o createdAt)
   timestamp DateTime
@@ -294,7 +294,7 @@ model Message {
 }
 
 enum Direction {
-  INBOUND  // Cliente → Atendente
+  INBOUND // Cliente → Atendente
   OUTBOUND // Atendente → Cliente
 }
 
@@ -306,7 +306,7 @@ enum MessageType {
   DOCUMENT
   LOCATION
   STICKER
-  TEMPLATE    // Template pré-aprovado da Meta
+  TEMPLATE // Template pré-aprovado da Meta
   INTERACTIVE // Botões ou listas interativas
 }
 
@@ -389,11 +389,11 @@ model Escalation {
 
   // Status da escalação
   status       EscalationStatus @default(PENDING)
-  attendedById String?          // User que atendeu
-  attendedAt   DateTime?        // Quando foi atendida
+  attendedById String? // User que atendeu
+  attendedAt   DateTime? // Quando foi atendida
 
   // Timestamps
-  createdAt DateTime @default(now())
+  createdAt  DateTime  @default(now())
   resolvedAt DateTime?
 
   // Relações
@@ -406,20 +406,20 @@ model Escalation {
 }
 
 enum EscalationReason {
-  USER_REQUESTED    // Cliente pediu para falar com humano
-  AI_UNABLE         // IA não conseguiu resolver
-  COMPLEX_QUERY     // Consulta complexa
-  COMPLAINT         // Reclamação
+  USER_REQUESTED // Cliente pediu para falar com humano
+  AI_UNABLE // IA não conseguiu resolver
+  COMPLEX_QUERY // Consulta complexa
+  COMPLAINT // Reclamação
   SALES_OPPORTUNITY // Oportunidade de venda
-  URGENCY           // Urgência detectada
-  OTHER             // Outro motivo
+  URGENCY // Urgência detectada
+  OTHER // Outro motivo
 }
 
 enum EscalationStatus {
-  PENDING     // Aguardando atendimento
+  PENDING // Aguardando atendimento
   IN_PROGRESS // Sendo atendida
-  RESOLVED    // Resolvida
-  CANCELLED   // Cancelada (cliente desistiu)
+  RESOLVED // Resolvida
+  CANCELLED // Cancelada (cliente desistiu)
 }
 
 // ============================================
@@ -440,7 +440,7 @@ model AuditLog {
   oldData Json?
   newData Json?
 
-  metadata   Json? // IP, User-Agent, etc
+  metadata Json? // IP, User-Agent, etc
 
   createdAt DateTime @default(now())
 
@@ -462,9 +462,9 @@ model WebhookEvent {
   event   String // Tipo do evento
   payload Json // Payload completo
 
-  processed   Boolean @default(false)
+  processed   Boolean   @default(false)
   processedAt DateTime?
-  error       String? @db.Text
+  error       String?   @db.Text
 
   createdAt DateTime @default(now())
 

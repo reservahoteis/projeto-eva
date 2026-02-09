@@ -255,6 +255,45 @@ export const MessageBubble = memo(function MessageBubble({
                 isOwnMessage={isOwnMessage}
               />
             )}
+
+            {/* Renderizar WhatsApp Flow (formulário interativo) */}
+            {((message.metadata as any)?.interactiveType === 'flow' || (message.metadata as any)?.interactiveType === 'booking_flow') && (
+              <div>
+                {(message.metadata as any)?.headerText && (
+                  <p className="text-[15px] font-semibold text-[#111b21] mb-1">
+                    {(message.metadata as any)?.headerText}
+                  </p>
+                )}
+                {message.content && (
+                  <p className="text-[14px] text-[#111b21] break-words whitespace-pre-wrap">
+                    {message.content}
+                  </p>
+                )}
+                <div className="mt-2 border-t border-[#e9edef] pt-2">
+                  <div className="flex items-center justify-center gap-2 py-2 text-[#027eb5]">
+                    <FileText className="w-4 h-4" />
+                    <span className="text-[14px] font-medium">
+                      {(message.metadata as any)?.ctaText || 'Abrir formulário'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Fallback para tipos interativos não reconhecidos */}
+            {(message.metadata as any)?.interactiveType &&
+              !['buttons', 'list', 'flow', 'booking_flow'].includes((message.metadata as any)?.interactiveType) && (
+              <div>
+                {message.content && (
+                  <p className="text-[14px] text-[#111b21] break-words whitespace-pre-wrap">
+                    {message.content}
+                  </p>
+                )}
+                <div className="mt-1 text-[11px] text-[#667781]">
+                  Mensagem interativa: {(message.metadata as any)?.interactiveType}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

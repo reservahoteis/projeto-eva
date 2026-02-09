@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { conversationService } from '@/services/conversation.service';
+import { auditLogService } from '@/services/audit-log.service';
 import { NotFoundError, ForbiddenError, BadRequestError } from '@/utils/errors';
 import logger from '@/config/logger';
 import type {
@@ -169,6 +170,15 @@ export class ConversationController {
 
       const conversation = await conversationService.assignConversation(id, req.tenantId, userId);
 
+      auditLogService.log({
+        tenantId: req.tenantId,
+        userId: req.user?.id,
+        action: 'ASSIGN_CONVERSATION',
+        entity: 'Conversation',
+        entityId: id,
+        newData: { assignedToId: userId },
+      });
+
       return res.json(conversation);
     } catch (error) {
       logger.error({ error, conversationId: req.params.id }, 'Erro ao atribuir conversa');
@@ -178,6 +188,39 @@ export class ConversationController {
       }
 
       return res.status(500).json({ error: 'Erro interno ao atribuir conversa' });
+    }
+  }
+
+  /**
+   * POST /api/conversations/:id/unassign
+   */
+  async unassign(req: Request, res: Response) {
+    try {
+      const id = req.params.id as string;
+
+      if (!req.tenantId) {
+        return res.status(400).json({ error: 'Tenant ID não encontrado' });
+      }
+
+      const conversation = await conversationService.unassignConversation(id, req.tenantId);
+
+      auditLogService.log({
+        tenantId: req.tenantId,
+        userId: req.user?.id,
+        action: 'UNASSIGN_CONVERSATION',
+        entity: 'Conversation',
+        entityId: id,
+      });
+
+      return res.json(conversation);
+    } catch (error) {
+      logger.error({ error, conversationId: req.params.id }, 'Erro ao desatribuir conversa');
+
+      if (error instanceof NotFoundError) {
+        return res.status(404).json({ error: error.message });
+      }
+
+      return res.status(500).json({ error: 'Erro interno ao desatribuir conversa' });
     }
   }
 
@@ -193,6 +236,14 @@ export class ConversationController {
       }
 
       const conversation = await conversationService.closeConversation(id, req.tenantId);
+
+      auditLogService.log({
+        tenantId: req.tenantId,
+        userId: req.user?.id,
+        action: 'CLOSE_CONVERSATION',
+        entity: 'Conversation',
+        entityId: id,
+      });
 
       return res.json(conversation);
     } catch (error) {

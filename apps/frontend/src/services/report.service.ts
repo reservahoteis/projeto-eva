@@ -44,11 +44,21 @@ export interface AttendantsResponse {
 export interface HourlyVolumeData {
   hour: number;
   count: number;
+  isBusinessHour: boolean;
+}
+
+export interface BusinessHoursMetrics {
+  businessHoursStart: number;
+  businessHoursEnd: number;
+  insideCount: number;
+  outsideCount: number;
+  outsidePercentage: number;
 }
 
 export interface HourlyVolumeResponse {
   period: string;
   hourlyVolume: HourlyVolumeData[];
+  businessHoursMetrics: BusinessHoursMetrics;
 }
 
 class ReportService {

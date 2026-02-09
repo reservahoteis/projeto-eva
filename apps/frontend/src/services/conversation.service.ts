@@ -6,6 +6,7 @@ interface ListConversationsParams {
   limit?: number;
   status?: ConversationStatus;
   assignedToId?: string;
+  isOpportunity?: boolean;
   search?: string;
 }
 
@@ -51,6 +52,14 @@ export const conversationService = {
     const { data } = await api.post<Conversation>(`/api/conversations/${id}/assign`, {
       userId,
     });
+    return data;
+  },
+
+  /**
+   * Unassign conversation (remove assignee)
+   */
+  async unassign(id: string): Promise<Conversation> {
+    const { data } = await api.post<Conversation>(`/api/conversations/${id}/unassign`);
     return data;
   },
 

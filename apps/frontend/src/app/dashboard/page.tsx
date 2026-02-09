@@ -151,7 +151,7 @@ export default function DashboardPage() {
             // Quick Actions para SALES
             <>
               <a
-                href="/dashboard/conversations"
+                href="/dashboard/opportunities"
                 className="flex items-center gap-4 p-4 rounded-ios-xs bg-[var(--glass-bg-hover)] hover:bg-[var(--glass-bg-strong)] transition-all duration-200 hover:-translate-y-1"
               >
                 <div className="icon-box icon-box-purple">

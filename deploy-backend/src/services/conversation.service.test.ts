@@ -534,12 +534,15 @@ describe('ConversationService', () => {
           tenantId: 'tenant-123',
           contactId: 'contact-1',
           status: {
-            in: ['OPEN', 'IN_PROGRESS', 'WAITING'],
+            in: ['BOT_HANDLING', 'OPEN', 'IN_PROGRESS', 'WAITING'],
           },
         },
         include: {
           contact: true,
           assignedTo: true,
+        },
+        orderBy: {
+          lastMessageAt: 'desc',
         },
       });
 

@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { authService } from '@/services/auth.service';
+import { auditLogService } from '@/services/audit-log.service';
 import type { LoginInput, RefreshTokenInput, RegisterInput, ChangePasswordInput } from '@/validators/auth.validator';
 
 export class AuthController {
@@ -9,9 +10,27 @@ export class AuthController {
   async login(req: Request, res: Response) {
     const { email, password } = req.body as LoginInput;
 
-    const result = await authService.login(email, password, req.tenantId);
+    try {
+      const result = await authService.login(email, password, req.tenantId);
 
-    res.json(result);
+      auditLogService.log({
+        tenantId: req.tenantId,
+        userId: result.user.id,
+        action: 'LOGIN',
+        entity: 'Auth',
+        metadata: { ip: req.ip, userAgent: req.headers['user-agent'] },
+      });
+
+      res.json(result);
+    } catch (error) {
+      auditLogService.log({
+        tenantId: req.tenantId,
+        action: 'LOGIN_FAILED',
+        entity: 'Auth',
+        metadata: { email, ip: req.ip, error: error instanceof Error ? error.message : 'Unknown' },
+      });
+      throw error;
+    }
   }
 
   /**
@@ -72,6 +91,14 @@ export class AuthController {
       const token = authHeader.substring(7);
       await authService.revokeToken(token);
     }
+
+    auditLogService.log({
+      tenantId: req.user?.tenantId,
+      userId: req.user?.id,
+      action: 'LOGOUT',
+      entity: 'Auth',
+      metadata: { ip: req.ip },
+    });
 
     return res.json({ message: 'Logout realizado com sucesso' });
   }

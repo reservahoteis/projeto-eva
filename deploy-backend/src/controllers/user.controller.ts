@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { userService } from '@/services/user.service';
+import { auditLogService } from '@/services/audit-log.service';
 import type {
   ListUsersQuery,
   CreateUserInput,
@@ -76,6 +77,15 @@ export async function createUser(
 
     const user = await userService.createUser(data, tenantId);
 
+    auditLogService.log({
+      tenantId,
+      userId: req.user!.id,
+      action: 'CREATE_USER',
+      entity: 'User',
+      entityId: user.id,
+      newData: { name: data.name, email: data.email, role: data.role },
+    });
+
     res.status(201).json(user);
   } catch (error) {
     next(error);
@@ -101,6 +111,15 @@ export async function updateUser(
     }
 
     const user = await userService.updateUser(id, data, tenantId);
+
+    auditLogService.log({
+      tenantId,
+      userId: req.user!.id,
+      action: 'UPDATE_USER',
+      entity: 'User',
+      entityId: id,
+      newData: JSON.parse(JSON.stringify(data)),
+    });
 
     res.json(user);
   } catch (error) {
@@ -159,6 +178,14 @@ export async function deleteUser(
     }
 
     await userService.deleteUser(id, tenantId, requestUserId);
+
+    auditLogService.log({
+      tenantId,
+      userId: requestUserId,
+      action: 'DELETE_USER',
+      entity: 'User',
+      entityId: id,
+    });
 
     res.status(204).send();
   } catch (error) {

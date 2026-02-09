@@ -31,6 +31,8 @@ import {
   BarChart3,
   ChevronLeft,
   ChevronRight,
+  Target,
+  ScrollText,
 } from 'lucide-react';
 import { getInitials } from '@/lib/utils';
 import { UserRole } from '@/types';
@@ -50,6 +52,12 @@ const navigation = [
     // SALES pode ver conversas - só aparece oportunidades (isOpportunity=true)
   },
   {
+    name: 'Oportunidades',
+    href: '/dashboard/opportunities',
+    icon: Target,
+    // Visível para HEAD e SALES (e admins)
+  },
+  {
     name: 'Contatos',
     href: '/dashboard/contacts',
     icon: Phone,
@@ -65,6 +73,12 @@ const navigation = [
     name: 'Relatórios',
     href: '/dashboard/reports',
     icon: BarChart3,
+    adminOnly: true,
+  },
+  {
+    name: 'Logs',
+    href: '/dashboard/logs',
+    icon: ScrollText,
     adminOnly: true,
   },
   {

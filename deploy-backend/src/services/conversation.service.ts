@@ -13,6 +13,7 @@ interface ListConversationsParams {
   status?: ExtendedConversationStatus;
   priority?: Priority;
   assignedToId?: string;
+  isOpportunity?: boolean;
   search?: string;
   page?: number;
   limit?: number;
@@ -88,11 +89,30 @@ export class ConversationService {
       where.OR = orConditions;
     }
 
+    // Se é HEAD, filtrar por unidade hoteleira (similar ao ATTENDANT)
+    // HEAD só vê conversas da unidade dele
+    if (params.userRole === 'HEAD' && params.userId) {
+      const headUser = await prisma.user.findUnique({
+        where: { id: params.userId },
+        select: { hotelUnit: true },
+      });
+
+      if (headUser?.hotelUnit) {
+        where.hotelUnit = headUser.hotelUnit;
+        logger.debug({ userId: params.userId, hotelUnit: headUser.hotelUnit }, 'Filtering conversations for HEAD role by hotel unit');
+      }
+    }
+
     // Se é SALES, filtrar APENAS por conversas marcadas como oportunidade
     // SALES só vê conversas onde isOpportunity = true (clientes que não converteram no follow-up)
     if (params.userRole === 'SALES') {
       where.isOpportunity = true;
       logger.debug({ userId: params.userId }, 'Filtering conversations for SALES role - only opportunities');
+    }
+
+    // Filtrar explicitamente por isOpportunity (para admins na pagina de oportunidades)
+    if (params.isOpportunity !== undefined && params.userRole !== 'SALES') {
+      where.isOpportunity = params.isOpportunity;
     }
 
     // Busca por nome/telefone do contato
@@ -170,12 +190,30 @@ export class ConversationService {
       unreadCounts.map((uc) => [uc.conversationId, uc._count.id])
     );
 
-    // Formatar resposta (sem N+1 - usamos batch query)
+    // Buscar timestamp da última mensagem INBOUND (do cliente) por conversa
+    // Usado para calcular janela de 24h do Meta (Customer Service Window)
+    const lastInboundTimestamps = await prisma.message.groupBy({
+      by: ['conversationId'],
+      where: {
+        conversationId: { in: conversationIds },
+        direction: 'INBOUND',
+      },
+      _max: {
+        timestamp: true,
+      },
+    });
+
+    const lastInboundMap = new Map(
+      lastInboundTimestamps.map((li) => [li.conversationId, li._max?.timestamp ?? null])
+    );
+
+    // Formatar resposta (sem N+1 - usamos batch queries)
     const conversationsFormatted = conversations.map((conv) => ({
       ...conv,
       lastMessage: conv.messages[0] || null,
       messages: undefined, // Remover array de messages
       unreadCount: unreadMap.get(conv.id) || 0,
+      lastInboundAt: lastInboundMap.get(conv.id) || null,
     }));
 
     return {
@@ -251,14 +289,76 @@ export class ConversationService {
     conversation: Awaited<ReturnType<typeof prisma.conversation.findFirst>> & { contact: any; assignedTo: any };
     isNew: boolean;
   }> {
-    // Buscar conversa aberta existente
+    // 1. Buscar conversa ativa (inclui BOT_HANDLING)
     let conversation = await prisma.conversation.findFirst({
       where: {
         tenantId,
         contactId,
         status: {
-          in: ['OPEN', 'IN_PROGRESS', 'WAITING'],
+          in: ['BOT_HANDLING', 'OPEN', 'IN_PROGRESS', 'WAITING'],
         },
+      },
+      include: {
+        contact: true,
+        assignedTo: true,
+      },
+      orderBy: {
+        lastMessageAt: 'desc',
+      },
+    });
+
+    if (conversation) {
+      return { conversation: conversation as any, isNew: false };
+    }
+
+    // 2. Fallback: buscar conversa CLOSED recente (ultimos 30 min)
+    // Isso previne criacao de conversa duplicada quando N8N responde apos fechamento
+    const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000);
+    const recentClosed = await prisma.conversation.findFirst({
+      where: {
+        tenantId,
+        contactId,
+        status: 'CLOSED',
+        lastMessageAt: { gte: thirtyMinAgo },
+      },
+      include: {
+        contact: true,
+        assignedTo: true,
+      },
+      orderBy: {
+        lastMessageAt: 'desc',
+      },
+    });
+
+    if (recentClosed) {
+      // Reabrir conversa fechada recentemente
+      conversation = await prisma.conversation.update({
+        where: { id: recentClosed.id },
+        data: { status: 'OPEN', lastMessageAt: new Date() },
+        include: {
+          contact: true,
+          assignedTo: true,
+        },
+      });
+
+      logger.info({
+        conversationId: conversation.id,
+        contactId,
+        previousStatus: 'CLOSED',
+        closedAt: recentClosed.lastMessageAt,
+      }, 'Reopened recently closed conversation for outbound message');
+
+      return { conversation: conversation as any, isNew: false };
+    }
+
+    // 3. Criar nova conversa
+    conversation = await prisma.conversation.create({
+      data: {
+        tenantId,
+        contactId,
+        status: 'OPEN',
+        priority: 'MEDIUM',
+        lastMessageAt: new Date(),
       },
       include: {
         contact: true,
@@ -266,28 +366,9 @@ export class ConversationService {
       },
     });
 
-    // Se não existir, criar nova
-    if (!conversation) {
-      conversation = await prisma.conversation.create({
-        data: {
-          tenantId,
-          contactId,
-          status: 'OPEN',
-          priority: 'MEDIUM',
-          lastMessageAt: new Date(),
-        },
-        include: {
-          contact: true,
-          assignedTo: true,
-        },
-      });
+    logger.info({ conversationId: conversation.id, contactId }, 'New conversation created');
 
-      logger.info({ conversationId: conversation.id, contactId }, 'New conversation created');
-
-      return { conversation: conversation as any, isNew: true };
-    }
-
-    return { conversation: conversation as any, isNew: false };
+    return { conversation: conversation as any, isNew: true };
   }
 
   /**
@@ -337,6 +418,38 @@ export class ConversationService {
     });
 
     logger.info({ conversationId, userId }, 'Conversation assigned');
+
+    return updated;
+  }
+
+  /**
+   * Remover atribuição de conversa (desatribuir)
+   */
+  async unassignConversation(conversationId: string, tenantId: string) {
+    const conversation = await prisma.conversation.findFirst({
+      where: {
+        id: conversationId,
+        tenantId,
+      },
+    });
+
+    if (!conversation) {
+      throw new NotFoundError('Conversa não encontrada');
+    }
+
+    const updated = await prisma.conversation.update({
+      where: { id: conversationId },
+      data: {
+        assignedToId: null,
+        status: 'OPEN',
+      },
+      include: {
+        contact: true,
+        assignedTo: true,
+      },
+    });
+
+    logger.info({ conversationId, tenantId }, 'Conversation unassigned');
 
     return updated;
   }

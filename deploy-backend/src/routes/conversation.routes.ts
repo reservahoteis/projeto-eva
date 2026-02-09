@@ -48,6 +48,9 @@ router.patch('/:id', validate(updateConversationSchema), conversationController.
 // POST /api/conversations/:id/assign
 router.post('/:id/assign', validate(assignConversationSchema), conversationController.assign.bind(conversationController));
 
+// POST /api/conversations/:id/unassign
+router.post('/:id/unassign', conversationController.unassign.bind(conversationController));
+
 // POST /api/conversations/:id/close
 router.post('/:id/close', conversationController.close.bind(conversationController));
 
