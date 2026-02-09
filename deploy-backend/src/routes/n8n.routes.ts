@@ -1,11 +1,27 @@
 import { Router, Request, Response } from 'express';
 import { n8nAuthMiddleware } from '@/middlewares/n8n-auth.middleware';
+import { validate } from '@/middlewares/validate.middleware';
 import { whatsAppService } from '@/services/whatsapp.service';
 import { whatsAppFlowsService } from '@/services/whatsapp-flows.service';
 import { escalationService } from '@/services/escalation.service';
 import { messageService } from '@/services/message.service';
 import { hbookScraperService } from '@/services/hbook-scraper.service';
 import { sendFlowSchema } from '@/validators/whatsapp-flows.validator';
+import {
+  sendTextSchema,
+  sendButtonsSchema,
+  sendListSchema,
+  sendMediaSchema,
+  sendTemplateSchema,
+  escalateSchema,
+  sendCarouselSchema,
+  setHotelUnitSchema,
+  markFollowupSentSchema,
+  markOpportunitySchema,
+  markReadSchema,
+  checkIaLockSchema,
+  sendBookingFlowSchema,
+} from '@/validators/n8n.validator';
 import { prisma } from '@/config/database';
 import { emitNewConversation, emitConversationUpdate } from '@/config/socket';
 import logger from '@/config/logger';
@@ -58,7 +74,7 @@ router.use(n8nAuthMiddleware);
  *   "delayTyping": 1  // opcional, ignorado
  * }
  */
-router.post('/send-text', async (req: Request, res: Response) => {
+router.post('/send-text', validate(sendTextSchema), async (req: Request, res: Response) => {
   try {
     const { phone, message } = req.body;
 
@@ -125,7 +141,7 @@ router.post('/send-text', async (req: Request, res: Response) => {
  *   "footer": "Rodapé opcional"
  * }
  */
-router.post('/send-buttons', async (req: Request, res: Response) => {
+router.post('/send-buttons', validate(sendButtonsSchema), async (req: Request, res: Response) => {
   try {
     const { phone, message, buttons, title, footer } = req.body;
 
@@ -234,7 +250,7 @@ router.post('/send-buttons', async (req: Request, res: Response) => {
  *   ]
  * }
  */
-router.post('/send-list', async (req: Request, res: Response) => {
+router.post('/send-list', validate(sendListSchema), async (req: Request, res: Response) => {
   try {
     const { phone, message, optionList, buttonText, sections } = req.body;
 
@@ -333,7 +349,7 @@ router.post('/send-list', async (req: Request, res: Response) => {
  *   "caption": "Legenda opcional"
  * }
  */
-router.post('/send-media', async (req: Request, res: Response) => {
+router.post('/send-media', validate(sendMediaSchema), async (req: Request, res: Response) => {
   try {
     const { phone, type, url, caption, mediaUrl, image, video, audio, document } = req.body;
 
@@ -459,7 +475,7 @@ router.post('/send-media', async (req: Request, res: Response) => {
  *   "parameters": ["param1", "param2"]
  * }
  */
-router.post('/send-template', async (req: Request, res: Response) => {
+router.post('/send-template', validate(sendTemplateSchema), async (req: Request, res: Response) => {
   try {
     const { phone, template, templateName, language, languageCode, parameters, components } = req.body;
 
@@ -546,7 +562,7 @@ router.post('/send-template', async (req: Request, res: Response) => {
  *   "conversationId": "uuid" (se existir)
  * }
  */
-router.get('/check-ia-lock', async (req: Request, res: Response) => {
+router.get('/check-ia-lock', validate(checkIaLockSchema, 'query'), async (req: Request, res: Response) => {
   try {
     const { phone, phoneNumber } = req.query;
     const phoneToCheck = (phone || phoneNumber) as string;
@@ -594,7 +610,7 @@ router.get('/check-ia-lock', async (req: Request, res: Response) => {
  *   "priority": "HIGH"
  * }
  */
-router.post('/escalate', async (req: Request, res: Response) => {
+router.post('/escalate', validate(escalateSchema), async (req: Request, res: Response) => {
   try {
     const {
       phone,
@@ -660,7 +676,7 @@ router.post('/escalate', async (req: Request, res: Response) => {
  *   "messageId": "wamid.xxx"
  * }
  */
-router.post('/mark-read', async (req: Request, res: Response) => {
+router.post('/mark-read', validate(markReadSchema), async (req: Request, res: Response) => {
   try {
     const { messageId, whatsappMessageId } = req.body;
     const msgId = messageId || whatsappMessageId;
@@ -730,7 +746,7 @@ router.post('/mark-read', async (req: Request, res: Response) => {
  *
  * Máximo 10 cards por carousel (template) ou 3 botões por card (interativo).
  */
-router.post('/send-carousel', async (req: Request, res: Response) => {
+router.post('/send-carousel', validate(sendCarouselSchema), async (req: Request, res: Response) => {
   try {
     const { phone, template, cards, message, carousel } = req.body;
 
@@ -935,7 +951,7 @@ router.post('/send-carousel', async (req: Request, res: Response) => {
  * - "Camburi"
  * - "Santo Antônio do Pinhal"
  */
-router.post('/set-hotel-unit', async (req: Request, res: Response) => {
+router.post('/set-hotel-unit', validate(setHotelUnitSchema), async (req: Request, res: Response) => {
   try {
     const { phone, phoneNumber, hotelUnit } = req.body;
     const phoneToUse = phone || phoneNumber;
@@ -1099,7 +1115,7 @@ router.post('/set-hotel-unit', async (req: Request, res: Response) => {
  * - Muda status para OPEN (aparecer no Kanban)
  * - Emite evento Socket.io para notificar time SALES
  */
-router.post('/mark-followup-sent', async (req: Request, res: Response) => {
+router.post('/mark-followup-sent', validate(markFollowupSentSchema), async (req: Request, res: Response) => {
   try {
     const { phone, phoneNumber, flowType } = req.body;
     const phoneToUse = phone || phoneNumber;
@@ -1248,7 +1264,7 @@ router.post('/mark-followup-sent', async (req: Request, res: Response) => {
  * - Mantém isOpportunity = true (já definido em mark-followup-sent)
  * - Emite evento Socket.io para atualizar em tempo real
  */
-router.post('/mark-opportunity', async (req: Request, res: Response) => {
+router.post('/mark-opportunity', validate(markOpportunitySchema), async (req: Request, res: Response) => {
   try {
     const { phone, phoneNumber, reason, flowType, followupResponse } = req.body;
     const phoneToUse = phone || phoneNumber;
@@ -1743,7 +1759,7 @@ router.post('/send-flow', async (req: Request, res: Response) => {
  *   "flowToken": "booking_{conversationId}_{timestamp}"
  * }
  */
-router.post('/send-booking-flow', async (req: Request, res: Response) => {
+router.post('/send-booking-flow', validate(sendBookingFlowSchema), async (req: Request, res: Response) => {
   try {
     const { phone, phoneNumber, conversationId, bodyText } = req.body;
     const phoneToUse = phoneNumber || phone;

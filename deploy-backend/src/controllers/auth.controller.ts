@@ -62,6 +62,21 @@ export class AuthController {
   }
 
   /**
+   * POST /auth/logout
+   * Revoga o access token atual via blacklist Redis
+   */
+  async logout(req: Request, res: Response) {
+    const authHeader = req.headers.authorization;
+
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
+      await authService.revokeToken(token);
+    }
+
+    return res.json({ message: 'Logout realizado com sucesso' });
+  }
+
+  /**
    * GET /auth/me
    */
   async me(req: Request, res: Response) {

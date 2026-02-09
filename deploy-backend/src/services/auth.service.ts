@@ -1,10 +1,13 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { prisma } from '@/config/database';
+import { redis } from '@/config/redis';
 import { env } from '@/config/env';
 import { UnauthorizedError, BadRequestError } from '@/utils/errors';
 import { Role } from '@prisma/client';
 import logger from '@/config/logger';
+
+const TOKEN_BLACKLIST_PREFIX = 'token:blacklist:';
 
 interface LoginResult {
   user: {
@@ -156,9 +159,12 @@ export class AuthService {
     role?: Role;
     tenantId?: string | null;
   }) {
-    // Verificar se email já existe
-    const existingUser = await prisma.user.findUnique({
-      where: { email: data.email },
+    // SECURITY FIX [CRIT-002]: Verificar email dentro do tenant (multi-tenant isolation)
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        email: data.email,
+        ...(data.tenantId ? { tenantId: data.tenantId } : {}),
+      },
     });
 
     if (existingUser) {
@@ -241,6 +247,53 @@ export class AuthService {
     return jwt.sign(payload, env.JWT_REFRESH_SECRET, {
       expiresIn: '7d',
     });
+  }
+
+  /**
+   * Revogar token (adicionar a blacklist no Redis)
+   * O token fica na blacklist ate expirar naturalmente
+   */
+  async revokeToken(token: string): Promise<void> {
+    try {
+      const decoded = jwt.decode(token) as { exp?: number } | null;
+      if (!decoded?.exp) return;
+
+      const now = Math.floor(Date.now() / 1000);
+      const ttl = decoded.exp - now;
+
+      if (ttl > 0) {
+        await redis.setex(`${TOKEN_BLACKLIST_PREFIX}${token}`, ttl, '1');
+        logger.info('Token revoked and added to blacklist');
+      }
+    } catch (error) {
+      logger.error({ error }, 'Failed to revoke token');
+    }
+  }
+
+  /**
+   * Verificar se token esta na blacklist
+   */
+  async isTokenRevoked(token: string): Promise<boolean> {
+    try {
+      const result = await redis.get(`${TOKEN_BLACKLIST_PREFIX}${token}`);
+      return result === '1';
+    } catch (error) {
+      logger.error({ error }, 'Failed to check token blacklist');
+      return false;
+    }
+  }
+
+  /**
+   * Revogar todos os tokens de um usuario
+   * Usa uma versao de token por usuario - ao incrementar, todos os tokens antigos ficam invalidos
+   */
+  async revokeAllUserTokens(userId: string): Promise<void> {
+    try {
+      await redis.incr(`token:version:${userId}`);
+      logger.info({ userId }, 'All tokens revoked for user');
+    } catch (error) {
+      logger.error({ error, userId }, 'Failed to revoke all user tokens');
+    }
   }
 
   /**

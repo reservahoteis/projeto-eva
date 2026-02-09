@@ -106,6 +106,7 @@ import webhookRoutes from './routes/webhook.routes';
 import healthRoutes from './routes/health.routes';
 import debugRoutes from './routes/debug.routes';
 import escalationRoutes from './routes/escalation.routes';
+import tagRoutes from './routes/tag.routes';
 import n8nRoutes from './routes/n8n.routes';
 import mediaRoutes from './routes/media.routes';
 import publicRoutes from './routes/public.routes';
@@ -156,6 +157,7 @@ app.use('/api/contacts', contactRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/escalations', escalationRoutes);
+app.use('/api/tags', tagRoutes);
 
 // Root API info
 app.get('/api', (req, res) => {

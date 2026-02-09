@@ -4,6 +4,7 @@ import { env } from '@/config/env';
 import { UnauthorizedError, ForbiddenError } from '@/utils/errors';
 import { Role } from '@prisma/client';
 import logger from '@/config/logger';
+import { authService } from '@/services/auth.service';
 
 interface JWTPayload {
   userId: string;
@@ -25,6 +26,12 @@ export async function authenticate(req: Request, _res: Response, next: NextFunct
     }
 
     const token = authHeader.substring(7); // Remove "Bearer "
+
+    // Verificar se token esta na blacklist (revogado)
+    const isRevoked = await authService.isTokenRevoked(token);
+    if (isRevoked) {
+      throw new UnauthorizedError('Token revogado');
+    }
 
     // Verificar e decodificar token
     const payload = jwt.verify(token, env.JWT_SECRET) as JWTPayload;

@@ -19,6 +19,9 @@ router.post('/register', authenticate, validate(registerSchema), authController.
 // POST /auth/change-password
 router.post('/change-password', authenticate, validate(changePasswordSchema), authController.changePassword.bind(authController));
 
+// POST /auth/logout
+router.post('/logout', authenticate, authController.logout.bind(authController));
+
 // GET /auth/me
 router.get('/me', authenticate, authController.me.bind(authController));
 
