@@ -19,6 +19,7 @@
     "alwaysStrict": false,
     "noFallthroughCasesInSwitch": false
   },
+  "exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.test.ts", "src/__tests__", "src/test"],
   "ts-node": {
     "transpileOnly": true
   }

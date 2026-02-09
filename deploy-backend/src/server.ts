@@ -110,6 +110,8 @@ import tagRoutes from './routes/tag.routes';
 import n8nRoutes from './routes/n8n.routes';
 import mediaRoutes from './routes/media.routes';
 import publicRoutes from './routes/public.routes';
+import usageTrackingRoutes from './routes/usage-tracking.routes';
+import auditLogRoutes from './routes/audit-log.routes';
 
 // Auth (público - sem tenant isolation)
 app.use('/auth', authRoutes);
@@ -158,6 +160,8 @@ app.use('/api/users', userRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/escalations', escalationRoutes);
 app.use('/api/tags', tagRoutes);
+app.use('/api/usage-tracking', usageTrackingRoutes);
+app.use('/api/audit-logs', auditLogRoutes);
 
 // Root API info
 app.get('/api', (req, res) => {
