@@ -1,5 +1,6 @@
 import Redis from 'ioredis';
 import { env } from './env';
+import logger from './logger';
 
 // Cliente Redis principal
 export const redis = new Redis({
@@ -23,11 +24,11 @@ export const redisForBull = new Redis({
 
 // Event listeners
 redis.on('connect', () => {
-  console.log('✅ Redis connected');
+  logger.info('Redis connected');
 });
 
 redis.on('error', (error) => {
-  console.error('❌ Redis error:', error);
+  logger.error({ err: error }, 'Redis error');
 });
 
 // Graceful shutdown
@@ -40,10 +41,10 @@ process.on('SIGTERM', async () => {
 export async function testRedisConnection(): Promise<boolean> {
   try {
     await redis.ping();
-    console.log('✅ Redis ping successful');
+    logger.info('Redis ping successful');
     return true;
   } catch (error) {
-    console.error('❌ Redis ping failed:', error);
+    logger.error({ err: error }, 'Redis ping failed');
     return false;
   }
 }

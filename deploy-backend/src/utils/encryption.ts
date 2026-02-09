@@ -14,8 +14,8 @@ const isKeyValid = ENCRYPTION_KEY && ENCRYPTION_KEY.length === 64;
 
 // Log warning but don't crash - allows app to start for non-crypto operations
 if (!isKeyValid && process.env.NODE_ENV !== 'test') {
-  console.warn('[WARN] ENCRYPTION_KEY not configured or invalid. WhatsApp token encryption will fail.');
-  console.warn('[WARN] Generate a key with: openssl rand -hex 32');
+  process.stderr.write('[WARN] ENCRYPTION_KEY not configured or invalid. WhatsApp token encryption will fail.\n');
+  process.stderr.write('[WARN] Generate a key with: openssl rand -hex 32\n');
 }
 
 const IV_LENGTH = 16; // For AES, this is always 16

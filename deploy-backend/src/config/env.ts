@@ -49,8 +49,8 @@ const envSchema = z.object({
 const parsed = envSchema.safeParse(process.env);
 
 if (!parsed.success) {
-  console.error('❌ Erro nas variáveis de ambiente:');
-  console.error(parsed.error.format());
+  // Logger ainda nao disponivel (depende de env), usar stderr direto
+  process.stderr.write(`Erro nas variaveis de ambiente:\n${JSON.stringify(parsed.error.format(), null, 2)}\n`);
   process.exit(1);
 }
 

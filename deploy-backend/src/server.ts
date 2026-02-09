@@ -112,6 +112,7 @@ import mediaRoutes from './routes/media.routes';
 import publicRoutes from './routes/public.routes';
 import usageTrackingRoutes from './routes/usage-tracking.routes';
 import auditLogRoutes from './routes/audit-log.routes';
+import webhookEventRoutes from './routes/webhook-event.routes';
 
 // Auth (público - sem tenant isolation)
 app.use('/auth', authRoutes);
@@ -162,6 +163,7 @@ app.use('/api/escalations', escalationRoutes);
 app.use('/api/tags', tagRoutes);
 app.use('/api/usage-tracking', usageTrackingRoutes);
 app.use('/api/audit-logs', auditLogRoutes);
+app.use('/api/webhook-events', webhookEventRoutes);
 
 // Root API info
 app.get('/api', (req, res) => {
