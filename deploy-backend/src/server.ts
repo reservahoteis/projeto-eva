@@ -87,12 +87,6 @@ app.use(tenantIsolationMiddleware);
 // ============================================
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
   swaggerOptions: {
-    urls: [
-      {
-        url: '/api/docs/swagger.json',
-        name: 'CRM Hoteis API',
-      },
-    ],
     defaultModelsExpandDepth: 1,
     docExpansion: 'list',
     filter: true,
@@ -100,7 +94,7 @@ app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
     persistAuthorization: true,
   },
   customCss: '.swagger-ui .topbar { display: none } .swagger-ui .info { margin: 20px 0; }',
-  customSiteTitle: 'CRM Hoteis API - Documentação',
+  customSiteTitle: 'CRM Hoteis API - Documentacao',
 }));
 
 // Endpoint para download da spec OpenAPI
