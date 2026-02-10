@@ -49,6 +49,17 @@ interface HourlyVolumeResult {
 }
 
 export class ReportService {
+  /** Offset fuso Brasil (UTC-3) em horas */
+  private static readonly BRAZIL_UTC_OFFSET = -3;
+
+  /**
+   * Retorna hora no fuso do Brasil (UTC-3) a partir de um Date (que pode estar em UTC)
+   */
+  private getBrazilHour(date: Date): number {
+    const utcHour = date.getUTCHours();
+    return (utcHour + ReportService.BRAZIL_UTC_OFFSET + 24) % 24;
+  }
+
   /**
    * Calcula data inicial baseado no periodo
    * @param period - '7d' | '30d' | '90d' | '1y'
@@ -296,7 +307,7 @@ export class ReportService {
       },
     });
 
-    // Agrupar por hora (0-23)
+    // Agrupar por hora (0-23) no fuso Brasil (UTC-3)
     const hourlyData: Record<number, number> = {};
     for (let i = 0; i < 24; i++) {
       hourlyData[i] = 0;
@@ -304,7 +315,7 @@ export class ReportService {
 
     conversations.forEach((conv) => {
       if (conv && conv.createdAt) {
-        const hour = conv.createdAt.getHours();
+        const hour = this.getBrazilHour(conv.createdAt);
         if (hourlyData[hour] !== undefined) {
           hourlyData[hour]++;
         }
@@ -391,9 +402,9 @@ export class ReportService {
       orderBy: { createdAt: 'desc' },
     });
 
-    // Filter by hour in JS (Prisma doesn't support hour extraction in WHERE)
+    // Filter by hour in JS using Brazil timezone (UTC-3)
     const outsideConversations = conversations.filter((conv) => {
-      const hour = conv.createdAt.getHours();
+      const hour = this.getBrazilHour(conv.createdAt);
       return hour < 8 || hour >= 18;
     });
 
