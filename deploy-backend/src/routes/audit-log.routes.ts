@@ -6,8 +6,9 @@ import { validate } from '@/middlewares/validate.middleware';
 import {
   listAuditLogsSchema,
   getAuditLogParamsSchema,
+  reportClientErrorSchema,
 } from '@/validators/audit-log.validator';
-import { listAuditLogs, getAuditLogById } from '@/controllers/audit-log.controller';
+import { listAuditLogs, getAuditLogById, reportClientError } from '@/controllers/audit-log.controller';
 
 const router = Router();
 
@@ -15,6 +16,9 @@ const router = Router();
 router.use(authenticate);
 router.use(requireTenant);
 router.use(authorize(['TENANT_ADMIN', 'SUPER_ADMIN']));
+
+// Reportar erro client-side
+router.post('/client-error', validate(reportClientErrorSchema), reportClientError);
 
 // Listar audit logs (paginado, com filtros)
 router.get('/', validate(listAuditLogsSchema, 'query'), listAuditLogs);

@@ -1,5 +1,14 @@
 import api from '@/lib/axios';
-import type { User, UserRole, UserStatus, PaginatedResponse } from '@/types';
+import type { User, UserRole, UserStatus } from '@/types';
+
+/** Formato real retornado pelo backend (flat, sem nested pagination) */
+export interface UserListResponse {
+  data: User[];
+  total: number;
+  page: number;
+  limit: number;
+  pages: number;
+}
 
 interface ListUsersParams {
   page?: number;
@@ -35,8 +44,8 @@ class UserService {
   /**
    * Listar usuários com paginação e filtros
    */
-  async list(params?: ListUsersParams): Promise<PaginatedResponse<User>> {
-    const { data } = await api.get<PaginatedResponse<User>>(
+  async list(params?: ListUsersParams): Promise<UserListResponse> {
+    const { data } = await api.get<UserListResponse>(
       USER_API_BASE_URL,
       { params }
     );

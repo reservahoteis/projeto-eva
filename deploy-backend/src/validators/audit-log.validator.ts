@@ -20,6 +20,18 @@ export const getAuditLogParamsSchema = z.object({
   id: z.string().uuid('ID invalido'),
 });
 
+/**
+ * Schema para reportar erro client-side
+ */
+export const reportClientErrorSchema = z.object({
+  message: z.string().min(1).max(2000),
+  stack: z.string().max(5000).optional(),
+  componentStack: z.string().max(5000).optional(),
+  url: z.string().max(500).optional(),
+  userAgent: z.string().max(500).optional(),
+});
+
 // Types inferidos
 export type ListAuditLogsQuery = z.infer<typeof listAuditLogsSchema>;
 export type GetAuditLogParams = z.infer<typeof getAuditLogParamsSchema>;
+export type ReportClientErrorBody = z.infer<typeof reportClientErrorSchema>;

@@ -392,10 +392,10 @@ function UsersPageContent() {
           ))}
 
           {/* Pagination */}
-          {usersData && usersData.pagination.totalPages > 1 && (
+          {usersData && usersData.pages > 1 && (
             <div className="flex items-center justify-between glass-card p-4">
               <p className="text-sm text-[var(--text-muted)]">
-                Página {page} de {usersData.pagination.totalPages} ({usersData.pagination.total} usuários)
+                Página {page} de {usersData.pages} ({usersData.total} usuários)
               </p>
               <div className="flex items-center gap-2">
                 <Button
@@ -411,8 +411,8 @@ function UsersPageContent() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setPage((p) => Math.min(usersData.pagination.totalPages, p + 1))}
-                  disabled={page >= usersData.pagination.totalPages}
+                  onClick={() => setPage((p) => Math.min(usersData.pages, p + 1))}
+                  disabled={page >= usersData.pages}
                   className="glass-btn"
                 >
                   Próximo

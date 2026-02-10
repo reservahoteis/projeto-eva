@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { auditLogService } from '@/services/audit-log.service';
-import type { ListAuditLogsQuery } from '@/validators/audit-log.validator';
+import logger from '@/config/logger';
+import type { ListAuditLogsQuery, ReportClientErrorBody } from '@/validators/audit-log.validator';
 
 /**
  * Listar audit logs (paginado, com filtros)
@@ -22,6 +23,45 @@ export async function listAuditLogs(
     const result = await auditLogService.list(tenantId, query);
 
     res.json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Receber erro client-side e registrar como audit log
+ */
+export async function reportClientError(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const tenantId = req.user!.tenantId;
+    const userId = req.user!.id;
+    const body = req.body as ReportClientErrorBody;
+
+    logger.warn(
+      { tenantId, userId, message: body.message, url: body.url },
+      'Client-side error reported'
+    );
+
+    auditLogService.log({
+      tenantId,
+      userId,
+      action: 'CLIENT_ERROR',
+      entity: 'Frontend',
+      entityId: null,
+      metadata: {
+        message: body.message,
+        stack: body.stack || null,
+        componentStack: body.componentStack || null,
+        url: body.url || null,
+        userAgent: body.userAgent || null,
+      },
+    });
+
+    res.json({ ok: true });
   } catch (error) {
     next(error);
   }

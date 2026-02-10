@@ -52,6 +52,28 @@ class AuditLogService {
     return data;
   }
 
+  /**
+   * Reportar erro client-side para o backend (fire-and-forget)
+   */
+  async reportClientError(error: {
+    message: string;
+    stack?: string;
+    componentStack?: string;
+    url?: string;
+  }): Promise<void> {
+    try {
+      await api.post(`${AUDIT_LOG_API_BASE_URL}/client-error`, {
+        message: error.message,
+        stack: error.stack?.substring(0, 5000),
+        componentStack: error.componentStack?.substring(0, 5000),
+        url: error.url || (typeof window !== 'undefined' ? window.location.href : undefined),
+        userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
+      });
+    } catch {
+      // Fire-and-forget - nao bloqueia o usuario
+    }
+  }
+
   getActionLabel(action: string): string {
     const labels: Record<string, string> = {
       CREATE_USER: 'Usuário criado',
@@ -77,6 +99,7 @@ class AuditLogService {
       ESCALATION: 'Escalação',
       IA_LOCK: 'IA bloqueada',
       IA_UNLOCK: 'IA desbloqueada',
+      CLIENT_ERROR: 'Erro no Frontend',
     };
     return labels[action] || action;
   }
@@ -111,6 +134,7 @@ class AuditLogService {
       Auth: 'Autenticação',
       Webhook: 'Webhook',
       N8N: 'N8N',
+      Frontend: 'Frontend',
     };
     return labels[entity] || entity;
   }

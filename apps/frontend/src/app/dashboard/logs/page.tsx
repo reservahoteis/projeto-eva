@@ -96,7 +96,8 @@ function LogsPageContent() {
           (l) =>
             l.action.includes('ERROR') ||
             l.action.includes('FAILED') ||
-            l.action === 'ESCALATION'
+            l.action === 'ESCALATION' ||
+            l.action === 'CLIENT_ERROR'
         )
       : allLogs;
   const totalPages = logsData?.pages || 1;
@@ -251,6 +252,7 @@ function LogsPageContent() {
                 <SelectItem value="Auth">Auth</SelectItem>
                 <SelectItem value="Webhook">Webhook</SelectItem>
                 <SelectItem value="N8N">N8N</SelectItem>
+                <SelectItem value="Frontend">Frontend</SelectItem>
               </SelectContent>
             </Select>
             {tab === 'events' && (
@@ -278,6 +280,7 @@ function LogsPageContent() {
                   <SelectItem value="MESSAGE_SEND_FAILED">Falha envio</SelectItem>
                   <SelectItem value="N8N_ERROR">Erro N8N</SelectItem>
                   <SelectItem value="ESCALATION">Escalacao</SelectItem>
+                  <SelectItem value="CLIENT_ERROR">Erro Frontend</SelectItem>
                 </SelectContent>
               </Select>
             )}
