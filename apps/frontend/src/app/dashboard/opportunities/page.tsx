@@ -56,8 +56,9 @@ const WINDOW_YELLOW_THRESHOLD = 4; // 4-12h restantes = amarelo
 type WindowStatus = 'green' | 'yellow' | 'red' | 'expired' | 'responded';
 
 function getMetaWindowStatus(opp: Conversation): WindowStatus {
-  // Se a ultima mensagem e OUTBOUND (nossa resposta), a conversa esta sendo atendida
-  if (opp.lastMessage?.direction === 'OUTBOUND') {
+  // Se a ultima mensagem e OUTBOUND E foi enviada por humano (userId presente),
+  // a conversa esta sendo atendida. Mensagens do sistema (follow-up N8N) nao contam.
+  if (opp.lastMessage?.direction === 'OUTBOUND' && opp.lastMessage?.userId) {
     return 'responded';
   }
 

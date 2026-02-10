@@ -47,4 +47,14 @@ router.get(
   reportController.getHourlyVolume
 );
 
+/**
+ * GET /api/reports/outside-hours
+ * Retorna conversas fora do horario comercial
+ */
+router.get(
+  '/outside-hours',
+  validate(reportQuerySchema, 'query'),
+  reportController.getOutsideBusinessHours
+);
+
 export default router;

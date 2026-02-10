@@ -34,7 +34,6 @@ import {
   Target,
   ScrollText,
   Tag,
-  AlertTriangle,
 } from 'lucide-react';
 import { getInitials } from '@/lib/utils';
 import { UserRole } from '@/types';
@@ -75,12 +74,6 @@ const navigation = [
     name: 'Tags',
     href: '/dashboard/tags',
     icon: Tag,
-    adminOnly: true,
-  },
-  {
-    name: 'Escalações',
-    href: '/dashboard/escalations',
-    icon: AlertTriangle,
     adminOnly: true,
   },
   {

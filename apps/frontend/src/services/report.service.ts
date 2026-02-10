@@ -61,6 +61,29 @@ export interface HourlyVolumeResponse {
   businessHoursMetrics: BusinessHoursMetrics;
 }
 
+export interface OutsideHoursContact {
+  id: string;
+  name: string | null;
+  phoneNumber: string;
+  profilePictureUrl: string | null;
+}
+
+export interface OutsideHoursConversation {
+  id: string;
+  status: string;
+  createdAt: string;
+  lastMessageAt: string | null;
+  hotelUnit: string | null;
+  contact: OutsideHoursContact;
+  assignedTo: { id: string; name: string } | null;
+}
+
+export interface OutsideHoursResponse {
+  period: string;
+  total: number;
+  conversations: OutsideHoursConversation[];
+}
+
 class ReportService {
   async getOverview(params?: ReportPeriod): Promise<OverviewResponse> {
     const { data } = await api.get<OverviewResponse>(
@@ -81,6 +104,14 @@ class ReportService {
   async getHourlyVolume(params?: ReportPeriod): Promise<HourlyVolumeResponse> {
     const { data } = await api.get<HourlyVolumeResponse>(
       `${REPORT_API_BASE_URL}/hourly`,
+      { params }
+    );
+    return data;
+  }
+
+  async getOutsideBusinessHours(params?: ReportPeriod): Promise<OutsideHoursResponse> {
+    const { data } = await api.get<OutsideHoursResponse>(
+      `${REPORT_API_BASE_URL}/outside-hours`,
       { params }
     );
     return data;

@@ -32,7 +32,6 @@ import {
   Building2,
   ScrollText,
   Tag,
-  AlertTriangle,
 } from 'lucide-react';
 import { getInitials } from '@/lib/utils';
 import { UserRole } from '@/types';
@@ -48,7 +47,6 @@ const tenantNavigation: NavigationItem[] = [
   { name: 'Contatos', href: '/dashboard/contacts', icon: Phone, adminOnly: true }, // HEAD não pode ver
   { name: 'Usuários', href: '/dashboard/users', icon: Users, adminOnly: true },
   { name: 'Tags', href: '/dashboard/tags', icon: Tag, adminOnly: true },
-  { name: 'Escalações', href: '/dashboard/escalations', icon: AlertTriangle, adminOnly: true },
   { name: 'Relatórios', href: '/dashboard/reports', icon: BarChart3, adminOnly: true },
   { name: 'Logs', href: '/dashboard/logs', icon: ScrollText, adminOnly: true },
   { name: 'Configurações', href: '/dashboard/settings', icon: Settings, adminOnly: true },

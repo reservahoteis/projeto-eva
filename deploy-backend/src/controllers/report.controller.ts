@@ -64,3 +64,24 @@ export async function getHourlyVolume(
     next(error);
   }
 }
+
+/**
+ * GET /api/reports/outside-hours
+ * Retorna conversas fora do horario comercial
+ */
+export async function getOutsideBusinessHours(
+  req: Request<{}, {}, {}, ReportQuery>,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const tenantId = req.user!.tenantId!;
+    const { period = '30d' } = req.query;
+
+    const result = await reportService.getOutsideBusinessHoursConversations(tenantId, period);
+
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+}

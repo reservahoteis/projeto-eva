@@ -311,9 +311,9 @@ export class ReportService {
       }
     });
 
-    // Horario comercial padrao para hoteis (8h-20h)
+    // Horario comercial padrao para hoteis (8h-18h)
     const businessHoursStart = 8;
-    const businessHoursEnd = 20;
+    const businessHoursEnd = 18;
 
     let insideCount = 0;
     let outsideCount = 0;
@@ -346,6 +346,61 @@ export class ReportService {
         outsideCount,
         outsidePercentage: total > 0 ? Math.round((outsideCount / total) * 100) : 0,
       },
+    };
+  }
+
+  /**
+   * Retorna conversas criadas fora do horario comercial (antes das 8h ou apos 18h)
+   * MULTI-TENANT: Todas as queries incluem tenantId
+   */
+  async getOutsideBusinessHoursConversations(
+    tenantId: string,
+    period: string = '30d',
+    limit: number = 20
+  ) {
+    const startDate = this.getStartDate(period);
+
+    logger.debug({ tenantId, period }, 'Fetching outside business hours conversations');
+
+    const conversations = await prisma.conversation.findMany({
+      where: {
+        tenantId,
+        createdAt: { gte: startDate },
+      },
+      select: {
+        id: true,
+        status: true,
+        createdAt: true,
+        lastMessageAt: true,
+        hotelUnit: true,
+        contact: {
+          select: {
+            id: true,
+            name: true,
+            phoneNumber: true,
+            profilePictureUrl: true,
+          },
+        },
+        assignedTo: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    // Filter by hour in JS (Prisma doesn't support hour extraction in WHERE)
+    const outsideConversations = conversations.filter((conv) => {
+      const hour = conv.createdAt.getHours();
+      return hour < 8 || hour >= 18;
+    });
+
+    return {
+      period,
+      total: outsideConversations.length,
+      conversations: outsideConversations.slice(0, limit),
     };
   }
 }
