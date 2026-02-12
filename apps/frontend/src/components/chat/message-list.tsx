@@ -8,6 +8,14 @@ import { TypingIndicator } from './typing-indicator';
 import { ArrowDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+/** Parse date seguro - trata createdAt ausente ou timestamp como fallback */
+function safeDate(msg: Message): Date {
+  const raw = msg.createdAt || (msg as any).timestamp;
+  if (!raw) return new Date(0);
+  const d = new Date(raw);
+  return isNaN(d.getTime()) ? new Date(0) : d;
+}
+
 interface MessageListProps {
   messages: Message[];
   isTyping?: boolean;
@@ -59,17 +67,17 @@ export function MessageList({ messages, isTyping, contactName, contactAvatar }: 
 
       // Check if we need a date divider
       const showDateDivider = !prevMessage ||
-        new Date(message.createdAt).toDateString() !== new Date(prevMessage.createdAt).toDateString();
+        safeDate(message).toDateString() !== safeDate(prevMessage).toDateString();
 
       // Check if this message should show avatar (first in group)
       const showAvatar = !prevMessage ||
         prevMessage.direction !== message.direction ||
-        new Date(message.createdAt).getTime() - new Date(prevMessage.createdAt).getTime() > 5 * 60 * 1000; // 5 minutes
+        safeDate(message).getTime() - safeDate(prevMessage).getTime() > 5 * 60 * 1000; // 5 minutes
 
       // Check if grouped with next message
       const groupedWithNext = nextMessage &&
         nextMessage.direction === message.direction &&
-        new Date(nextMessage.createdAt).getTime() - new Date(message.createdAt).getTime() < 5 * 60 * 1000;
+        safeDate(nextMessage).getTime() - safeDate(message).getTime() < 5 * 60 * 1000;
 
       return [
         ...acc,
@@ -120,7 +128,7 @@ export function MessageList({ messages, isTyping, contactName, contactAvatar }: 
           {groupedMessages.map(({ message, showDateDivider, showAvatar, groupedWithNext }) => (
             <div key={message.id} className="w-full">
               {showDateDivider && (
-                <DateDivider date={new Date(message.createdAt)} />
+                <DateDivider date={safeDate(message)} />
               )}
               <MessageBubble
                 message={message}

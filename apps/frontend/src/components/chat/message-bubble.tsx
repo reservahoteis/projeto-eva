@@ -302,11 +302,27 @@ export const MessageBubble = memo(function MessageBubble({
             {(message.metadata as any)?.interactiveType === 'nfm_reply' && (
               <div>
                 <div className="flex items-center gap-2 mb-2">
-                  <FileText className="w-4 h-4 text-[#027eb5]" />
+                  <div className="bg-[#e7f3ff] p-1.5 rounded">
+                    <FileText className="w-4 h-4 text-[#027eb5]" />
+                  </div>
                   <span className="text-[12px] text-[#667781]">
-                    Formulario: {(message.metadata as any)?.nfmReply?.flowName || 'Resposta'}
+                    {(message.metadata as any)?.nfmReply?.flowName || 'Formulario respondido'}
                   </span>
                 </div>
+                {/* Dados do formulario formatados */}
+                {(message.metadata as any)?.nfmReply?.responseData && (
+                  <div className="bg-[#f0f2f5] rounded-lg p-2.5 mb-1.5 space-y-1">
+                    {Object.entries((message.metadata as any).nfmReply.responseData as Record<string, unknown>)
+                      .filter(([key]) => key !== 'flow_token')
+                      .map(([key, value]) => (
+                        <div key={key} className="flex justify-between gap-2 text-[13px]">
+                          <span className="text-[#667781] capitalize">{key.replace(/_/g, ' ')}:</span>
+                          <span className="text-[#111b21] font-medium text-right">{String(value)}</span>
+                        </div>
+                      ))
+                    }
+                  </div>
+                )}
                 {message.content && (
                   <p className="text-[14px] text-[#111b21] break-words whitespace-pre-wrap">
                     {message.content}
@@ -380,8 +396,11 @@ export const MessageBubble = memo(function MessageBubble({
             style={{ fontFamily: 'Segoe UI, Helvetica Neue, sans-serif' }}
           >
             {(() => {
-              const date = new Date(message.createdAt);
-              return !date || isNaN(date.getTime()) ? '--:--' : format(date, 'HH:mm', { locale: ptBR });
+              // Usar timestamp do socket ou createdAt do banco, com fallback robusto
+              const raw = message.createdAt || (message as any).timestamp;
+              if (!raw) return '--:--';
+              const date = new Date(raw);
+              return isNaN(date.getTime()) ? '--:--' : format(date, 'HH:mm', { locale: ptBR });
             })()}
           </span>
           <StatusIcon />
