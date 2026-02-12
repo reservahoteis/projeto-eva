@@ -342,7 +342,9 @@ export async function processIncomingMessage(job: Job<ProcessMessageJobData>): P
         content: savedMessage.content,
         metadata: savedMessage.metadata,
         status: savedMessage.status,
-        timestamp: savedMessage.timestamp,
+        timestamp: savedMessage.timestamp instanceof Date ? savedMessage.timestamp.toISOString() : savedMessage.timestamp,
+        createdAt: savedMessage.createdAt instanceof Date ? savedMessage.createdAt.toISOString() : savedMessage.createdAt,
+        mediaUrl: (savedMessage.metadata as any)?.mediaUrl,
         contactId: contact.id,
       },
       {
