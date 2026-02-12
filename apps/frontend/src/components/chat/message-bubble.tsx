@@ -112,12 +112,30 @@ export const MessageBubble = memo(function MessageBubble({
       >
         {/* Message Content */}
         {message.type === MessageType.TEXT && (
-          <p
-            className="text-[14px] text-[#111b21] break-words whitespace-pre-wrap"
-            style={{ fontFamily: 'Segoe UI, Helvetica Neue, sans-serif' }}
-          >
-            {message.content}
-          </p>
+          <div>
+            {/* Badge para respostas de lista interativa */}
+            {(message.metadata as any)?.list && (
+              <div className="flex items-center gap-1.5 mb-1">
+                <span className="text-[11px] text-[#027eb5] bg-[#e7f3ff] px-2 py-0.5 rounded-full">
+                  Selecionou da lista
+                </span>
+              </div>
+            )}
+            {/* Badge para respostas de botao interativo */}
+            {(message.metadata as any)?.button && (
+              <div className="flex items-center gap-1.5 mb-1">
+                <span className="text-[11px] text-[#027eb5] bg-[#e7f3ff] px-2 py-0.5 rounded-full">
+                  Clicou no botao
+                </span>
+              </div>
+            )}
+            <p
+              className="text-[14px] text-[#111b21] break-words whitespace-pre-wrap"
+              style={{ fontFamily: 'Segoe UI, Helvetica Neue, sans-serif' }}
+            >
+              {message.content}
+            </p>
+          </div>
         )}
 
         {message.type === MessageType.IMAGE && (
@@ -280,18 +298,38 @@ export const MessageBubble = memo(function MessageBubble({
               </div>
             )}
 
-            {/* Fallback para tipos interativos não reconhecidos */}
-            {(message.metadata as any)?.interactiveType &&
-              !['buttons', 'list', 'flow', 'booking_flow'].includes((message.metadata as any)?.interactiveType) && (
+            {/* Renderizar resposta de formulario (nfm_reply / WhatsApp Flow response) */}
+            {(message.metadata as any)?.interactiveType === 'nfm_reply' && (
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <FileText className="w-4 h-4 text-[#027eb5]" />
+                  <span className="text-[12px] text-[#667781]">
+                    Formulario: {(message.metadata as any)?.nfmReply?.flowName || 'Resposta'}
+                  </span>
+                </div>
+                {message.content && (
+                  <p className="text-[14px] text-[#111b21] break-words whitespace-pre-wrap">
+                    {message.content}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Fallback para tipos interativos não reconhecidos OU sem interactiveType */}
+            {(!(message.metadata as any)?.interactiveType ||
+              ((message.metadata as any)?.interactiveType &&
+              !['buttons', 'list', 'flow', 'booking_flow', 'nfm_reply'].includes((message.metadata as any)?.interactiveType))) && (
               <div>
                 {message.content && (
                   <p className="text-[14px] text-[#111b21] break-words whitespace-pre-wrap">
                     {message.content}
                   </p>
                 )}
-                <div className="mt-1 text-[11px] text-[#667781]">
-                  Mensagem interativa: {(message.metadata as any)?.interactiveType}
-                </div>
+                {(message.metadata as any)?.interactiveType && (
+                  <div className="mt-1 text-[11px] text-[#667781]">
+                    Mensagem interativa: {(message.metadata as any)?.interactiveType}
+                  </div>
+                )}
               </div>
             )}
           </div>
