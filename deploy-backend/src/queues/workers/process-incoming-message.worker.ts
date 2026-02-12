@@ -21,6 +21,7 @@ import { emitNewMessage, emitConversationUpdate, getSocketIO } from '@/config/so
 import { whatsAppService } from '@/services/whatsapp.service';
 import { n8nService } from '@/services/n8n.service';
 import { ConversationStatus, MessageType, Prisma } from '@prisma/client';
+import { normalizeBrazilianPhone } from '@/utils/phone';
 
 // ============================================
 // Type Definitions
@@ -417,9 +418,12 @@ export async function processIncomingMessage(job: Job<ProcessMessageJobData>): P
  */
 async function findOrCreateContact(
   tenantId: string,
-  phoneNumber: string,
+  rawPhoneNumber: string,
   name?: string
 ): Promise<{ id: string; phoneNumber: string; name: string | null; profilePictureUrl: string | null }> {
+  // Normalizar telefone BR (12 -> 13 digitos) para evitar contatos duplicados
+  const phoneNumber = normalizeBrazilianPhone(rawPhoneNumber);
+
   // Buscar contato existente
   let contact = await prisma.contact.findUnique({
     where: {
