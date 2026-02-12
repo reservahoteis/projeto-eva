@@ -305,29 +305,60 @@ export const MessageBubble = memo(function MessageBubble({
                   <div className="bg-[#e7f3ff] p-1.5 rounded">
                     <FileText className="w-4 h-4 text-[#027eb5]" />
                   </div>
-                  <span className="text-[12px] text-[#667781]">
-                    {(message.metadata as any)?.nfmReply?.flowName || 'Formulario respondido'}
+                  <span className="text-[12px] font-medium text-[#027eb5]">
+                    Solicitacao de Orcamento
                   </span>
                 </div>
-                {/* Dados do formulario formatados */}
-                {(message.metadata as any)?.nfmReply?.responseData && (
-                  <div className="bg-[#f0f2f5] rounded-lg p-2.5 mb-1.5 space-y-1">
-                    {Object.entries((message.metadata as any).nfmReply.responseData as Record<string, unknown>)
-                      .filter(([key]) => key !== 'flow_token')
-                      .map(([key, value]) => (
-                        <div key={key} className="flex justify-between gap-2 text-[13px]">
-                          <span className="text-[#667781] capitalize">{key.replace(/_/g, ' ')}:</span>
-                          <span className="text-[#111b21] font-medium text-right">{String(value)}</span>
-                        </div>
-                      ))
+                {/* Dados do formulario formatados em PT-BR */}
+                {(() => {
+                  const data = (message.metadata as any)?.nfmReply?.responseData;
+                  if (!data) return null;
+
+                  const formatDate = (val: string) => {
+                    if (!val) return val;
+                    // yyyy-mm-dd -> dd/mm/yyyy
+                    const match = val.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+                    if (match) return `${match[3]}/${match[2]}/${match[1]}`;
+                    // Epoch em ms
+                    const num = Number(val);
+                    if (!isNaN(num) && num > 1000000000) {
+                      const d = new Date(num);
+                      if (!isNaN(d.getTime())) {
+                        return d.toLocaleDateString('pt-BR');
+                      }
                     }
-                  </div>
-                )}
-                {message.content && (
-                  <p className="text-[14px] text-[#111b21] break-words whitespace-pre-wrap">
-                    {message.content}
-                  </p>
-                )}
+                    return val;
+                  };
+
+                  const checkin = data.checkin || data.check_in_date;
+                  const checkout = data.checkout || data.check_out_date;
+                  const guests = data.guests || data.adults;
+                  const hasChildren = data.has_children === 'sim';
+                  const childrenCount = data.children_count || data.children || '0';
+                  const childrenAge = data.children_age;
+
+                  const fields: { label: string; value: string }[] = [];
+                  if (checkin) fields.push({ label: 'Check-in', value: formatDate(String(checkin)) });
+                  if (checkout) fields.push({ label: 'Check-out', value: formatDate(String(checkout)) });
+                  if (guests) fields.push({ label: 'Hospedes', value: String(guests) });
+                  if (hasChildren) {
+                    fields.push({ label: 'Criancas', value: String(childrenCount) });
+                    if (childrenAge) fields.push({ label: 'Idade', value: String(childrenAge).replace(/-/g, ' a ') + ' anos' });
+                  } else if (data.has_children !== undefined) {
+                    fields.push({ label: 'Criancas', value: 'Nao' });
+                  }
+
+                  return (
+                    <div className="bg-[#f0f2f5] rounded-lg p-3 space-y-1.5">
+                      {fields.map((f) => (
+                        <div key={f.label} className="flex items-center gap-2 text-[13px]">
+                          <span className="text-[#667781] min-w-[80px]">{f.label}:</span>
+                          <span className="text-[#111b21] font-medium">{f.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
               </div>
             )}
 
