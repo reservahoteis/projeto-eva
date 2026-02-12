@@ -1286,21 +1286,31 @@ function formatFlowResponseToText(
 function parseFlowDate(value: unknown): string | null {
   if (!value) return null;
 
+  const str = String(value).trim();
+
   try {
-    let timestamp = parseInt(String(value), 10);
+    // Formato ISO yyyy-mm-dd (ex: 2026-02-14)
+    const isoMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (isoMatch) {
+      return `${isoMatch[3]}/${isoMatch[2]}/${isoMatch[1]}`;
+    }
+
+    // Formato dd/mm/yyyy (ja formatado)
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(str)) {
+      return str;
+    }
+
+    // Epoch timestamp (ms ou segundos)
+    let timestamp = parseInt(str, 10);
     if (isNaN(timestamp)) return null;
 
     // Se o timestamp for muito pequeno, pode estar em segundos
-    // Timestamps em ms para 2020+ são > 1577836800000 (1 Jan 2020)
-    // Timestamps em segundos para 2020+ são > 1577836800
     if (timestamp < 1000000000000 && timestamp > 1000000000) {
-      // Provavelmente em segundos, converter para ms
       timestamp = timestamp * 1000;
     }
 
     const date = new Date(timestamp);
 
-    // Verificar se a data é válida e razoável (entre 2020 e 2030)
     const year = date.getFullYear();
     if (year < 2020 || year > 2035) {
       return null;
