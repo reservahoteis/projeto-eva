@@ -117,6 +117,7 @@ services:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - ./certbot/conf:/etc/letsencrypt:ro
       - ./certbot/www:/var/www/certbot:ro
+      - /var/lib/whatsapp-crm/hotel-images:/var/lib/whatsapp-crm/hotel-images:ro
     depends_on:
       - backend
     networks:
