@@ -12,7 +12,7 @@ const phoneSchema = z.string().min(10, 'Telefone deve ter no minimo 10 digitos')
 export const sendTextSchema = z.object({
   phone: phoneSchema,
   message: z.string().min(1, 'Mensagem e obrigatoria').max(4096, 'Mensagem deve ter no maximo 4096 caracteres'),
-  delayTyping: z.number().optional(),
+  delayTyping: z.coerce.number().optional(),
 });
 
 /**
