@@ -51,6 +51,9 @@ router.post('/:id/assign', validate(assignConversationSchema), conversationContr
 // POST /api/conversations/:id/unassign
 router.post('/:id/unassign', conversationController.unassign.bind(conversationController));
 
+// POST /api/conversations/:id/read
+router.post('/:id/read', conversationController.markAsRead.bind(conversationController));
+
 // POST /api/conversations/:id/close
 router.post('/:id/close', conversationController.close.bind(conversationController));
 

@@ -873,6 +873,37 @@ export class ConversationService {
   }
 
   /**
+   * Marcar todas as mensagens INBOUND de uma conversa como READ
+   */
+  async markConversationAsRead(conversationId: string, tenantId: string) {
+    const conversation = await prisma.conversation.findFirst({
+      where: {
+        id: conversationId,
+        tenantId,
+      },
+    });
+
+    if (!conversation) {
+      throw new NotFoundError('Conversa não encontrada');
+    }
+
+    const result = await prisma.message.updateMany({
+      where: {
+        conversationId,
+        direction: 'INBOUND',
+        status: { not: 'READ' },
+      },
+      data: {
+        status: 'READ',
+      },
+    });
+
+    logger.info({ conversationId, tenantId, updatedCount: result.count }, 'Conversation messages marked as read');
+
+    return { updatedCount: result.count };
+  }
+
+  /**
    * Excluir conversa permanentemente
    */
   async deleteConversation(conversationId: string, tenantId: string) {

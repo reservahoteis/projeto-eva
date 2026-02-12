@@ -311,6 +311,32 @@ export class ConversationController {
   }
 
   /**
+   * POST /api/conversations/:id/read
+   * Marca todas as mensagens INBOUND como READ
+   */
+  async markAsRead(req: Request, res: Response) {
+    try {
+      const id = req.params.id as string;
+
+      if (!req.tenantId) {
+        return res.status(400).json({ error: 'Tenant ID não encontrado' });
+      }
+
+      const result = await conversationService.markConversationAsRead(id, req.tenantId);
+
+      return res.json(result);
+    } catch (error) {
+      logger.error({ error, conversationId: req.params.id }, 'Erro ao marcar conversa como lida');
+
+      if (error instanceof NotFoundError) {
+        return res.status(404).json({ error: error.message });
+      }
+
+      return res.status(500).json({ error: 'Erro interno ao marcar conversa como lida' });
+    }
+  }
+
+  /**
    * POST /api/conversations/:id/archive
    */
   async archive(req: Request, res: Response) {
