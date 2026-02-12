@@ -174,11 +174,16 @@ tipo(escopo): titulo curto
 
 Problema: descricao do problema
 Solucao: como foi resolvido
-
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 ```
 
 Tipos: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `perf`
+
+### 4.8 Pushes Separados Backend/Frontend
+
+**OBRIGATORIO**: Quando alterar backend E frontend na mesma task:
+- Fazer commit e push do **backend** separado
+- Fazer commit e push do **frontend** separado
+- Facilita identificacao de mudancas por outros desenvolvedores
 
 ---
 

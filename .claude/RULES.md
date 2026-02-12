@@ -36,6 +36,11 @@ Solucao: como resolveu
 feat|fix|refactor|docs|test|chore|perf
 ```
 
+## Pushes
+- SEMPRE separar commits/pushes de backend e frontend
+- Backend primeiro, frontend depois (ou vice-versa)
+- NUNCA misturar backend e frontend no mesmo push
+
 ## Testes
 - Services: sempre
 - APIs: sempre

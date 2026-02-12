@@ -68,6 +68,8 @@ WHATSAPP_VERIFY_TOKEN=[token]
 | window.socket exposto (P0-3) | NUNCA expor socket globalmente, atacante pode manipular via DevTools |
 | findUnique vs findFirst | Usar findFirst quando query nao eh por unique key (ex: email+tenantId) |
 | pnpm-lock desatualizado | Sempre rodar `pnpm install` apos alterar package.json antes de commit |
+| Push misturando frontend/backend | SEMPRE separar commits/pushes de backend e frontend |
+| Telefone BR 12 vs 13 digitos | Normalizar com normalizeBrazilianPhone() em utils/phone.ts |
 
 ## Diario de Desenvolvimento
 
