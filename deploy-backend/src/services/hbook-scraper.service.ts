@@ -11,9 +11,9 @@ const COMPANY_IDS: Record<string, string> = {
   'CAMBURI': '6750b19f496b9fcb0e105ccb',
   'SANTO ANTONIO': '662ff573ca37a716229fe257',
   'SANTO ANTONIO DO PINHAL': '662ff573ca37a716229fe257',
-  'SANTA': '', // TODO: Adicionar companyId HBook do Santa Smart Hotel
-  'SANTA SMART': '',
-  'SANTA SMART HOTEL': '',
+  'SANTA': '59f07097c19a3b1a60c6d113',
+  'SANTA SMART': '59f07097c19a3b1a60c6d113',
+  'SANTA SMART HOTEL': '59f07097c19a3b1a60c6d113',
 };
 
 /**
