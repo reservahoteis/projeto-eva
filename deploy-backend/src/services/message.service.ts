@@ -3,6 +3,7 @@ import { NotFoundError, BadRequestError } from '@/utils/errors';
 import { MessageType } from '@prisma/client';
 import { whatsAppService } from './whatsapp.service';
 import { conversationService } from './conversation.service';
+import { normalizeBrazilianPhone } from '@/utils/phone';
 import logger from '@/config/logger';
 
 interface SendMessageData {
@@ -331,11 +332,22 @@ export class MessageService {
     content: string;
     metadata?: any;
   }) {
-    // 1. Buscar ou criar contato
+    // 1. Normalizar telefone BR (12 digitos -> 13 digitos com 9)
+    // WhatsApp inbound envia 5548998448722 (13), N8N outbound envia 554898448722 (12)
+    // Sem normalizar, cria contatos/conversas duplicados
+    const normalizedPhone = normalizeBrazilianPhone(data.phoneNumber);
+    if (normalizedPhone !== data.phoneNumber) {
+      logger.info({
+        original: data.phoneNumber,
+        normalized: normalizedPhone,
+      }, 'saveOutboundMessage: Phone normalized (12->13 digits)');
+    }
+
+    // 2. Buscar ou criar contato
     let contact = await prisma.contact.findFirst({
       where: {
         tenantId: data.tenantId,
-        phoneNumber: data.phoneNumber,
+        phoneNumber: normalizedPhone,
       },
     });
 
@@ -343,17 +355,17 @@ export class MessageService {
       contact = await prisma.contact.create({
         data: {
           tenantId: data.tenantId,
-          phoneNumber: data.phoneNumber,
+          phoneNumber: normalizedPhone,
         },
       });
-      logger.info({ contactId: contact.id, phoneNumber: data.phoneNumber }, 'Contact created for AI message');
+      logger.info({ contactId: contact.id, phoneNumber: normalizedPhone }, 'Contact created for AI message');
     }
 
-    // 2. Buscar ou criar conversa
+    // 3. Buscar ou criar conversa
     logger.debug({
       tenantId: data.tenantId,
       contactId: contact.id,
-      phoneNumber: data.phoneNumber,
+      phoneNumber: normalizedPhone,
       whatsappMessageId: data.whatsappMessageId,
     }, 'saveOutboundMessage: Looking for conversation');
 
@@ -367,7 +379,7 @@ export class MessageService {
         tenantId: data.tenantId,
         conversationId: conversation.id,
         contactId: contact.id,
-        phoneNumber: data.phoneNumber,
+        phoneNumber: normalizedPhone,
       }, 'saveOutboundMessage: Created NEW conversation for outbound - this may indicate inbound/outbound mismatch');
     }
 
@@ -411,7 +423,7 @@ export class MessageService {
       messageId: message.id,
       conversationId: conversation.id,
       whatsappMessageId: data.whatsappMessageId,
-      phoneNumber: data.phoneNumber,
+      phoneNumber: normalizedPhone,
       isNewConversation,
     }, 'AI outbound message saved');
 

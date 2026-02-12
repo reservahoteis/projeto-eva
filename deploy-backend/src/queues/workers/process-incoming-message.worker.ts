@@ -51,6 +51,7 @@ interface MediaMessageMetadata {
   name?: string;
   address?: string;
   context?: MessageContext;
+  interactiveType?: string;
   button?: { id: string; title: string };
   list?: { id: string; title: string; description?: string };
   nfmReply?: {
@@ -776,6 +777,7 @@ function extractMessageData(message: ProcessMessageJobData['message']): Extracte
       type: MessageType.INTERACTIVE,
       content,
       metadata: {
+        interactiveType: 'nfm_reply',
         nfmReply: {
           flowName: nfmReply.name,
           flowToken: message.context?.id,
