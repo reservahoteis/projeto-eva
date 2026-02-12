@@ -80,8 +80,8 @@ function ConversationPageContent({ params }: ConversationPageProps) {
     const timeoutId = setTimeout(async () => {
       try {
         await conversationService.markAsRead(conversationId);
-        // Update the conversations list cache to reflect unread count = 0
-        queryClient.setQueryData(['conversations'], (oldData: any) => {
+        // Update sidebar cache to reflect unread count = 0
+        queryClient.setQueryData(['conversations-sidebar'], (oldData: any) => {
           if (!oldData?.data) return oldData;
           return {
             ...oldData,
@@ -92,7 +92,6 @@ function ConversationPageContent({ params }: ConversationPageProps) {
         });
       } catch (error) {
         // Silently ignore errors - not critical
-        console.error('Error marking conversation as read:', error);
       }
     }, 500); // Wait 500ms before marking as read to avoid rapid navigation issues
 
@@ -183,7 +182,20 @@ function ConversationPageContent({ params }: ConversationPageProps) {
           });
         }
 
-        console.log('✅ UI UPDATE COMPLETE - Message should appear now!');
+        // Auto-mark as read: if INBOUND message arrives on active conversation, mark read immediately
+        if (message.direction === 'INBOUND') {
+          conversationService.markAsRead(conversationId).catch(() => {});
+          // Update sidebar unread count to 0
+          queryClient.setQueryData(['conversations-sidebar'], (oldData: any) => {
+            if (!oldData?.data) return oldData;
+            return {
+              ...oldData,
+              data: oldData.data.map((conv: any) =>
+                conv.id === conversationId ? { ...conv, unreadCount: 0 } : conv
+              ),
+            };
+          });
+        }
       } else {
         console.log('⚠️ Message for different conversation or no message data:', {
           messageConversationId,
