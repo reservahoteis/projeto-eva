@@ -954,6 +954,7 @@ router.post('/send-carousel', validate(sendCarouselSchema), async (req: Request,
  * - "Campos do Jordão"
  * - "Camburi"
  * - "Santo Antônio do Pinhal"
+ * - "Santa Smart Hotel"
  */
 router.post('/set-hotel-unit', validate(setHotelUnitSchema), async (req: Request, res: Response) => {
   try {
@@ -978,6 +979,7 @@ router.post('/set-hotel-unit', validate(setHotelUnitSchema), async (req: Request
       'Campos do Jordão',
       'Camburi',
       'Santo Antônio do Pinhal',
+      'Santa Smart Hotel',
     ];
 
     // Validar hotelUnit
@@ -1410,7 +1412,7 @@ router.post('/mark-opportunity', validate(markOpportunitySchema), async (req: Re
  * Usa web scraping com Puppeteer para extrair dados em tempo real
  *
  * Query params:
- * - unidade: Nome da unidade (Ilhabela, Camburi, Campos, Santo Antonio)
+ * - unidade: Nome da unidade (Ilhabela, Camburi, Campos, Santo Antonio, Santa)
  * - checkin: Data de check-in (DD/MM/YYYY)
  * - checkout: Data de check-out (DD/MM/YYYY)
  * - adults: Número de adultos

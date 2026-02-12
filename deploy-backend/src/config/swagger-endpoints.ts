@@ -472,7 +472,7 @@ export const conversationEndpoints = {
         {
           name: 'hotelUnit',
           in: 'query',
-          schema: { type: 'string', enum: ['Ilhabela', 'Campos do Jordão', 'Camburi', 'Santo Antônio do Pinhal'] },
+          schema: { type: 'string', enum: ['Ilhabela', 'Campos do Jordão', 'Camburi', 'Santo Antônio do Pinhal', 'Santa Smart Hotel'] },
         },
         { name: 'search', in: 'query', schema: { type: 'string' } },
       ],
@@ -1808,7 +1808,7 @@ export const n8nEndpoints = {
                 phone: { type: 'string' },
                 hotelUnit: {
                   type: 'string',
-                  enum: ['Ilhabela', 'Campos do Jordão', 'Camburi', 'Santo Antônio do Pinhal'],
+                  enum: ['Ilhabela', 'Campos do Jordão', 'Camburi', 'Santo Antônio do Pinhal', 'Santa Smart Hotel'],
                 },
               },
             },

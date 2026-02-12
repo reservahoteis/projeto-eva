@@ -7,6 +7,7 @@ export const HOTEL_UNITS = [
   'Campos do Jordão',
   'Camburi',
   'Santo Antônio do Pinhal',
+  'Santa Smart Hotel',
 ] as const;
 
 export type HotelUnit = (typeof HOTEL_UNITS)[number];

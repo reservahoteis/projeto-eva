@@ -21,6 +21,7 @@ const HOTEL_UNITS = [
   'Campos do Jordão',
   'Camburi',
   'Santo Antônio do Pinhal',
+  'Santa Smart Hotel',
 ] as const;
 
 const userFormSchema = z.object({

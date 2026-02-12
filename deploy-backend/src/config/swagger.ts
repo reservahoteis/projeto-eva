@@ -170,7 +170,7 @@ const options = {
             hotelUnit: {
               type: 'string',
               nullable: true,
-              enum: ['Ilhabela', 'Campos do Jordão', 'Camburi', 'Santo Antônio do Pinhal'],
+              enum: ['Ilhabela', 'Campos do Jordão', 'Camburi', 'Santo Antônio do Pinhal', 'Santa Smart Hotel'],
             },
             isOpportunity: {
               type: 'boolean',

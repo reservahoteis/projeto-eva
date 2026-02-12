@@ -131,6 +131,7 @@ const VALID_HOTEL_UNITS = [
   'Campos do Jordão',
   'Camburi',
   'Santo Antônio do Pinhal',
+  'Santa Smart Hotel',
 ];
 
 // Keywords que indicam que o cliente quer falar com um humano
@@ -163,6 +164,11 @@ const HOTEL_UNIT_ALIASES: Record<string, string> = {
   'santo_antonio': 'Santo Antônio do Pinhal',
   'santoantonio': 'Santo Antônio do Pinhal',
   'santo_antonio_pinhal': 'Santo Antônio do Pinhal',
+  'santa': 'Santa Smart Hotel',
+  'santa_smart': 'Santa Smart Hotel',
+  'santasmart': 'Santa Smart Hotel',
+  'santa_smart_hotel': 'Santa Smart Hotel',
+  'st': 'Santa Smart Hotel',
 };
 
 /**
