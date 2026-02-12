@@ -465,10 +465,6 @@ function ContactsPageContent() {
                         <DropdownMenuItem
                           className="text-red-600"
                           onClick={() => setDeletingContact(contact)}
-                          disabled={
-                            (contact.conversationsCount ||
-                             contact._count?.conversations || 0) > 0
-                          }
                         >
                           <Trash className="mr-2 h-4 w-4" />
                           Remover
@@ -582,10 +578,6 @@ function ContactsPageContent() {
                             <DropdownMenuItem
                               className="text-red-600"
                               onClick={() => setDeletingContact(contact)}
-                              disabled={
-                                (contact.conversationsCount ||
-                                 contact._count?.conversations || 0) > 0
-                              }
                             >
                               <Trash className="mr-2 h-4 w-4" />
                               Remover
@@ -682,6 +674,7 @@ function ContactsPageContent() {
             <AlertDialogDescription className="text-[var(--text-muted)]">
               Tem certeza que deseja remover o contato{' '}
               <strong>{deletingContact?.name || deletingContact?.phoneNumber}</strong>?
+              Todas as conversas e mensagens deste contato serão excluidas permanentemente.
               Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
