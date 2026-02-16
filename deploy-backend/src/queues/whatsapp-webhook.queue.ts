@@ -126,6 +126,55 @@ export const whatsappMediaDownloadQueue = new Queue<DownloadMediaJobData>(
 );
 
 // ============================================
+// IA Reactivation Queue (Delayed Jobs)
+// ============================================
+
+export interface IaReactivationJobData {
+  conversationId: string;
+  tenantId: string;
+}
+
+/**
+ * Fila para reativar IA automaticamente apos follow-up
+ * Usa delayed jobs para executar apos 1 hora
+ */
+export const iaReactivationQueue = new Queue<IaReactivationJobData>(
+  'ia:reactivation',
+  {
+    ...QUEUE_OPTIONS,
+    defaultJobOptions: {
+      ...QUEUE_OPTIONS.defaultJobOptions,
+      attempts: 2,
+      removeOnComplete: 50,
+      removeOnFail: 100,
+    },
+  }
+);
+
+iaReactivationQueue.on('completed', (job) => {
+  logger.info(
+    {
+      jobId: job.id,
+      tenantId: job.data.tenantId,
+      conversationId: job.data.conversationId,
+    },
+    'IA reactivation job completed'
+  );
+});
+
+iaReactivationQueue.on('failed', (job, err) => {
+  logger.error(
+    {
+      jobId: job.id,
+      tenantId: job.data.tenantId,
+      conversationId: job.data.conversationId,
+      error: err.message,
+    },
+    'IA reactivation job failed'
+  );
+});
+
+// ============================================
 // Queue Events (Monitoring & Logging)
 // ============================================
 
@@ -257,6 +306,7 @@ const queues = [
   whatsappStatusUpdateQueue,
   whatsappOutgoingMessageQueue,
   whatsappMediaDownloadQueue,
+  iaReactivationQueue,
 ];
 
 queues.forEach((queue) => {
@@ -356,6 +406,33 @@ export async function enqueueMediaDownload(data: DownloadMediaJobData): Promise<
       mediaType: data.mediaType,
     },
     'Media download enqueued'
+  );
+}
+
+/**
+ * Agenda reativacao automatica da IA apos follow-up
+ * @param delayMs - Tempo em ms para aguardar (default: 1 hora)
+ */
+export async function enqueueIaReactivation(
+  conversationId: string,
+  tenantId: string,
+  delayMs: number = 60 * 60 * 1000
+): Promise<void> {
+  await iaReactivationQueue.add(
+    { conversationId, tenantId },
+    {
+      delay: delayMs,
+      jobId: `ia-reactivation-${conversationId}-${Date.now()}`,
+    }
+  );
+
+  logger.info(
+    {
+      tenantId,
+      conversationId,
+      delayMinutes: Math.round(delayMs / 60000),
+    },
+    'IA reactivation scheduled'
   );
 }
 

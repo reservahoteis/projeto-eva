@@ -28,6 +28,7 @@ import {
 import { prisma } from '@/config/database';
 import { emitNewConversation, emitConversationUpdate } from '@/config/socket';
 import logger from '@/config/logger';
+import { enqueueIaReactivation } from '@/queues/whatsapp-webhook.queue';
 
 const router = Router();
 
@@ -1206,6 +1207,13 @@ router.post('/mark-followup-sent', validate(markFollowupSentSchema), async (req:
         tags: true,
       },
     });
+
+    // Agendar reativacao automatica da IA apos 1 hora
+    try {
+      await enqueueIaReactivation(conversation.id, req.tenantId!, 60 * 60 * 1000);
+    } catch (scheduleError) {
+      logger.warn({ error: scheduleError, conversationId: conversation.id }, 'Failed to schedule IA reactivation');
+    }
 
     // Emitir evento Socket.io para notificar o time de vendas
     try {

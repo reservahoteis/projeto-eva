@@ -4,11 +4,13 @@ import {
   whatsappStatusUpdateQueue,
   whatsappOutgoingMessageQueue,
   whatsappMediaDownloadQueue,
+  iaReactivationQueue,
 } from '../whatsapp-webhook.queue';
 import { processIncomingMessage } from './process-incoming-message.worker';
 import { processStatusUpdate } from './process-status-update.worker';
 import { processOutgoingMessage } from './process-outgoing-message.worker';
 import { processMediaDownload } from './process-media-download.worker';
+import { processIaReactivation } from './process-ia-reactivation.worker';
 
 /**
  * Registra todos os workers nas suas respectivas filas
@@ -33,6 +35,10 @@ export function registerWorkers(): void {
   whatsappMediaDownloadQueue.process(2, processMediaDownload); // 2 jobs concorrentes (I/O intensivo)
   logger.info('✅ Media download worker registered (concurrency: 2)');
 
+  // Worker: Reativacao automatica de IA apos follow-up
+  iaReactivationQueue.process(1, processIaReactivation); // 1 job por vez (nao e critico)
+  logger.info('✅ IA reactivation worker registered (concurrency: 1)');
+
   logger.info('All queue workers registered successfully');
 }
 
@@ -47,6 +53,7 @@ export async function stopWorkers(): Promise<void> {
     whatsappStatusUpdateQueue,
     whatsappOutgoingMessageQueue,
     whatsappMediaDownloadQueue,
+    iaReactivationQueue,
   ];
 
   await Promise.all(
