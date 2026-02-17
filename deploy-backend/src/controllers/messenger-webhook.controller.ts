@@ -10,6 +10,8 @@ import logger from '@/config/logger';
  * Uses the same Meta webhook pattern as WhatsApp:
  * - GET: Challenge verification
  * - POST: Receive page messaging events (body.object === 'page')
+ *
+ * Page ID: 820408291148051 (Hoteis Reserva)
  */
 export class MessengerWebhookController {
   /**
@@ -32,7 +34,6 @@ export class MessengerWebhookController {
         return;
       }
 
-      // Buscar verify token: env var global
       const verifyToken = env.MESSENGER_WEBHOOK_VERIFY_TOKEN;
 
       if (!verifyToken) {
@@ -43,7 +44,6 @@ export class MessengerWebhookController {
 
       if (mode === 'subscribe' && token === verifyToken) {
         logger.info({ challenge }, 'Messenger webhook verified successfully');
-        // Meta espera o challenge como inteiro em text/plain
         res.set('Content-Type', 'text/plain');
         res.status(200).send(challenge);
         return;
@@ -74,7 +74,6 @@ export class MessengerWebhookController {
     try {
       const body = req.body;
 
-      // Verificar que e um evento de Page (Messenger)
       if (body.object !== 'page') {
         logger.warn({ object: body.object }, 'Messenger webhook received non-page event');
         res.status(404).send('Not Found');
@@ -82,40 +81,49 @@ export class MessengerWebhookController {
       }
 
       logger.info(
-        {
-          entriesCount: body.entry?.length || 0,
-        },
+        { entriesCount: body.entry?.length || 0 },
         'Messenger webhook event received'
       );
 
-      // Processar entries
       if (body.entry && Array.isArray(body.entry)) {
         for (const entry of body.entry) {
           const pageId = entry.id;
 
+          // Resolver tenant pelo Page ID
+          const tenantId = await this.resolveTenantByPageId(pageId);
+
           if (entry.messaging && Array.isArray(entry.messaging)) {
             for (const messagingEvent of entry.messaging) {
               // Log do evento para debug (async, nao bloquear)
-              this.logMessengerEvent(pageId, messagingEvent).catch((err) => {
+              this.logMessengerEvent(tenantId || pageId, messagingEvent).catch((err) => {
                 logger.error({ error: err.message }, 'Failed to log Messenger event');
               });
 
-              // Processar diferentes tipos de evento
               if (messagingEvent.message) {
+                const senderId = messagingEvent.sender?.id;
+                const messageText = messagingEvent.message.text;
+                const messageId = messagingEvent.message.mid;
+
                 logger.info(
                   {
                     pageId,
-                    senderId: messagingEvent.sender?.id,
-                    messageId: messagingEvent.message.mid,
-                    text: messagingEvent.message.text ? '[text]' : undefined,
+                    tenantId,
+                    senderId,
+                    messageId,
+                    hasText: !!messageText,
                     hasAttachments: !!messagingEvent.message.attachments,
                   },
                   'Messenger message received'
                 );
+
+                // TODO: Encaminhar para fila de processamento (similar ao WhatsApp)
+                // Por enquanto, apenas loga. Quando o fluxo completo for implementado:
+                // await enqueueMessengerMessage({ tenantId, pageId, senderId, message: messagingEvent.message })
               } else if (messagingEvent.postback) {
                 logger.info(
                   {
                     pageId,
+                    tenantId,
                     senderId: messagingEvent.sender?.id,
                     payload: messagingEvent.postback.payload,
                   },
@@ -134,7 +142,6 @@ export class MessengerWebhookController {
       const duration = Date.now() - startTime;
       logger.info({ duration, entriesCount: body.entry?.length || 0 }, 'Messenger webhook processed');
 
-      // RESPONDER IMEDIATAMENTE
       res.status(200).send('EVENT_RECEIVED');
     } catch (error) {
       const duration = Date.now() - startTime;
@@ -148,19 +155,51 @@ export class MessengerWebhookController {
         'Error processing Messenger webhook'
       );
 
-      // SEMPRE responder 200 para nao bloquear webhook
       res.status(200).send('EVENT_RECEIVED');
+    }
+  }
+
+  /**
+   * Resolve o tenantId a partir do Page ID do Messenger.
+   * Usa o MESSENGER_PAGE_ID do env para mapear ao tenant correto.
+   * Quando multi-tenant for necessario, buscar do campo messengerPageId no Tenant model.
+   */
+  private async resolveTenantByPageId(pageId: string): Promise<string | null> {
+    try {
+      // Mapeamento via env var (global - um Page ID por instalacao)
+      if (env.MESSENGER_PAGE_ID === pageId) {
+        // Buscar o tenant principal (primeiro ACTIVE encontrado)
+        const tenant = await prisma.tenant.findFirst({
+          where: { status: 'ACTIVE' },
+          select: { id: true, slug: true },
+          orderBy: { createdAt: 'asc' },
+        });
+
+        if (tenant) {
+          logger.debug({ pageId, tenantId: tenant.id, tenantSlug: tenant.slug }, 'Messenger page mapped to tenant');
+          return tenant.id;
+        }
+      }
+
+      logger.warn({ pageId, configuredPageId: env.MESSENGER_PAGE_ID }, 'No tenant found for Messenger page');
+      return null;
+    } catch (error) {
+      logger.error(
+        { pageId, error: error instanceof Error ? error.message : 'Unknown error' },
+        'Error resolving tenant for Messenger page'
+      );
+      return null;
     }
   }
 
   /**
    * Loga evento do Messenger no banco para debug
    */
-  private async logMessengerEvent(pageId: string, event: Record<string, unknown>): Promise<void> {
+  private async logMessengerEvent(tenantOrPageId: string, event: Record<string, unknown>): Promise<void> {
     try {
       await prisma.webhookEvent.create({
         data: {
-          tenantId: pageId,
+          tenantId: tenantOrPageId,
           source: 'messenger',
           event: 'messaging',
           payload: event as any,
@@ -169,7 +208,7 @@ export class MessengerWebhookController {
       });
     } catch (err) {
       logger.error(
-        { pageId, error: err instanceof Error ? err.message : 'Unknown error' },
+        { tenantOrPageId, error: err instanceof Error ? err.message : 'Unknown error' },
         'Failed to log Messenger webhook event'
       );
     }

@@ -30,6 +30,8 @@ const envSchema = z.object({
 
   // Messenger
   MESSENGER_WEBHOOK_VERIFY_TOKEN: z.string().optional(),
+  MESSENGER_PAGE_ACCESS_TOKEN: z.string().optional(),
+  MESSENGER_PAGE_ID: z.string().optional(),
 
   // N8N
   N8N_API_KEY: z.string(),
