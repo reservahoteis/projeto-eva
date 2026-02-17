@@ -28,6 +28,9 @@ const envSchema = z.object({
   WHATSAPP_API_VERSION: z.string().default('v21.0'),
   WHATSAPP_WEBHOOK_VERIFY_TOKEN: z.string(),
 
+  // Messenger
+  MESSENGER_WEBHOOK_VERIFY_TOKEN: z.string().optional(),
+
   // N8N
   N8N_API_KEY: z.string(),
 
