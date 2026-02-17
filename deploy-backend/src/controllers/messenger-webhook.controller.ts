@@ -43,6 +43,8 @@ export class MessengerWebhookController {
 
       if (mode === 'subscribe' && token === verifyToken) {
         logger.info({ challenge }, 'Messenger webhook verified successfully');
+        // Meta espera o challenge como inteiro em text/plain
+        res.set('Content-Type', 'text/plain');
         res.status(200).send(challenge);
         return;
       }
