@@ -60,19 +60,30 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup SSH key
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
         run: |
           mkdir -p ~/.ssh
-          if echo "${{ secrets.VPS_SSH_KEY }}" | grep -q "BEGIN OPENSSH PRIVATE KEY"; then
-            echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
-          else
-            echo "${{ secrets.VPS_SSH_KEY }}" | base64 -d > ~/.ssh/deploy_key
-          fi
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H ${{ env.VPS_HOST }} >> ~/.ssh/known_hosts
+
+          # ssh-keyscan com timeout e fallback
+          ssh-keyscan -t ed25519,rsa -T 10 -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+
+          # SSH config global
+          cat >> ~/.ssh/config << SSHEOF
+          Host *
+            StrictHostKeyChecking accept-new
+            IdentityFile ~/.ssh/deploy_key
+            ConnectTimeout 10
+            ServerAliveInterval 30
+            ServerAliveCountMax 3
+          SSHEOF
+          chmod 600 ~/.ssh/config
 
       - name: Test SSH connection
         run: |
-          ssh -i ~/.ssh/deploy_key -o ConnectTimeout=10 ${{ env.VPS_USER }}@${{ env.VPS_HOST }} "echo 'SSH OK'"
+          ssh ${{ env.VPS_USER }}@${{ env.VPS_HOST }} "echo 'SSH OK'"
 
       - name: Sync files to VPS
         run: |
@@ -85,13 +96,12 @@ jobs:
             --exclude 'backups' \
             --exclude '*.test.ts' \
             --exclude 'src/test' \
-            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
             deploy-backend/ \
             ${{ env.VPS_USER }}@${{ env.VPS_HOST }}:${{ env.VPS_PATH }}/
 
       - name: Build and restart container
         run: |
-          ssh -i ~/.ssh/deploy_key ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'EOF'
+          ssh ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'EOF'
             set -e
             cd /root/deploy-backend-dev
 
@@ -117,8 +127,8 @@ jobs:
 
       - name: Health check
         run: |
-          for i in {1..20}; do
-            RESPONSE=$(ssh -i ~/.ssh/deploy_key ${{ env.VPS_USER }}@${{ env.VPS_HOST }} "curl -s -o /dev/null -w '%{http_code}' http://localhost:3002/health" || echo "000")
+          for i in $(seq 1 20); do
+            RESPONSE=$(ssh ${{ env.VPS_USER }}@${{ env.VPS_HOST }} "curl -s -o /dev/null -w '%{http_code}' http://localhost:3002/health" || echo "000")
             if [ "$RESPONSE" = "200" ]; then
               echo "Health check OK!"
               exit 0
@@ -127,9 +137,11 @@ jobs:
             sleep 5
           done
           echo "Health check failed"
-          ssh -i ~/.ssh/deploy_key ${{ env.VPS_USER }}@${{ env.VPS_HOST }} "docker logs crm-backend-dev --tail=30"
+          ssh ${{ env.VPS_USER }}@${{ env.VPS_HOST }} "docker logs crm-backend-dev --tail=30"
           exit 1
 
       - name: Cleanup
         if: always()
-        run: rm -f ~/.ssh/deploy_key
+        run: |
+          rm -f ~/.ssh/deploy_key
+          rm -f ~/.ssh/config
