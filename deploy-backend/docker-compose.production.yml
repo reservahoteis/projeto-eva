@@ -79,6 +79,8 @@ services:
       N8N_API_KEY: ${N8N_API_KEY}
       SUPER_ADMIN_EMAIL: ${SUPER_ADMIN_EMAIL}
       SUPER_ADMIN_PASSWORD: ${SUPER_ADMIN_PASSWORD}
+      # Messenger
+      MESSENGER_WEBHOOK_VERIFY_TOKEN: ${MESSENGER_WEBHOOK_VERIFY_TOKEN:-}
       # Media Storage
       MEDIA_STORAGE_PATH: /var/lib/whatsapp-crm/media
       MEDIA_BASE_URL: ${MEDIA_BASE_URL:-https://api.botreserva.com.br/api/media}
