@@ -1,7 +1,9 @@
 import { Router, Request, Response } from 'express';
+import { Channel } from '@prisma/client';
 import { n8nAuthMiddleware } from '@/middlewares/n8n-auth.middleware';
 import { validate } from '@/middlewares/validate.middleware';
 import { whatsAppService } from '@/services/whatsapp.service';
+import { channelRouter } from '@/services/channels';
 
 import { escalationService } from '@/services/escalation.service';
 import { messageService } from '@/services/message.service';
@@ -29,6 +31,20 @@ import logger from '@/config/logger';
 import { enqueueIaReactivation } from '@/queues/whatsapp-webhook.queue';
 
 const router = Router();
+
+/**
+ * Converte channel string do payload N8N para enum Channel do Prisma.
+ * Default: WHATSAPP (compatibilidade retroativa)
+ */
+function resolveChannel(channel?: string): Channel {
+  if (!channel) return 'WHATSAPP';
+  const map: Record<string, Channel> = {
+    whatsapp: 'WHATSAPP',
+    messenger: 'MESSENGER',
+    instagram: 'INSTAGRAM',
+  };
+  return map[channel.toLowerCase()] || 'WHATSAPP';
+}
 
 // Mapeamento de templates para seus textos (para exibição no painel)
 const TEMPLATE_TEXTS: Record<string, string> = {
@@ -78,7 +94,8 @@ router.use(n8nAuthMiddleware);
  */
 router.post('/send-text', validate(sendTextSchema), async (req: Request, res: Response) => {
   try {
-    const { phone, message } = req.body;
+    const { phone, message, channel: channelStr } = req.body;
+    const channel = resolveChannel(channelStr);
 
     if (!phone || !message) {
       return res.status(400).json({
@@ -86,27 +103,28 @@ router.post('/send-text', validate(sendTextSchema), async (req: Request, res: Re
       });
     }
 
-    // Normalizar telefone (remover caracteres especiais)
     const normalizedPhone = phone.replace(/\D/g, '');
 
-    const result = await whatsAppService.sendTextMessage(
+    const result = await channelRouter.sendText(
+      channel,
       req.tenantId!,
       normalizedPhone,
       message
     );
 
-    // Salvar mensagem no banco para aparecer no painel
     await messageService.saveOutboundMessage({
       tenantId: req.tenantId!,
       phoneNumber: normalizedPhone,
       externalMessageId: result.externalMessageId,
       type: 'TEXT',
       content: message,
+      channel,
     });
 
     logger.info({
       tenantId: req.tenantId,
       phone: normalizedPhone,
+      channel,
       messageId: result.externalMessageId,
     }, 'N8N: Text message sent and saved');
 
@@ -118,11 +136,12 @@ router.post('/send-text', validate(sendTextSchema), async (req: Request, res: Re
         id: result.externalMessageId,
       },
     });
-  } catch (error: any) {
-    logger.error({ error, tenantId: req.tenantId }, 'N8N: Failed to send text');
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Unknown';
+    logger.error({ error: msg, tenantId: req.tenantId }, 'N8N: Failed to send text');
     return res.status(500).json({
       error: 'Falha ao enviar mensagem',
-      message: error.message,
+      message: msg,
     });
   }
 });
@@ -145,7 +164,8 @@ router.post('/send-text', validate(sendTextSchema), async (req: Request, res: Re
  */
 router.post('/send-buttons', validate(sendButtonsSchema), async (req: Request, res: Response) => {
   try {
-    const { phone, message, buttons, title, footer } = req.body;
+    const { phone, message, buttons, title, footer, channel: channelStr } = req.body;
+    const channel = resolveChannel(channelStr);
 
     if (!phone || !message || !buttons || !Array.isArray(buttons)) {
       return res.status(400).json({
@@ -161,15 +181,13 @@ router.post('/send-buttons', validate(sendButtonsSchema), async (req: Request, r
 
     const normalizedPhone = phone.replace(/\D/g, '');
 
-    // Converter formato Z-API para Cloud API
-    // Z-API: { id, label }
-    // Cloud API: { id, title }
-    const cloudApiButtons = buttons.map((btn: any) => ({
-      id: btn.id || btn.buttonId,
-      title: btn.label || btn.title || btn.text,
+    const cloudApiButtons = buttons.map((btn: { id?: string; buttonId?: string; label?: string; title?: string; text?: string }) => ({
+      id: btn.id || btn.buttonId || '',
+      title: btn.label || btn.title || btn.text || '',
     }));
 
-    const result = await whatsAppService.sendInteractiveButtons(
+    const result = await channelRouter.sendButtons(
+      channel,
       req.tenantId!,
       normalizedPhone,
       message,
@@ -178,9 +196,7 @@ router.post('/send-buttons', validate(sendButtonsSchema), async (req: Request, r
       footer
     );
 
-    // Salvar mensagem no banco para aparecer no painel
-    // Para botões, salvamos o texto principal + info dos botões no metadata
-    const buttonLabels = cloudApiButtons.map((btn: any) => btn.title).join(' | ');
+    const buttonLabels = cloudApiButtons.map((btn) => btn.title).join(' | ');
     await messageService.saveOutboundMessage({
       tenantId: req.tenantId!,
       phoneNumber: normalizedPhone,
@@ -194,11 +210,13 @@ router.post('/send-buttons', validate(sendButtonsSchema), async (req: Request, r
         buttons: cloudApiButtons,
         buttonLabels,
       },
+      channel,
     });
 
     logger.info({
       tenantId: req.tenantId,
       phone: normalizedPhone,
+      channel,
       buttonsCount: buttons.length,
       messageId: result.externalMessageId,
     }, 'N8N: Buttons message sent and saved');
@@ -211,11 +229,12 @@ router.post('/send-buttons', validate(sendButtonsSchema), async (req: Request, r
         id: result.externalMessageId,
       },
     });
-  } catch (error: any) {
-    logger.error({ error, tenantId: req.tenantId }, 'N8N: Failed to send buttons');
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Unknown';
+    logger.error({ error: msg, tenantId: req.tenantId }, 'N8N: Failed to send buttons');
     return res.status(500).json({
       error: 'Falha ao enviar botões',
-      message: error.message,
+      message: msg,
     });
   }
 });
@@ -254,7 +273,8 @@ router.post('/send-buttons', validate(sendButtonsSchema), async (req: Request, r
  */
 router.post('/send-list', validate(sendListSchema), async (req: Request, res: Response) => {
   try {
-    const { phone, message, optionList, buttonText, sections } = req.body;
+    const { phone, message, optionList, buttonText, sections, channel: channelStr } = req.body;
+    const channel = resolveChannel(channelStr);
 
     if (!phone || !message) {
       return res.status(400).json({
@@ -270,20 +290,17 @@ router.post('/send-list', validate(sendListSchema), async (req: Request, res: Re
     }>;
     let buttonLabel: string;
 
-    // Converter formato Z-API para Cloud API
     if (optionList) {
-      // Formato Z-API
       buttonLabel = optionList.buttonLabel || 'Ver opções';
       cloudApiSections = [{
         title: optionList.title,
-        rows: optionList.options.map((opt: any) => ({
-          id: opt.id || opt.rowId,
+        rows: optionList.options.map((opt: { id?: string; rowId?: string; title: string; description?: string }) => ({
+          id: opt.id || opt.rowId || '',
           title: opt.title,
           description: opt.description,
         })),
       }];
     } else if (sections) {
-      // Formato já compatível Cloud API
       buttonLabel = buttonText || 'Ver opções';
       cloudApiSections = sections;
     } else {
@@ -292,7 +309,8 @@ router.post('/send-list', validate(sendListSchema), async (req: Request, res: Re
       });
     }
 
-    const result = await whatsAppService.sendInteractiveList(
+    const result = await channelRouter.sendList(
+      channel,
       req.tenantId!,
       normalizedPhone,
       message,
@@ -300,7 +318,6 @@ router.post('/send-list', validate(sendListSchema), async (req: Request, res: Re
       cloudApiSections
     );
 
-    // Salvar mensagem no banco para aparecer no painel
     await messageService.saveOutboundMessage({
       tenantId: req.tenantId!,
       phoneNumber: normalizedPhone,
@@ -312,11 +329,13 @@ router.post('/send-list', validate(sendListSchema), async (req: Request, res: Re
         buttonLabel,
         sections: cloudApiSections,
       },
+      channel,
     });
 
     logger.info({
       tenantId: req.tenantId,
       phone: normalizedPhone,
+      channel,
       messageId: result.externalMessageId,
     }, 'N8N: List message sent and saved');
 
@@ -328,11 +347,12 @@ router.post('/send-list', validate(sendListSchema), async (req: Request, res: Re
         id: result.externalMessageId,
       },
     });
-  } catch (error: any) {
-    logger.error({ error, tenantId: req.tenantId }, 'N8N: Failed to send list');
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Unknown';
+    logger.error({ error: msg, tenantId: req.tenantId }, 'N8N: Failed to send list');
     return res.status(500).json({
       error: 'Falha ao enviar lista',
-      message: error.message,
+      message: msg,
     });
   }
 });
@@ -353,7 +373,8 @@ router.post('/send-list', validate(sendListSchema), async (req: Request, res: Re
  */
 router.post('/send-media', validate(sendMediaSchema), async (req: Request, res: Response) => {
   try {
-    const { phone, type, url, caption, mediaUrl, image, video, audio, document } = req.body;
+    const { phone, type, url, caption, mediaUrl, image, video, audio, document, channel: channelStr } = req.body;
+    const channel = resolveChannel(channelStr);
 
     if (!phone) {
       return res.status(400).json({
@@ -363,18 +384,15 @@ router.post('/send-media', validate(sendMediaSchema), async (req: Request, res: 
 
     const normalizedPhone = phone.replace(/\D/g, '');
 
-    // Suportar múltiplos formatos de payload
     let mediaType: 'image' | 'video' | 'audio' | 'document';
     let mediaLink: string;
     let mediaCaption: string | undefined;
 
     if (type && url) {
-      // Formato padrão
       mediaType = type;
       mediaLink = url;
       mediaCaption = caption;
     } else if (image) {
-      // Formato Z-API alternativo
       mediaType = 'image';
       mediaLink = image.url || image;
       mediaCaption = image.caption || caption;
@@ -390,7 +408,6 @@ router.post('/send-media', validate(sendMediaSchema), async (req: Request, res: 
       mediaLink = document.url || document;
       mediaCaption = document.caption || caption;
     } else if (mediaUrl) {
-      // Detectar tipo pela extensão
       const ext = mediaUrl.split('.').pop()?.toLowerCase();
       if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '')) {
         mediaType = 'image';
@@ -409,17 +426,13 @@ router.post('/send-media', validate(sendMediaSchema), async (req: Request, res: 
       });
     }
 
-    const result = await whatsAppService.sendMediaMessage(
+    const result = await channelRouter.sendMedia(
+      channel,
       req.tenantId!,
       normalizedPhone,
-      {
-        type: mediaType,
-        url: mediaLink,
-        caption: mediaCaption,
-      }
+      { type: mediaType, url: mediaLink, caption: mediaCaption }
     );
 
-    // Mapear tipo de mídia para MessageType
     const messageTypeMap: Record<string, 'IMAGE' | 'VIDEO' | 'AUDIO' | 'DOCUMENT'> = {
       image: 'IMAGE',
       video: 'VIDEO',
@@ -427,7 +440,6 @@ router.post('/send-media', validate(sendMediaSchema), async (req: Request, res: 
       document: 'DOCUMENT',
     };
 
-    // Salvar mensagem no banco para aparecer no painel
     await messageService.saveOutboundMessage({
       tenantId: req.tenantId!,
       phoneNumber: normalizedPhone,
@@ -439,11 +451,13 @@ router.post('/send-media', validate(sendMediaSchema), async (req: Request, res: 
         mediaUrl: mediaLink,
         caption: mediaCaption,
       },
+      channel,
     });
 
     logger.info({
       tenantId: req.tenantId,
       phone: normalizedPhone,
+      channel,
       mediaType,
       messageId: result.externalMessageId,
     }, 'N8N: Media message sent and saved');
@@ -456,11 +470,12 @@ router.post('/send-media', validate(sendMediaSchema), async (req: Request, res: 
         id: result.externalMessageId,
       },
     });
-  } catch (error: any) {
-    logger.error({ error, tenantId: req.tenantId }, 'N8N: Failed to send media');
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Unknown';
+    logger.error({ error: msg, tenantId: req.tenantId }, 'N8N: Failed to send media');
     return res.status(500).json({
       error: 'Falha ao enviar mídia',
-      message: error.message,
+      message: msg,
     });
   }
 });
@@ -479,7 +494,8 @@ router.post('/send-media', validate(sendMediaSchema), async (req: Request, res: 
  */
 router.post('/send-template', validate(sendTemplateSchema), async (req: Request, res: Response) => {
   try {
-    const { phone, template, templateName, language, languageCode, parameters, components } = req.body;
+    const { phone, template, templateName, language, languageCode, parameters, components, channel: channelStr } = req.body;
+    const channel = resolveChannel(channelStr);
 
     if (!phone || (!template && !templateName)) {
       return res.status(400).json({
@@ -489,29 +505,26 @@ router.post('/send-template', validate(sendTemplateSchema), async (req: Request,
 
     const normalizedPhone = phone.replace(/\D/g, '');
 
-    // Extrair parâmetros - suporta tanto 'parameters' quanto 'components'
     let templateParams: string[] | undefined = parameters;
 
-    // Se components foi enviado (formato N8N), extrair os parâmetros
     if (!templateParams && components && Array.isArray(components)) {
-      const bodyComponent = components.find((c: any) => c.type === 'body');
+      const bodyComponent = components.find((c: { type: string; parameters?: Array<{ text?: string; value?: string }> }) => c.type === 'body');
       if (bodyComponent?.parameters && Array.isArray(bodyComponent.parameters)) {
-        templateParams = bodyComponent.parameters.map((p: any) => p.text || p.value || '');
+        templateParams = bodyComponent.parameters.map((p: { text?: string; value?: string }) => p.text || p.value || '');
       }
     }
 
-    const result = await whatsAppService.sendTemplate(
-      req.tenantId!,
-      normalizedPhone,
-      template || templateName,
-      languageCode || language || 'pt_BR',
-      templateParams
-    );
-
-    // Salvar mensagem no banco para aparecer no painel
     const templateNameUsed = template || templateName;
 
-    // Montar conteúdo real do template para exibição no painel
+    const result = await channelRouter.sendTemplate(
+      channel,
+      req.tenantId!,
+      normalizedPhone,
+      templateNameUsed,
+      templateParams || [],
+      languageCode || language || 'pt_BR'
+    );
+
     const templateContent = buildTemplateContent(templateNameUsed, templateParams);
 
     await messageService.saveOutboundMessage({
@@ -525,11 +538,13 @@ router.post('/send-template', validate(sendTemplateSchema), async (req: Request,
         language: languageCode || language || 'pt_BR',
         parameters: templateParams,
       },
+      channel,
     });
 
     logger.info({
       tenantId: req.tenantId,
       phone: normalizedPhone,
+      channel,
       template: templateNameUsed,
       messageId: result.externalMessageId,
     }, 'N8N: Template sent and saved');
@@ -542,11 +557,12 @@ router.post('/send-template', validate(sendTemplateSchema), async (req: Request,
         id: result.externalMessageId,
       },
     });
-  } catch (error: any) {
-    logger.error({ error, tenantId: req.tenantId }, 'N8N: Failed to send template');
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Unknown';
+    logger.error({ error: msg, tenantId: req.tenantId }, 'N8N: Failed to send template');
     return res.status(500).json({
       error: 'Falha ao enviar template',
-      message: error.message,
+      message: msg,
     });
   }
 });
@@ -589,11 +605,12 @@ router.get('/check-ia-lock', validate(checkIaLockSchema, 'query'), async (req: R
     }, 'N8N: IA lock check');
 
     return res.json(result);
-  } catch (error: any) {
-    logger.error({ error, tenantId: req.tenantId }, 'N8N: Failed to check IA lock');
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Unknown';
+    logger.error({ error: msg, tenantId: req.tenantId }, 'N8N: Failed to check IA lock');
     return res.status(500).json({
       error: 'Falha ao verificar lock',
-      message: error.message,
+      message: msg,
     });
   }
 });
@@ -660,11 +677,12 @@ router.post('/escalate', validate(escalateSchema), async (req: Request, res: Res
       conversation: result.conversation,
       contact: result.contact,
     });
-  } catch (error: any) {
-    logger.error({ error, tenantId: req.tenantId }, 'N8N: Failed to create escalation');
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Unknown';
+    logger.error({ error: msg, tenantId: req.tenantId }, 'N8N: Failed to create escalation');
     return res.status(500).json({
       error: 'Falha ao criar escalação',
-      message: error.message,
+      message: msg,
     });
   }
 });
@@ -680,7 +698,8 @@ router.post('/escalate', validate(escalateSchema), async (req: Request, res: Res
  */
 router.post('/mark-read', validate(markReadSchema), async (req: Request, res: Response) => {
   try {
-    const { messageId, externalMessageId } = req.body;
+    const { messageId, externalMessageId, channel: channelStr } = req.body;
+    const channel = resolveChannel(channelStr);
     const msgId = messageId || externalMessageId;
 
     if (!msgId) {
@@ -689,16 +708,17 @@ router.post('/mark-read', validate(markReadSchema), async (req: Request, res: Re
       });
     }
 
-    await whatsAppService.markAsRead(req.tenantId!, msgId);
+    await channelRouter.markAsRead(channel, req.tenantId!, msgId);
 
     return res.json({
       success: true,
     });
-  } catch (error: any) {
-    logger.error({ error, tenantId: req.tenantId }, 'N8N: Failed to mark as read');
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Unknown';
+    logger.error({ error: msg, tenantId: req.tenantId }, 'N8N: Failed to mark as read');
     return res.status(500).json({
       error: 'Falha ao marcar como lido',
-      message: error.message,
+      message: msg,
     });
   }
 });
@@ -750,7 +770,8 @@ router.post('/mark-read', validate(markReadSchema), async (req: Request, res: Re
  */
 router.post('/send-carousel', validate(sendCarouselSchema), async (req: Request, res: Response) => {
   try {
-    const { phone, template, cards, message, carousel } = req.body;
+    const { phone, template, cards, message, carousel, channel: channelStr } = req.body;
+    const channel = resolveChannel(channelStr);
 
     if (!phone) {
       return res.status(400).json({
@@ -758,10 +779,16 @@ router.post('/send-carousel', validate(sendCarouselSchema), async (req: Request,
       });
     }
 
+    // Carousel template e feature exclusiva do WhatsApp
+    if (channel !== 'WHATSAPP' && template) {
+      return res.status(400).json({
+        error: 'Carousel template só é suportado no WhatsApp',
+      });
+    }
+
     const normalizedPhone = phone.replace(/\D/g, '');
 
-    // MODO 1: Usar template aprovado da Meta (carousel real)
-    // O template tem conteúdo fixo (texto e imagens) - só os payloads dos botões são dinâmicos
+    // MODO 1: Template carousel (WhatsApp only)
     if (template && cards) {
       if (!Array.isArray(cards) || cards.length === 0) {
         return res.status(400).json({
@@ -775,35 +802,33 @@ router.post('/send-carousel', validate(sendCarouselSchema), async (req: Request,
         });
       }
 
-      // Validar estrutura dos cards
       for (let i = 0; i < cards.length; i++) {
         const card = cards[i];
-        // imageUrl é obrigatório para templates de carousel
         if (!card.imageUrl) {
           return res.status(400).json({
-            error: `Card ${i + 1}: campo "imageUrl" é obrigatório (URL da imagem do card)`,
+            error: `Card ${i + 1}: campo "imageUrl" é obrigatório`,
           });
         }
-        // buttonPayloads é obrigatório - array com payload para cada botão
         if (!card.buttonPayloads || !Array.isArray(card.buttonPayloads) || card.buttonPayloads.length === 0) {
           return res.status(400).json({
-            error: `Card ${i + 1}: campo "buttonPayloads" é obrigatório (array de payloads para cada botão)`,
+            error: `Card ${i + 1}: campo "buttonPayloads" é obrigatório`,
           });
         }
       }
+
+      interface CarouselCard { imageUrl: string; bodyParams?: string[]; buttonPayloads: string[] }
 
       const result = await whatsAppService.sendCarouselTemplate(
         req.tenantId!,
         normalizedPhone,
         template,
-        cards.map((card: any) => ({
-          imageUrl: card.imageUrl, // Opcional - só se template aceita imagem dinâmica
-          bodyParams: card.bodyParams, // Opcional - só se template tem variáveis {{1}}
-          buttonPayloads: card.buttonPayloads, // Obrigatório - payload para cada botão
+        cards.map((card: CarouselCard) => ({
+          imageUrl: card.imageUrl,
+          bodyParams: card.bodyParams,
+          buttonPayloads: card.buttonPayloads,
         }))
       );
 
-      // Salvar mensagem no banco para aparecer no painel
       await messageService.saveOutboundMessage({
         tenantId: req.tenantId!,
         phoneNumber: normalizedPhone,
@@ -814,7 +839,7 @@ router.post('/send-carousel', validate(sendCarouselSchema), async (req: Request,
           templateType: 'carousel',
           templateName: template,
           cardsCount: cards.length,
-          cards: cards.map((card: any) => ({
+          cards: cards.map((card: CarouselCard) => ({
             imageUrl: card.imageUrl,
             bodyParams: card.bodyParams,
             buttonPayloads: card.buttonPayloads,
@@ -842,53 +867,79 @@ router.post('/send-carousel', validate(sendCarouselSchema), async (req: Request,
       });
     }
 
-    // MODO 2: Mensagens interativas sequenciais (fallback)
+    // MODO 2: Mensagens interativas sequenciais
     if (!carousel || !Array.isArray(carousel) || carousel.length === 0) {
       return res.status(400).json({
         error: 'Forneça "template" + "cards" (modo template) ou "carousel" (modo interativo)',
       });
     }
 
-    // Validar estrutura dos cards
     for (let i = 0; i < carousel.length; i++) {
       const card = carousel[i];
       if (!card.text) {
-        return res.status(400).json({
-          error: `Card ${i + 1}: campo "text" é obrigatório`,
-        });
+        return res.status(400).json({ error: `Card ${i + 1}: campo "text" é obrigatório` });
       }
       if (!card.buttons || !Array.isArray(card.buttons) || card.buttons.length === 0) {
-        return res.status(400).json({
-          error: `Card ${i + 1}: campo "buttons" é obrigatório (array com pelo menos 1 botão)`,
-        });
+        return res.status(400).json({ error: `Card ${i + 1}: campo "buttons" é obrigatório` });
       }
       if (card.buttons.length > 3) {
-        return res.status(400).json({
-          error: `Card ${i + 1}: máximo de 3 botões por card`,
-        });
+        return res.status(400).json({ error: `Card ${i + 1}: máximo de 3 botões por card` });
       }
     }
 
+    interface InteractiveBtn { id?: string; buttonId?: string; label?: string; title?: string; text?: string; type?: string; url?: string }
+    interface InteractiveCard { text: string; image?: string; buttons: InteractiveBtn[] }
+
+    // Para non-WhatsApp, enviar como sequencia de texto+botoes via channelRouter
+    if (channel !== 'WHATSAPP') {
+      const messageIds: string[] = [];
+
+      if (message) {
+        const introResult = await channelRouter.sendText(channel, req.tenantId!, normalizedPhone, message);
+        messageIds.push(introResult.externalMessageId);
+      }
+
+      for (const card of carousel as InteractiveCard[]) {
+        const cardText = card.image ? `${card.text}\n${card.image}` : card.text;
+        const cardButtons = card.buttons.map((btn) => ({
+          id: btn.id || btn.buttonId || '',
+          title: btn.label || btn.title || btn.text || '',
+        }));
+
+        const cardResult = await channelRouter.sendButtons(
+          channel, req.tenantId!, normalizedPhone, cardText, cardButtons
+        );
+        messageIds.push(cardResult.externalMessageId);
+      }
+
+      return res.json({
+        success: true,
+        messageId: messageIds[0],
+        messageIds,
+        cardsCount: carousel.length,
+        mode: 'interactive-degraded',
+      });
+    }
+
+    // WhatsApp: carousel interativo nativo
     const results = await whatsAppService.sendCarousel(
       req.tenantId!,
       normalizedPhone,
       message || '',
-      carousel.map((card: any) => ({
+      (carousel as InteractiveCard[]).map((card) => ({
         text: card.text,
         image: card.image,
-        buttons: card.buttons.map((btn: any) => ({
-          id: btn.id || btn.buttonId,
-          label: btn.label || btn.title || btn.text,
-          type: btn.type || 'reply',
+        buttons: card.buttons.map((btn) => ({
+          id: btn.id || btn.buttonId || '',
+          label: btn.label || btn.title || btn.text || '',
+          type: (btn.type || 'reply') as 'reply' | 'url',
           url: btn.url,
         })),
       }))
     );
 
-    // Retornar array de IDs das mensagens enviadas
     const messageIds = results.map(r => r.externalMessageId);
 
-    // Salvar cada mensagem no banco para aparecer no painel
     for (let i = 0; i < results.length; i++) {
       const result = results[i];
       const card = carousel[i];
@@ -918,21 +969,22 @@ router.post('/send-carousel', validate(sendCarouselSchema), async (req: Request,
 
     return res.json({
       success: true,
-      messageId: messageIds[0], // Primeiro ID para compatibilidade
-      messageIds: messageIds, // Todos os IDs
+      messageId: messageIds[0],
+      messageIds,
       cardsCount: carousel.length,
       mode: 'interactive',
       botReservaResponse: {
-        messageIds: messageIds,
+        messageIds,
         cardsCount: carousel.length,
       },
     });
-  } catch (error: any) {
-    logger.error({ error, tenantId: req.tenantId }, 'N8N: Failed to send carousel');
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Unknown';
+    logger.error({ error: msg, tenantId: req.tenantId }, 'N8N: Failed to send carousel');
     return res.status(500).json({
       success: false,
       error: 'Falha ao enviar carousel',
-      message: error.message,
+      message: msg,
     });
   }
 });
@@ -1093,11 +1145,12 @@ router.post('/set-hotel-unit', validate(setHotelUnitSchema), async (req: Request
       hotelUnit,
       message: `Unidade hoteleira definida como: ${hotelUnit}`,
     });
-  } catch (error: any) {
-    logger.error({ error, tenantId: req.tenantId }, 'N8N: Failed to set hotel unit');
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Unknown';
+    logger.error({ error: msg, tenantId: req.tenantId }, 'N8N: Failed to set hotel unit');
     return res.status(500).json({
       error: 'Falha ao definir unidade hoteleira',
-      message: error.message,
+      message: msg,
     });
   }
 });
@@ -1245,11 +1298,12 @@ router.post('/mark-followup-sent', validate(markFollowupSentSchema), async (req:
       followupSentAt: new Date().toISOString(),
       isOpportunity: true,
     });
-  } catch (error: any) {
-    logger.error({ error, tenantId: req.tenantId }, 'N8N: Failed to mark followup sent');
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Unknown';
+    logger.error({ error: msg, tenantId: req.tenantId }, 'N8N: Failed to mark followup sent');
     return res.status(500).json({
       error: 'Falha ao marcar follow-up enviado',
-      message: error.message,
+      message: msg,
     });
   }
 });
@@ -1398,11 +1452,12 @@ router.post('/mark-opportunity', validate(markOpportunitySchema), async (req: Re
       message: 'Conversa marcada como oportunidade de venda',
       reason: reasonDescriptions[reason] || reason,
     });
-  } catch (error: any) {
-    logger.error({ error, tenantId: req.tenantId }, 'N8N: Failed to mark opportunity');
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Unknown';
+    logger.error({ error: msg, tenantId: req.tenantId }, 'N8N: Failed to mark opportunity');
     return res.status(500).json({
       error: 'Falha ao marcar oportunidade',
-      message: error.message,
+      message: msg,
     });
   }
 });
@@ -1518,12 +1573,13 @@ router.get('/check-availability', validate(checkAvailabilitySchema, 'query'), as
     }, 'N8N: Check availability success');
 
     return res.json(result);
-  } catch (error: any) {
-    logger.error({ error, tenantId: req.tenantId }, 'N8N: Failed to check availability');
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Unknown';
+    logger.error({ error: msg, tenantId: req.tenantId }, 'N8N: Failed to check availability');
     return res.status(500).json({
       success: false,
       error: 'Falha ao verificar disponibilidade',
-      message: error.message,
+      message: msg,
     });
   }
 });
@@ -1599,12 +1655,13 @@ router.get('/check-room-availability', validate(checkRoomAvailabilitySchema, 'qu
     }, 'N8N: Check room availability result');
 
     return res.json(result);
-  } catch (error: any) {
-    logger.error({ error, tenantId: req.tenantId }, 'N8N: Failed to check room availability');
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Unknown';
+    logger.error({ error: msg, tenantId: req.tenantId }, 'N8N: Failed to check room availability');
     return res.status(500).json({
       available: false,
       error: 'Falha ao verificar disponibilidade do quarto',
-      message: error.message,
+      message: msg,
     });
   }
 });

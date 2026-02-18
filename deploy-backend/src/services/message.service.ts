@@ -1,6 +1,6 @@
 import { prisma } from '@/config/database';
 import { NotFoundError, BadRequestError } from '@/utils/errors';
-import { MessageType } from '@prisma/client';
+import { Channel, MessageType, Prisma } from '@prisma/client';
 import { whatsAppService } from './whatsapp.service';
 import { conversationService } from './conversation.service';
 import { normalizeBrazilianPhone } from '@/utils/phone';
@@ -333,38 +333,47 @@ export class MessageService {
     externalMessageId: string;
     type: MessageType;
     content: string;
-    metadata?: any;
+    metadata?: Prisma.InputJsonValue;
+    channel?: Channel;
   }) {
-    // 1. Normalizar telefone BR (12 digitos -> 13 digitos com 9)
-    // WhatsApp inbound envia 5548998448722 (13), N8N outbound envia 554898448722 (12)
-    // Sem normalizar, cria contatos/conversas duplicados
-    const normalizedPhone = normalizeBrazilianPhone(data.phoneNumber);
-    if (normalizedPhone !== data.phoneNumber) {
-      logger.info({
-        original: data.phoneNumber,
-        normalized: normalizedPhone,
-      }, 'saveOutboundMessage: Phone normalized (12->13 digits)');
+    const channel = data.channel || 'WHATSAPP';
+
+    // 1. Resolver identificador do contato baseado no canal
+    let contactIdentifier: string;
+
+    if (channel === 'WHATSAPP') {
+      // Normalizar telefone BR (12 digitos -> 13 digitos com 9)
+      contactIdentifier = normalizeBrazilianPhone(data.phoneNumber);
+      if (contactIdentifier !== data.phoneNumber) {
+        logger.info({
+          original: data.phoneNumber,
+          normalized: contactIdentifier,
+        }, 'saveOutboundMessage: Phone normalized (12->13 digits)');
+      }
+    } else {
+      // Messenger/Instagram: phoneNumber e na verdade o externalId (PSID/IGSID)
+      contactIdentifier = data.phoneNumber;
     }
 
     // 2. Buscar ou criar contato
     let contact = await prisma.contact.findFirst({
-      where: {
-        tenantId: data.tenantId,
-        phoneNumber: normalizedPhone,
-      },
+      where: channel === 'WHATSAPP'
+        ? { tenantId: data.tenantId, phoneNumber: contactIdentifier }
+        : { tenantId: data.tenantId, channel, externalId: contactIdentifier },
     });
 
     if (!contact) {
       contact = await prisma.contact.create({
         data: {
           tenantId: data.tenantId,
-          channel: 'WHATSAPP',
-          externalId: normalizedPhone,
-          phoneNumber: normalizedPhone,
+          channel,
+          externalId: contactIdentifier,
+          phoneNumber: channel === 'WHATSAPP' ? contactIdentifier : null,
         },
       });
-      logger.info({ contactId: contact.id, phoneNumber: normalizedPhone }, 'Contact created for AI message');
+      logger.info({ contactId: contact.id, channel, identifier: contactIdentifier }, 'Contact created for AI message');
     }
+    const normalizedPhone = contactIdentifier;
 
     // 3. Buscar ou criar conversa
     logger.debug({

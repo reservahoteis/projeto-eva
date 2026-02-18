@@ -1,10 +1,17 @@
 import { z } from 'zod';
 
 /**
- * Regex para telefone brasileiro (formato WhatsApp: 55 + DDD + numero)
- * Aceita 10-15 digitos (permite internacionais tambem)
+ * Identificador do contato:
+ * - WhatsApp: telefone (10-15 digitos)
+ * - Messenger: PSID (ate 20 digitos)
+ * - Instagram: IGSID (ate 20 digitos)
  */
-const phoneSchema = z.string().min(10, 'Telefone deve ter no minimo 10 digitos').max(15, 'Telefone deve ter no maximo 15 digitos');
+const phoneSchema = z.string().min(1, 'Identificador e obrigatorio').max(30, 'Identificador deve ter no maximo 30 caracteres');
+
+/**
+ * Canal de comunicacao (opcional, default: whatsapp para compatibilidade)
+ */
+const channelSchema = z.enum(['whatsapp', 'messenger', 'instagram']).optional();
 
 /**
  * Schema para POST /api/n8n/send-text
@@ -13,6 +20,7 @@ export const sendTextSchema = z.object({
   phone: phoneSchema,
   message: z.string().min(1, 'Mensagem e obrigatoria').max(4096, 'Mensagem deve ter no maximo 4096 caracteres'),
   delayTyping: z.coerce.number().optional(),
+  channel: channelSchema,
 });
 
 /**
@@ -32,6 +40,7 @@ export const sendButtonsSchema = z.object({
   ).min(1, 'Minimo 1 botao').max(3, 'Maximo 3 botoes'),
   title: z.string().max(60).optional(),
   footer: z.string().max(60).optional(),
+  channel: channelSchema,
 });
 
 /**
@@ -53,6 +62,7 @@ const listSectionSchema = z.object({
 export const sendListSchema = z.object({
   phone: phoneSchema,
   message: z.string().min(1).max(1024),
+  channel: channelSchema,
   optionList: z.object({
     title: z.string().max(24).optional(),
     buttonLabel: z.string().max(20).optional(),
@@ -71,6 +81,7 @@ export const sendListSchema = z.object({
 export const sendMediaSchema = z.object({
   phone: phoneSchema,
   type: z.enum(['image', 'video', 'audio', 'document']).optional(),
+  channel: channelSchema,
   url: z.string().url().optional(),
   caption: z.string().max(1024).optional(),
   mediaUrl: z.string().url().optional(),
@@ -101,6 +112,7 @@ export const sendMediaSchema = z.object({
 export const sendTemplateSchema = z.object({
   phone: phoneSchema,
   template: z.string().min(1).optional(),
+  channel: channelSchema,
   templateName: z.string().min(1).optional(),
   language: z.string().optional(),
   languageCode: z.string().optional(),
@@ -172,6 +184,7 @@ const carouselCardInteractiveSchema = z.object({
 export const sendCarouselSchema = z.object({
   phone: phoneSchema,
   template: z.string().optional(),
+  channel: channelSchema,
   cards: z.array(carouselCardTemplateSchema).min(1).max(10).optional(),
   message: z.string().optional(),
   carousel: z.array(carouselCardInteractiveSchema).min(1).optional(),
@@ -222,6 +235,7 @@ export const markOpportunitySchema = z.object({
 export const markReadSchema = z.object({
   messageId: z.string().optional(),
   externalMessageId: z.string().optional(),
+  channel: channelSchema,
 }).refine(
   (data) => data.messageId || data.externalMessageId,
   { message: 'Forneca messageId ou externalMessageId' }
