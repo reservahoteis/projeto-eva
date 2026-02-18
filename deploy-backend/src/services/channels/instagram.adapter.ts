@@ -66,13 +66,20 @@ export class InstagramAdapter implements ChannelSendAdapter {
         message: { text },
       });
 
-      return {
+      const result = {
         externalMessageId: response.data.message_id || '',
         success: true,
       };
+
+      logger.info(
+        { tenantId, to, externalMessageId: result.externalMessageId, textPreview: text.substring(0, 80) },
+        '[INSTAGRAM SEND] sendText OK'
+      );
+
+      return result;
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : 'Unknown';
-      logger.error({ tenantId, to, error: msg }, 'Instagram sendText failed');
+      logger.error({ tenantId, to, error: msg, textPreview: text.substring(0, 80) }, '[INSTAGRAM SEND] sendText FAILED');
       throw new InternalServerError(`Falha ao enviar mensagem Instagram: ${msg}`);
     }
   }
@@ -80,6 +87,10 @@ export class InstagramAdapter implements ChannelSendAdapter {
   async sendMedia(tenantId: string, to: string, media: MediaPayload): Promise<SendResult> {
     // Instagram suporta imagem nativamente; video/audio/document degradam para texto+link
     if (media.type !== 'image') {
+      logger.info(
+        { tenantId, to, mediaType: media.type, degradedTo: 'text+link' },
+        '[INSTAGRAM SEND] sendMedia degradando para texto (tipo nao suportado)'
+      );
       const linkText = media.caption
         ? `${media.caption}\n${media.url}`
         : media.url;
@@ -106,13 +117,20 @@ export class InstagramAdapter implements ChannelSendAdapter {
         });
       }
 
-      return {
+      const result = {
         externalMessageId: response.data.message_id || '',
         success: true,
       };
+
+      logger.info(
+        { tenantId, to, mediaType: 'image', hasCaption: !!media.caption, externalMessageId: result.externalMessageId },
+        '[INSTAGRAM SEND] sendMedia OK'
+      );
+
+      return result;
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : 'Unknown';
-      logger.error({ tenantId, to, error: msg }, 'Instagram sendMedia failed');
+      logger.error({ tenantId, to, mediaType: media.type, error: msg }, '[INSTAGRAM SEND] sendMedia FAILED');
       throw new InternalServerError(`Falha ao enviar mídia Instagram: ${msg}`);
     }
   }
@@ -126,6 +144,11 @@ export class InstagramAdapter implements ChannelSendAdapter {
     _footerText?: string
   ): Promise<SendResult> {
     // Instagram nao suporta botoes inline - degradar para texto numerado
+    logger.info(
+      { tenantId, to, buttonCount: buttons.length, degradedTo: 'numbered-text' },
+      '[INSTAGRAM SEND] sendButtons degradando para texto numerado'
+    );
+
     const numberedOptions = buttons
       .map((btn, i) => `${i + 1}. ${btn.title}`)
       .join('\n');

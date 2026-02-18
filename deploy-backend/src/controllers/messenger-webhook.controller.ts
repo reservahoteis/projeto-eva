@@ -65,6 +65,11 @@ export class MessengerWebhookController {
       // Responder 200 imediatamente (Meta exige < 5s)
       res.status(200).send('EVENT_RECEIVED');
 
+      logger.info(
+        { entryCount: body.entry?.length || 0 },
+        '[MESSENGER WEBHOOK] Payload recebido'
+      );
+
       // Processar em background
       if (body.entry && Array.isArray(body.entry)) {
         for (const entry of body.entry) {
@@ -72,9 +77,11 @@ export class MessengerWebhookController {
           const tenantId = await this.resolveTenantByPageId(pageId);
 
           if (!tenantId) {
-            logger.warn({ pageId }, 'No tenant for Messenger page, skipping');
+            logger.warn({ pageId }, '[MESSENGER WEBHOOK] No tenant for page, skipping');
             continue;
           }
+
+          logger.info({ pageId, tenantId }, '[MESSENGER WEBHOOK] Tenant resolvido');
 
           if (entry.messaging && Array.isArray(entry.messaging)) {
             for (const event of entry.messaging) {
@@ -82,7 +89,24 @@ export class MessengerWebhookController {
               this.logEvent(tenantId, event).catch(() => {});
 
               const senderId = event.sender?.id;
-              if (!senderId) continue;
+              if (!senderId) {
+                logger.warn({ tenantId }, '[MESSENGER WEBHOOK] Evento sem senderId, ignorando');
+                continue;
+              }
+
+              const eventType = event.message ? 'message' : event.postback ? 'postback' : event.delivery ? 'delivery' : event.read ? 'read' : 'unknown';
+
+              logger.info(
+                {
+                  tenantId,
+                  senderId,
+                  eventType,
+                  hasText: !!event.message?.text,
+                  hasAttachments: !!(event.message?.attachments?.length),
+                  mid: event.message?.mid,
+                },
+                '[MESSENGER WEBHOOK] Evento recebido'
+              );
 
               if (event.message) {
                 await enqueueMessengerMessage({
@@ -94,6 +118,11 @@ export class MessengerWebhookController {
                     attachments: event.message.attachments,
                   },
                 });
+
+                logger.info(
+                  { tenantId, senderId, mid: event.message.mid },
+                  '[MESSENGER WEBHOOK] Mensagem enfileirada no Bull'
+                );
               } else if (event.postback) {
                 await enqueueMessengerMessage({
                   tenantId,
@@ -104,6 +133,11 @@ export class MessengerWebhookController {
                     title: event.postback.title,
                   },
                 });
+
+                logger.info(
+                  { tenantId, senderId, postbackTitle: event.postback.title },
+                  '[MESSENGER WEBHOOK] Postback enfileirado no Bull'
+                );
               }
               // delivery/read events ignorados (nao sao mensagens)
             }

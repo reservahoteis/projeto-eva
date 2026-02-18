@@ -66,13 +66,20 @@ export class MessengerAdapter implements ChannelSendAdapter {
         message: { text },
       });
 
-      return {
+      const result = {
         externalMessageId: response.data.message_id || '',
         success: true,
       };
+
+      logger.info(
+        { tenantId, to, externalMessageId: result.externalMessageId, textPreview: text.substring(0, 80) },
+        '[MESSENGER SEND] sendText OK'
+      );
+
+      return result;
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : 'Unknown';
-      logger.error({ tenantId, to, error: msg }, 'Messenger sendText failed');
+      logger.error({ tenantId, to, error: msg, textPreview: text.substring(0, 80) }, '[MESSENGER SEND] sendText FAILED');
       throw new InternalServerError(`Falha ao enviar mensagem Messenger: ${msg}`);
     }
   }
@@ -102,13 +109,20 @@ export class MessengerAdapter implements ChannelSendAdapter {
         });
       }
 
-      return {
+      const result = {
         externalMessageId: response.data.message_id || '',
         success: true,
       };
+
+      logger.info(
+        { tenantId, to, mediaType: messengerType, hasCaption: !!media.caption, externalMessageId: result.externalMessageId },
+        '[MESSENGER SEND] sendMedia OK'
+      );
+
+      return result;
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : 'Unknown';
-      logger.error({ tenantId, to, mediaType: media.type, error: msg }, 'Messenger sendMedia failed');
+      logger.error({ tenantId, to, mediaType: media.type, error: msg }, '[MESSENGER SEND] sendMedia FAILED');
       throw new InternalServerError(`Falha ao enviar mídia Messenger: ${msg}`);
     }
   }
@@ -142,13 +156,20 @@ export class MessengerAdapter implements ChannelSendAdapter {
         },
       });
 
-      return {
+      const result = {
         externalMessageId: response.data.message_id || '',
         success: true,
       };
+
+      logger.info(
+        { tenantId, to, buttonCount: buttons.length, externalMessageId: result.externalMessageId },
+        '[MESSENGER SEND] sendButtons OK'
+      );
+
+      return result;
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : 'Unknown';
-      logger.error({ tenantId, to, error: msg }, 'Messenger sendButtons failed');
+      logger.error({ tenantId, to, buttonCount: buttons.length, error: msg }, '[MESSENGER SEND] sendButtons FAILED');
       throw new InternalServerError(`Falha ao enviar botões Messenger: ${msg}`);
     }
   }

@@ -62,6 +62,11 @@ export class InstagramWebhookController {
       // Responder 200 imediatamente
       res.status(200).send('EVENT_RECEIVED');
 
+      logger.info(
+        { entryCount: body.entry?.length || 0 },
+        '[INSTAGRAM WEBHOOK] Payload recebido'
+      );
+
       // Processar em background
       if (body.entry && Array.isArray(body.entry)) {
         for (const entry of body.entry) {
@@ -69,16 +74,35 @@ export class InstagramWebhookController {
           const tenantId = await this.resolveTenantByIgId(igAccountId);
 
           if (!tenantId) {
-            logger.warn({ igAccountId }, 'No tenant for Instagram account, skipping');
+            logger.warn({ igAccountId }, '[INSTAGRAM WEBHOOK] No tenant for account, skipping');
             continue;
           }
+
+          logger.info({ igAccountId, tenantId }, '[INSTAGRAM WEBHOOK] Tenant resolvido');
 
           if (entry.messaging && Array.isArray(entry.messaging)) {
             for (const event of entry.messaging) {
               this.logEvent(tenantId, event).catch(() => {});
 
               const senderId = event.sender?.id;
-              if (!senderId) continue;
+              if (!senderId) {
+                logger.warn({ tenantId }, '[INSTAGRAM WEBHOOK] Evento sem senderId, ignorando');
+                continue;
+              }
+
+              const eventType = event.message ? 'message' : event.postback ? 'postback' : 'unknown';
+
+              logger.info(
+                {
+                  tenantId,
+                  senderId,
+                  eventType,
+                  hasText: !!event.message?.text,
+                  hasAttachments: !!(event.message?.attachments?.length),
+                  mid: event.message?.mid,
+                },
+                '[INSTAGRAM WEBHOOK] Evento recebido'
+              );
 
               if (event.message) {
                 await enqueueInstagramMessage({
@@ -90,6 +114,11 @@ export class InstagramWebhookController {
                     attachments: event.message.attachments,
                   },
                 });
+
+                logger.info(
+                  { tenantId, senderId, mid: event.message.mid },
+                  '[INSTAGRAM WEBHOOK] Mensagem enfileirada no Bull'
+                );
               } else if (event.postback) {
                 await enqueueInstagramMessage({
                   tenantId,
@@ -100,6 +129,11 @@ export class InstagramWebhookController {
                     title: event.postback.title,
                   },
                 });
+
+                logger.info(
+                  { tenantId, senderId, postbackTitle: event.postback.title },
+                  '[INSTAGRAM WEBHOOK] Postback enfileirado no Bull'
+                );
               }
             }
           }

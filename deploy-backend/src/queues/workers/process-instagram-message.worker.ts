@@ -100,6 +100,19 @@ export async function processInstagramMessage(job: Job<ProcessInstagramMessageJo
       }
     }
 
+    logger.info(
+      {
+        jobId: job.id,
+        tenantId,
+        messageType,
+        contentLength: content.length,
+        contentPreview: content.substring(0, 100),
+        hasPostback: !!postback,
+        hasAttachments: !!(message.attachments?.length),
+      },
+      '[INSTAGRAM WORKER] Conteudo normalizado'
+    );
+
     // 4. SALVAR MENSAGEM NO BANCO
     const savedMessage = await prisma.message.create({
       data: {
@@ -114,6 +127,11 @@ export async function processInstagramMessage(job: Job<ProcessInstagramMessageJo
         timestamp: new Date(),
       },
     });
+
+    logger.info(
+      { jobId: job.id, messageId: savedMessage.id, conversationId: conversation.id },
+      '[INSTAGRAM WORKER] Mensagem salva no banco'
+    );
 
     // 5. ATUALIZAR CONVERSA
     await prisma.conversation.update({
@@ -136,12 +154,24 @@ export async function processInstagramMessage(job: Job<ProcessInstagramMessageJo
           createdAt: savedMessage.createdAt,
         },
       });
-    } catch {
-      // Socket nao e critico
+      logger.info(
+        { jobId: job.id, conversationId: conversation.id, room: `tenant:${tenantId}` },
+        '[INSTAGRAM WORKER] Socket emitido'
+      );
+    } catch (socketErr) {
+      logger.warn(
+        { jobId: job.id, error: socketErr instanceof Error ? socketErr.message : 'Unknown' },
+        '[INSTAGRAM WORKER] Socket emit falhou (nao critico)'
+      );
     }
 
     // 7. ENCAMINHAR PARA N8N (se IA nao bloqueada)
     if (!conversation.iaLocked) {
+      logger.info(
+        { jobId: job.id, conversationId: conversation.id, iaLocked: false },
+        '[INSTAGRAM WORKER] Encaminhando para N8N'
+      );
+
       const n8nPayload = n8nService.buildPayload(
         senderId,
         {
@@ -158,11 +188,21 @@ export async function processInstagramMessage(job: Job<ProcessInstagramMessageJo
       );
 
       await n8nService.forwardToN8N(tenantId, n8nPayload);
+
+      logger.info(
+        { jobId: job.id, conversationId: conversation.id },
+        '[INSTAGRAM WORKER] N8N forward concluido'
+      );
+    } else {
+      logger.info(
+        { jobId: job.id, conversationId: conversation.id, iaLocked: true },
+        '[INSTAGRAM WORKER] IA bloqueada, nao encaminhar para N8N'
+      );
     }
 
     logger.info(
       { jobId: job.id, tenantId, contactId: contact.id, conversationId: conversation.id },
-      'Instagram message processed'
+      '[INSTAGRAM WORKER] Pipeline completo'
     );
   } catch (error) {
     logger.error(
