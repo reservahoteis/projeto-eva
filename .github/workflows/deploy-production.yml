@@ -110,7 +110,7 @@ jobs:
 
       - name: Sync files to VPS
         run: |
-          rsync -avz \
+          rsync -avz --delete \
             --exclude 'node_modules' \
             --exclude 'dist' \
             --exclude '.env' \
