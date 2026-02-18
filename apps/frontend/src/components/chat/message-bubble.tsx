@@ -274,98 +274,10 @@ export const MessageBubble = memo(function MessageBubble({
               />
             )}
 
-            {/* Renderizar WhatsApp Flow (formulário interativo) */}
-            {((message.metadata as any)?.interactiveType === 'flow' || (message.metadata as any)?.interactiveType === 'booking_flow') && (
-              <div>
-                {(message.metadata as any)?.headerText && (
-                  <p className="text-[15px] font-semibold text-[#111b21] mb-1">
-                    {(message.metadata as any)?.headerText}
-                  </p>
-                )}
-                {message.content && (
-                  <p className="text-[14px] text-[#111b21] break-words whitespace-pre-wrap">
-                    {message.content}
-                  </p>
-                )}
-                <div className="mt-2 border-t border-[#e9edef] pt-2">
-                  <div className="flex items-center justify-center gap-2 py-2 text-[#027eb5]">
-                    <FileText className="w-4 h-4" />
-                    <span className="text-[14px] font-medium">
-                      {(message.metadata as any)?.ctaText || 'Abrir formulário'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Renderizar resposta de formulario (nfm_reply / WhatsApp Flow response) */}
-            {(message.metadata as any)?.interactiveType === 'nfm_reply' && (
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="bg-[#e7f3ff] p-1.5 rounded">
-                    <FileText className="w-4 h-4 text-[#027eb5]" />
-                  </div>
-                  <span className="text-[12px] font-medium text-[#027eb5]">
-                    Solicitacao de Orcamento
-                  </span>
-                </div>
-                {/* Dados do formulario formatados em PT-BR */}
-                {(() => {
-                  const data = (message.metadata as any)?.nfmReply?.responseData;
-                  if (!data) return null;
-
-                  const formatDate = (val: string) => {
-                    if (!val) return val;
-                    // yyyy-mm-dd -> dd/mm/yyyy
-                    const match = val.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-                    if (match) return `${match[3]}/${match[2]}/${match[1]}`;
-                    // Epoch em ms
-                    const num = Number(val);
-                    if (!isNaN(num) && num > 1000000000) {
-                      const d = new Date(num);
-                      if (!isNaN(d.getTime())) {
-                        return d.toLocaleDateString('pt-BR');
-                      }
-                    }
-                    return val;
-                  };
-
-                  const checkin = data.checkin || data.check_in_date;
-                  const checkout = data.checkout || data.check_out_date;
-                  const guests = data.guests || data.adults;
-                  const hasChildren = data.has_children === 'sim';
-                  const childrenCount = data.children_count || data.children || '0';
-                  const childrenAge = data.children_age;
-
-                  const fields: { label: string; value: string }[] = [];
-                  if (checkin) fields.push({ label: 'Check-in', value: formatDate(String(checkin)) });
-                  if (checkout) fields.push({ label: 'Check-out', value: formatDate(String(checkout)) });
-                  if (guests) fields.push({ label: 'Hospedes', value: String(guests) });
-                  if (hasChildren) {
-                    fields.push({ label: 'Criancas', value: String(childrenCount) });
-                    if (childrenAge) fields.push({ label: 'Idade', value: String(childrenAge).replace(/-/g, ' a ') + ' anos' });
-                  } else if (data.has_children !== undefined) {
-                    fields.push({ label: 'Criancas', value: 'Nao' });
-                  }
-
-                  return (
-                    <div className="bg-[#f0f2f5] rounded-lg p-3 space-y-1.5">
-                      {fields.map((f) => (
-                        <div key={f.label} className="flex items-center gap-2 text-[13px]">
-                          <span className="text-[#667781] min-w-[80px]">{f.label}:</span>
-                          <span className="text-[#111b21] font-medium">{f.value}</span>
-                        </div>
-                      ))}
-                    </div>
-                  );
-                })()}
-              </div>
-            )}
-
             {/* Fallback para tipos interativos não reconhecidos OU sem interactiveType */}
             {(!(message.metadata as any)?.interactiveType ||
               ((message.metadata as any)?.interactiveType &&
-              !['buttons', 'list', 'flow', 'booking_flow', 'nfm_reply'].includes((message.metadata as any)?.interactiveType))) && (
+              !['buttons', 'list'].includes((message.metadata as any)?.interactiveType))) && (
               <div>
                 {message.content && (
                   <p className="text-[14px] text-[#111b21] break-words whitespace-pre-wrap">
