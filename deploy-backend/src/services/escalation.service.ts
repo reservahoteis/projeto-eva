@@ -529,27 +529,40 @@ export class EscalationService {
    * Verificar se conversa por telefone esta com IA travada
    * (Chamado pelo N8N via API para decidir se responde)
    */
-  async isIaLockedByPhone(tenantId: string, phoneNumber: string): Promise<{
+  async isIaLockedByPhone(tenantId: string, phoneNumber: string, channel?: string): Promise<{
     locked: boolean;
     conversationId?: string;
   }> {
-    const contact = await prisma.contact.findFirst({
+    // Buscar contato: por phoneNumber (WhatsApp) OU externalId (Messenger/Instagram)
+    let contact = await prisma.contact.findFirst({
       where: {
         tenantId,
         phoneNumber,
       },
     });
 
+    // Se nao encontrou por phoneNumber, tentar por externalId (Messenger/Instagram PSID)
+    if (!contact) {
+      contact = await prisma.contact.findFirst({
+        where: {
+          tenantId,
+          externalId: phoneNumber,
+          channel: channel ? { equals: channel as any } : { in: ['MESSENGER', 'INSTAGRAM'] },
+        },
+      });
+    }
+
     if (!contact) {
       return { locked: false };
     }
 
+    // Incluir BOT_HANDLING no filtro (conversas Messenger/IG comecam nesse status)
     const conversation = await prisma.conversation.findFirst({
       where: {
         tenantId,
         contactId: contact.id,
         status: {
-          in: ['OPEN', 'IN_PROGRESS', 'WAITING'],
+          in: ['BOT_HANDLING', 'OPEN', 'IN_PROGRESS', 'WAITING'],
         },
       },
       select: {

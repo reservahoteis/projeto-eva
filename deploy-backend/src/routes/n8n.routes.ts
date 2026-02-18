@@ -46,6 +46,46 @@ function resolveChannel(channel?: string): Channel {
   return map[channel.toLowerCase()] || 'WHATSAPP';
 }
 
+/**
+ * Auto-detecta o canal correto quando N8N nao envia o parametro `channel`.
+ *
+ * Problema: N8N recebe `channel: "messenger"` no payload inbound, mas ao responder
+ * via /api/n8n/send-text, NAO envia o channel de volta. O default era WHATSAPP,
+ * causando envio errado (PSID nao e telefone) e conversas duplicadas.
+ *
+ * Solucao: Antes de enviar, verificar se o `phone` (que pode ser PSID) pertence
+ * a um contato MESSENGER ou INSTAGRAM. Se sim, usar esse canal.
+ */
+async function autoDetectChannel(tenantId: string, phoneOrExternalId: string, channelStr?: string): Promise<Channel> {
+  // Se N8N passou channel explicitamente, usar
+  if (channelStr) {
+    return resolveChannel(channelStr);
+  }
+
+  // Auto-detect: verificar se esse identificador pertence a um contato nao-WhatsApp
+  const nonWAContact = await prisma.contact.findFirst({
+    where: {
+      tenantId,
+      externalId: phoneOrExternalId,
+      channel: { in: ['MESSENGER', 'INSTAGRAM'] },
+    },
+    select: { channel: true },
+    orderBy: { updatedAt: 'desc' },
+  });
+
+  if (nonWAContact) {
+    logger.info({
+      tenantId,
+      identifier: phoneOrExternalId,
+      detectedChannel: nonWAContact.channel,
+    }, '[N8N AUTO-DETECT] Canal detectado automaticamente (N8N nao enviou channel)');
+    return nonWAContact.channel;
+  }
+
+  // Default: WhatsApp
+  return 'WHATSAPP';
+}
+
 // Mapeamento de templates para seus textos (para exibição no painel)
 const TEMPLATE_TEXTS: Record<string, string> = {
   'notificacao_atendente': '🚨 NOVO CHAMADO\n\n{{1}}\n\nChamado gerado via atendimento automatico.',
@@ -95,7 +135,8 @@ router.use(n8nAuthMiddleware);
 router.post('/send-text', validate(sendTextSchema), async (req: Request, res: Response) => {
   try {
     const { phone, message, channel: channelStr } = req.body;
-    const channel = resolveChannel(channelStr);
+    const normalizedId = phone?.replace(/\D/g, '') || '';
+    const channel = await autoDetectChannel(req.tenantId!, normalizedId, channelStr);
 
     if (!phone || !message) {
       return res.status(400).json({
@@ -165,7 +206,8 @@ router.post('/send-text', validate(sendTextSchema), async (req: Request, res: Re
 router.post('/send-buttons', validate(sendButtonsSchema), async (req: Request, res: Response) => {
   try {
     const { phone, message, buttons, title, footer, channel: channelStr } = req.body;
-    const channel = resolveChannel(channelStr);
+    const normalizedId = phone?.replace(/\D/g, '') || '';
+    const channel = await autoDetectChannel(req.tenantId!, normalizedId, channelStr);
 
     if (!phone || !message || !buttons || !Array.isArray(buttons)) {
       return res.status(400).json({
@@ -274,7 +316,8 @@ router.post('/send-buttons', validate(sendButtonsSchema), async (req: Request, r
 router.post('/send-list', validate(sendListSchema), async (req: Request, res: Response) => {
   try {
     const { phone, message, optionList, buttonText, sections, channel: channelStr } = req.body;
-    const channel = resolveChannel(channelStr);
+    const normalizedId = phone?.replace(/\D/g, '') || '';
+    const channel = await autoDetectChannel(req.tenantId!, normalizedId, channelStr);
 
     if (!phone || !message) {
       return res.status(400).json({
@@ -374,7 +417,8 @@ router.post('/send-list', validate(sendListSchema), async (req: Request, res: Re
 router.post('/send-media', validate(sendMediaSchema), async (req: Request, res: Response) => {
   try {
     const { phone, type, url, caption, mediaUrl, image, video, audio, document, channel: channelStr } = req.body;
-    const channel = resolveChannel(channelStr);
+    const normalizedId = phone?.replace(/\D/g, '') || '';
+    const channel = await autoDetectChannel(req.tenantId!, normalizedId, channelStr);
 
     if (!phone) {
       return res.status(400).json({
@@ -495,7 +539,8 @@ router.post('/send-media', validate(sendMediaSchema), async (req: Request, res: 
 router.post('/send-template', validate(sendTemplateSchema), async (req: Request, res: Response) => {
   try {
     const { phone, template, templateName, language, languageCode, parameters, components, channel: channelStr } = req.body;
-    const channel = resolveChannel(channelStr);
+    const normalizedId = phone?.replace(/\D/g, '') || '';
+    const channel = await autoDetectChannel(req.tenantId!, normalizedId, channelStr);
 
     if (!phone || (!template && !templateName)) {
       return res.status(400).json({
@@ -593,14 +638,19 @@ router.get('/check-ia-lock', validate(checkIaLockSchema, 'query'), async (req: R
 
     const normalizedPhone = phoneToCheck.replace(/\D/g, '');
 
+    // Auto-detectar canal para buscar contato correto
+    const channel = await autoDetectChannel(req.tenantId!, normalizedPhone);
+
     const result = await escalationService.isIaLockedByPhone(
       req.tenantId!,
-      normalizedPhone
+      normalizedPhone,
+      channel
     );
 
     logger.info({
       tenantId: req.tenantId,
       phone: normalizedPhone,
+      channel,
       locked: result.locked,
     }, 'N8N: IA lock check');
 
@@ -699,7 +749,7 @@ router.post('/escalate', validate(escalateSchema), async (req: Request, res: Res
 router.post('/mark-read', validate(markReadSchema), async (req: Request, res: Response) => {
   try {
     const { messageId, externalMessageId, channel: channelStr } = req.body;
-    const channel = resolveChannel(channelStr);
+    const channel = resolveChannel(channelStr); // mark-read nao precisa auto-detect (usa messageId)
     const msgId = messageId || externalMessageId;
 
     if (!msgId) {
@@ -771,7 +821,8 @@ router.post('/mark-read', validate(markReadSchema), async (req: Request, res: Re
 router.post('/send-carousel', validate(sendCarouselSchema), async (req: Request, res: Response) => {
   try {
     const { phone, template, cards, message, carousel, channel: channelStr } = req.body;
-    const channel = resolveChannel(channelStr);
+    const normalizedId = phone?.replace(/\D/g, '') || '';
+    const channel = await autoDetectChannel(req.tenantId!, normalizedId, channelStr);
 
     if (!phone) {
       return res.status(400).json({
@@ -1042,13 +1093,23 @@ router.post('/set-hotel-unit', validate(setHotelUnitSchema), async (req: Request
 
     const normalizedPhone = phoneToUse.replace(/\D/g, '');
 
-    // Buscar contato
-    const contact = await prisma.contact.findFirst({
+    // Buscar contato (por phoneNumber ou externalId para Messenger/Instagram)
+    let contact = await prisma.contact.findFirst({
       where: {
         tenantId: req.tenantId!,
         phoneNumber: normalizedPhone,
       },
     });
+
+    if (!contact) {
+      contact = await prisma.contact.findFirst({
+        where: {
+          tenantId: req.tenantId!,
+          externalId: normalizedPhone,
+          channel: { in: ['MESSENGER', 'INSTAGRAM'] },
+        },
+      });
+    }
 
     if (!contact) {
       return res.status(404).json({
@@ -1185,13 +1246,23 @@ router.post('/mark-followup-sent', validate(markFollowupSentSchema), async (req:
 
     const normalizedPhone = phoneToUse.replace(/\D/g, '');
 
-    // Buscar contato
-    const contact = await prisma.contact.findFirst({
+    // Buscar contato (por phoneNumber ou externalId para Messenger/Instagram)
+    let contact = await prisma.contact.findFirst({
       where: {
         tenantId: req.tenantId!,
         phoneNumber: normalizedPhone,
       },
     });
+
+    if (!contact) {
+      contact = await prisma.contact.findFirst({
+        where: {
+          tenantId: req.tenantId!,
+          externalId: normalizedPhone,
+          channel: { in: ['MESSENGER', 'INSTAGRAM'] },
+        },
+      });
+    }
 
     if (!contact) {
       return res.status(404).json({
@@ -1340,13 +1411,23 @@ router.post('/mark-opportunity', validate(markOpportunitySchema), async (req: Re
 
     const normalizedPhone = phoneToUse.replace(/\D/g, '');
 
-    // Buscar contato
-    const contact = await prisma.contact.findFirst({
+    // Buscar contato (por phoneNumber ou externalId para Messenger/Instagram)
+    let contact = await prisma.contact.findFirst({
       where: {
         tenantId: req.tenantId!,
         phoneNumber: normalizedPhone,
       },
     });
+
+    if (!contact) {
+      contact = await prisma.contact.findFirst({
+        where: {
+          tenantId: req.tenantId!,
+          externalId: normalizedPhone,
+          channel: { in: ['MESSENGER', 'INSTAGRAM'] },
+        },
+      });
+    }
 
     if (!contact) {
       return res.status(404).json({
