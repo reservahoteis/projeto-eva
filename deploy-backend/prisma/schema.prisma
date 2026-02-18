@@ -47,6 +47,8 @@ model Tenant {
   // N8N Integration
   n8nApiKey     String? // Chave de API para integracao N8N
   n8nWebhookUrl String? // URL do webhook do N8N para encaminhar mensagens
+  n8nWebhookUrlMessenger  String? // URL do webhook N8N para canal Messenger
+  n8nWebhookUrlInstagram  String? // URL do webhook N8N para canal Instagram
 
   // Messenger Config (por tenant)
   messengerPageId      String? // Page ID do Facebook

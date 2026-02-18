@@ -43,11 +43,15 @@ function createMockTenant(overrides: Partial<{
   id: string;
   slug: string;
   n8nWebhookUrl: string | null;
+  n8nWebhookUrlMessenger: string | null;
+  n8nWebhookUrlInstagram: string | null;
 }> = {}) {
   return {
     id: 'tenant-1-uuid',
     slug: 'hotel-test',
     n8nWebhookUrl: 'https://n8n.example.com/webhook/test',
+    n8nWebhookUrlMessenger: null,
+    n8nWebhookUrlInstagram: null,
     ...overrides,
   } as any; // Cast para any pois e mock
 }
@@ -102,6 +106,8 @@ describe('N8NService', () => {
           id: true,
           slug: true,
           n8nWebhookUrl: true,
+          n8nWebhookUrlMessenger: true,
+          n8nWebhookUrlInstagram: true,
         },
       });
 
@@ -267,8 +273,201 @@ describe('N8NService', () => {
       expect(mockPrismaTenant.findUnique).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: tenantId },
+          select: expect.objectContaining({
+            n8nWebhookUrl: true,
+            n8nWebhookUrlMessenger: true,
+            n8nWebhookUrlInstagram: true,
+          }),
         })
       );
+    });
+
+    // === Roteamento por Canal ===
+
+    it('deve rotear para n8nWebhookUrlMessenger quando channel=messenger e URL configurada', async () => {
+      // Arrange
+      mockPrismaTenant.findUnique.mockResolvedValue(
+        createMockTenant({
+          n8nWebhookUrl: 'https://n8n.example.com/webhook/whatsapp',
+          n8nWebhookUrlMessenger: 'https://n8n.example.com/webhook/messenger',
+        })
+      );
+      mockAxios.post.mockResolvedValue({ status: 200, data: { success: true } });
+
+      const messengerPayload: N8NWebhookPayload = {
+        ...mockPayload,
+        channel: 'messenger',
+      };
+
+      // Act
+      const result = await n8nService.forwardToN8N(tenantId, messengerPayload);
+
+      // Assert
+      expect(result.success).toBe(true);
+      expect(mockAxios.post).toHaveBeenCalledWith(
+        'https://n8n.example.com/webhook/messenger',
+        { body: messengerPayload },
+        expect.any(Object)
+      );
+    });
+
+    it('deve rotear para n8nWebhookUrlInstagram quando channel=instagram e URL configurada', async () => {
+      // Arrange
+      mockPrismaTenant.findUnique.mockResolvedValue(
+        createMockTenant({
+          n8nWebhookUrl: 'https://n8n.example.com/webhook/whatsapp',
+          n8nWebhookUrlInstagram: 'https://n8n.example.com/webhook/instagram',
+        })
+      );
+      mockAxios.post.mockResolvedValue({ status: 200, data: { success: true } });
+
+      const instagramPayload: N8NWebhookPayload = {
+        ...mockPayload,
+        channel: 'instagram',
+      };
+
+      // Act
+      const result = await n8nService.forwardToN8N(tenantId, instagramPayload);
+
+      // Assert
+      expect(result.success).toBe(true);
+      expect(mockAxios.post).toHaveBeenCalledWith(
+        'https://n8n.example.com/webhook/instagram',
+        { body: instagramPayload },
+        expect.any(Object)
+      );
+    });
+
+    it('deve fazer fallback para n8nWebhookUrl quando channel=messenger mas URL messenger nao configurada', async () => {
+      // Arrange
+      mockPrismaTenant.findUnique.mockResolvedValue(
+        createMockTenant({
+          n8nWebhookUrl: 'https://n8n.example.com/webhook/default',
+          n8nWebhookUrlMessenger: null,
+        })
+      );
+      mockAxios.post.mockResolvedValue({ status: 200, data: { success: true } });
+
+      const messengerPayload: N8NWebhookPayload = {
+        ...mockPayload,
+        channel: 'messenger',
+      };
+
+      // Act
+      const result = await n8nService.forwardToN8N(tenantId, messengerPayload);
+
+      // Assert
+      expect(result.success).toBe(true);
+      expect(mockAxios.post).toHaveBeenCalledWith(
+        'https://n8n.example.com/webhook/default',
+        { body: messengerPayload },
+        expect.any(Object)
+      );
+    });
+
+    it('deve fazer fallback para n8nWebhookUrl quando channel=instagram mas URL instagram nao configurada', async () => {
+      // Arrange
+      mockPrismaTenant.findUnique.mockResolvedValue(
+        createMockTenant({
+          n8nWebhookUrl: 'https://n8n.example.com/webhook/default',
+          n8nWebhookUrlInstagram: null,
+        })
+      );
+      mockAxios.post.mockResolvedValue({ status: 200, data: { success: true } });
+
+      const instagramPayload: N8NWebhookPayload = {
+        ...mockPayload,
+        channel: 'instagram',
+      };
+
+      // Act
+      const result = await n8nService.forwardToN8N(tenantId, instagramPayload);
+
+      // Assert
+      expect(result.success).toBe(true);
+      expect(mockAxios.post).toHaveBeenCalledWith(
+        'https://n8n.example.com/webhook/default',
+        { body: instagramPayload },
+        expect.any(Object)
+      );
+    });
+
+    it('deve usar n8nWebhookUrl para channel=whatsapp (comportamento padrao)', async () => {
+      // Arrange
+      mockPrismaTenant.findUnique.mockResolvedValue(
+        createMockTenant({
+          n8nWebhookUrl: 'https://n8n.example.com/webhook/whatsapp',
+          n8nWebhookUrlMessenger: 'https://n8n.example.com/webhook/messenger',
+          n8nWebhookUrlInstagram: 'https://n8n.example.com/webhook/instagram',
+        })
+      );
+      mockAxios.post.mockResolvedValue({ status: 200, data: { success: true } });
+
+      const whatsappPayload: N8NWebhookPayload = {
+        ...mockPayload,
+        channel: 'whatsapp',
+      };
+
+      // Act
+      const result = await n8nService.forwardToN8N(tenantId, whatsappPayload);
+
+      // Assert
+      expect(result.success).toBe(true);
+      expect(mockAxios.post).toHaveBeenCalledWith(
+        'https://n8n.example.com/webhook/whatsapp',
+        { body: whatsappPayload },
+        expect.any(Object)
+      );
+    });
+
+    it('deve usar n8nWebhookUrl quando channel nao informado (undefined)', async () => {
+      // Arrange
+      mockPrismaTenant.findUnique.mockResolvedValue(
+        createMockTenant({
+          n8nWebhookUrl: 'https://n8n.example.com/webhook/default',
+        })
+      );
+      mockAxios.post.mockResolvedValue({ status: 200, data: { success: true } });
+
+      const noChannelPayload: N8NWebhookPayload = {
+        ...mockPayload,
+        channel: undefined,
+      };
+
+      // Act
+      const result = await n8nService.forwardToN8N(tenantId, noChannelPayload);
+
+      // Assert
+      expect(result.success).toBe(true);
+      expect(mockAxios.post).toHaveBeenCalledWith(
+        'https://n8n.example.com/webhook/default',
+        { body: noChannelPayload },
+        expect.any(Object)
+      );
+    });
+
+    it('deve retornar error quando nenhuma URL esta configurada para nenhum canal', async () => {
+      // Arrange
+      mockPrismaTenant.findUnique.mockResolvedValue(
+        createMockTenant({
+          n8nWebhookUrl: null,
+          n8nWebhookUrlMessenger: null,
+          n8nWebhookUrlInstagram: null,
+        })
+      );
+
+      const messengerPayload: N8NWebhookPayload = {
+        ...mockPayload,
+        channel: 'messenger',
+      };
+
+      // Act
+      const result = await n8nService.forwardToN8N(tenantId, messengerPayload);
+
+      // Assert
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('No webhook URL configured');
+      expect(mockAxios.post).not.toHaveBeenCalled();
     });
   });
 

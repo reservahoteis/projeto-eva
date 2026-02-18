@@ -73,13 +73,15 @@ class N8NService {
     payload: N8NWebhookPayload
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      // Buscar URL do webhook do tenant
+      // Buscar URLs do webhook do tenant (por canal)
       const tenant = await prisma.tenant.findUnique({
         where: { id: tenantId },
         select: {
           id: true,
           slug: true,
           n8nWebhookUrl: true,
+          n8nWebhookUrlMessenger: true,
+          n8nWebhookUrlInstagram: true,
         },
       });
 
@@ -88,16 +90,38 @@ class N8NService {
         return { success: false, error: 'Tenant not found' };
       }
 
-      if (!tenant.n8nWebhookUrl) {
-        logger.debug({ tenantId, tenantSlug: tenant.slug }, 'N8N: No webhook URL configured');
+      // Rotear para URL especifica do canal (com fallback para URL padrao)
+      let webhookUrl: string | null = null;
+      let urlSource = 'default';
+
+      if (payload.channel === 'messenger' && tenant.n8nWebhookUrlMessenger) {
+        webhookUrl = tenant.n8nWebhookUrlMessenger;
+        urlSource = 'messenger';
+      } else if (payload.channel === 'instagram' && tenant.n8nWebhookUrlInstagram) {
+        webhookUrl = tenant.n8nWebhookUrlInstagram;
+        urlSource = 'instagram';
+      } else if (tenant.n8nWebhookUrl) {
+        webhookUrl = tenant.n8nWebhookUrl;
+        urlSource = payload.channel && payload.channel !== 'whatsapp' ? 'default (fallback)' : 'default';
+      }
+
+      if (!webhookUrl) {
+        logger.debug({ tenantId, tenantSlug: tenant.slug, channel: payload.channel }, 'N8N: No webhook URL configured');
         return { success: false, error: 'No webhook URL configured' };
       }
 
+      logger.info({
+        tenantId,
+        channel: payload.channel || 'whatsapp',
+        urlSource,
+        webhookUrl: webhookUrl.substring(0, 60) + '...',
+      }, 'N8N: Roteando para webhook por canal');
+
       // Enviar para N8N
-      const response = await axios.post(tenant.n8nWebhookUrl, {
+      const response = await axios.post(webhookUrl, {
         body: payload,
       }, {
-        timeout: 10000, // 10 segundos
+        timeout: 10000,
         headers: {
           'Content-Type': 'application/json',
         },
@@ -108,6 +132,8 @@ class N8NService {
         tenantSlug: tenant.slug,
         phone: payload.phone,
         messageId: payload.messageId,
+        channel: payload.channel || 'whatsapp',
+        urlSource,
         n8nStatus: response.status,
       }, 'N8N: Message forwarded successfully');
 
@@ -117,6 +143,7 @@ class N8NService {
         tenantId,
         phone: payload.phone,
         messageId: payload.messageId,
+        channel: payload.channel || 'whatsapp',
         error: error.message,
         response: error.response?.data,
       }, 'N8N: Failed to forward message');
