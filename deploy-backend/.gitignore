@@ -70,6 +70,7 @@ Thumbs.db
 # Backups & Archives
 # ========================================
 *.sql
+!prisma/migrations-manual/*.sql
 *.tar.gz
 *.zip
 backups/

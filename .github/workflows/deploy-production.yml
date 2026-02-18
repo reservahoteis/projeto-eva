@@ -125,6 +125,39 @@ jobs:
             deploy-backend/ \
             ${{ env.VPS_USER }}@${{ env.VPS_HOST }}:${{ env.VPS_PATH }}/
 
+      - name: Run manual database migrations
+        run: |
+          ssh ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'EOF'
+            set -e
+            cd /root/deploy-backend
+
+            # Criar tabela de controle de migrations (se nao existir)
+            docker exec crm-postgres psql -U ${POSTGRES_USER:-crm_user} -d ${POSTGRES_DB:-crm_whatsapp_saas} -c "
+              CREATE TABLE IF NOT EXISTS _migrations_manual (
+                filename TEXT PRIMARY KEY,
+                applied_at TIMESTAMPTZ DEFAULT NOW()
+              );
+            "
+
+            # Rodar cada migration manual que ainda nao foi aplicada
+            for f in prisma/migrations-manual/*.sql; do
+              if [ -f "$f" ]; then
+                BASENAME=$(basename "$f")
+                ALREADY=$(docker exec crm-postgres psql -U ${POSTGRES_USER:-crm_user} -d ${POSTGRES_DB:-crm_whatsapp_saas} -tAc "SELECT 1 FROM _migrations_manual WHERE filename='$BASENAME'" 2>/dev/null || echo "")
+                if [ "$ALREADY" != "1" ]; then
+                  echo "Applying migration: $BASENAME"
+                  docker exec -i crm-postgres psql -U ${POSTGRES_USER:-crm_user} -d ${POSTGRES_DB:-crm_whatsapp_saas} < "$f"
+                  docker exec crm-postgres psql -U ${POSTGRES_USER:-crm_user} -d ${POSTGRES_DB:-crm_whatsapp_saas} -c "INSERT INTO _migrations_manual (filename) VALUES ('$BASENAME')"
+                  echo "Migration $BASENAME applied successfully"
+                else
+                  echo "Migration $BASENAME already applied, skipping"
+                fi
+              fi
+            done
+
+            echo "All manual migrations up to date"
+          EOF
+
       - name: Build and restart container
         run: |
           ssh ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'EOF'
@@ -143,20 +176,6 @@ jobs:
 
             echo "Waiting for container to start..."
             sleep 10
-
-            echo "Running migrations..."
-            if ! docker compose -f docker-compose.production.yml exec -T backend npx prisma migrate deploy; then
-              echo "ERROR: Migration failed!"
-              echo "Rolling back to previous image..."
-              if docker images | grep -q "deploy-backend-backend:rollback"; then
-                docker tag deploy-backend-backend:rollback deploy-backend-backend:latest
-                docker stop crm-backend 2>/dev/null || true
-                docker rm -f crm-backend 2>/dev/null || true
-                docker compose -f docker-compose.production.yml up -d --no-deps backend
-                echo "Rollback completed. Please check migrations manually."
-              fi
-              exit 1
-            fi
 
             echo "Container status:"
             docker compose -f docker-compose.production.yml ps backend
