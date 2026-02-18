@@ -2,12 +2,11 @@ import { Router, Request, Response } from 'express';
 import { n8nAuthMiddleware } from '@/middlewares/n8n-auth.middleware';
 import { validate } from '@/middlewares/validate.middleware';
 import { whatsAppService } from '@/services/whatsapp.service';
-import { whatsAppFlowsService } from '@/services/whatsapp-flows.service';
+
 import { escalationService } from '@/services/escalation.service';
 import { messageService } from '@/services/message.service';
 import { hbookScraperService } from '@/services/hbook-scraper.service';
-import { sendFlowSchema as sendFlowFullSchema } from '@/validators/whatsapp-flows.validator';
-const sendFlowBodySchema = sendFlowFullSchema.shape.body;
+
 import {
   sendTextSchema,
   sendButtonsSchema,
@@ -21,7 +20,6 @@ import {
   markOpportunitySchema,
   markReadSchema,
   checkIaLockSchema,
-  sendBookingFlowSchema,
   checkAvailabilitySchema,
   checkRoomAvailabilitySchema,
 } from '@/validators/n8n.validator';
@@ -1112,7 +1110,6 @@ router.post('/set-hotel-unit', validate(setHotelUnitSchema), async (req: Request
  * Payload:
  * {
  *   "phone": "5511999999999",
- *   "flowType": "comercial" | "duvidas"
  * }
  *
  * Ações:
@@ -1124,7 +1121,7 @@ router.post('/set-hotel-unit', validate(setHotelUnitSchema), async (req: Request
  */
 router.post('/mark-followup-sent', validate(markFollowupSentSchema), async (req: Request, res: Response) => {
   try {
-    const { phone, phoneNumber, flowType } = req.body;
+    const { phone, phoneNumber } = req.body;
     const phoneToUse = phone || phoneNumber;
 
     if (!phoneToUse) {
@@ -1182,7 +1179,7 @@ router.post('/mark-followup-sent', validate(markFollowupSentSchema), async (req:
           ...(conversation.metadata as object || {}),
           followupSent: true,
           followupSentAt: new Date().toISOString(),
-          followupFlowType: flowType || 'unknown',
+          followupFlowType: 'default',
           opportunityReason: 'followup_sent',
           opportunityReasonDescription: 'Follow-up enviado - aguardando resposta do cliente',
           markedAsOpportunityAt: new Date().toISOString(),
@@ -1235,7 +1232,6 @@ router.post('/mark-followup-sent', validate(markFollowupSentSchema), async (req:
         tenantId: req.tenantId,
         conversationId: conversation.id,
         phone: normalizedPhone,
-        flowType,
       }, 'N8N: Follow-up sent - conversation marked as opportunity for SALES');
     } catch (socketError) {
       logger.warn({ error: socketError }, 'Failed to emit Socket.io events for followup opportunity');
@@ -1269,7 +1265,6 @@ router.post('/mark-followup-sent', validate(markFollowupSentSchema), async (req:
  * {
  *   "phone": "5511999999999",
  *   "reason": "not_completed" | "needs_help" | "wants_human" | "wants_reservation",
- *   "flowType": "comercial" | "duvidas",
  *   "followupResponse": "2" | "3" | "4"
  * }
  *
@@ -1280,7 +1275,7 @@ router.post('/mark-followup-sent', validate(markFollowupSentSchema), async (req:
  */
 router.post('/mark-opportunity', validate(markOpportunitySchema), async (req: Request, res: Response) => {
   try {
-    const { phone, phoneNumber, reason, flowType, followupResponse } = req.body;
+    const { phone, phoneNumber, reason, followupResponse } = req.body;
     const phoneToUse = phone || phoneNumber;
 
     if (!phoneToUse) {
@@ -1345,7 +1340,6 @@ router.post('/mark-opportunity', validate(markOpportunitySchema), async (req: Re
           ...(conversation.metadata as object || {}),
           opportunityReason: reason || 'followup_negative',
           opportunityReasonDescription: reasonDescriptions[reason] || 'Resposta negativa no follow-up',
-          flowType: flowType || 'unknown',
           followupResponse: followupResponse || 'unknown',
           markedAsOpportunityAt: new Date().toISOString(),
         },
@@ -1390,7 +1384,6 @@ router.post('/mark-opportunity', validate(markOpportunitySchema), async (req: Re
         conversationId: conversation.id,
         phone: normalizedPhone,
         reason,
-        flowType,
         followupResponse,
       }, 'N8N: Conversation marked as sales opportunity');
     } catch (socketError) {
@@ -1611,218 +1604,6 @@ router.get('/check-room-availability', validate(checkRoomAvailabilitySchema, 'qu
     return res.status(500).json({
       available: false,
       error: 'Falha ao verificar disponibilidade do quarto',
-      message: error.message,
-    });
-  }
-});
-
-/**
- * POST /api/n8n/send-flow
- * Envia WhatsApp Flow (formulário interativo nativo)
- *
- * WhatsApp Flows permite criar formulários nativos no WhatsApp com:
- * - Validação de campos
- * - Navegação entre telas
- * - Campos customizados (texto, número, dropdown, etc)
- *
- * Payload:
- * {
- *   "phoneNumber": "5511999999999",
- *   "flowId": "uuid-do-flow",
- *   "flowToken": "token-unico-para-tracking",
- *   "ctaText": "Fazer Orçamento",
- *   "headerText": "Orçamento Rápido",
- *   "bodyText": "Preencha o formulário para receber seu orçamento",
- *   "conversationId": "uuid-opcional"
- * }
- *
- * Validação:
- * - phoneNumber: formato brasileiro 5511999999999 (55 + DDD + 9 dígitos)
- * - flowId: UUID do flow publicado no WhatsApp Business Manager
- * - flowToken: token único para identificar a sessão (usado para rastrear respostas)
- * - ctaText: texto do botão (máx 20 caracteres)
- * - headerText: opcional, texto do cabeçalho (máx 60 caracteres)
- * - bodyText: opcional, texto do corpo (máx 1024 caracteres)
- * - conversationId: opcional, ID da conversa para vincular ao histórico
- *
- * Response:
- * {
- *   "success": true,
- *   "messageId": "wamid.xxx",
- *   "flowToken": "token-unico",
- *   "botReservaResponse": {
- *     "messageId": "wamid.xxx",
- *     "id": "wamid.xxx"
- *   }
- * }
- */
-router.post('/send-flow', validate(sendFlowBodySchema), async (req: Request, res: Response) => {
-  try {
-    const {
-      phoneNumber,
-      flowId,
-      flowToken,
-      ctaText,
-      headerText,
-      bodyText,
-      conversationId,
-    } = req.body;
-
-    // Normalizar telefone (remover caracteres especiais se houver)
-    const normalizedPhone = phoneNumber.replace(/\D/g, '');
-
-    logger.info({
-      tenantId: req.tenantId,
-      phone: normalizedPhone,
-      flowId,
-      flowToken,
-      conversationId,
-    }, 'N8N: Send flow request');
-
-    // Enviar flow via WhatsApp Flows API
-    const result = await whatsAppFlowsService.sendFlow(
-      req.tenantId!,
-      normalizedPhone,
-      flowId,
-      flowToken,
-      ctaText,
-      {
-        headerText,
-        bodyText,
-        flowCta: 'navigate', // Tipo de CTA (navigate ou data_exchange)
-        flowAction: 'navigate', // Ação inicial do flow
-      }
-    );
-
-    // Salvar mensagem no banco para aparecer no painel
-    await messageService.saveOutboundMessage({
-      tenantId: req.tenantId!,
-      phoneNumber: normalizedPhone,
-      whatsappMessageId: result.whatsappMessageId,
-      type: 'INTERACTIVE',
-      content: bodyText || 'Toque no botão abaixo para começar',
-      metadata: {
-        interactiveType: 'flow',
-        flowId,
-        flowToken,
-        ctaText,
-        headerText,
-        bodyText,
-        conversationId,
-      },
-    });
-
-    logger.info({
-      tenantId: req.tenantId,
-      phone: normalizedPhone,
-      flowId,
-      flowToken,
-      messageId: result.whatsappMessageId,
-    }, 'N8N: Flow sent and saved');
-
-    return res.json({
-      success: true,
-      messageId: result.whatsappMessageId,
-      flowToken,
-      botReservaResponse: {
-        messageId: result.whatsappMessageId,
-        id: result.whatsappMessageId,
-      },
-    });
-  } catch (error: any) {
-    logger.error({ error, tenantId: req.tenantId }, 'N8N: Failed to send flow');
-    return res.status(500).json({
-      error: 'Falha ao enviar flow',
-      message: error.message,
-    });
-  }
-});
-
-/**
- * POST /api/n8n/send-booking-flow
- * Envia WhatsApp Flow de Orçamento de Hospedagem (simplificado)
- *
- * Busca automaticamente o bookingFlowId do tenant - não precisa enviar flowId
- * O Flow já deve estar publicado na Meta (ID: 3052481088276895)
- *
- * Payload:
- * {
- *   "phone": "5511999999999",
- *   "conversationId": "uuid-opcional" // Para rastrear resposta na conversa
- * }
- *
- * Response:
- * {
- *   "success": true,
- *   "messageId": "wamid.xxx",
- *   "flowToken": "booking_{conversationId}_{timestamp}"
- * }
- */
-router.post('/send-booking-flow', validate(sendBookingFlowSchema), async (req: Request, res: Response) => {
-  try {
-    const { phone, phoneNumber, conversationId, bodyText } = req.body;
-    const phoneToUse = phoneNumber || phone;
-
-    if (!phoneToUse) {
-      return res.status(400).json({
-        error: 'Campo obrigatório: phone ou phoneNumber',
-      });
-    }
-
-    // Normalizar telefone (remover caracteres especiais)
-    const normalizedPhone = phoneToUse.replace(/\D/g, '');
-
-    logger.info({
-      tenantId: req.tenantId,
-      phone: normalizedPhone,
-      conversationId,
-    }, 'N8N: Send booking flow request');
-
-    // Enviar flow de orçamento usando bookingFlowId do tenant
-    const result = await whatsAppFlowsService.sendBookingFlow(
-      req.tenantId!,
-      normalizedPhone,
-      {
-        conversationId,
-        bodyText,
-      }
-    );
-
-    // Salvar mensagem no banco para aparecer no painel
-    await messageService.saveOutboundMessage({
-      tenantId: req.tenantId!,
-      phoneNumber: normalizedPhone,
-      whatsappMessageId: result.whatsappMessageId,
-      type: 'INTERACTIVE',
-      content: bodyText || 'Para solicitar seu orçamento de hospedagem, clique no botão abaixo e preencha o formulário! 🏨',
-      metadata: {
-        interactiveType: 'booking_flow',
-        flowToken: result.flowToken,
-        conversationId,
-      },
-    });
-
-    logger.info({
-      tenantId: req.tenantId,
-      phone: normalizedPhone,
-      flowToken: result.flowToken,
-      messageId: result.whatsappMessageId,
-    }, 'N8N: Booking flow sent and saved');
-
-    return res.json({
-      success: true,
-      messageId: result.whatsappMessageId,
-      flowToken: result.flowToken,
-      botReservaResponse: {
-        messageId: result.whatsappMessageId,
-        id: result.whatsappMessageId,
-        flowToken: result.flowToken,
-      },
-    });
-  } catch (error: any) {
-    logger.error({ error, tenantId: req.tenantId }, 'N8N: Failed to send booking flow');
-    return res.status(500).json({
-      error: 'Falha ao enviar flow de orçamento',
       message: error.message,
     });
   }

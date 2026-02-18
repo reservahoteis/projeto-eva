@@ -13,7 +13,6 @@ import {
   isListReply,
   isInteractiveButtonReply,
   isTemplateButtonReply,
-  isNfmReply,
   type WhatsAppMessage,
 } from '@/validators/whatsapp-webhook.validator';
 import { enqueueMediaDownload } from '../whatsapp-webhook.queue';
@@ -55,12 +54,6 @@ interface MediaMessageMetadata {
   interactiveType?: string;
   button?: { id: string; title: string };
   list?: { id: string; title: string; description?: string };
-  nfmReply?: {
-    flowName: string;
-    flowToken?: string;
-    responseData: Record<string, unknown>;
-    conversationId?: string;
-  };
   contacts?: Array<{ name?: string; phones?: string[]; emails?: string[] }>;
   rawMessage?: Prisma.InputJsonValue;
   mediaUrl?: string;
@@ -239,16 +232,6 @@ export async function processIncomingMessage(job: Job<ProcessMessageJobData>): P
     // Marca como oportunidade para o time de vendas e trava a IA
     if (!conversation.iaLocked && detectHumanRequest(message)) {
       await handleHumanRequest(tenantId, conversation.id, messageData.content || '');
-    }
-
-    // 5.3 PROCESSAR RESPOSTA DE WHATSAPP FLOW (nfm_reply)
-    if (messageData.metadata?.nfmReply) {
-      await handleFlowResponse(
-        tenantId,
-        conversation.id,
-        messageData.metadata.nfmReply,
-        savedMessage.id
-      );
     }
 
     // 6. SE FOR MÍDIA, BAIXAR SINCRONAMENTE PARA INCLUIR URL NO PAYLOAD DO N8N
@@ -753,49 +736,6 @@ function extractMessageData(message: ProcessMessageJobData['message']): Extracte
     };
   }
 
-  // NFM REPLY (WhatsApp Flow Response)
-  if (isNfmReply(message) && message.interactive && 'nfm_reply' in message.interactive) {
-    const nfmReply = message.interactive.nfm_reply;
-
-    // Parse response_json (dados do formulário)
-    let responseData: Record<string, unknown> = {};
-    try {
-      responseData = JSON.parse(nfmReply.response_json);
-    } catch (parseError) {
-      logger.warn({
-        messageId: message.id,
-        error: parseError instanceof Error ? parseError.message : 'Unknown error',
-        rawJson: nfmReply.response_json,
-      }, 'Failed to parse nfm_reply response_json');
-    }
-
-    // Extrair conversationId do flowToken se seguir padrão booking_{conversationId}_{timestamp}
-    let conversationId: string | undefined;
-    const flowTokenMatch = message.context?.id?.match(/^booking_([a-f0-9-]{36})_\d+$/);
-    if (flowTokenMatch) {
-      conversationId = flowTokenMatch[1];
-    }
-
-    // Formatar resposta do Flow em texto legível para o N8N
-    const content = formatFlowResponseToText(responseData, nfmReply.name);
-
-    return {
-      type: MessageType.INTERACTIVE,
-      content,
-      metadata: {
-        interactiveType: 'nfm_reply',
-        nfmReply: {
-          flowName: nfmReply.name,
-          flowToken: message.context?.id,
-          responseData,
-          conversationId,
-        },
-        context: message.context,
-      },
-      shouldDownload: false,
-    };
-  }
-
   // CONTACTS
   if (message.type === 'contacts' && message.contacts) {
     const contactsData = message.contacts.contacts || [];
@@ -1137,220 +1077,3 @@ async function handleHumanRequest(
   }
 }
 
-/**
- * Processa resposta de WhatsApp Flow (nfm_reply)
- * Atualiza conversa e emite eventos Socket.io se houver conversationId no flowToken
- */
-async function handleFlowResponse(
-  tenantId: string,
-  conversationId: string,
-  nfmReply: NonNullable<MediaMessageMetadata['nfmReply']>,
-  messageId: string
-): Promise<void> {
-  try {
-    logger.info({
-      tenantId,
-      conversationId,
-      flowName: nfmReply.flowName,
-      flowToken: nfmReply.flowToken,
-      extractedConversationId: nfmReply.conversationId,
-      fieldsCount: Object.keys(nfmReply.responseData).length,
-    }, 'Processing WhatsApp Flow response');
-
-    // Se o flowToken contém conversationId, atualizar a conversa específica
-    if (nfmReply.conversationId && nfmReply.conversationId !== conversationId) {
-      logger.info({
-        currentConversationId: conversationId,
-        targetConversationId: nfmReply.conversationId,
-      }, 'Flow response references different conversation, updating target conversation');
-
-      // Atualizar conversa alvo com status e última mensagem
-      await prisma.conversation.update({
-        where: {
-          id: nfmReply.conversationId,
-          tenantId, // Validação de segurança
-        },
-        data: {
-          lastMessageAt: new Date(),
-          // Opcional: mudar status para IN_PROGRESS se estava WAITING
-          status: 'IN_PROGRESS',
-        },
-      });
-
-      // Emitir evento Socket.io para a conversa alvo
-      try {
-        const io = getSocketIO();
-        io.to(`conversation:${nfmReply.conversationId}`).emit('conversation:update', {
-          conversationId: nfmReply.conversationId,
-          updates: {
-            lastMessageAt: new Date(),
-            status: 'IN_PROGRESS',
-          },
-        });
-
-        io.to(`tenant:${tenantId}`).emit('conversation:update', {
-          conversationId: nfmReply.conversationId,
-          updates: {
-            lastMessageAt: new Date(),
-            status: 'IN_PROGRESS',
-          },
-        });
-
-        logger.debug({
-          conversationId: nfmReply.conversationId,
-          tenantId,
-        }, 'Flow response events emitted via Socket.io');
-      } catch (socketError) {
-        logger.warn({
-          error: socketError,
-          conversationId: nfmReply.conversationId,
-        }, 'Failed to emit flow response events');
-      }
-    }
-
-    // Log dos dados recebidos para auditoria/debug
-    logger.info({
-      tenantId,
-      conversationId,
-      messageId,
-      flowName: nfmReply.flowName,
-      responseData: nfmReply.responseData,
-    }, 'WhatsApp Flow response processed successfully');
-  } catch (error) {
-    logger.error({
-      error: error instanceof Error ? error.message : 'Unknown error',
-      conversationId,
-      flowName: nfmReply.flowName,
-      stack: error instanceof Error ? error.stack : undefined,
-    }, 'Failed to handle flow response');
-  }
-}
-
-/**
- * Formata resposta de WhatsApp Flow em texto legível para o N8N
- *
- * Formato de saída: "de 10/02/2026 a 13/02/2026, 2 adultos e 1 criança de 4 anos"
- * Ou sem crianças: "de 10/02/2026 a 13/02/2026, 2 adultos, sem crianças"
- *
- * Regras:
- * - guests = total de hóspedes (adultos + crianças)
- * - adultos = guests - children_count
- * - children_age vem como faixa (ex: "3-5"), calcular média
- */
-function formatFlowResponseToText(
-  responseData: Record<string, unknown>,
-  _flowName: string
-): string {
-  // Extrair valores do formulário
-  const checkinRaw = responseData.checkin || responseData.check_in_date;
-  const checkoutRaw = responseData.checkout || responseData.check_out_date;
-  const guestsRaw = responseData.guests || responseData.adults;
-  const hasChildren = responseData.has_children;
-  const childrenCountRaw = responseData.children_count || responseData.children;
-  const childrenAgeRaw = responseData.children_age;
-
-  // Formatar datas
-  const checkinDate = parseFlowDate(checkinRaw);
-  const checkoutDate = parseFlowDate(checkoutRaw);
-
-  if (!checkinDate || !checkoutDate) {
-    // Fallback: retornar dados brutos se não conseguir parsear datas
-    return `Orçamento recebido: ${JSON.stringify(responseData)}`;
-  }
-
-  // Calcular número de adultos e crianças
-  const totalGuests = parseInt(String(guestsRaw), 10) || 0;
-  const childrenCount = hasChildren === 'sim' ? (parseInt(String(childrenCountRaw), 10) || 0) : 0;
-  const adultsCount = Math.max(totalGuests - childrenCount, 0);
-
-  // Formatar texto de adultos
-  const adultsText = adultsCount === 1 ? '1 adulto' : `${adultsCount} adultos`;
-
-  // Formatar texto de crianças
-  let childrenText: string;
-  if (hasChildren !== 'sim' || childrenCount === 0) {
-    childrenText = 'sem crianças';
-  } else {
-    // Calcular idade média da faixa etária
-    const averageAge = calculateAverageAge(String(childrenAgeRaw || ''));
-    const ageText = averageAge ? ` de ${averageAge} anos` : '';
-    childrenText = childrenCount === 1
-      ? `1 criança${ageText}`
-      : `${childrenCount} crianças${ageText}`;
-  }
-
-  // Montar texto final
-  return `de ${checkinDate} a ${checkoutDate}, ${adultsText} e ${childrenText}`;
-}
-
-/**
- * Parseia data do Flow (vem em milliseconds como string)
- * Retorna no formato dd/mm/yyyy
- */
-function parseFlowDate(value: unknown): string | null {
-  if (!value) return null;
-
-  const str = String(value).trim();
-
-  try {
-    // Formato ISO yyyy-mm-dd (ex: 2026-02-14)
-    const isoMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (isoMatch) {
-      return `${isoMatch[3]}/${isoMatch[2]}/${isoMatch[1]}`;
-    }
-
-    // Formato dd/mm/yyyy (ja formatado)
-    if (/^\d{2}\/\d{2}\/\d{4}$/.test(str)) {
-      return str;
-    }
-
-    // Epoch timestamp (ms ou segundos)
-    let timestamp = parseInt(str, 10);
-    if (isNaN(timestamp)) return null;
-
-    // Se o timestamp for muito pequeno, pode estar em segundos
-    if (timestamp < 1000000000000 && timestamp > 1000000000) {
-      timestamp = timestamp * 1000;
-    }
-
-    const date = new Date(timestamp);
-
-    const year = date.getFullYear();
-    if (year < 2020 || year > 2035) {
-      return null;
-    }
-
-    return date.toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    });
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Calcula idade média de uma faixa etária
- * Ex: "3-5" -> "4.0", "0-2" -> "1.0", "6-12" -> "9.0"
- */
-function calculateAverageAge(ageRange: string): string | null {
-  if (!ageRange) return null;
-
-  // Tentar extrair números da faixa (ex: "3-5", "3 a 5", "3 - 5")
-  const match = ageRange.match(/(\d+)\s*[-a]\s*(\d+)/);
-  if (match && match[1] && match[2]) {
-    const min = parseInt(match[1], 10);
-    const max = parseInt(match[2], 10);
-    const average = (min + max) / 2;
-    return average.toFixed(1);
-  }
-
-  // Se for apenas um número, retornar ele
-  const singleNumber = ageRange.match(/^(\d+)$/);
-  if (singleNumber && singleNumber[1]) {
-    return `${singleNumber[1]}.0`;
-  }
-
-  return null;
-}

@@ -198,7 +198,6 @@ export const setHotelUnitSchema = z.object({
 export const markFollowupSentSchema = z.object({
   phone: phoneSchema.optional(),
   phoneNumber: phoneSchema.optional(),
-  flowType: z.enum(['comercial', 'duvidas']).optional(),
 }).refine(
   (data) => data.phone || data.phoneNumber,
   { message: 'Forneca phone ou phoneNumber' }
@@ -211,7 +210,6 @@ export const markOpportunitySchema = z.object({
   phone: phoneSchema.optional(),
   phoneNumber: phoneSchema.optional(),
   reason: z.enum(['not_completed', 'needs_help', 'wants_human', 'wants_reservation']).optional(),
-  flowType: z.enum(['comercial', 'duvidas']).optional(),
   followupResponse: z.string().optional(),
 }).refine(
   (data) => data.phone || data.phoneNumber,
@@ -264,19 +262,6 @@ export const checkRoomAvailabilitySchema = z.object({
   children: z.coerce.number().int().nonnegative().optional(),
   childrenAges: z.string().optional(),
 });
-
-/**
- * Schema para POST /api/n8n/send-booking-flow
- */
-export const sendBookingFlowSchema = z.object({
-  phone: phoneSchema.optional(),
-  phoneNumber: phoneSchema.optional(),
-  conversationId: z.string().uuid().optional(),
-  bodyText: z.string().max(1024).optional(),
-}).refine(
-  (data) => data.phone || data.phoneNumber,
-  { message: 'Forneca phone ou phoneNumber' }
-);
 
 // Types inferidos
 export type SendTextInput = z.infer<typeof sendTextSchema>;

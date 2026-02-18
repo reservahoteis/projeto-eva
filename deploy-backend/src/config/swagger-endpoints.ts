@@ -1594,52 +1594,6 @@ export const n8nEndpoints = {
       },
     },
   },
-  '/api/n8n/send-flow': {
-    post: {
-      tags: ['N8N'],
-      summary: 'Enviar WhatsApp Flow',
-      description: 'Envia formulário interativo nativo do WhatsApp',
-      operationId: 'sendFlow',
-      security: [{ ApiKey: [] }],
-      requestBody: {
-        required: true,
-        content: {
-          'application/json': {
-            schema: {
-              type: 'object',
-              required: ['phoneNumber', 'flowId', 'flowToken', 'ctaText'],
-              properties: {
-                phoneNumber: { type: 'string' },
-                flowId: { type: 'string', format: 'uuid' },
-                flowToken: { type: 'string' },
-                ctaText: { type: 'string', maxLength: 20 },
-                headerText: { type: 'string', maxLength: 60 },
-                bodyText: { type: 'string', maxLength: 1024 },
-                conversationId: { type: 'string', format: 'uuid' },
-              },
-            },
-          },
-        },
-      },
-      responses: {
-        '200': { description: 'Flow enviado' },
-        '400': { description: 'Dados inválidos' },
-      },
-    },
-  },
-  '/api/n8n/send-booking-flow': {
-    post: {
-      tags: ['N8N'],
-      summary: 'Enviar Flow de Orçamento',
-      description: 'Envia formulário de orçamento de hospedagem',
-      operationId: 'sendBookingFlow',
-      security: [{ ApiKey: [] }],
-      responses: {
-        '200': { description: 'Flow de orçamento enviado' },
-        '400': { description: 'Dados inválidos' },
-      },
-    },
-  },
   '/api/n8n/check-availability': {
     get: {
       tags: ['N8N'],
