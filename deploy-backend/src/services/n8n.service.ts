@@ -56,6 +56,9 @@ export interface N8NWebhookPayload {
 
   // Dados da conversa para contexto
   isNewConversation: boolean;
+
+  // Canal de origem (para N8N saber de onde veio)
+  channel?: 'whatsapp' | 'messenger' | 'instagram';
 }
 
 /**
@@ -136,7 +139,8 @@ class N8NService {
     },
     conversationId: string,
     contactName: string | null,
-    isNewConversation: boolean
+    isNewConversation: boolean,
+    channel: 'whatsapp' | 'messenger' | 'instagram' = 'whatsapp'
   ): N8NWebhookPayload {
     const basePayload: N8NWebhookPayload = {
       phone: phoneNumber,
@@ -146,6 +150,7 @@ class N8NService {
       contactName: contactName || undefined,
       conversationId,
       isNewConversation,
+      channel,
     };
 
     // Mapear tipo de mensagem

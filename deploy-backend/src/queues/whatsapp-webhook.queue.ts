@@ -61,6 +61,44 @@ export interface SendMessageJobData {
   metadata?: Record<string, any>;
 }
 
+// ============================================
+// Messenger/Instagram Job Data Types
+// ============================================
+
+export interface ProcessMessengerMessageJobData {
+  tenantId: string;
+  senderId: string; // PSID
+  message: {
+    mid: string;
+    text?: string;
+    attachments?: Array<{
+      type: string;
+      payload: { url?: string };
+    }>;
+  };
+  postback?: {
+    payload: string;
+    title: string;
+  };
+}
+
+export interface ProcessInstagramMessageJobData {
+  tenantId: string;
+  senderId: string; // IGSID
+  message: {
+    mid: string;
+    text?: string;
+    attachments?: Array<{
+      type: string;
+      payload: { url?: string };
+    }>;
+  };
+  postback?: {
+    payload: string;
+    title: string;
+  };
+}
+
 export interface DownloadMediaJobData {
   tenantId: string;
   messageId: string;
@@ -104,6 +142,22 @@ export const whatsappOutgoingMessageQueue = new Queue<SendMessageJobData>(
       duration: 1000, // por segundo (limite da Meta)
     },
   }
+);
+
+/**
+ * Fila para processar mensagens recebidas do Messenger
+ */
+export const messengerIncomingMessageQueue = new Queue<ProcessMessengerMessageJobData>(
+  'messenger:incoming:message',
+  QUEUE_OPTIONS
+);
+
+/**
+ * Fila para processar mensagens recebidas do Instagram
+ */
+export const instagramIncomingMessageQueue = new Queue<ProcessInstagramMessageJobData>(
+  'instagram:incoming:message',
+  QUEUE_OPTIONS
 );
 
 /**
@@ -306,6 +360,8 @@ const queues = [
   whatsappStatusUpdateQueue,
   whatsappOutgoingMessageQueue,
   whatsappMediaDownloadQueue,
+  messengerIncomingMessageQueue,
+  instagramIncomingMessageQueue,
   iaReactivationQueue,
 ];
 
@@ -433,6 +489,36 @@ export async function enqueueIaReactivation(
       delayMinutes: Math.round(delayMs / 60000),
     },
     'IA reactivation scheduled'
+  );
+}
+
+/**
+ * Adiciona mensagem Messenger recebida à fila
+ */
+export async function enqueueMessengerMessage(data: ProcessMessengerMessageJobData): Promise<void> {
+  await messengerIncomingMessageQueue.add(data, {
+    priority: 1,
+    jobId: `messenger-${data.message.mid}`,
+  });
+
+  logger.debug(
+    { tenantId: data.tenantId, messageId: data.message.mid },
+    'Messenger message enqueued'
+  );
+}
+
+/**
+ * Adiciona mensagem Instagram recebida à fila
+ */
+export async function enqueueInstagramMessage(data: ProcessInstagramMessageJobData): Promise<void> {
+  await instagramIncomingMessageQueue.add(data, {
+    priority: 1,
+    jobId: `instagram-${data.message.mid}`,
+  });
+
+  logger.debug(
+    { tenantId: data.tenantId, messageId: data.message.mid },
+    'Instagram message enqueued'
   );
 }
 

@@ -70,9 +70,10 @@ export class MessengerAdapter implements ChannelSendAdapter {
         externalMessageId: response.data.message_id || '',
         success: true,
       };
-    } catch (error: any) {
-      logger.error({ tenantId, to, error: error.message }, 'Messenger sendText failed');
-      throw new InternalServerError(`Falha ao enviar mensagem Messenger: ${error.message}`);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Unknown';
+      logger.error({ tenantId, to, error: msg }, 'Messenger sendText failed');
+      throw new InternalServerError(`Falha ao enviar mensagem Messenger: ${msg}`);
     }
   }
 
@@ -105,9 +106,10 @@ export class MessengerAdapter implements ChannelSendAdapter {
         externalMessageId: response.data.message_id || '',
         success: true,
       };
-    } catch (error: any) {
-      logger.error({ tenantId, to, mediaType: media.type, error: error.message }, 'Messenger sendMedia failed');
-      throw new InternalServerError(`Falha ao enviar mídia Messenger: ${error.message}`);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Unknown';
+      logger.error({ tenantId, to, mediaType: media.type, error: msg }, 'Messenger sendMedia failed');
+      throw new InternalServerError(`Falha ao enviar mídia Messenger: ${msg}`);
     }
   }
 
@@ -144,9 +146,10 @@ export class MessengerAdapter implements ChannelSendAdapter {
         externalMessageId: response.data.message_id || '',
         success: true,
       };
-    } catch (error: any) {
-      logger.error({ tenantId, to, error: error.message }, 'Messenger sendButtons failed');
-      throw new InternalServerError(`Falha ao enviar botões Messenger: ${error.message}`);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Unknown';
+      logger.error({ tenantId, to, error: msg }, 'Messenger sendButtons failed');
+      throw new InternalServerError(`Falha ao enviar botões Messenger: ${msg}`);
     }
   }
 

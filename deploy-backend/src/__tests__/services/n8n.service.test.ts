@@ -307,6 +307,7 @@ describe('N8NService', () => {
         contactName: 'Test User',
         conversationId,
         isNewConversation: false,
+        channel: 'whatsapp',
       });
     });
 

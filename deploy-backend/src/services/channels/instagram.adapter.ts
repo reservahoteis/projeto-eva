@@ -70,9 +70,10 @@ export class InstagramAdapter implements ChannelSendAdapter {
         externalMessageId: response.data.message_id || '',
         success: true,
       };
-    } catch (error: any) {
-      logger.error({ tenantId, to, error: error.message }, 'Instagram sendText failed');
-      throw new InternalServerError(`Falha ao enviar mensagem Instagram: ${error.message}`);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Unknown';
+      logger.error({ tenantId, to, error: msg }, 'Instagram sendText failed');
+      throw new InternalServerError(`Falha ao enviar mensagem Instagram: ${msg}`);
     }
   }
 
@@ -109,9 +110,10 @@ export class InstagramAdapter implements ChannelSendAdapter {
         externalMessageId: response.data.message_id || '',
         success: true,
       };
-    } catch (error: any) {
-      logger.error({ tenantId, to, error: error.message }, 'Instagram sendMedia failed');
-      throw new InternalServerError(`Falha ao enviar mídia Instagram: ${error.message}`);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Unknown';
+      logger.error({ tenantId, to, error: msg }, 'Instagram sendMedia failed');
+      throw new InternalServerError(`Falha ao enviar mídia Instagram: ${msg}`);
     }
   }
 

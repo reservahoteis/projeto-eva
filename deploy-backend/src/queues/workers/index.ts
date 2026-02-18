@@ -4,12 +4,16 @@ import {
   whatsappStatusUpdateQueue,
   whatsappOutgoingMessageQueue,
   whatsappMediaDownloadQueue,
+  messengerIncomingMessageQueue,
+  instagramIncomingMessageQueue,
   iaReactivationQueue,
 } from '../whatsapp-webhook.queue';
 import { processIncomingMessage } from './process-incoming-message.worker';
 import { processStatusUpdate } from './process-status-update.worker';
 import { processOutgoingMessage } from './process-outgoing-message.worker';
 import { processMediaDownload } from './process-media-download.worker';
+import { processMessengerMessage } from './process-messenger-message.worker';
+import { processInstagramMessage } from './process-instagram-message.worker';
 import { processIaReactivation } from './process-ia-reactivation.worker';
 
 /**
@@ -35,6 +39,14 @@ export function registerWorkers(): void {
   whatsappMediaDownloadQueue.process(2, processMediaDownload); // 2 jobs concorrentes (I/O intensivo)
   logger.info('✅ Media download worker registered (concurrency: 2)');
 
+  // Worker: Processar mensagens Messenger
+  messengerIncomingMessageQueue.process(3, processMessengerMessage);
+  logger.info('✅ Messenger message worker registered (concurrency: 3)');
+
+  // Worker: Processar mensagens Instagram
+  instagramIncomingMessageQueue.process(3, processInstagramMessage);
+  logger.info('✅ Instagram message worker registered (concurrency: 3)');
+
   // Worker: Reativacao automatica de IA apos follow-up
   iaReactivationQueue.process(1, processIaReactivation); // 1 job por vez (nao e critico)
   logger.info('✅ IA reactivation worker registered (concurrency: 1)');
@@ -53,6 +65,8 @@ export async function stopWorkers(): Promise<void> {
     whatsappStatusUpdateQueue,
     whatsappOutgoingMessageQueue,
     whatsappMediaDownloadQueue,
+    messengerIncomingMessageQueue,
+    instagramIncomingMessageQueue,
     iaReactivationQueue,
   ];
 
