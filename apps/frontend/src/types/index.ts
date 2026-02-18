@@ -204,7 +204,7 @@ export interface Message {
   content?: string;
   mediaUrl?: string;
   mediaType?: string;
-  whatsappMessageId?: string;
+  externalMessageId?: string;
   metadata?: MessageMetadata; // Type-safe metadata
   createdAt: string;
   updatedAt: string;
