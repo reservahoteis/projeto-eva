@@ -35,6 +35,7 @@ const envSchema = z.object({
 
   // Instagram
   INSTAGRAM_WEBHOOK_VERIFY_TOKEN: z.string().optional(),
+  INSTAGRAM_ACCESS_TOKEN: z.string().optional(),
   INSTAGRAM_ACCOUNT_ID: z.string().optional(),
 
   // N8N

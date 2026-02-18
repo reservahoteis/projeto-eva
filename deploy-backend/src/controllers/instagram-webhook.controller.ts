@@ -131,8 +131,7 @@ export class InstagramWebhookController {
 
   private async resolveTenantByIgId(igAccountId: string): Promise<string | null> {
     try {
-      // Mesmo Page ID do Messenger (conta vinculada)
-      if (env.MESSENGER_PAGE_ID && (igAccountId === env.MESSENGER_PAGE_ID || env.INSTAGRAM_ACCOUNT_ID === igAccountId)) {
+      if (env.INSTAGRAM_ACCOUNT_ID === igAccountId) {
         const tenant = await prisma.tenant.findFirst({
           where: { status: 'ACTIVE' },
           select: { id: true, slug: true },
