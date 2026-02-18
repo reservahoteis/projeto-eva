@@ -5,6 +5,7 @@
 
 import axios, { AxiosInstance } from 'axios';
 import { prisma } from '@/config/database';
+import { env } from '@/config/env';
 import { BadRequestError, InternalServerError } from '@/utils/errors';
 import { decrypt } from '@/utils/encryption';
 import logger from '@/config/logger';
@@ -34,16 +35,25 @@ export class InstagramAdapter implements ChannelSendAdapter {
       },
     });
 
-    if (!tenant?.instagramAccountId || !tenant?.instagramAccessToken) {
-      throw new BadRequestError('Tenant não tem Instagram configurado');
+    let accessToken: string | undefined;
+
+    // 1. Tentar config do DB (multi-tenant)
+    if (tenant?.instagramAccountId && tenant?.instagramAccessToken) {
+      try {
+        accessToken = decrypt(tenant.instagramAccessToken);
+      } catch {
+        logger.error({ tenantId }, '[INSTAGRAM SEND] Failed to decrypt DB access token, tentando env var fallback');
+      }
     }
 
-    let accessToken: string;
-    try {
-      accessToken = decrypt(tenant.instagramAccessToken);
-    } catch {
-      logger.error({ tenantId }, 'Failed to decrypt Instagram access token');
-      throw new BadRequestError('Configuração Instagram inválida');
+    // 2. Fallback: env var (single-tenant / dev)
+    if (!accessToken && env.INSTAGRAM_ACCESS_TOKEN) {
+      accessToken = env.INSTAGRAM_ACCESS_TOKEN;
+      logger.info({ tenantId }, '[INSTAGRAM SEND] Usando INSTAGRAM_ACCESS_TOKEN env var (fallback)');
+    }
+
+    if (!accessToken) {
+      throw new BadRequestError('Tenant não tem Instagram configurado (sem token no DB nem env var)');
     }
 
     const instance = axios.create({

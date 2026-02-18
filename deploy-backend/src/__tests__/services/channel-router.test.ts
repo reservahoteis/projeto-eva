@@ -832,7 +832,7 @@ describe('MessengerAdapter', () => {
 
       await expect(
         new MessengerAdapter().sendText(tenantId, to, 'Ola')
-      ).rejects.toThrow('Configuração Messenger inválida');
+      ).rejects.toThrow('Tenant não tem Messenger configurado');
     });
 
     it('deve criar instancia axios apontando para Graph API com access_token descriptografado', async () => {
@@ -1293,7 +1293,7 @@ describe('InstagramAdapter', () => {
 
       await expect(
         new InstagramAdapter().sendText(tenantId, to, 'Ola')
-      ).rejects.toThrow('Configuração Instagram inválida');
+      ).rejects.toThrow('Tenant não tem Instagram configurado');
     });
 
     it('deve criar instancia axios apontando para Graph API v21.0 com access_token descriptografado', async () => {

@@ -5,6 +5,7 @@
 
 import axios, { AxiosInstance } from 'axios';
 import { prisma } from '@/config/database';
+import { env } from '@/config/env';
 import { BadRequestError, InternalServerError } from '@/utils/errors';
 import { decrypt } from '@/utils/encryption';
 import logger from '@/config/logger';
@@ -34,16 +35,25 @@ export class MessengerAdapter implements ChannelSendAdapter {
       },
     });
 
-    if (!tenant?.messengerPageId || !tenant?.messengerAccessToken) {
-      throw new BadRequestError('Tenant não tem Messenger configurado');
+    let accessToken: string | undefined;
+
+    // 1. Tentar config do DB (multi-tenant)
+    if (tenant?.messengerPageId && tenant?.messengerAccessToken) {
+      try {
+        accessToken = decrypt(tenant.messengerAccessToken);
+      } catch {
+        logger.error({ tenantId }, '[MESSENGER SEND] Failed to decrypt DB access token, tentando env var fallback');
+      }
     }
 
-    let accessToken: string;
-    try {
-      accessToken = decrypt(tenant.messengerAccessToken);
-    } catch {
-      logger.error({ tenantId }, 'Failed to decrypt Messenger access token');
-      throw new BadRequestError('Configuração Messenger inválida');
+    // 2. Fallback: env var (single-tenant / dev)
+    if (!accessToken && env.MESSENGER_PAGE_ACCESS_TOKEN) {
+      accessToken = env.MESSENGER_PAGE_ACCESS_TOKEN;
+      logger.info({ tenantId }, '[MESSENGER SEND] Usando MESSENGER_PAGE_ACCESS_TOKEN env var (fallback)');
+    }
+
+    if (!accessToken) {
+      throw new BadRequestError('Tenant não tem Messenger configurado (sem token no DB nem env var)');
     }
 
     const instance = axios.create({
