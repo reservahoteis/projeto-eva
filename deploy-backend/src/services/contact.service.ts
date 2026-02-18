@@ -153,6 +153,8 @@ export class ContactService {
   }) {
     return prisma.contact.create({
       data: {
+        channel: 'WHATSAPP',
+        externalId: data.phoneNumber,
         phoneNumber: data.phoneNumber,
         name: data.name || null,
         email: data.email || null,
@@ -530,7 +532,7 @@ export class ContactService {
     // Gerar linhas
     const rows = contacts.map((contact) => [
       escapeCsv(contact.name || 'Sem nome'),
-      escapeCsv(contact.phoneNumber),
+      escapeCsv(contact.phoneNumber || '-'),
       escapeCsv(contact.email || '-'),
       contact._count.conversations.toString(),
       escapeCsv(

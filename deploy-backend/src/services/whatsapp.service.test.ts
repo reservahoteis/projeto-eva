@@ -76,7 +76,7 @@ describe('WhatsAppService', () => {
 
       // Assert
       expect(result).toEqual({
-        whatsappMessageId: 'wamid.HBgNNTUxMTk4MTIzNDU2NxUCABIYFjNBMDhDRjg2',
+        externalMessageId: 'wamid.HBgNNTUxMTk4MTIzNDU2NxUCABIYFjNBMDhDRjg2',
         success: true,
       });
 
@@ -201,7 +201,7 @@ describe('WhatsAppService', () => {
 
       // Assert
       expect(result.success).toBe(true);
-      expect(result.whatsappMessageId).toBeDefined();
+      expect(result.externalMessageId).toBeDefined();
 
       expect(mockAxiosInstance.post).toHaveBeenCalledWith(
         '/123456789/messages',

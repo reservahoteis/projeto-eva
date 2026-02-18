@@ -10,7 +10,7 @@ import { emitNewMessage, emitMessageStatusUpdate } from '@/config/socket';
 /**
  * Worker para enviar mensagens para o WhatsApp
  */
-export async function processOutgoingMessage(job: Job<SendMessageJobData>): Promise<{ whatsappMessageId: string }> {
+export async function processOutgoingMessage(job: Job<SendMessageJobData>): Promise<{ externalMessageId: string }> {
   const { tenantId, conversationId, messageId, to, type, content, metadata } = job.data;
 
   logger.info(
@@ -36,7 +36,7 @@ export async function processOutgoingMessage(job: Job<SendMessageJobData>): Prom
         tenantId: true,
         conversationId: true,
         status: true,
-        whatsappMessageId: true,
+        externalMessageId: true,
         type: true,
         content: true,
         metadata: true,
@@ -54,21 +54,21 @@ export async function processOutgoingMessage(job: Job<SendMessageJobData>): Prom
       throw new Error(`Tenant mismatch: expected ${tenantId}, got ${message.tenantId}`);
     }
 
-    // Se já foi enviada (tem whatsappMessageId), não enviar novamente
-    if (message.whatsappMessageId) {
+    // Se já foi enviada (tem externalMessageId), não enviar novamente
+    if (message.externalMessageId) {
       logger.warn(
         {
           jobId: job.id,
           messageId,
-          whatsappMessageId: message.whatsappMessageId,
+          externalMessageId: message.externalMessageId,
         },
         'Message already sent, skipping'
       );
-      return { whatsappMessageId: message.whatsappMessageId };
+      return { externalMessageId: message.externalMessageId };
     }
 
     // 2. ENVIAR MENSAGEM VIA WHATSAPP SERVICE
-    let result: { whatsappMessageId: string; success: boolean };
+    let result: { externalMessageId: string; success: boolean };
 
     switch (type) {
       case 'text':
@@ -106,22 +106,22 @@ export async function processOutgoingMessage(job: Job<SendMessageJobData>): Prom
         throw new Error(`Unsupported message type: ${type}`);
     }
 
-    if (!result.success || !result.whatsappMessageId) {
+    if (!result.success || !result.externalMessageId) {
       throw new Error('Failed to send message - no WhatsApp message ID returned');
     }
 
-    // 3. ATUALIZAR MENSAGEM COM whatsappMessageId E STATUS
+    // 3. ATUALIZAR MENSAGEM COM externalMessageId E STATUS
     const updatedMessage = await prisma.message.update({
       where: {
         id: messageId,
       },
       data: {
-        whatsappMessageId: result.whatsappMessageId,
+        externalMessageId: result.externalMessageId,
         status: 'SENT',
       },
       select: {
         id: true,
-        whatsappMessageId: true,
+        externalMessageId: true,
         direction: true,
         type: true,
         content: true,
@@ -165,7 +165,7 @@ export async function processOutgoingMessage(job: Job<SendMessageJobData>): Prom
         {
           id: updatedMessage.id,
           conversationId: conversationId,
-          whatsappMessageId: updatedMessage.whatsappMessageId,
+          externalMessageId: updatedMessage.externalMessageId,
           direction: updatedMessage.direction,
           type: updatedMessage.type,
           content: updatedMessage.content,
@@ -199,12 +199,12 @@ export async function processOutgoingMessage(job: Job<SendMessageJobData>): Prom
         tenantId,
         conversationId,
         messageId,
-        whatsappMessageId: result.whatsappMessageId,
+        externalMessageId: result.externalMessageId,
       },
       'Outgoing message sent successfully'
     );
 
-    return { whatsappMessageId: result.whatsappMessageId };
+    return { externalMessageId: result.externalMessageId };
   } catch (error) {
     logger.error(
       {

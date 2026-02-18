@@ -339,6 +339,8 @@ describe('ContactService', () => {
           profilePictureUrl: null,
           metadata: {},
           tenantId: contactData.tenantId,
+          channel: 'WHATSAPP',
+          externalId: contactData.phoneNumber,
         },
         include: {
           _count: {
@@ -387,6 +389,8 @@ describe('ContactService', () => {
           profilePictureUrl: null,
           metadata: {},
           tenantId: contactData.tenantId,
+          channel: 'WHATSAPP',
+          externalId: contactData.phoneNumber,
         },
         include: {
           _count: {

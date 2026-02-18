@@ -42,7 +42,7 @@ export class MessageService {
       orderBy: { timestamp: 'desc' },
       select: {
         id: true,
-        whatsappMessageId: true,
+        externalMessageId: true,
         direction: true,
         type: true,
         content: true,
@@ -81,7 +81,8 @@ export class MessageService {
     }
 
     // Validar número do contato
-    if (!whatsAppService.validatePhoneNumber(conversation.contact.phoneNumber)) {
+    const phoneNumber = conversation.contact.phoneNumber;
+    if (!phoneNumber || !whatsAppService.validatePhoneNumber(phoneNumber)) {
       throw new BadRequestError('Número de telefone inválido');
     }
 
@@ -107,14 +108,14 @@ export class MessageService {
       if (data.type === 'TEXT' || !data.type) {
         whatsappResult = await whatsAppService.sendTextMessage(
           tenantId,
-          conversation.contact.phoneNumber,
+          phoneNumber,
           data.content
         );
       } else {
         // Mídia
         whatsappResult = await whatsAppService.sendMediaMessage(
           tenantId,
-          conversation.contact.phoneNumber,
+          phoneNumber,
           {
             type: data.type as 'image' | 'video' | 'audio' | 'document',
             url: data.content,
@@ -122,11 +123,11 @@ export class MessageService {
         );
       }
 
-      // Atualizar com whatsappMessageId
+      // Atualizar com externalMessageId
       await prisma.message.update({
         where: { id: message.id },
         data: {
-          whatsappMessageId: whatsappResult.whatsappMessageId,
+          externalMessageId: whatsappResult.externalMessageId,
         },
       });
     } catch (error) {
@@ -161,7 +162,7 @@ export class MessageService {
     tenantId: string;
     contactPhoneNumber: string;
     contactName?: string;
-    whatsappMessageId: string;
+    externalMessageId: string;
     type: MessageType;
     content: string;
     mediaUrl?: string; // URL da mídia (imagem, vídeo, áudio, documento)
@@ -180,6 +181,8 @@ export class MessageService {
       contact = await prisma.contact.create({
         data: {
           tenantId: data.tenantId,
+          channel: 'WHATSAPP',
+          externalId: data.contactPhoneNumber,
           phoneNumber: data.contactPhoneNumber,
           name: data.contactName || null,
         },
@@ -202,11 +205,11 @@ export class MessageService {
 
     // 3. Verificar se mensagem já existe (idempotência)
     const existingMessage = await prisma.message.findUnique({
-      where: { whatsappMessageId: data.whatsappMessageId },
+      where: { externalMessageId: data.externalMessageId },
     });
 
     if (existingMessage) {
-      logger.debug({ whatsappMessageId: data.whatsappMessageId }, 'Message already exists');
+      logger.debug({ externalMessageId: data.externalMessageId }, 'Message already exists');
       return existingMessage;
     }
 
@@ -221,7 +224,7 @@ export class MessageService {
       data: {
         tenantId: data.tenantId,
         conversationId: conversation.id,
-        whatsappMessageId: data.whatsappMessageId,
+        externalMessageId: data.externalMessageId,
         direction: 'INBOUND',
         type: data.type,
         content: data.content,
@@ -288,8 +291,8 @@ export class MessageService {
     });
 
     // Enviar confirmação para WhatsApp
-    if (message.whatsappMessageId) {
-      await whatsAppService.markAsRead(tenantId, message.whatsappMessageId);
+    if (message.externalMessageId) {
+      await whatsAppService.markAsRead(tenantId, message.externalMessageId);
     }
 
     logger.debug({ messageId }, 'Message marked as read');
@@ -298,22 +301,22 @@ export class MessageService {
   /**
    * Atualizar status de mensagem (via webhook status update)
    */
-  async updateMessageStatus(whatsappMessageId: string, status: 'SENT' | 'DELIVERED' | 'READ' | 'FAILED') {
+  async updateMessageStatus(externalMessageId: string, status: 'SENT' | 'DELIVERED' | 'READ' | 'FAILED') {
     const message = await prisma.message.findUnique({
-      where: { whatsappMessageId },
+      where: { externalMessageId },
     });
 
     if (!message) {
-      logger.warn({ whatsappMessageId }, 'Message not found for status update');
+      logger.warn({ externalMessageId }, 'Message not found for status update');
       return;
     }
 
     await prisma.message.update({
-      where: { whatsappMessageId },
+      where: { externalMessageId },
       data: { status },
     });
 
-    logger.debug({ whatsappMessageId, status }, 'Message status updated');
+    logger.debug({ externalMessageId, status }, 'Message status updated');
   }
 
   /**
@@ -327,7 +330,7 @@ export class MessageService {
   async saveOutboundMessage(data: {
     tenantId: string;
     phoneNumber: string;
-    whatsappMessageId: string;
+    externalMessageId: string;
     type: MessageType;
     content: string;
     metadata?: any;
@@ -355,6 +358,8 @@ export class MessageService {
       contact = await prisma.contact.create({
         data: {
           tenantId: data.tenantId,
+          channel: 'WHATSAPP',
+          externalId: normalizedPhone,
           phoneNumber: normalizedPhone,
         },
       });
@@ -366,7 +371,7 @@ export class MessageService {
       tenantId: data.tenantId,
       contactId: contact.id,
       phoneNumber: normalizedPhone,
-      whatsappMessageId: data.whatsappMessageId,
+      externalMessageId: data.externalMessageId,
     }, 'saveOutboundMessage: Looking for conversation');
 
     const { conversation, isNew: isNewConversation } = await conversationService.getOrCreateConversation(
@@ -385,11 +390,11 @@ export class MessageService {
 
     // 3. Verificar se mensagem já existe (idempotência)
     const existingMessage = await prisma.message.findUnique({
-      where: { whatsappMessageId: data.whatsappMessageId },
+      where: { externalMessageId: data.externalMessageId },
     });
 
     if (existingMessage) {
-      logger.debug({ whatsappMessageId: data.whatsappMessageId }, 'AI message already exists');
+      logger.debug({ externalMessageId: data.externalMessageId }, 'AI message already exists');
       return existingMessage;
     }
 
@@ -398,7 +403,7 @@ export class MessageService {
       data: {
         tenantId: data.tenantId,
         conversationId: conversation.id,
-        whatsappMessageId: data.whatsappMessageId,
+        externalMessageId: data.externalMessageId,
         direction: 'OUTBOUND',
         type: data.type,
         content: data.content,
@@ -422,7 +427,7 @@ export class MessageService {
     logger.info({
       messageId: message.id,
       conversationId: conversation.id,
-      whatsappMessageId: data.whatsappMessageId,
+      externalMessageId: data.externalMessageId,
       phoneNumber: normalizedPhone,
       isNewConversation,
     }, 'AI outbound message saved');

@@ -154,6 +154,8 @@ describe('EscalationService', () => {
         data: {
           tenantId,
           phoneNumber: contactPhoneNumber,
+          channel: 'WHATSAPP',
+          externalId: contactPhoneNumber,
         },
       });
 

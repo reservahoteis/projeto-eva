@@ -314,7 +314,7 @@ describe('WhatsAppServiceV2', () => {
       );
 
       expect(result).toEqual({
-        whatsappMessageId: 'wamid.123',
+        externalMessageId: 'wamid.123',
         success: true,
       });
 
@@ -533,7 +533,7 @@ describe('WhatsAppServiceV2', () => {
       });
 
       expect(result).toEqual({
-        whatsappMessageId: 'wamid.img1',
+        externalMessageId: 'wamid.img1',
         success: true,
       });
 
@@ -756,7 +756,7 @@ describe('WhatsAppServiceV2', () => {
       );
 
       expect(result).toEqual({
-        whatsappMessageId: 'wamid.tpl1',
+        externalMessageId: 'wamid.tpl1',
         success: true,
       });
 

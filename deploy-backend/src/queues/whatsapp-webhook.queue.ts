@@ -249,7 +249,7 @@ whatsappOutgoingMessageQueue.on('completed', (job, result) => {
       jobId: job.id,
       tenantId: job.data.tenantId,
       conversationId: job.data.conversationId,
-      whatsappMessageId: result?.whatsappMessageId,
+      externalMessageId: result?.externalMessageId,
     },
     'Message sent successfully'
   );

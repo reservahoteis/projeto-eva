@@ -8,7 +8,7 @@ import { processImageForWhatsApp, uploadImageToWhatsApp } from '@/utils/image-pr
 import { mediaStorageService, type MediaType } from '@/services/media-storage.service';
 
 interface SendMessageResult {
-  whatsappMessageId: string;
+  externalMessageId: string;
   success: boolean;
 }
 
@@ -247,12 +247,12 @@ export class WhatsAppService {
         }
       );
 
-      const whatsappMessageId = response.data.messages[0]?.id;
+      const externalMessageId = response.data.messages[0]?.id;
 
-      logger.info({ tenantId, to, whatsappMessageId }, 'WhatsApp message sent');
+      logger.info({ tenantId, to, externalMessageId }, 'WhatsApp message sent');
 
       return {
-        whatsappMessageId,
+        externalMessageId,
         success: true,
       };
     } catch (error: any) {
@@ -305,12 +305,12 @@ export class WhatsAppService {
         payload
       );
 
-      const whatsappMessageId = response.data.messages[0]?.id;
+      const externalMessageId = response.data.messages[0]?.id;
 
-      logger.info({ tenantId, to, type: media.type, whatsappMessageId }, 'Media message sent');
+      logger.info({ tenantId, to, type: media.type, externalMessageId }, 'Media message sent');
 
       return {
-        whatsappMessageId,
+        externalMessageId,
         success: true,
       };
     } catch (error: any) {
@@ -377,12 +377,12 @@ export class WhatsAppService {
         payload
       );
 
-      const whatsappMessageId = response.data.messages[0]?.id;
+      const externalMessageId = response.data.messages[0]?.id;
 
-      logger.info({ tenantId, to, templateName, whatsappMessageId }, 'Template sent');
+      logger.info({ tenantId, to, templateName, externalMessageId }, 'Template sent');
 
       return {
-        whatsappMessageId,
+        externalMessageId,
         success: true,
       };
     } catch (error: any) {
@@ -400,7 +400,7 @@ export class WhatsAppService {
   /**
    * Marcar mensagem como lida
    */
-  async markAsRead(tenantId: string, whatsappMessageId: string): Promise<void> {
+  async markAsRead(tenantId: string, externalMessageId: string): Promise<void> {
     try {
       const tenant = await prisma.tenant.findUnique({
         where: { id: tenantId },
@@ -416,13 +416,13 @@ export class WhatsAppService {
       await axiosInstance.post(`/${tenant.whatsappPhoneNumberId}/messages`, {
         messaging_product: 'whatsapp',
         status: 'read',
-        message_id: whatsappMessageId,
+        message_id: externalMessageId,
       });
 
-      logger.debug({ tenantId, whatsappMessageId }, 'Message marked as read');
+      logger.debug({ tenantId, externalMessageId }, 'Message marked as read');
     } catch (error: any) {
       // Não falhar se não conseguir marcar como lido
-      logger.error({ error, tenantId, whatsappMessageId }, 'Failed to mark as read');
+      logger.error({ error, tenantId, externalMessageId }, 'Failed to mark as read');
     }
   }
 
@@ -596,12 +596,12 @@ export class WhatsAppService {
         payload
       );
 
-      const whatsappMessageId = response.data.messages[0]?.id;
+      const externalMessageId = response.data.messages[0]?.id;
 
-      logger.info({ tenantId, to, buttons: buttons.length, whatsappMessageId }, 'Interactive buttons sent');
+      logger.info({ tenantId, to, buttons: buttons.length, externalMessageId }, 'Interactive buttons sent');
 
       return {
-        whatsappMessageId,
+        externalMessageId,
         success: true,
       };
     } catch (error: any) {
@@ -670,12 +670,12 @@ export class WhatsAppService {
         payload
       );
 
-      const whatsappMessageId = response.data.messages[0]?.id;
+      const externalMessageId = response.data.messages[0]?.id;
 
-      logger.info({ tenantId, to, whatsappMessageId }, 'Interactive list sent');
+      logger.info({ tenantId, to, externalMessageId }, 'Interactive list sent');
 
       return {
-        whatsappMessageId,
+        externalMessageId,
         success: true,
       };
     } catch (error: any) {
@@ -742,7 +742,7 @@ export class WhatsAppService {
         );
 
         results.push({
-          whatsappMessageId: textResponse.data.messages[0]?.id,
+          externalMessageId: textResponse.data.messages[0]?.id,
           success: true,
         });
       }
@@ -800,7 +800,7 @@ export class WhatsAppService {
         );
 
         results.push({
-          whatsappMessageId: response.data.messages[0]?.id,
+          externalMessageId: response.data.messages[0]?.id,
           success: true,
         });
 
@@ -1005,15 +1005,15 @@ export class WhatsAppService {
         payload
       );
 
-      const whatsappMessageId = response.data.messages[0]?.id;
+      const externalMessageId = response.data.messages[0]?.id;
 
       logger.info(
-        { tenantId, to, templateName, cardsCount: cards.length, whatsappMessageId },
+        { tenantId, to, templateName, cardsCount: cards.length, externalMessageId },
         'Carousel template sent'
       );
 
       return {
-        whatsappMessageId,
+        externalMessageId,
         success: true,
       };
     } catch (error: any) {

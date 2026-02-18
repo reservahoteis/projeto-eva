@@ -23,10 +23,10 @@ export async function processStatusUpdate(job: Job<ProcessStatusJobData>): Promi
   );
 
   try {
-    // 1. ENCONTRAR MENSAGEM PELO whatsappMessageId
+    // 1. ENCONTRAR MENSAGEM PELO externalMessageId
     const message = await prisma.message.findUnique({
       where: {
-        whatsappMessageId: status.id,
+        externalMessageId: status.id,
       },
       select: {
         id: true,
@@ -41,7 +41,7 @@ export async function processStatusUpdate(job: Job<ProcessStatusJobData>): Promi
         {
           jobId: job.id,
           tenantId,
-          whatsappMessageId: status.id,
+          externalMessageId: status.id,
         },
         'Message not found for status update'
       );
@@ -55,7 +55,7 @@ export async function processStatusUpdate(job: Job<ProcessStatusJobData>): Promi
           jobId: job.id,
           expectedTenantId: tenantId,
           actualTenantId: message.tenantId,
-          whatsappMessageId: status.id,
+          externalMessageId: status.id,
         },
         'Tenant mismatch in status update - possible security issue!'
       );
@@ -149,7 +149,7 @@ export async function processStatusUpdate(job: Job<ProcessStatusJobData>): Promi
         jobId: job.id,
         tenantId,
         messageId: message.id,
-        whatsappMessageId: status.id,
+        externalMessageId: status.id,
         oldStatus: message.status,
         newStatus: mappedStatus,
         hasErrors: status.errors && status.errors.length > 0,
@@ -167,7 +167,7 @@ export async function processStatusUpdate(job: Job<ProcessStatusJobData>): Promi
           tenantId,
           messageId: message.id,
           conversationId: message.conversationId,
-          whatsappMessageId: status.id,
+          externalMessageId: status.id,
           errors: status.errors,
         },
         'Message failed to deliver'

@@ -70,6 +70,8 @@ export class EscalationService {
       contact = await prisma.contact.create({
         data: {
           tenantId,
+          channel: 'WHATSAPP',
+          externalId: contactPhoneNumber,
           phoneNumber: contactPhoneNumber,
         },
       });

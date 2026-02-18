@@ -1,5 +1,6 @@
 // ============================================
-// CRM WHATSAPP SAAS - MULTI-TENANT DATABASE SCHEMA
+// CRM OMNICHANNEL SAAS - MULTI-TENANT DATABASE SCHEMA
+// Canais suportados: WhatsApp, Messenger, Instagram
 // ============================================
 
 generator client {
@@ -47,6 +48,14 @@ model Tenant {
   n8nApiKey     String? // Chave de API para integracao N8N
   n8nWebhookUrl String? // URL do webhook do N8N para encaminhar mensagens
 
+  // Messenger Config (por tenant)
+  messengerPageId      String? // Page ID do Facebook
+  messengerAccessToken String? // Page Access Token (criptografado)
+
+  // Instagram Config (por tenant)
+  instagramAccountId   String? // Instagram Account ID
+  instagramAccessToken String? // Access Token (criptografado)
+
   // Metadata
   metadata Json? // Dados customizados
 
@@ -87,6 +96,15 @@ enum SubscriptionStatus {
   CANCELLED
   INCOMPLETE
   TRIALING
+}
+
+// ============================================
+// CHANNEL (Canal de comunicacao)
+// ============================================
+enum Channel {
+  WHATSAPP
+  MESSENGER
+  INSTAGRAM
 }
 
 // ============================================
@@ -143,14 +161,18 @@ enum UserStatus {
 }
 
 // ============================================
-// CONTACT (Contatos do WhatsApp)
-// Isolado por tenant
+// CONTACT (Contatos omnichannel)
+// Isolado por tenant + canal
 // ============================================
 model Contact {
   id       String @id @default(uuid())
   tenantId String // IMPORTANTE: Isola contatos
 
-  phoneNumber       String // Formato: 5511999999999
+  // Canal de origem do contato
+  channel    Channel @default(WHATSAPP)
+  externalId String  // WA: phoneNumber, Messenger: PSID, Instagram: IGSID
+
+  phoneNumber       String? // Telefone (obrigatorio para WA, opcional para Messenger/IG)
   name              String?
   profilePictureUrl String?
   email             String?
@@ -166,8 +188,9 @@ model Contact {
   tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   conversations Conversation[]
 
-  // Constraint: Mesmo número pode existir em tenants diferentes
-  @@unique([tenantId, phoneNumber])
+  // Constraint: Mesmo externalId pode existir em tenants/canais diferentes
+  @@unique([tenantId, channel, externalId])
+  @@index([tenantId, channel, externalId])
   @@index([tenantId, phoneNumber])
   @@index([tenantId])
   @@map("contacts")
@@ -186,8 +209,11 @@ model Conversation {
   status       ConversationStatus @default(OPEN)
   priority     Priority           @default(MEDIUM)
 
+  // Canal da conversa (WhatsApp, Messenger, Instagram)
+  channel Channel @default(WHATSAPP)
+
   // Campo source para rastrear origem
-  source String? // "n8n", "manual", "webhook", "whatsapp"
+  source String? // "n8n", "manual", "webhook"
 
   // Unidade hoteleira da conversa (para filtrar por atendente)
   // Valores: "Ilhabela", "Campos do Jordão", "Camburi", "Santo Antônio do Pinhal"
@@ -219,6 +245,7 @@ model Conversation {
   escalations Escalation[]
 
   @@index([tenantId, status, lastMessageAt])
+  @@index([tenantId, channel, status, lastMessageAt])
   @@index([tenantId, status, assignedToId, lastMessageAt])
   @@index([tenantId, assignedToId])
   @@index([tenantId, contactId])
@@ -258,8 +285,8 @@ model Message {
 
   conversationId String
 
-  // WhatsApp Message ID (da Meta)
-  whatsappMessageId String? @unique
+  // ID externo da mensagem (WhatsApp wamid, Messenger mid, Instagram mid)
+  externalMessageId String? @unique
 
   direction Direction
   type      MessageType
@@ -284,7 +311,7 @@ model Message {
   @@index([tenantId, conversationId, timestamp])
   @@index([conversationId, timestamp])
   @@index([tenantId, timestamp])
-  @@index([whatsappMessageId])
+  @@index([externalMessageId])
   // Índice para contagem de mensagens não lidas (usado em listConversations)
   @@index([conversationId, direction, status])
   @@map("messages")

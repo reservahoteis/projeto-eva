@@ -198,7 +198,7 @@ export async function processIncomingMessage(job: Job<ProcessMessageJobData>): P
       data: {
         tenantId,
         conversationId: conversation.id,
-        whatsappMessageId: message.id,
+        externalMessageId: message.id,
         direction: 'INBOUND',
         type: messageData.type,
         content: messageData.content,
@@ -320,7 +320,7 @@ export async function processIncomingMessage(job: Job<ProcessMessageJobData>): P
       {
         id: savedMessage.id,
         conversationId: conversation.id,
-        whatsappMessageId: savedMessage.whatsappMessageId,
+        externalMessageId: savedMessage.externalMessageId,
         direction: savedMessage.direction,
         type: savedMessage.type,
         content: savedMessage.content,
@@ -351,7 +351,7 @@ export async function processIncomingMessage(job: Job<ProcessMessageJobData>): P
     // IMPORTANTE: Usar messageData.metadata que contém a mediaUrl atualizada (se disponível)
     // savedMessage.metadata é o valor original antes do download síncrono
     const n8nPayload = n8nService.buildPayload(
-      contact.phoneNumber,
+      contact.phoneNumber || message.from,
       {
         id: savedMessage.id,
         type: savedMessage.type,
@@ -403,17 +403,16 @@ async function findOrCreateContact(
   tenantId: string,
   rawPhoneNumber: string,
   name?: string
-): Promise<{ id: string; phoneNumber: string; name: string | null; profilePictureUrl: string | null }> {
+): Promise<{ id: string; phoneNumber: string | null; name: string | null; profilePictureUrl: string | null }> {
   // Normalizar telefone BR (12 -> 13 digitos) para evitar contatos duplicados
   const phoneNumber = normalizeBrazilianPhone(rawPhoneNumber);
 
   // Buscar contato existente
-  let contact = await prisma.contact.findUnique({
+  let contact = await prisma.contact.findFirst({
     where: {
-      tenantId_phoneNumber: {
-        tenantId,
-        phoneNumber,
-      },
+      tenantId,
+      channel: 'WHATSAPP',
+      externalId: phoneNumber,
     },
     select: {
       id: true,
@@ -437,6 +436,8 @@ async function findOrCreateContact(
       data: {
         tenantId,
         phoneNumber,
+        channel: 'WHATSAPP',
+        externalId: phoneNumber,
         name: name || null,
         profilePictureUrl,
       },
@@ -898,7 +899,7 @@ async function handleHotelUnitSelection(
   tenantId: string,
   conversationId: string,
   hotelUnit: string,
-  _contact: { id: string; phoneNumber: string; name: string | null; profilePictureUrl: string | null }
+  _contact: { id: string; phoneNumber: string | null; name: string | null; profilePictureUrl: string | null }
 ): Promise<void> {
   try {
     // 1. Atualizar conversa apenas com a unidade hoteleira (sem tags coloridas)

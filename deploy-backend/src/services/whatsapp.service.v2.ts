@@ -11,7 +11,7 @@ import { decrypt } from '@/utils/encryption';
 // ============================================
 
 export interface SendMessageResult {
-  whatsappMessageId: string;
+  externalMessageId: string;
   success: boolean;
 }
 
@@ -326,9 +326,9 @@ export class WhatsAppServiceV2 {
         }
       );
 
-      const whatsappMessageId = response.data.messages[0]?.id;
+      const externalMessageId = response.data.messages[0]?.id;
 
-      if (!whatsappMessageId) {
+      if (!externalMessageId) {
         throw new InternalServerError('WhatsApp não retornou message ID');
       }
 
@@ -336,14 +336,14 @@ export class WhatsAppServiceV2 {
         {
           tenantId,
           to: formattedTo,
-          whatsappMessageId,
+          externalMessageId,
           textLength: text.length,
         },
         'Text message sent successfully'
       );
 
       return {
-        whatsappMessageId,
+        externalMessageId,
         success: true,
       };
     } catch (error) {
@@ -428,9 +428,9 @@ export class WhatsAppServiceV2 {
         payload
       );
 
-      const whatsappMessageId = response.data.messages[0]?.id;
+      const externalMessageId = response.data.messages[0]?.id;
 
-      if (!whatsappMessageId) {
+      if (!externalMessageId) {
         throw new InternalServerError('WhatsApp não retornou message ID');
       }
 
@@ -439,14 +439,14 @@ export class WhatsAppServiceV2 {
           tenantId,
           to: formattedTo,
           type: media.type,
-          whatsappMessageId,
+          externalMessageId,
           hasCaption: !!media.caption,
         },
         'Media message sent successfully'
       );
 
       return {
-        whatsappMessageId,
+        externalMessageId,
         success: true,
       };
     } catch (error) {
@@ -525,9 +525,9 @@ export class WhatsAppServiceV2 {
         payload
       );
 
-      const whatsappMessageId = response.data.messages[0]?.id;
+      const externalMessageId = response.data.messages[0]?.id;
 
-      if (!whatsappMessageId) {
+      if (!externalMessageId) {
         throw new InternalServerError('WhatsApp não retornou message ID');
       }
 
@@ -536,13 +536,13 @@ export class WhatsAppServiceV2 {
           tenantId,
           to: formattedTo,
           templateName,
-          whatsappMessageId,
+          externalMessageId,
         },
         'Template sent successfully'
       );
 
       return {
-        whatsappMessageId,
+        externalMessageId,
         success: true,
       };
     } catch (error) {
@@ -648,9 +648,9 @@ export class WhatsAppServiceV2 {
         payload
       );
 
-      const whatsappMessageId = response.data.messages[0]?.id;
+      const externalMessageId = response.data.messages[0]?.id;
 
-      if (!whatsappMessageId) {
+      if (!externalMessageId) {
         throw new InternalServerError('WhatsApp não retornou message ID');
       }
 
@@ -659,13 +659,13 @@ export class WhatsAppServiceV2 {
           tenantId,
           to: formattedTo,
           buttonCount: buttons.length,
-          whatsappMessageId,
+          externalMessageId,
         },
         'Interactive buttons sent successfully'
       );
 
       return {
-        whatsappMessageId,
+        externalMessageId,
         success: true,
       };
     } catch (error) {
@@ -761,9 +761,9 @@ export class WhatsAppServiceV2 {
         payload
       );
 
-      const whatsappMessageId = response.data.messages[0]?.id;
+      const externalMessageId = response.data.messages[0]?.id;
 
-      if (!whatsappMessageId) {
+      if (!externalMessageId) {
         throw new InternalServerError('WhatsApp não retornou message ID');
       }
 
@@ -773,13 +773,13 @@ export class WhatsAppServiceV2 {
           to: formattedTo,
           sectionCount: sections.length,
           totalRows,
-          whatsappMessageId,
+          externalMessageId,
         },
         'Interactive list sent successfully'
       );
 
       return {
-        whatsappMessageId,
+        externalMessageId,
         success: true,
       };
     } catch (error) {
@@ -803,7 +803,7 @@ export class WhatsAppServiceV2 {
   /**
    * Marcar mensagem como lida
    */
-  async markAsRead(tenantId: string, whatsappMessageId: string): Promise<void> {
+  async markAsRead(tenantId: string, externalMessageId: string): Promise<void> {
     try {
       const tenant = await prisma.tenant.findUnique({
         where: { id: tenantId },
@@ -820,13 +820,13 @@ export class WhatsAppServiceV2 {
       await axiosInstance.post(`/${tenant.whatsappPhoneNumberId}/messages`, {
         messaging_product: 'whatsapp',
         status: 'read',
-        message_id: whatsappMessageId,
+        message_id: externalMessageId,
       });
 
       logger.debug(
         {
           tenantId,
-          whatsappMessageId,
+          externalMessageId,
         },
         'Message marked as read'
       );
@@ -836,7 +836,7 @@ export class WhatsAppServiceV2 {
         {
           error: error instanceof Error ? error.message : 'Unknown error',
           tenantId,
-          whatsappMessageId,
+          externalMessageId,
         },
         'Failed to mark message as read'
       );

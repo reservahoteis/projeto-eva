@@ -51,7 +51,7 @@ describe('MessageService', () => {
         id: 'msg-1',
         tenantId: 'tenant-123',
         conversationId: 'conv-123',
-        whatsappMessageId: 'wamid.1',
+        externalMessageId: 'wamid.1',
         direction: 'INBOUND' as const,
         type: 'TEXT' as const,
         content: 'Mensagem 1',
@@ -65,7 +65,7 @@ describe('MessageService', () => {
         id: 'msg-2',
         tenantId: 'tenant-123',
         conversationId: 'conv-123',
-        whatsappMessageId: 'wamid.2',
+        externalMessageId: 'wamid.2',
         direction: 'OUTBOUND' as const,
         type: 'TEXT' as const,
         content: 'Mensagem 2',
@@ -94,7 +94,7 @@ describe('MessageService', () => {
         orderBy: { timestamp: 'desc' },
         select: {
           id: true,
-          whatsappMessageId: true,
+          externalMessageId: true,
           direction: true,
           type: true,
           content: true,
@@ -260,6 +260,8 @@ describe('MessageService', () => {
         phoneNumber: '5511999999999',
         name: 'Cliente Teste',
         tenantId: 'tenant-123',
+        channel: 'WHATSAPP' as const,
+        externalId: '5511999999999',
         createdAt: new Date(),
         updatedAt: new Date(),
         profilePictureUrl: null,
@@ -277,7 +279,7 @@ describe('MessageService', () => {
       status: 'SENT' as const,
       tenantId: 'tenant-123',
       sentById: 'user-123',
-      whatsappMessageId: null,
+      externalMessageId: null,
       metadata: null,
       timestamp: new Date(),
       createdAt: new Date(),
@@ -290,12 +292,12 @@ describe('MessageService', () => {
       whatsAppServiceMock.validatePhoneNumber.mockReturnValue(true);
       prismaMock.message.create.mockResolvedValue(mockMessage);
       whatsAppServiceMock.sendTextMessage.mockResolvedValue({
-        whatsappMessageId: 'wamid.123',
+        externalMessageId: 'wamid.123',
         status: 'sent',
       } as any);
       prismaMock.message.update.mockResolvedValue({
         ...mockMessage,
-        whatsappMessageId: 'wamid.123',
+        externalMessageId: 'wamid.123',
       });
       prismaMock.conversation.update.mockResolvedValue(mockConversation as any);
 
@@ -354,7 +356,7 @@ describe('MessageService', () => {
         content: 'https://example.com/image.jpg',
       });
       whatsAppServiceMock.sendMediaMessage.mockResolvedValue({
-        whatsappMessageId: 'wamid.456',
+        externalMessageId: 'wamid.456',
         status: 'sent',
       } as any);
       prismaMock.message.update.mockResolvedValue(mockMessage as any);
@@ -390,7 +392,7 @@ describe('MessageService', () => {
         type: 'VIDEO',
       });
       whatsAppServiceMock.sendMediaMessage.mockResolvedValue({
-        whatsappMessageId: 'wamid.789',
+        externalMessageId: 'wamid.789',
         status: 'sent',
       } as any);
       prismaMock.message.update.mockResolvedValue(mockMessage as any);
@@ -426,7 +428,7 @@ describe('MessageService', () => {
         type: 'AUDIO',
       });
       whatsAppServiceMock.sendMediaMessage.mockResolvedValue({
-        whatsappMessageId: 'wamid.abc',
+        externalMessageId: 'wamid.abc',
         status: 'sent',
       } as any);
       prismaMock.message.update.mockResolvedValue(mockMessage as any);
@@ -462,7 +464,7 @@ describe('MessageService', () => {
         type: 'DOCUMENT',
       });
       whatsAppServiceMock.sendMediaMessage.mockResolvedValue({
-        whatsappMessageId: 'wamid.def',
+        externalMessageId: 'wamid.def',
         status: 'sent',
       } as any);
       prismaMock.message.update.mockResolvedValue(mockMessage as any);
@@ -572,13 +574,13 @@ describe('MessageService', () => {
       });
     });
 
-    it('deve atualizar whatsappMessageId após envio bem-sucedido', async () => {
+    it('deve atualizar externalMessageId após envio bem-sucedido', async () => {
       // Arrange
       prismaMock.conversation.findFirst.mockResolvedValue(mockConversation as any);
       whatsAppServiceMock.validatePhoneNumber.mockReturnValue(true);
       prismaMock.message.create.mockResolvedValue(mockMessage);
       whatsAppServiceMock.sendTextMessage.mockResolvedValue({
-        whatsappMessageId: 'wamid.updated',
+        externalMessageId: 'wamid.updated',
         status: 'sent',
       } as any);
       prismaMock.message.update.mockResolvedValue(mockMessage as any);
@@ -598,7 +600,7 @@ describe('MessageService', () => {
       expect(prismaMock.message.update).toHaveBeenCalledWith({
         where: { id: 'msg-123' },
         data: {
-          whatsappMessageId: 'wamid.updated',
+          externalMessageId: 'wamid.updated',
         },
       });
     });
@@ -609,7 +611,7 @@ describe('MessageService', () => {
       whatsAppServiceMock.validatePhoneNumber.mockReturnValue(true);
       prismaMock.message.create.mockResolvedValue(mockMessage);
       whatsAppServiceMock.sendTextMessage.mockResolvedValue({
-        whatsappMessageId: 'wamid.123',
+        externalMessageId: 'wamid.123',
         status: 'sent',
       } as any);
       prismaMock.message.update.mockResolvedValue(mockMessage as any);
@@ -641,7 +643,7 @@ describe('MessageService', () => {
       whatsAppServiceMock.validatePhoneNumber.mockReturnValue(true);
       prismaMock.message.create.mockResolvedValue(mockMessage);
       whatsAppServiceMock.sendTextMessage.mockResolvedValue({
-        whatsappMessageId: 'wamid.123',
+        externalMessageId: 'wamid.123',
         status: 'sent',
       } as any);
       prismaMock.message.update.mockResolvedValue(mockMessage as any);
@@ -703,7 +705,7 @@ describe('MessageService', () => {
       whatsAppServiceMock.validatePhoneNumber.mockReturnValue(true);
       prismaMock.message.create.mockResolvedValue(mockMessage);
       whatsAppServiceMock.sendTextMessage.mockResolvedValue({
-        whatsappMessageId: 'wamid.123',
+        externalMessageId: 'wamid.123',
         status: 'sent',
       } as any);
       prismaMock.message.update.mockResolvedValue(mockMessage as any);
@@ -737,6 +739,8 @@ describe('MessageService', () => {
       phoneNumber: '5511999999999',
       name: 'Cliente Teste',
       tenantId: 'tenant-123',
+      channel: 'WHATSAPP' as const,
+      externalId: '5511999999999',
       createdAt: new Date(),
       updatedAt: new Date(),
       profilePictureUrl: null,
@@ -758,7 +762,7 @@ describe('MessageService', () => {
     const mockMessage = {
       id: 'msg-123',
       conversationId: 'conv-123',
-      whatsappMessageId: 'wamid.incoming',
+      externalMessageId: 'wamid.incoming',
       direction: 'INBOUND' as const,
       type: 'TEXT' as const,
       content: 'Olá atendente',
@@ -783,7 +787,7 @@ describe('MessageService', () => {
       const result = await messageService.receiveMessage({
         tenantId: 'tenant-123',
         contactPhoneNumber: '5511999999999',
-        whatsappMessageId: 'wamid.incoming',
+        externalMessageId: 'wamid.incoming',
         type: 'TEXT',
         content: 'Olá atendente',
         timestamp: new Date(),
@@ -810,7 +814,7 @@ describe('MessageService', () => {
       const newMessage = {
         ...mockMessage,
         content: 'Primeira mensagem',
-        whatsappMessageId: 'wamid.new',
+        externalMessageId: 'wamid.new',
       };
 
       prismaMock.contact.findFirst.mockResolvedValue(null);
@@ -825,7 +829,7 @@ describe('MessageService', () => {
         tenantId: 'tenant-123',
         contactPhoneNumber: '5511888888888',
         contactName: 'Novo Cliente',
-        whatsappMessageId: 'wamid.new',
+        externalMessageId: 'wamid.new',
         type: 'TEXT',
         content: 'Primeira mensagem',
         timestamp: new Date(),
@@ -837,6 +841,8 @@ describe('MessageService', () => {
           tenantId: 'tenant-123',
           phoneNumber: '5511888888888',
           name: 'Novo Cliente',
+          channel: 'WHATSAPP',
+          externalId: '5511888888888',
         },
       });
 
@@ -859,7 +865,7 @@ describe('MessageService', () => {
       await messageService.receiveMessage({
         tenantId: 'tenant-123',
         contactPhoneNumber: '5511777777777',
-        whatsappMessageId: 'wamid.no-name',
+        externalMessageId: 'wamid.no-name',
         type: 'TEXT',
         content: 'Mensagem sem nome',
         timestamp: new Date(),
@@ -871,6 +877,8 @@ describe('MessageService', () => {
           tenantId: 'tenant-123',
           phoneNumber: '5511777777777',
           name: null,
+          channel: 'WHATSAPP',
+          externalId: '5511777777777',
         },
       });
     });
@@ -895,7 +903,7 @@ describe('MessageService', () => {
         tenantId: 'tenant-123',
         contactPhoneNumber: '5511999999999',
         contactName: 'Nome Atualizado',
-        whatsappMessageId: 'wamid.update',
+        externalMessageId: 'wamid.update',
         type: 'TEXT',
         content: 'Teste',
         timestamp: new Date(),
@@ -921,7 +929,7 @@ describe('MessageService', () => {
         tenantId: 'tenant-123',
         contactPhoneNumber: '5511999999999',
         contactName: 'Outro Nome',
-        whatsappMessageId: 'wamid.test',
+        externalMessageId: 'wamid.test',
         type: 'TEXT',
         content: 'Teste',
         timestamp: new Date(),
@@ -941,7 +949,7 @@ describe('MessageService', () => {
       const result = await messageService.receiveMessage({
         tenantId: 'tenant-123',
         contactPhoneNumber: '5511999999999',
-        whatsappMessageId: 'wamid.incoming',
+        externalMessageId: 'wamid.incoming',
         type: 'TEXT',
         content: 'Mensagem duplicada',
         timestamp: new Date(),
@@ -968,7 +976,7 @@ describe('MessageService', () => {
       await messageService.receiveMessage({
         tenantId: 'tenant-123',
         contactPhoneNumber: '5511999999999',
-        whatsappMessageId: 'wamid.image',
+        externalMessageId: 'wamid.image',
         type: 'IMAGE',
         content: 'https://image.url',
         timestamp: new Date(),
@@ -998,7 +1006,7 @@ describe('MessageService', () => {
       await messageService.receiveMessage({
         tenantId: 'tenant-123',
         contactPhoneNumber: '5511999999999',
-        whatsappMessageId: 'wamid.metadata',
+        externalMessageId: 'wamid.metadata',
         type: 'IMAGE',
         content: 'https://image.url',
         metadata,
@@ -1029,7 +1037,7 @@ describe('MessageService', () => {
       await messageService.receiveMessage({
         tenantId: 'tenant-123',
         contactPhoneNumber: '5511999999999',
-        whatsappMessageId: 'wamid.test',
+        externalMessageId: 'wamid.test',
         type: 'TEXT',
         content: 'Teste',
         timestamp,
@@ -1058,7 +1066,7 @@ describe('MessageService', () => {
       await messageService.receiveMessage({
         tenantId: 'tenant-999',
         contactPhoneNumber: '5511666666666',
-        whatsappMessageId: 'wamid.tenant',
+        externalMessageId: 'wamid.tenant',
         type: 'TEXT',
         content: 'Teste',
         timestamp: new Date(),
@@ -1079,7 +1087,7 @@ describe('MessageService', () => {
     const mockMessage = {
       id: 'msg-123',
       conversationId: 'conv-123',
-      whatsappMessageId: 'wamid.123',
+      externalMessageId: 'wamid.123',
       direction: 'INBOUND' as const,
       type: 'TEXT' as const,
       content: 'Mensagem para marcar como lida',
@@ -1153,7 +1161,7 @@ describe('MessageService', () => {
       );
     });
 
-    it('deve enviar confirmação para WhatsApp quando tem whatsappMessageId', async () => {
+    it('deve enviar confirmação para WhatsApp quando tem externalMessageId', async () => {
       // Arrange
       prismaMock.message.findFirst.mockResolvedValue(mockMessage);
       prismaMock.message.update.mockResolvedValue(mockMessage as any);
@@ -1166,11 +1174,11 @@ describe('MessageService', () => {
       expect(whatsAppServiceMock.markAsRead).toHaveBeenCalledWith('tenant-123', 'wamid.123');
     });
 
-    it('não deve chamar WhatsApp quando não tem whatsappMessageId', async () => {
+    it('não deve chamar WhatsApp quando não tem externalMessageId', async () => {
       // Arrange
       prismaMock.message.findFirst.mockResolvedValue({
         ...mockMessage,
-        whatsappMessageId: null,
+        externalMessageId: null,
       });
       prismaMock.message.update.mockResolvedValue(mockMessage as any);
 
@@ -1204,7 +1212,7 @@ describe('MessageService', () => {
     const mockMessage = {
       id: 'msg-123',
       conversationId: 'conv-123',
-      whatsappMessageId: 'wamid.123',
+      externalMessageId: 'wamid.123',
       direction: 'OUTBOUND' as const,
       type: 'TEXT' as const,
       content: 'Mensagem enviada',
@@ -1230,11 +1238,11 @@ describe('MessageService', () => {
 
       // Assert
       expect(prismaMock.message.findUnique).toHaveBeenCalledWith({
-        where: { whatsappMessageId: 'wamid.123' },
+        where: { externalMessageId: 'wamid.123' },
       });
 
       expect(prismaMock.message.update).toHaveBeenCalledWith({
-        where: { whatsappMessageId: 'wamid.123' },
+        where: { externalMessageId: 'wamid.123' },
         data: { status: 'DELIVERED' },
       });
     });
@@ -1252,7 +1260,7 @@ describe('MessageService', () => {
 
       // Assert
       expect(prismaMock.message.update).toHaveBeenCalledWith({
-        where: { whatsappMessageId: 'wamid.123' },
+        where: { externalMessageId: 'wamid.123' },
         data: { status: 'READ' },
       });
     });
@@ -1270,7 +1278,7 @@ describe('MessageService', () => {
 
       // Assert
       expect(prismaMock.message.update).toHaveBeenCalledWith({
-        where: { whatsappMessageId: 'wamid.123' },
+        where: { externalMessageId: 'wamid.123' },
         data: { status: 'FAILED' },
       });
     });
@@ -1288,7 +1296,7 @@ describe('MessageService', () => {
 
       // Assert
       expect(prismaMock.message.update).toHaveBeenCalledWith({
-        where: { whatsappMessageId: 'wamid.123' },
+        where: { externalMessageId: 'wamid.123' },
         data: { status: 'SENT' },
       });
     });

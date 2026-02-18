@@ -228,7 +228,7 @@ const options = {
               type: 'string',
               enum: ['INBOUND', 'OUTBOUND'],
             },
-            whatsappMessageId: {
+            externalMessageId: {
               type: 'string',
               nullable: true,
             },

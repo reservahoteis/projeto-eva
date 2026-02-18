@@ -208,7 +208,7 @@ export class WebhookController {
           tenantId,
           contactPhoneNumber: from,
           contactName,
-          whatsappMessageId: messageId,
+          externalMessageId: messageId,
           type: messageData.type,
           content: messageData.content,
           mediaUrl, // URL da mídia baixada (data URL base64)

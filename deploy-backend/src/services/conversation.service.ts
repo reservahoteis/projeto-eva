@@ -754,6 +754,8 @@ export class ConversationService {
       contact = await prisma.contact.create({
         data: {
           tenantId: data.tenantId,
+          channel: 'WHATSAPP',
+          externalId: data.contactPhoneNumber,
           phoneNumber: data.contactPhoneNumber,
         },
       });

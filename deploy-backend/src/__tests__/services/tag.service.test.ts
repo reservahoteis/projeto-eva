@@ -43,6 +43,7 @@ function createMockConversation(overrides: Partial<Conversation> = {}): Conversa
     assignedToId: null,
     status: 'OPEN',
     priority: 'MEDIUM',
+    channel: 'WHATSAPP',
     source: null,
     hotelUnit: null,
     iaLocked: false,

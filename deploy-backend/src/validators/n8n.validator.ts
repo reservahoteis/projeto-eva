@@ -221,10 +221,10 @@ export const markOpportunitySchema = z.object({
  */
 export const markReadSchema = z.object({
   messageId: z.string().optional(),
-  whatsappMessageId: z.string().optional(),
+  externalMessageId: z.string().optional(),
 }).refine(
-  (data) => data.messageId || data.whatsappMessageId,
-  { message: 'Forneca messageId ou whatsappMessageId' }
+  (data) => data.messageId || data.externalMessageId,
+  { message: 'Forneca messageId ou externalMessageId' }
 );
 
 /**

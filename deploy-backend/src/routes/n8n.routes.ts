@@ -99,7 +99,7 @@ router.post('/send-text', validate(sendTextSchema), async (req: Request, res: Re
     await messageService.saveOutboundMessage({
       tenantId: req.tenantId!,
       phoneNumber: normalizedPhone,
-      whatsappMessageId: result.whatsappMessageId,
+      externalMessageId: result.externalMessageId,
       type: 'TEXT',
       content: message,
     });
@@ -107,15 +107,15 @@ router.post('/send-text', validate(sendTextSchema), async (req: Request, res: Re
     logger.info({
       tenantId: req.tenantId,
       phone: normalizedPhone,
-      messageId: result.whatsappMessageId,
+      messageId: result.externalMessageId,
     }, 'N8N: Text message sent and saved');
 
     return res.json({
       success: true,
-      messageId: result.whatsappMessageId,
+      messageId: result.externalMessageId,
       botReservaResponse: {
-        messageId: result.whatsappMessageId,
-        id: result.whatsappMessageId,
+        messageId: result.externalMessageId,
+        id: result.externalMessageId,
       },
     });
   } catch (error: any) {
@@ -184,7 +184,7 @@ router.post('/send-buttons', validate(sendButtonsSchema), async (req: Request, r
     await messageService.saveOutboundMessage({
       tenantId: req.tenantId!,
       phoneNumber: normalizedPhone,
-      whatsappMessageId: result.whatsappMessageId,
+      externalMessageId: result.externalMessageId,
       type: 'INTERACTIVE',
       content: message,
       metadata: {
@@ -200,15 +200,15 @@ router.post('/send-buttons', validate(sendButtonsSchema), async (req: Request, r
       tenantId: req.tenantId,
       phone: normalizedPhone,
       buttonsCount: buttons.length,
-      messageId: result.whatsappMessageId,
+      messageId: result.externalMessageId,
     }, 'N8N: Buttons message sent and saved');
 
     return res.json({
       success: true,
-      messageId: result.whatsappMessageId,
+      messageId: result.externalMessageId,
       botReservaResponse: {
-        messageId: result.whatsappMessageId,
-        id: result.whatsappMessageId,
+        messageId: result.externalMessageId,
+        id: result.externalMessageId,
       },
     });
   } catch (error: any) {
@@ -304,7 +304,7 @@ router.post('/send-list', validate(sendListSchema), async (req: Request, res: Re
     await messageService.saveOutboundMessage({
       tenantId: req.tenantId!,
       phoneNumber: normalizedPhone,
-      whatsappMessageId: result.whatsappMessageId,
+      externalMessageId: result.externalMessageId,
       type: 'INTERACTIVE',
       content: message,
       metadata: {
@@ -317,15 +317,15 @@ router.post('/send-list', validate(sendListSchema), async (req: Request, res: Re
     logger.info({
       tenantId: req.tenantId,
       phone: normalizedPhone,
-      messageId: result.whatsappMessageId,
+      messageId: result.externalMessageId,
     }, 'N8N: List message sent and saved');
 
     return res.json({
       success: true,
-      messageId: result.whatsappMessageId,
+      messageId: result.externalMessageId,
       botReservaResponse: {
-        messageId: result.whatsappMessageId,
-        id: result.whatsappMessageId,
+        messageId: result.externalMessageId,
+        id: result.externalMessageId,
       },
     });
   } catch (error: any) {
@@ -431,7 +431,7 @@ router.post('/send-media', validate(sendMediaSchema), async (req: Request, res: 
     await messageService.saveOutboundMessage({
       tenantId: req.tenantId!,
       phoneNumber: normalizedPhone,
-      whatsappMessageId: result.whatsappMessageId,
+      externalMessageId: result.externalMessageId,
       type: messageTypeMap[mediaType] || 'IMAGE',
       content: mediaCaption || mediaLink,
       metadata: {
@@ -445,15 +445,15 @@ router.post('/send-media', validate(sendMediaSchema), async (req: Request, res: 
       tenantId: req.tenantId,
       phone: normalizedPhone,
       mediaType,
-      messageId: result.whatsappMessageId,
+      messageId: result.externalMessageId,
     }, 'N8N: Media message sent and saved');
 
     return res.json({
       success: true,
-      messageId: result.whatsappMessageId,
+      messageId: result.externalMessageId,
       botReservaResponse: {
-        messageId: result.whatsappMessageId,
-        id: result.whatsappMessageId,
+        messageId: result.externalMessageId,
+        id: result.externalMessageId,
       },
     });
   } catch (error: any) {
@@ -517,7 +517,7 @@ router.post('/send-template', validate(sendTemplateSchema), async (req: Request,
     await messageService.saveOutboundMessage({
       tenantId: req.tenantId!,
       phoneNumber: normalizedPhone,
-      whatsappMessageId: result.whatsappMessageId,
+      externalMessageId: result.externalMessageId,
       type: 'TEMPLATE',
       content: templateContent,
       metadata: {
@@ -531,15 +531,15 @@ router.post('/send-template', validate(sendTemplateSchema), async (req: Request,
       tenantId: req.tenantId,
       phone: normalizedPhone,
       template: templateNameUsed,
-      messageId: result.whatsappMessageId,
+      messageId: result.externalMessageId,
     }, 'N8N: Template sent and saved');
 
     return res.json({
       success: true,
-      messageId: result.whatsappMessageId,
+      messageId: result.externalMessageId,
       botReservaResponse: {
-        messageId: result.whatsappMessageId,
-        id: result.whatsappMessageId,
+        messageId: result.externalMessageId,
+        id: result.externalMessageId,
       },
     });
   } catch (error: any) {
@@ -680,8 +680,8 @@ router.post('/escalate', validate(escalateSchema), async (req: Request, res: Res
  */
 router.post('/mark-read', validate(markReadSchema), async (req: Request, res: Response) => {
   try {
-    const { messageId, whatsappMessageId } = req.body;
-    const msgId = messageId || whatsappMessageId;
+    const { messageId, externalMessageId } = req.body;
+    const msgId = messageId || externalMessageId;
 
     if (!msgId) {
       return res.status(400).json({
@@ -807,7 +807,7 @@ router.post('/send-carousel', validate(sendCarouselSchema), async (req: Request,
       await messageService.saveOutboundMessage({
         tenantId: req.tenantId!,
         phoneNumber: normalizedPhone,
-        whatsappMessageId: result.whatsappMessageId,
+        externalMessageId: result.externalMessageId,
         type: 'TEMPLATE',
         content: `[Carousel: ${template}] ${cards.length} cards`,
         metadata: {
@@ -827,16 +827,16 @@ router.post('/send-carousel', validate(sendCarouselSchema), async (req: Request,
         phone: normalizedPhone,
         template,
         cardsCount: cards.length,
-        messageId: result.whatsappMessageId,
+        messageId: result.externalMessageId,
       }, 'N8N: Carousel template sent and saved');
 
       return res.json({
         success: true,
-        messageId: result.whatsappMessageId,
+        messageId: result.externalMessageId,
         cardsCount: cards.length,
         mode: 'template',
         botReservaResponse: {
-          messageId: result.whatsappMessageId,
+          messageId: result.externalMessageId,
           cardsCount: cards.length,
         },
       });
@@ -886,7 +886,7 @@ router.post('/send-carousel', validate(sendCarouselSchema), async (req: Request,
     );
 
     // Retornar array de IDs das mensagens enviadas
-    const messageIds = results.map(r => r.whatsappMessageId);
+    const messageIds = results.map(r => r.externalMessageId);
 
     // Salvar cada mensagem no banco para aparecer no painel
     for (let i = 0; i < results.length; i++) {
@@ -896,7 +896,7 @@ router.post('/send-carousel', validate(sendCarouselSchema), async (req: Request,
         await messageService.saveOutboundMessage({
           tenantId: req.tenantId!,
           phoneNumber: normalizedPhone,
-          whatsappMessageId: result.whatsappMessageId,
+          externalMessageId: result.externalMessageId,
           type: card.image ? 'IMAGE' : 'INTERACTIVE',
           content: card.text,
           metadata: {
