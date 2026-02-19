@@ -113,20 +113,31 @@ export class ChannelRouter {
       return adapter.sendList(tenantId, to, bodyText, buttonText, sections, headerText, footerText);
     }
 
-    // Degradacao: converter para botoes (Messenger) ou texto (Instagram)
-    if (channel === 'MESSENGER') {
-      // Flatten sections para botoes postback (max 3)
+    // Degradacao: converter para Quick Replies (Messenger/Instagram) ou texto
+    if (channel === 'MESSENGER' || channel === 'INSTAGRAM') {
       const allRows = sections.flatMap((s) => s.rows);
-      const buttons: ButtonPayload[] = allRows.slice(0, 3).map((row) => ({
-        id: row.id,
-        title: row.title,
-      }));
 
-      logger.info({ channel, tenantId, originalRows: allRows.length, degradedButtons: buttons.length }, 'List degraded to buttons for Messenger');
-      return adapter.sendButtons(tenantId, to, bodyText, buttons);
+      // Quick Replies suportam ate 13 itens (muito melhor que botoes max 3)
+      if (adapter.sendQuickReplies && allRows.length <= 13) {
+        const quickReplies: QuickReplyPayload[] = allRows.map((row) => ({
+          title: row.title.substring(0, 20),
+          payload: row.id,
+        }));
+
+        logger.info({ channel, tenantId, originalRows: allRows.length, quickReplies: quickReplies.length }, 'List degraded to Quick Replies');
+        return adapter.sendQuickReplies(tenantId, to, bodyText, quickReplies);
+      }
+
+      // Fallback: texto numerado (se mais de 13 itens ou sem sendQuickReplies)
+      const numberedItems = allRows.map((row, i) =>
+        `${i + 1}. ${row.title}${row.description ? ` - ${row.description}` : ''}`
+      );
+      const text = `${bodyText}\n\n${numberedItems.join('\n')}`;
+      logger.info({ channel, tenantId, originalRows: allRows.length }, 'List degraded to numbered text');
+      return adapter.sendText(tenantId, to, text);
     }
 
-    // Instagram: texto numerado
+    // Outros canais: texto numerado
     const numberedItems = sections.flatMap((section) => {
       const items: string[] = [];
       if (section.title) items.push(`*${section.title}*`);
@@ -137,7 +148,7 @@ export class ChannelRouter {
     });
 
     const text = `${bodyText}\n\n${numberedItems.join('\n')}`;
-    logger.info({ channel, tenantId }, 'List degraded to numbered text for Instagram');
+    logger.info({ channel, tenantId }, 'List degraded to numbered text');
     return adapter.sendText(tenantId, to, text);
   }
 

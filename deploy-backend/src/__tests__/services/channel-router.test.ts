@@ -82,6 +82,7 @@ jest.mock('@/services/channels/messenger.adapter', () => ({
     sendText: jest.fn(),
     sendMedia: jest.fn(),
     sendButtons: jest.fn(),
+    sendQuickReplies: jest.fn(),
     // sendList NAO implementado - Messenger nao suporta lista nativa
     // sendTemplate NAO implementado - Messenger nao suporta template
     // markAsRead NAO implementado - Messenger nao suporta
@@ -97,6 +98,7 @@ jest.mock('@/services/channels/instagram.adapter', () => ({
     sendText: jest.fn(),
     sendMedia: jest.fn(),
     sendButtons: jest.fn(),
+    sendQuickReplies: jest.fn(),
     // sendList NAO implementado - Instagram nao suporta lista nativa
     // sendTemplate NAO implementado - Instagram nao suporta template
     // markAsRead NAO implementado - Instagram nao suporta
@@ -137,6 +139,7 @@ const mockMessengerSingleton = messengerAdapter as unknown as {
   sendText: jest.Mock;
   sendMedia: jest.Mock;
   sendButtons: jest.Mock;
+  sendQuickReplies: jest.Mock;
 };
 
 const mockInstagramSingleton = instagramAdapter as unknown as {
@@ -144,6 +147,7 @@ const mockInstagramSingleton = instagramAdapter as unknown as {
   sendText: jest.Mock;
   sendMedia: jest.Mock;
   sendButtons: jest.Mock;
+  sendQuickReplies: jest.Mock;
 };
 
 // ============================================
@@ -404,10 +408,10 @@ describe('ChannelRouter', () => {
       expect(result).toEqual(expectedResult);
     });
 
-    it('deve degradar sendList para botoes postback no MESSENGER (adapter nao tem sendList)', async () => {
-      // Arrange - Messenger nao tem sendList; o router chama sendButtons com rows como botoes
+    it('deve degradar sendList para Quick Replies no MESSENGER (adapter nao tem sendList)', async () => {
+      // Arrange - Messenger nao tem sendList; o router chama sendQuickReplies
       const expectedResult = makeSendResult('fb-list-degraded-001');
-      mockMessengerSingleton.sendButtons.mockResolvedValue(expectedResult);
+      mockMessengerSingleton.sendQuickReplies.mockResolvedValue(expectedResult);
 
       // Act
       const result = await router.sendList(
@@ -419,8 +423,8 @@ describe('ChannelRouter', () => {
         sections
       );
 
-      // Assert - router degradou: chamou sendButtons em vez de sendList inexistente
-      expect(mockMessengerSingleton.sendButtons).toHaveBeenCalledWith(
+      // Assert - router degradou: chamou sendQuickReplies (max 13) em vez de sendButtons (max 3)
+      expect(mockMessengerSingleton.sendQuickReplies).toHaveBeenCalledWith(
         tenantId,
         to,
         'Veja nossas opcoes:',
@@ -429,8 +433,8 @@ describe('ChannelRouter', () => {
       expect(result).toEqual(expectedResult);
     });
 
-    it('deve degradar lista do MESSENGER para no maximo 3 botoes (limite postback)', async () => {
-      // Arrange - secao com 5 linhas; router deve limitar para 3
+    it('deve degradar lista do MESSENGER para Quick Replies com TODOS os itens (max 13)', async () => {
+      // Arrange - secao com 5 linhas; Quick Replies suportam ate 13 itens
       const largeSections: ListSection[] = [
         {
           rows: [
@@ -443,19 +447,20 @@ describe('ChannelRouter', () => {
         },
       ];
 
-      mockMessengerSingleton.sendButtons.mockResolvedValue(makeSendResult('fb-list-truncated'));
+      mockMessengerSingleton.sendQuickReplies.mockResolvedValue(makeSendResult('fb-list-qr'));
 
       // Act
       await router.sendList('MESSENGER', tenantId, to, 'Opcoes:', 'Ver', largeSections);
 
-      // Assert - botoes passados devem ser no maximo 3
-      const buttonsArg = mockMessengerSingleton.sendButtons.mock.calls[0]?.[3] as ButtonPayload[] | undefined;
-      expect(buttonsArg).toHaveLength(3);
+      // Assert - Quick Replies devem ter TODOS os 5 itens (nao mais limitado a 3)
+      const qrArg = mockMessengerSingleton.sendQuickReplies.mock.calls[0]?.[3] as Array<{ title: string; payload: string }> | undefined;
+      expect(qrArg).toHaveLength(5);
+      expect(qrArg?.[0]).toEqual({ title: 'Item 1', payload: 'r1' });
+      expect(qrArg?.[4]).toEqual({ title: 'Item 5', payload: 'r5' });
     });
 
-    it('deve usar as primeiras 3 rows (flatten multi-secao) ao degradar lista do MESSENGER', async () => {
-      // Arrange - duas secoes: 2 rows na primeira, 2 rows na segunda
-      // flatten: [row-1, row-2, row-3, row-4] -> sliced para [row-1, row-2, row-3]
+    it('deve flatten multi-secao e enviar todas as rows como Quick Replies no MESSENGER', async () => {
+      // Arrange - duas secoes: 2 rows cada = 4 total
       const multiSections: ListSection[] = [
         {
           rows: [
@@ -471,23 +476,24 @@ describe('ChannelRouter', () => {
         },
       ];
 
-      mockMessengerSingleton.sendButtons.mockResolvedValue(makeSendResult('fb-flatten-test'));
+      mockMessengerSingleton.sendQuickReplies.mockResolvedValue(makeSendResult('fb-flatten-test'));
 
       // Act
       await router.sendList('MESSENGER', tenantId, to, 'Opcoes:', 'Ver', multiSections);
 
-      // Assert - as 3 primeiras rows de todas as secoes
-      const buttonsArg = mockMessengerSingleton.sendButtons.mock.calls[0]?.[3] as ButtonPayload[] | undefined;
-      expect(buttonsArg).toHaveLength(3);
-      expect(buttonsArg?.[0]).toEqual({ id: 'row-1', title: 'Item 1' });
-      expect(buttonsArg?.[1]).toEqual({ id: 'row-2', title: 'Item 2' });
-      expect(buttonsArg?.[2]).toEqual({ id: 'row-3', title: 'Item 3' });
+      // Assert - todas as 4 rows como Quick Replies (sem corte)
+      const qrArg = mockMessengerSingleton.sendQuickReplies.mock.calls[0]?.[3] as Array<{ title: string; payload: string }> | undefined;
+      expect(qrArg).toHaveLength(4);
+      expect(qrArg?.[0]).toEqual({ title: 'Item 1', payload: 'row-1' });
+      expect(qrArg?.[1]).toEqual({ title: 'Item 2', payload: 'row-2' });
+      expect(qrArg?.[2]).toEqual({ title: 'Item 3', payload: 'row-3' });
+      expect(qrArg?.[3]).toEqual({ title: 'Item 4', payload: 'row-4' });
     });
 
-    it('deve degradar sendList para texto numerado no INSTAGRAM (adapter nao tem sendList)', async () => {
-      // Arrange - Instagram nao tem sendList; o router chama sendText com texto numerado
-      const expectedResult = makeSendResult('ig-list-text-001');
-      mockInstagramSingleton.sendText.mockResolvedValue(expectedResult);
+    it('deve degradar sendList para Quick Replies no INSTAGRAM (adapter nao tem sendList)', async () => {
+      // Arrange - Instagram nao tem sendList; o router chama sendQuickReplies
+      const expectedResult = makeSendResult('ig-list-qr-001');
+      mockInstagramSingleton.sendQuickReplies.mockResolvedValue(expectedResult);
 
       // Act
       const result = await router.sendList(
@@ -499,51 +505,36 @@ describe('ChannelRouter', () => {
         sections
       );
 
-      // Assert - router degradou para sendText
-      expect(mockInstagramSingleton.sendText).toHaveBeenCalled();
-      const sentText = mockInstagramSingleton.sendText.mock.calls[0]?.[2] as string | undefined;
-      expect(sentText).toContain('Veja nossas opcoes:');
-      expect(sentText).toContain('1. Item 1');
-      expect(sentText).toContain('2. Item 2');
+      // Assert - router degradou para sendQuickReplies (max 13 itens)
+      expect(mockInstagramSingleton.sendQuickReplies).toHaveBeenCalledWith(
+        tenantId,
+        to,
+        'Veja nossas opcoes:',
+        expect.any(Array)
+      );
+      const qrArg = mockInstagramSingleton.sendQuickReplies.mock.calls[0]?.[3] as Array<{ title: string; payload: string }> | undefined;
+      expect(qrArg).toHaveLength(3); // 3 rows total from makeListSections
+      expect(qrArg?.[0]).toEqual({ title: 'Item 1', payload: 'row-1' });
+      expect(qrArg?.[1]).toEqual({ title: 'Item 2', payload: 'row-2' });
+      expect(qrArg?.[2]).toEqual({ title: 'Item 3', payload: 'row-3' });
       expect(result).toEqual(expectedResult);
     });
 
-    it('deve incluir titulo de secao em negrito no texto numerado do INSTAGRAM', async () => {
-      // Arrange
-      mockInstagramSingleton.sendText.mockResolvedValue(makeSendResult('ig-section-title'));
+    it('deve degradar lista do INSTAGRAM para texto numerado quando mais de 13 itens', async () => {
+      // Arrange - secao com 14 linhas; ultrapassa limite de Quick Replies
+      const manyRows = Array.from({ length: 14 }, (_, i) => ({ id: `r${i}`, title: `Item ${i + 1}` }));
+      const hugeSections: ListSection[] = [{ rows: manyRows }];
+      mockInstagramSingleton.sendText.mockResolvedValue(makeSendResult('ig-text-fallback'));
 
       // Act
-      await router.sendList('INSTAGRAM', tenantId, to, 'Escolha:', 'Ver', sections);
+      await router.sendList('INSTAGRAM', tenantId, to, 'Escolha:', 'Ver', hugeSections);
 
-      // Assert - titulos de secao com asteriscos (negrito)
+      // Assert - fallback para texto numerado
+      expect(mockInstagramSingleton.sendText).toHaveBeenCalled();
       const sentText = mockInstagramSingleton.sendText.mock.calls[0]?.[2] as string | undefined;
-      expect(sentText).toContain('*Categoria A*');
-      expect(sentText).toContain('*Categoria B*');
-    });
-
-    it('deve incluir descricao dos itens no texto numerado do INSTAGRAM quando presente', async () => {
-      // Arrange
-      mockInstagramSingleton.sendText.mockResolvedValue(makeSendResult('ig-desc'));
-
-      // Act
-      await router.sendList('INSTAGRAM', tenantId, to, 'Escolha:', 'Ver', sections);
-
-      // Assert - item com descricao usa formato "N. titulo - descricao"
-      const sentText = mockInstagramSingleton.sendText.mock.calls[0]?.[2] as string | undefined;
-      expect(sentText).toContain('1. Item 1 - Descricao do item 1');
-    });
-
-    it('deve omitir traco e descricao quando item nao tem descricao no texto INSTAGRAM', async () => {
-      // Arrange
-      mockInstagramSingleton.sendText.mockResolvedValue(makeSendResult('ig-no-desc'));
-
-      // Act - sections[0].rows[1] nao tem descricao (row-2: 'Item 2')
-      await router.sendList('INSTAGRAM', tenantId, to, 'Escolha:', 'Ver', sections);
-
-      // Assert - item sem descricao nao deve ter traco
-      const sentText = mockInstagramSingleton.sendText.mock.calls[0]?.[2] as string | undefined;
-      expect(sentText).toContain('2. Item 2');
-      expect(sentText).not.toContain('2. Item 2 -');
+      expect(sentText).toContain('Escolha:');
+      expect(sentText).toContain('1. Item 1');
+      expect(sentText).toContain('14. Item 14');
     });
   });
 
