@@ -116,6 +116,7 @@ export class MessengerWebhookController {
                     mid: event.message.mid,
                     text: event.message.text,
                     attachments: event.message.attachments,
+                    quick_reply: event.message.quick_reply,
                   },
                 });
 

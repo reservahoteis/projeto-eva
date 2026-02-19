@@ -83,6 +83,12 @@ export async function processInstagramMessage(job: Job<ProcessInstagramMessageJo
       messageType = MessageType.TEXT;
       content = postback.title;
       metadata.postback = { payload: postback.payload, title: postback.title };
+      metadata.button = { id: postback.payload, title: postback.title };
+    } else if (message.quick_reply?.payload) {
+      // Quick Reply: usuario tocou um botao de Quick Reply
+      content = message.text || message.quick_reply.payload;
+      metadata.quick_reply = { payload: message.quick_reply.payload };
+      metadata.button = { id: message.quick_reply.payload, title: message.text || message.quick_reply.payload };
     } else if (message.text) {
       content = message.text;
     } else if (message.attachments && message.attachments.length > 0) {

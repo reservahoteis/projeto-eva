@@ -75,6 +75,9 @@ export interface ProcessMessengerMessageJobData {
       type: string;
       payload: { url?: string };
     }>;
+    quick_reply?: {
+      payload: string;
+    };
   };
   postback?: {
     payload: string;
@@ -92,6 +95,9 @@ export interface ProcessInstagramMessageJobData {
       type: string;
       payload: { url?: string };
     }>;
+    quick_reply?: {
+      payload: string;
+    };
   };
   postback?: {
     payload: string;
