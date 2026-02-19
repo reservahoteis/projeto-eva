@@ -29,7 +29,7 @@ import {
 import { prisma } from '@/config/database';
 import { emitNewConversation, emitConversationUpdate } from '@/config/socket';
 import logger from '@/config/logger';
-import { enqueueIaReactivation } from '@/queues/whatsapp-webhook.queue';
+
 
 const router = Router();
 
@@ -1378,6 +1378,7 @@ router.post('/mark-followup-sent', validate(markFollowupSentSchema), async (req:
     }
 
     // Atualizar conversa: marcar follow-up como enviado E como oportunidade para SALES
+    // IA permanece LIGADA para continuar respondendo ao cliente
     const updatedConversation = await prisma.conversation.update({
       where: { id: conversation.id },
       data: {
@@ -1385,9 +1386,6 @@ router.post('/mark-followup-sent', validate(markFollowupSentSchema), async (req:
         isOpportunity: true,
         opportunityAt: new Date(),
         status: 'OPEN', // Muda para OPEN para aparecer no Kanban
-        iaLocked: true, // Trava IA para atendimento humano
-        iaLockedAt: new Date(),
-        iaLockedBy: 'system:followup',
         metadata: {
           ...(conversation.metadata as object || {}),
           followupSent: true,
@@ -1417,13 +1415,6 @@ router.post('/mark-followup-sent', validate(markFollowupSentSchema), async (req:
         tags: true,
       },
     });
-
-    // Agendar reativacao automatica da IA apos 1 hora
-    try {
-      await enqueueIaReactivation(conversation.id, req.tenantId!, 60 * 60 * 1000);
-    } catch (scheduleError) {
-      logger.warn({ error: scheduleError, conversationId: conversation.id }, 'Failed to schedule IA reactivation');
-    }
 
     // Emitir evento Socket.io para notificar o time de vendas
     try {
@@ -1551,15 +1542,13 @@ router.post('/mark-opportunity', validate(markOpportunitySchema), async (req: Re
     };
 
     // Atualizar conversa: marcar como oportunidade e mudar status para OPEN
+    // IA permanece LIGADA para continuar respondendo ao cliente
     const updatedConversation = await prisma.conversation.update({
       where: { id: conversation.id },
       data: {
         isOpportunity: true,
         opportunityAt: new Date(),
         status: 'OPEN', // Muda para OPEN para aparecer no Kanban
-        iaLocked: true, // Trava IA para atendimento humano
-        iaLockedAt: new Date(),
-        iaLockedBy: 'system:followup',
         metadata: {
           ...(conversation.metadata as object || {}),
           opportunityReason: reason || 'followup_negative',
