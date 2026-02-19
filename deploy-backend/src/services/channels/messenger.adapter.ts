@@ -14,6 +14,7 @@ import type {
   SendResult,
   MediaPayload,
   ButtonPayload,
+  QuickReplyPayload,
 } from './channel-send.interface';
 
 const GRAPH_API_VERSION = 'v21.0';
@@ -181,6 +182,45 @@ export class MessengerAdapter implements ChannelSendAdapter {
       const msg = error instanceof Error ? error.message : 'Unknown';
       logger.error({ tenantId, to, buttonCount: buttons.length, error: msg }, '[MESSENGER SEND] sendButtons FAILED');
       throw new InternalServerError(`Falha ao enviar botões Messenger: ${msg}`);
+    }
+  }
+
+  async sendQuickReplies(
+    tenantId: string,
+    to: string,
+    text: string,
+    quickReplies: QuickReplyPayload[]
+  ): Promise<SendResult> {
+    const api = await this.getAxiosForTenant(tenantId);
+
+    try {
+      const response = await api.post('/me/messages', {
+        recipient: { id: to },
+        message: {
+          text,
+          quick_replies: quickReplies.map((qr) => ({
+            content_type: 'text',
+            title: qr.title.substring(0, 20),
+            payload: qr.payload,
+          })),
+        },
+      });
+
+      const result = {
+        externalMessageId: response.data.message_id || '',
+        success: true,
+      };
+
+      logger.info(
+        { tenantId, to, quickReplyCount: quickReplies.length, externalMessageId: result.externalMessageId },
+        '[MESSENGER SEND] sendQuickReplies OK'
+      );
+
+      return result;
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Unknown';
+      logger.error({ tenantId, to, quickReplyCount: quickReplies.length, error: msg }, '[MESSENGER SEND] sendQuickReplies FAILED');
+      throw new InternalServerError(`Falha ao enviar Quick Replies Messenger: ${msg}`);
     }
   }
 

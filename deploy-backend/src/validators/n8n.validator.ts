@@ -277,7 +277,23 @@ export const checkRoomAvailabilitySchema = z.object({
   childrenAges: z.string().optional(),
 });
 
+/**
+ * Schema para POST /api/n8n/send-quick-replies
+ */
+export const sendQuickRepliesSchema = z.object({
+  phone: phoneSchema,
+  message: z.string().min(1, 'Mensagem e obrigatoria').max(4096),
+  quickReplies: z.array(
+    z.object({
+      title: z.string().min(1).max(20, 'Titulo max 20 caracteres'),
+      payload: z.string().min(1).max(1000),
+    })
+  ).min(1, 'Minimo 1 Quick Reply').max(13, 'Maximo 13 Quick Replies'),
+  channel: channelSchema,
+});
+
 // Types inferidos
+export type SendQuickRepliesInput = z.infer<typeof sendQuickRepliesSchema>;
 export type SendTextInput = z.infer<typeof sendTextSchema>;
 export type SendButtonsInput = z.infer<typeof sendButtonsSchema>;
 export type SendListInput = z.infer<typeof sendListSchema>;

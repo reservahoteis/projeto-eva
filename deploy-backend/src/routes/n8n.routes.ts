@@ -24,6 +24,7 @@ import {
   checkIaLockSchema,
   checkAvailabilitySchema,
   checkRoomAvailabilitySchema,
+  sendQuickRepliesSchema,
 } from '@/validators/n8n.validator';
 import { prisma } from '@/config/database';
 import { emitNewConversation, emitConversationUpdate } from '@/config/socket';
@@ -276,6 +277,94 @@ router.post('/send-buttons', validate(sendButtonsSchema), async (req: Request, r
     logger.error({ error: msg, tenantId: req.tenantId }, 'N8N: Failed to send buttons');
     return res.status(500).json({
       error: 'Falha ao enviar botões',
+      message: msg,
+    });
+  }
+});
+
+/**
+ * POST /api/n8n/send-quick-replies
+ * Envia mensagem com Quick Replies (respostas rapidas pre-definidas)
+ *
+ * Suporte por canal:
+ * - Messenger/Instagram: Quick Replies nativos (aparece como chips clicaveis)
+ * - WhatsApp: degradado para botoes interativos (max 3)
+ *
+ * Payload:
+ * {
+ *   "phone": "5511999999999",
+ *   "message": "Como posso ajudar?",
+ *   "quickReplies": [
+ *     { "title": "Ver disponibilidade", "payload": "CHECK_AVAILABILITY" },
+ *     { "title": "Falar com atendente", "payload": "ESCALATE" }
+ *   ],
+ *   "channel": "messenger"  // opcional, detectado automaticamente
+ * }
+ *
+ * Maximo 13 Quick Replies (limite do Messenger). Para WhatsApp, apenas os 3 primeiros
+ * sao usados (limite de botoes interativos).
+ */
+router.post('/send-quick-replies', validate(sendQuickRepliesSchema), async (req: Request, res: Response) => {
+  try {
+    const { phone, message, quickReplies, channel: channelStr } = req.body;
+    const normalizedId = phone?.replace(/\D/g, '') || '';
+    const channel = await autoDetectChannel(req.tenantId!, normalizedId, channelStr);
+
+    if (!phone || !message || !quickReplies || !Array.isArray(quickReplies)) {
+      return res.status(400).json({
+        error: 'Campos obrigatorios: phone, message, quickReplies (array)',
+      });
+    }
+
+    const normalizedPhone = phone.replace(/\D/g, '');
+
+    const result = await channelRouter.sendQuickReplies(
+      channel,
+      req.tenantId!,
+      normalizedPhone,
+      message,
+      quickReplies
+    );
+
+    const quickReplyLabels = quickReplies.map((qr: { title: string; payload: string }) => qr.title).join(' | ');
+    await messageService.saveOutboundMessage({
+      tenantId: req.tenantId!,
+      phoneNumber: normalizedPhone,
+      externalMessageId: result.externalMessageId,
+      type: 'INTERACTIVE',
+      content: message,
+      metadata: {
+        interactiveType: 'quick_replies',
+        quickReplies: quickReplies.map((qr: { title: string; payload: string }) => ({
+          title: qr.title,
+          payload: qr.payload,
+        })),
+        quickReplyLabels,
+      },
+      channel,
+    });
+
+    logger.info({
+      tenantId: req.tenantId,
+      phone: normalizedPhone,
+      channel,
+      quickReplyCount: quickReplies.length,
+      messageId: result.externalMessageId,
+    }, 'N8N: Quick Replies message sent and saved');
+
+    return res.json({
+      success: true,
+      messageId: result.externalMessageId,
+      botReservaResponse: {
+        messageId: result.externalMessageId,
+        id: result.externalMessageId,
+      },
+    });
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Unknown';
+    logger.error({ error: msg, tenantId: req.tenantId }, 'N8N: Failed to send quick replies');
+    return res.status(500).json({
+      error: 'Falha ao enviar Quick Replies',
       message: msg,
     });
   }

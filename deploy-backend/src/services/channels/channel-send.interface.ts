@@ -20,6 +20,11 @@ export interface ButtonPayload {
   title: string;
 }
 
+export interface QuickReplyPayload {
+  title: string;   // max 20 chars
+  payload: string; // callback data, max 1000 chars
+}
+
 export interface ListSection {
   title?: string;
   rows: Array<{
@@ -70,6 +75,13 @@ export interface ChannelSendAdapter {
     templateName: string,
     parameters: string[],
     languageCode?: string
+  ): Promise<SendResult>;
+
+  sendQuickReplies?(
+    tenantId: string,
+    to: string,
+    text: string,
+    quickReplies: QuickReplyPayload[]
   ): Promise<SendResult>;
 
   markAsRead?(tenantId: string, externalMessageId: string): Promise<void>;

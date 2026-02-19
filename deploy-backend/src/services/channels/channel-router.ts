@@ -11,6 +11,7 @@ import type {
   MediaPayload,
   ButtonPayload,
   ListSection,
+  QuickReplyPayload,
 } from './channel-send.interface';
 import { whatsappAdapter } from './whatsapp.adapter';
 import { messengerAdapter } from './messenger.adapter';
@@ -50,6 +51,43 @@ export class ChannelRouter {
   ): Promise<SendResult> {
     const adapter = this.getAdapter(channel);
     return adapter.sendButtons(tenantId, to, bodyText, buttons, headerText, footerText);
+  }
+
+  /**
+   * Envia Quick Replies com degradacao:
+   * - Messenger/Instagram: Quick Replies nativos
+   * - WhatsApp: degradar para botoes interativos (max 3)
+   */
+  async sendQuickReplies(
+    channel: Channel,
+    tenantId: string,
+    to: string,
+    text: string,
+    quickReplies: QuickReplyPayload[]
+  ): Promise<SendResult> {
+    const adapter = this.getAdapter(channel);
+
+    // Se o adapter suporta Quick Replies nativos (Messenger/Instagram)
+    if (adapter.sendQuickReplies) {
+      return adapter.sendQuickReplies(tenantId, to, text, quickReplies);
+    }
+
+    // WhatsApp: degradar para botoes interativos (max 3)
+    if (channel === 'WHATSAPP') {
+      const buttons: ButtonPayload[] = quickReplies.slice(0, 3).map((qr) => ({
+        id: qr.payload,
+        title: qr.title.substring(0, 20),
+      }));
+
+      logger.info({ channel, tenantId, originalReplies: quickReplies.length, degradedButtons: buttons.length }, 'Quick Replies degraded to buttons for WhatsApp');
+      return adapter.sendButtons(tenantId, to, text, buttons);
+    }
+
+    // Fallback: texto numerado
+    const numberedItems = quickReplies.map((qr, i) => `${i + 1}. ${qr.title}`);
+    const fullText = `${text}\n\n${numberedItems.join('\n')}`;
+    logger.info({ channel, tenantId }, 'Quick Replies degraded to numbered text');
+    return adapter.sendText(tenantId, to, fullText);
   }
 
   /**

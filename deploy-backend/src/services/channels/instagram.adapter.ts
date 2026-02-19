@@ -14,6 +14,7 @@ import type {
   SendResult,
   MediaPayload,
   ButtonPayload,
+  QuickReplyPayload,
 } from './channel-send.interface';
 
 const GRAPH_API_VERSION = 'v21.0';
@@ -165,6 +166,45 @@ export class InstagramAdapter implements ChannelSendAdapter {
 
     const text = `${bodyText}\n\n${numberedOptions}`;
     return this.sendText(tenantId, to, text);
+  }
+
+  async sendQuickReplies(
+    tenantId: string,
+    to: string,
+    text: string,
+    quickReplies: QuickReplyPayload[]
+  ): Promise<SendResult> {
+    const api = await this.getAxiosForTenant(tenantId);
+
+    try {
+      const response = await api.post('/me/messages', {
+        recipient: { id: to },
+        message: {
+          text,
+          quick_replies: quickReplies.map((qr) => ({
+            content_type: 'text',
+            title: qr.title.substring(0, 20),
+            payload: qr.payload,
+          })),
+        },
+      });
+
+      const result = {
+        externalMessageId: response.data.message_id || '',
+        success: true,
+      };
+
+      logger.info(
+        { tenantId, to, quickReplyCount: quickReplies.length, externalMessageId: result.externalMessageId },
+        '[INSTAGRAM SEND] sendQuickReplies OK'
+      );
+
+      return result;
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Unknown';
+      logger.error({ tenantId, to, quickReplyCount: quickReplies.length, error: msg }, '[INSTAGRAM SEND] sendQuickReplies FAILED');
+      throw new InternalServerError(`Falha ao enviar Quick Replies Instagram: ${msg}`);
+    }
   }
 
   // Instagram NAO suporta listas, templates ou markAsRead
