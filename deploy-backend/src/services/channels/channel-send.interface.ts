@@ -18,6 +18,7 @@ export interface MediaPayload {
 export interface ButtonPayload {
   id: string;
   title: string;
+  url?: string; // Se presente, usar web_url ao inves de postback (Messenger/Instagram)
 }
 
 export interface QuickReplyPayload {

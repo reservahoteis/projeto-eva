@@ -161,7 +161,9 @@ export class InstagramAdapter implements ChannelSendAdapter {
     );
 
     const numberedOptions = buttons
-      .map((btn, i) => `${i + 1}. ${btn.title}`)
+      .map((btn, i) => btn.url
+        ? `${i + 1}. ${btn.title}\n   ${btn.url}`
+        : `${i + 1}. ${btn.title}`)
       .join('\n');
 
     const text = `${bodyText}\n\n${numberedOptions}`;

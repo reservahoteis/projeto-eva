@@ -157,11 +157,11 @@ export class MessengerAdapter implements ChannelSendAdapter {
             payload: {
               template_type: 'button',
               text: bodyText,
-              buttons: buttons.map((btn) => ({
-                type: 'postback',
-                title: btn.title.substring(0, 20),
-                payload: btn.id,
-              })),
+              buttons: buttons.map((btn) =>
+                btn.url
+                  ? { type: 'web_url', title: btn.title.substring(0, 20), url: btn.url }
+                  : { type: 'postback', title: btn.title.substring(0, 20), payload: btn.id }
+              ),
             },
           },
         },

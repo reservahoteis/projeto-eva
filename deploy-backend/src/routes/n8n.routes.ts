@@ -949,7 +949,13 @@ router.post('/send-carousel', validate(sendCarouselSchema), async (req: Request,
         }
       }
 
-      interface CarouselCard { imageUrl: string; bodyParams?: string[]; buttonPayloads: string[] }
+      interface CarouselCard {
+        imageUrl: string;
+        bodyParams?: string[];
+        buttonPayloads: string[];
+        buttonLabels?: string[];
+        buttonUrls?: (string | null)[];
+      }
 
       // Non-WhatsApp: degradar template carousel para sequencia de imagem + botoes
       if (channel !== 'WHATSAPP') {
@@ -971,11 +977,12 @@ router.post('/send-carousel', validate(sendCarouselSchema), async (req: Request,
             }, 'Carousel template degraded: failed to send image, sending as text');
           }
 
-          // Enviar botoes com payloads como Quick Replies
+          // Montar botoes com labels e URLs (quando fornecidos)
           const bodyText = card.bodyParams?.join('\n') || template;
-          const buttons = card.buttonPayloads.map((payload: string) => ({
+          const buttons = card.buttonPayloads.map((payload: string, i: number) => ({
             id: payload,
-            title: payload.replace(/_/g, ' ').substring(0, 20),
+            title: card.buttonLabels?.[i] || payload.replace(/_/g, ' ').substring(0, 20),
+            url: card.buttonUrls?.[i] || undefined,
           }));
 
           const btnResult = await channelRouter.sendButtons(

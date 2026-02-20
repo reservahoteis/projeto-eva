@@ -165,6 +165,8 @@ const carouselCardTemplateSchema = z.object({
   imageUrl: z.string().url('imageUrl deve ser uma URL valida'),
   bodyParams: z.array(z.string()).optional(),
   buttonPayloads: z.array(z.string()).min(1, 'buttonPayloads e obrigatorio'),
+  buttonLabels: z.array(z.string()).optional(), // Labels dos botoes (para degradacao non-WhatsApp)
+  buttonUrls: z.array(z.string().nullable()).optional(), // URLs dos botoes web_url (null para postback)
 });
 
 const carouselCardInteractiveSchema = z.object({
