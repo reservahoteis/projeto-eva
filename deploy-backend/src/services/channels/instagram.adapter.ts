@@ -88,9 +88,10 @@ export class InstagramAdapter implements ChannelSendAdapter {
       );
 
       return result;
-    } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : 'Unknown';
-      logger.error({ tenantId, to, error: msg, textPreview: text.substring(0, 80) }, '[INSTAGRAM SEND] sendText FAILED');
+    } catch (error: any) {
+      const msg = error?.message || 'Unknown';
+      const responseData = error?.response?.data;
+      logger.error({ tenantId, to, error: msg, responseData, textPreview: text.substring(0, 80) }, '[INSTAGRAM SEND] sendText FAILED');
       throw new InternalServerError(`Falha ao enviar mensagem Instagram: ${msg}`);
     }
   }
@@ -139,9 +140,10 @@ export class InstagramAdapter implements ChannelSendAdapter {
       );
 
       return result;
-    } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : 'Unknown';
-      logger.error({ tenantId, to, mediaType: media.type, error: msg }, '[INSTAGRAM SEND] sendMedia FAILED');
+    } catch (error: any) {
+      const msg = error?.message || 'Unknown';
+      const responseData = error?.response?.data;
+      logger.error({ tenantId, to, mediaType: media.type, error: msg, responseData }, '[INSTAGRAM SEND] sendMedia FAILED');
       throw new InternalServerError(`Falha ao enviar mídia Instagram: ${msg}`);
     }
   }
@@ -202,9 +204,10 @@ export class InstagramAdapter implements ChannelSendAdapter {
       );
 
       return result;
-    } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : 'Unknown';
-      logger.error({ tenantId, to, quickReplyCount: quickReplies.length, error: msg }, '[INSTAGRAM SEND] sendQuickReplies FAILED');
+    } catch (error: any) {
+      const msg = error?.message || 'Unknown';
+      const responseData = error?.response?.data;
+      logger.error({ tenantId, to, quickReplyCount: quickReplies.length, error: msg, responseData }, '[INSTAGRAM SEND] sendQuickReplies FAILED');
       throw new InternalServerError(`Falha ao enviar Quick Replies Instagram: ${msg}`);
     }
   }
