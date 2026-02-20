@@ -192,7 +192,8 @@ export async function processMessengerMessage(job: Job<ProcessMessengerMessageJo
         conversation.id,
         contact.name,
         isNewConversation,
-        'messenger'
+        'messenger',
+        contact.phoneNumber
       );
 
       await n8nService.forwardToN8N(tenantId, n8nPayload);

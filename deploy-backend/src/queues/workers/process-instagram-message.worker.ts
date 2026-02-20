@@ -190,7 +190,8 @@ export async function processInstagramMessage(job: Job<ProcessInstagramMessageJo
         conversation.id,
         contact.name,
         isNewConversation,
-        'instagram'
+        'instagram',
+        contact.phoneNumber
       );
 
       await n8nService.forwardToN8N(tenantId, n8nPayload);

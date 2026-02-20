@@ -7,8 +7,11 @@ import logger from '@/config/logger';
  * Formato compatível com Z-API para facilitar migração
  */
 export interface N8NWebhookPayload {
-  // Dados do telefone
+  // Identificador do contato: telefone (WhatsApp) ou PSID (Messenger/Instagram)
   phone: string;
+
+  // Telefone real do contato (quando disponivel). Para WhatsApp = phone, para Messenger/IG = phoneNumber do Contact
+  contactPhone?: string;
 
   // Tipo da mensagem
   type: 'text' | 'image' | 'video' | 'audio' | 'document' | 'location' | 'sticker' | 'button' | 'list' | 'button_reply';
@@ -73,15 +76,13 @@ class N8NService {
     payload: N8NWebhookPayload
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      // Buscar URLs do webhook do tenant (por canal)
+      // Buscar URL unica do webhook (todos os canais usam o mesmo fluxo N8N)
       const tenant = await prisma.tenant.findUnique({
         where: { id: tenantId },
         select: {
           id: true,
           slug: true,
           n8nWebhookUrl: true,
-          n8nWebhookUrlMessenger: true,
-          n8nWebhookUrlInstagram: true,
         },
       });
 
@@ -90,22 +91,7 @@ class N8NService {
         return { success: false, error: 'Tenant not found' };
       }
 
-      // Rotear para URL especifica do canal (com fallback para URL padrao)
-      let webhookUrl: string | null = null;
-      let urlSource = 'default';
-
-      if (payload.channel === 'messenger' && tenant.n8nWebhookUrlMessenger) {
-        webhookUrl = tenant.n8nWebhookUrlMessenger;
-        urlSource = 'messenger';
-      } else if (payload.channel === 'instagram' && tenant.n8nWebhookUrlInstagram) {
-        webhookUrl = tenant.n8nWebhookUrlInstagram;
-        urlSource = 'instagram';
-      } else if (tenant.n8nWebhookUrl) {
-        webhookUrl = tenant.n8nWebhookUrl;
-        urlSource = payload.channel && payload.channel !== 'whatsapp' ? 'default (fallback)' : 'default';
-      }
-
-      if (!webhookUrl) {
+      if (!tenant.n8nWebhookUrl) {
         logger.debug({ tenantId, tenantSlug: tenant.slug, channel: payload.channel }, 'N8N: No webhook URL configured');
         return { success: false, error: 'No webhook URL configured' };
       }
@@ -113,12 +99,10 @@ class N8NService {
       logger.info({
         tenantId,
         channel: payload.channel || 'whatsapp',
-        urlSource,
-        webhookUrl: webhookUrl.substring(0, 60) + '...',
-      }, 'N8N: Roteando para webhook por canal');
+      }, 'N8N: Forwarding to unified webhook');
 
-      // Enviar para N8N
-      const response = await axios.post(webhookUrl, {
+      // Enviar para N8N (webhook unico para todos os canais)
+      const response = await axios.post(tenant.n8nWebhookUrl, {
         body: payload,
       }, {
         timeout: 10000,
@@ -133,7 +117,6 @@ class N8NService {
         phone: payload.phone,
         messageId: payload.messageId,
         channel: payload.channel || 'whatsapp',
-        urlSource,
         n8nStatus: response.status,
       }, 'N8N: Message forwarded successfully');
 
@@ -167,10 +150,12 @@ class N8NService {
     conversationId: string,
     contactName: string | null,
     isNewConversation: boolean,
-    channel: 'whatsapp' | 'messenger' | 'instagram' = 'whatsapp'
+    channel: 'whatsapp' | 'messenger' | 'instagram' = 'whatsapp',
+    contactPhone?: string | null
   ): N8NWebhookPayload {
     const basePayload: N8NWebhookPayload = {
       phone: phoneNumber,
+      contactPhone: contactPhone || undefined,
       type: 'text',
       messageId: message.id,
       timestamp: Math.floor(message.timestamp.getTime() / 1000),

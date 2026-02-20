@@ -361,7 +361,9 @@ export async function processIncomingMessage(job: Job<ProcessMessageJobData>): P
       },
       conversation.id,
       contact.name,
-      isNewConversation
+      isNewConversation,
+      'whatsapp',
+      contact.phoneNumber
     );
 
     // Chamar N8N de forma assíncrona (não bloqueia o processamento)
