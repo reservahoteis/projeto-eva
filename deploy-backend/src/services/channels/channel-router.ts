@@ -69,7 +69,11 @@ export class ChannelRouter {
 
     // Se o adapter suporta Quick Replies nativos (Messenger/Instagram)
     if (adapter.sendQuickReplies) {
-      return adapter.sendQuickReplies(tenantId, to, text, quickReplies);
+      try {
+        return await adapter.sendQuickReplies(tenantId, to, text, quickReplies);
+      } catch (qrError) {
+        logger.warn({ channel, tenantId, error: qrError instanceof Error ? qrError.message : 'Unknown' }, 'Quick Replies failed, falling back');
+      }
     }
 
     // WhatsApp: degradar para botoes interativos (max 3)
@@ -124,11 +128,15 @@ export class ChannelRouter {
           payload: row.id,
         }));
 
-        logger.info({ channel, tenantId, originalRows: allRows.length, quickReplies: quickReplies.length }, 'List degraded to Quick Replies');
-        return adapter.sendQuickReplies(tenantId, to, bodyText, quickReplies);
+        try {
+          logger.info({ channel, tenantId, originalRows: allRows.length, quickReplies: quickReplies.length }, 'List degraded to Quick Replies');
+          return await adapter.sendQuickReplies(tenantId, to, bodyText, quickReplies);
+        } catch (qrError) {
+          logger.warn({ channel, tenantId, error: qrError instanceof Error ? qrError.message : 'Unknown' }, 'Quick Replies failed, falling back to numbered text');
+        }
       }
 
-      // Fallback: texto numerado (se mais de 13 itens ou sem sendQuickReplies)
+      // Fallback: texto numerado (se mais de 13 itens, sem sendQuickReplies, ou Quick Replies falhou)
       const numberedItems = allRows.map((row, i) =>
         `${i + 1}. ${row.title}${row.description ? ` - ${row.description}` : ''}`
       );
