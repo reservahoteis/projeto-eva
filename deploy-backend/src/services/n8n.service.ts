@@ -173,16 +173,21 @@ class N8NService {
 
         // Verificar se é resposta de botão (Quick Reply de carousel ou botão interativo)
         if (message.metadata?.button) {
-          // Usar button_reply para Quick Reply de carousel template
           basePayload.type = 'button_reply';
           basePayload.buttonReply = {
             id: message.metadata.button.id,
             title: message.metadata.button.title,
           };
-          // Manter compatibilidade com formato antigo
           basePayload.buttonResponseMessage = {
             selectedButtonId: message.metadata.button.id,
             selectedButtonText: message.metadata.button.title,
+          };
+          // Normalizar: popular listResponseMessage tambem para que o N8N
+          // encontre selectedRowId independente do canal (Messenger envia quick reply
+          // onde WhatsApp envia list reply)
+          basePayload.listResponseMessage = {
+            selectedRowId: message.metadata.button.id,
+            title: message.metadata.button.title,
           };
         }
 
@@ -193,6 +198,15 @@ class N8NService {
             selectedRowId: message.metadata.list.id,
             title: message.metadata.list.title,
             description: message.metadata.list.description,
+          };
+          // Normalizar: popular buttonReply/buttonResponseMessage tambem
+          basePayload.buttonReply = {
+            id: message.metadata.list.id,
+            title: message.metadata.list.title,
+          };
+          basePayload.buttonResponseMessage = {
+            selectedButtonId: message.metadata.list.id,
+            selectedButtonText: message.metadata.list.title,
           };
         }
         break;
