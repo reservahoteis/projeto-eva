@@ -919,16 +919,9 @@ router.post('/send-carousel', validate(sendCarouselSchema), async (req: Request,
       });
     }
 
-    // Carousel template e feature exclusiva do WhatsApp
-    if (channel !== 'WHATSAPP' && template) {
-      return res.status(400).json({
-        error: 'Carousel template só é suportado no WhatsApp',
-      });
-    }
-
     const normalizedPhone = phone.replace(/\D/g, '');
 
-    // MODO 1: Template carousel (WhatsApp only)
+    // MODO 1: Template carousel
     if (template && cards) {
       if (!Array.isArray(cards) || cards.length === 0) {
         return res.status(400).json({
@@ -958,6 +951,58 @@ router.post('/send-carousel', validate(sendCarouselSchema), async (req: Request,
 
       interface CarouselCard { imageUrl: string; bodyParams?: string[]; buttonPayloads: string[] }
 
+      // Non-WhatsApp: degradar template carousel para sequencia de imagem + botoes
+      if (channel !== 'WHATSAPP') {
+        const messageIds: string[] = [];
+
+        for (const card of cards as CarouselCard[]) {
+          // Enviar imagem do card
+          try {
+            const imgResult = await channelRouter.sendMedia(channel, req.tenantId!, normalizedPhone, {
+              type: 'image',
+              url: card.imageUrl,
+              caption: card.bodyParams?.join(' | ') || undefined,
+            });
+            messageIds.push(imgResult.externalMessageId);
+          } catch (imgErr) {
+            logger.warn({
+              tenantId: req.tenantId,
+              error: imgErr instanceof Error ? imgErr.message : 'Unknown',
+            }, 'Carousel template degraded: failed to send image, sending as text');
+          }
+
+          // Enviar botoes com payloads como Quick Replies
+          const bodyText = card.bodyParams?.join('\n') || template;
+          const buttons = card.buttonPayloads.map((payload: string) => ({
+            id: payload,
+            title: payload.replace(/_/g, ' ').substring(0, 20),
+          }));
+
+          const btnResult = await channelRouter.sendButtons(
+            channel, req.tenantId!, normalizedPhone, bodyText, buttons
+          );
+          messageIds.push(btnResult.externalMessageId);
+        }
+
+        logger.info({
+          tenantId: req.tenantId,
+          phone: normalizedPhone,
+          template,
+          cardsCount: cards.length,
+          channel,
+          mode: 'template-degraded',
+        }, 'N8N: Carousel template degraded to sequential messages');
+
+        return res.json({
+          success: true,
+          messageId: messageIds[0],
+          messageIds,
+          cardsCount: cards.length,
+          mode: 'template-degraded',
+        });
+      }
+
+      // WhatsApp: carousel template nativo
       const result = await whatsAppService.sendCarouselTemplate(
         req.tenantId!,
         normalizedPhone,
