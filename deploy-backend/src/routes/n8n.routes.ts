@@ -48,19 +48,28 @@ function resolveChannel(channel?: string): Channel {
 }
 
 /**
+ * Cache de auto-detect de canal por (tenantId+phoneOrExternalId).
+ * Evita query ao DB a cada chamada N8N de send-*.
+ * TTL: 10 minutos (canal de um contato raramente muda).
+ */
+const channelDetectCache = new Map<string, { channel: Channel; fetchedAt: number }>();
+const CHANNEL_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutos
+
+/**
  * Auto-detecta o canal correto quando N8N nao envia o parametro `channel`.
- *
- * Problema: N8N recebe `channel: "messenger"` no payload inbound, mas ao responder
- * via /api/n8n/send-text, NAO envia o channel de volta. O default era WHATSAPP,
- * causando envio errado (PSID nao e telefone) e conversas duplicadas.
- *
- * Solucao: Antes de enviar, verificar se o `phone` (que pode ser PSID) pertence
- * a um contato MESSENGER ou INSTAGRAM. Se sim, usar esse canal.
+ * Resultado cacheado em memoria para evitar query DB repetida.
  */
 async function autoDetectChannel(tenantId: string, phoneOrExternalId: string, channelStr?: string): Promise<Channel> {
-  // Se N8N passou channel explicitamente, usar
+  // Se N8N passou channel explicitamente, usar (sem cache)
   if (channelStr) {
     return resolveChannel(channelStr);
+  }
+
+  // Verificar cache
+  const cacheKey = `${tenantId}:${phoneOrExternalId}`;
+  const cached = channelDetectCache.get(cacheKey);
+  if (cached && Date.now() - cached.fetchedAt < CHANNEL_CACHE_TTL_MS) {
+    return cached.channel;
   }
 
   // Auto-detect: verificar se esse identificador pertence a um contato nao-WhatsApp
@@ -74,17 +83,33 @@ async function autoDetectChannel(tenantId: string, phoneOrExternalId: string, ch
     orderBy: { updatedAt: 'desc' },
   });
 
+  const detectedChannel = nonWAContact?.channel || 'WHATSAPP';
+
+  // Cachear resultado
+  channelDetectCache.set(cacheKey, { channel: detectedChannel, fetchedAt: Date.now() });
+
   if (nonWAContact) {
     logger.info({
       tenantId,
       identifier: phoneOrExternalId,
-      detectedChannel: nonWAContact.channel,
+      detectedChannel,
     }, '[N8N AUTO-DETECT] Canal detectado automaticamente (N8N nao enviou channel)');
-    return nonWAContact.channel;
   }
 
-  // Default: WhatsApp
-  return 'WHATSAPP';
+  return detectedChannel;
+}
+
+/**
+ * Salva mensagem outbound em background (fire-and-forget).
+ * NAO bloqueia a resposta HTTP para o N8N.
+ */
+function saveOutboundInBackground(data: Parameters<typeof messageService.saveOutboundMessage>[0]): void {
+  messageService.saveOutboundMessage(data).catch((err) => {
+    logger.error(
+      { error: err instanceof Error ? err.message : 'Unknown', phoneNumber: data.phoneNumber, type: data.type },
+      '[N8N] Failed to save outbound message (background)'
+    );
+  });
 }
 
 // Mapeamento de templates para seus textos (para exibição no painel)
@@ -154,7 +179,17 @@ router.post('/send-text', validate(sendTextSchema), async (req: Request, res: Re
       message
     );
 
-    await messageService.saveOutboundMessage({
+    // Responder IMEDIATAMENTE ao N8N, salvar no DB em background
+    res.json({
+      success: true,
+      messageId: result.externalMessageId,
+      botReservaResponse: {
+        messageId: result.externalMessageId,
+        id: result.externalMessageId,
+      },
+    });
+
+    saveOutboundInBackground({
       tenantId: req.tenantId!,
       phoneNumber: normalizedPhone,
       externalMessageId: result.externalMessageId,
@@ -163,21 +198,7 @@ router.post('/send-text', validate(sendTextSchema), async (req: Request, res: Re
       channel,
     });
 
-    logger.info({
-      tenantId: req.tenantId,
-      phone: normalizedPhone,
-      channel,
-      messageId: result.externalMessageId,
-    }, 'N8N: Text message sent and saved');
-
-    return res.json({
-      success: true,
-      messageId: result.externalMessageId,
-      botReservaResponse: {
-        messageId: result.externalMessageId,
-        id: result.externalMessageId,
-      },
-    });
+    return;
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Unknown';
     logger.error({ error: msg, tenantId: req.tenantId }, 'N8N: Failed to send text');
@@ -240,7 +261,18 @@ router.post('/send-buttons', validate(sendButtonsSchema), async (req: Request, r
     );
 
     const buttonLabels = cloudApiButtons.map((btn) => btn.title).join(' | ');
-    await messageService.saveOutboundMessage({
+
+    // Responder IMEDIATAMENTE ao N8N
+    res.json({
+      success: true,
+      messageId: result.externalMessageId,
+      botReservaResponse: {
+        messageId: result.externalMessageId,
+        id: result.externalMessageId,
+      },
+    });
+
+    saveOutboundInBackground({
       tenantId: req.tenantId!,
       phoneNumber: normalizedPhone,
       externalMessageId: result.externalMessageId,
@@ -256,22 +288,7 @@ router.post('/send-buttons', validate(sendButtonsSchema), async (req: Request, r
       channel,
     });
 
-    logger.info({
-      tenantId: req.tenantId,
-      phone: normalizedPhone,
-      channel,
-      buttonsCount: buttons.length,
-      messageId: result.externalMessageId,
-    }, 'N8N: Buttons message sent and saved');
-
-    return res.json({
-      success: true,
-      messageId: result.externalMessageId,
-      botReservaResponse: {
-        messageId: result.externalMessageId,
-        id: result.externalMessageId,
-      },
-    });
+    return;
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Unknown';
     logger.error({ error: msg, tenantId: req.tenantId }, 'N8N: Failed to send buttons');
@@ -327,7 +344,18 @@ router.post('/send-quick-replies', validate(sendQuickRepliesSchema), async (req:
     );
 
     const quickReplyLabels = quickReplies.map((qr: { title: string; payload: string }) => qr.title).join(' | ');
-    await messageService.saveOutboundMessage({
+
+    // Responder IMEDIATAMENTE ao N8N
+    res.json({
+      success: true,
+      messageId: result.externalMessageId,
+      botReservaResponse: {
+        messageId: result.externalMessageId,
+        id: result.externalMessageId,
+      },
+    });
+
+    saveOutboundInBackground({
       tenantId: req.tenantId!,
       phoneNumber: normalizedPhone,
       externalMessageId: result.externalMessageId,
@@ -344,22 +372,7 @@ router.post('/send-quick-replies', validate(sendQuickRepliesSchema), async (req:
       channel,
     });
 
-    logger.info({
-      tenantId: req.tenantId,
-      phone: normalizedPhone,
-      channel,
-      quickReplyCount: quickReplies.length,
-      messageId: result.externalMessageId,
-    }, 'N8N: Quick Replies message sent and saved');
-
-    return res.json({
-      success: true,
-      messageId: result.externalMessageId,
-      botReservaResponse: {
-        messageId: result.externalMessageId,
-        id: result.externalMessageId,
-      },
-    });
+    return;
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Unknown';
     logger.error({ error: msg, tenantId: req.tenantId }, 'N8N: Failed to send quick replies');
@@ -450,7 +463,17 @@ router.post('/send-list', validate(sendListSchema), async (req: Request, res: Re
       cloudApiSections
     );
 
-    await messageService.saveOutboundMessage({
+    // Responder IMEDIATAMENTE ao N8N
+    res.json({
+      success: true,
+      messageId: result.externalMessageId,
+      botReservaResponse: {
+        messageId: result.externalMessageId,
+        id: result.externalMessageId,
+      },
+    });
+
+    saveOutboundInBackground({
       tenantId: req.tenantId!,
       phoneNumber: normalizedPhone,
       externalMessageId: result.externalMessageId,
@@ -464,21 +487,7 @@ router.post('/send-list', validate(sendListSchema), async (req: Request, res: Re
       channel,
     });
 
-    logger.info({
-      tenantId: req.tenantId,
-      phone: normalizedPhone,
-      channel,
-      messageId: result.externalMessageId,
-    }, 'N8N: List message sent and saved');
-
-    return res.json({
-      success: true,
-      messageId: result.externalMessageId,
-      botReservaResponse: {
-        messageId: result.externalMessageId,
-        id: result.externalMessageId,
-      },
-    });
+    return;
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Unknown';
     logger.error({ error: msg, tenantId: req.tenantId }, 'N8N: Failed to send list');
@@ -573,7 +582,17 @@ router.post('/send-media', validate(sendMediaSchema), async (req: Request, res: 
       document: 'DOCUMENT',
     };
 
-    await messageService.saveOutboundMessage({
+    // Responder IMEDIATAMENTE ao N8N
+    res.json({
+      success: true,
+      messageId: result.externalMessageId,
+      botReservaResponse: {
+        messageId: result.externalMessageId,
+        id: result.externalMessageId,
+      },
+    });
+
+    saveOutboundInBackground({
       tenantId: req.tenantId!,
       phoneNumber: normalizedPhone,
       externalMessageId: result.externalMessageId,
@@ -587,22 +606,7 @@ router.post('/send-media', validate(sendMediaSchema), async (req: Request, res: 
       channel,
     });
 
-    logger.info({
-      tenantId: req.tenantId,
-      phone: normalizedPhone,
-      channel,
-      mediaType,
-      messageId: result.externalMessageId,
-    }, 'N8N: Media message sent and saved');
-
-    return res.json({
-      success: true,
-      messageId: result.externalMessageId,
-      botReservaResponse: {
-        messageId: result.externalMessageId,
-        id: result.externalMessageId,
-      },
-    });
+    return;
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Unknown';
     logger.error({ error: msg, tenantId: req.tenantId }, 'N8N: Failed to send media');
@@ -661,7 +665,17 @@ router.post('/send-template', validate(sendTemplateSchema), async (req: Request,
 
     const templateContent = buildTemplateContent(templateNameUsed, templateParams);
 
-    await messageService.saveOutboundMessage({
+    // Responder IMEDIATAMENTE ao N8N
+    res.json({
+      success: true,
+      messageId: result.externalMessageId,
+      botReservaResponse: {
+        messageId: result.externalMessageId,
+        id: result.externalMessageId,
+      },
+    });
+
+    saveOutboundInBackground({
       tenantId: req.tenantId!,
       phoneNumber: normalizedPhone,
       externalMessageId: result.externalMessageId,
@@ -675,22 +689,7 @@ router.post('/send-template', validate(sendTemplateSchema), async (req: Request,
       channel,
     });
 
-    logger.info({
-      tenantId: req.tenantId,
-      phone: normalizedPhone,
-      channel,
-      template: templateNameUsed,
-      messageId: result.externalMessageId,
-    }, 'N8N: Template sent and saved');
-
-    return res.json({
-      success: true,
-      messageId: result.externalMessageId,
-      botReservaResponse: {
-        messageId: result.externalMessageId,
-        id: result.externalMessageId,
-      },
-    });
+    return;
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Unknown';
     logger.error({ error: msg, tenantId: req.tenantId }, 'N8N: Failed to send template');
@@ -977,8 +976,15 @@ router.post('/send-carousel', validate(sendCarouselSchema), async (req: Request,
           const adapter = channel === 'INSTAGRAM' ? instagramAdapter : messengerAdapter;
           const result = await adapter.sendGenericTemplate(req.tenantId!, normalizedPhone, elements);
 
-          // Salvar mensagem outbound
-          await messageService.saveOutboundMessage({
+          // Responder IMEDIATAMENTE ao N8N
+          res.json({
+            success: true,
+            messageId: result.externalMessageId,
+            cardsCount: cards.length,
+            mode: 'generic-template',
+          });
+
+          saveOutboundInBackground({
             tenantId: req.tenantId!,
             phoneNumber: normalizedPhone,
             externalMessageId: result.externalMessageId,
@@ -992,21 +998,7 @@ router.post('/send-carousel', validate(sendCarouselSchema), async (req: Request,
             },
           });
 
-          logger.info({
-            tenantId: req.tenantId,
-            phone: normalizedPhone,
-            template,
-            cardsCount: cards.length,
-            channel,
-            mode: 'generic-template',
-          }, 'N8N: Carousel sent via Generic Template');
-
-          return res.json({
-            success: true,
-            messageId: result.externalMessageId,
-            cardsCount: cards.length,
-            mode: 'generic-template',
-          });
+          return;
         } catch (genericErr) {
           // Fallback: sequencia de imagem + botoes (degradacao anterior)
           logger.warn({
@@ -1067,7 +1059,19 @@ router.post('/send-carousel', validate(sendCarouselSchema), async (req: Request,
         }))
       );
 
-      await messageService.saveOutboundMessage({
+      // Responder IMEDIATAMENTE ao N8N
+      res.json({
+        success: true,
+        messageId: result.externalMessageId,
+        cardsCount: cards.length,
+        mode: 'template',
+        botReservaResponse: {
+          messageId: result.externalMessageId,
+          cardsCount: cards.length,
+        },
+      });
+
+      saveOutboundInBackground({
         tenantId: req.tenantId!,
         phoneNumber: normalizedPhone,
         externalMessageId: result.externalMessageId,
@@ -1085,24 +1089,7 @@ router.post('/send-carousel', validate(sendCarouselSchema), async (req: Request,
         },
       });
 
-      logger.info({
-        tenantId: req.tenantId,
-        phone: normalizedPhone,
-        template,
-        cardsCount: cards.length,
-        messageId: result.externalMessageId,
-      }, 'N8N: Carousel template sent and saved');
-
-      return res.json({
-        success: true,
-        messageId: result.externalMessageId,
-        cardsCount: cards.length,
-        mode: 'template',
-        botReservaResponse: {
-          messageId: result.externalMessageId,
-          cardsCount: cards.length,
-        },
-      });
+      return;
     }
 
     // MODO 2: Mensagens interativas sequenciais
@@ -1210,11 +1197,25 @@ router.post('/send-carousel', validate(sendCarouselSchema), async (req: Request,
 
     const messageIds = results.map(r => r.externalMessageId);
 
+    // Responder IMEDIATAMENTE ao N8N
+    res.json({
+      success: true,
+      messageId: messageIds[0],
+      messageIds,
+      cardsCount: carousel.length,
+      mode: 'interactive',
+      botReservaResponse: {
+        messageIds,
+        cardsCount: carousel.length,
+      },
+    });
+
+    // Salvar TODOS os cards em background (em paralelo)
     for (let i = 0; i < results.length; i++) {
       const result = results[i];
       const card = carousel[i];
       if (result && card) {
-        await messageService.saveOutboundMessage({
+        saveOutboundInBackground({
           tenantId: req.tenantId!,
           phoneNumber: normalizedPhone,
           externalMessageId: result.externalMessageId,
@@ -1230,24 +1231,7 @@ router.post('/send-carousel', validate(sendCarouselSchema), async (req: Request,
       }
     }
 
-    logger.info({
-      tenantId: req.tenantId,
-      phone: normalizedPhone,
-      cardsCount: carousel.length,
-      messagesSent: results.length,
-    }, 'N8N: Carousel sent and saved');
-
-    return res.json({
-      success: true,
-      messageId: messageIds[0],
-      messageIds,
-      cardsCount: carousel.length,
-      mode: 'interactive',
-      botReservaResponse: {
-        messageIds,
-        cardsCount: carousel.length,
-      },
-    });
+    return;
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Unknown';
     logger.error({ error: msg, tenantId: req.tenantId }, 'N8N: Failed to send carousel');
