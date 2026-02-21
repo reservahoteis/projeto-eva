@@ -11,9 +11,31 @@ import { WhatsAppListMessage } from './WhatsAppListMessage';
 import { WhatsAppCarouselMessage } from './WhatsAppCarouselMessage';
 
 /**
+ * Traduz código de erro da Meta API para explicação em português
+ */
+function getPortugueseExplanation(code: string | undefined): string | null {
+  if (!code) return null;
+  const map: Record<string, string> = {
+    '131026': 'A Meta não conseguiu entregar a mensagem. Pode ser que a janela de 24h tenha expirado ou o número esteja temporariamente indisponível.',
+    '131047': 'A janela de 24h para mensagens expirou. Use um template pré-aprovado para reabrir a conversa.',
+    '131051': 'Este tipo de mensagem não é suportado pelo destinatário.',
+    '130472': 'O número do destinatário não está registrado no WhatsApp.',
+    '131053': 'A mídia não pôde ser baixada pelo WhatsApp. Verifique se a URL do arquivo é pública e acessível.',
+    '131031': 'A conta do remetente está temporariamente bloqueada pela Meta.',
+    '131056': 'Limite de mensagens atingido. Aguarde antes de tentar novamente.',
+    '131009': 'Parâmetro ausente ou inválido na requisição da API.',
+    '100': 'Destinatário não encontrado. O número ou identificador pode estar incorreto.',
+    '190': 'O token de acesso da API está inválido ou expirado. Verifique as configurações do canal.',
+    '368': 'Conta temporariamente restrita pela Meta por violação de políticas.',
+    '80007': 'Limite de requisições à API atingido. Tente novamente em alguns minutos.',
+    'SEND_FAILED': 'Erro ao tentar enviar a mensagem para a API do canal.',
+  };
+  return map[code] || null;
+}
+
+/**
  * Extrai informações de erro do metadata da mensagem FAILED
  * Verifica múltiplos formatos possíveis de armazenamento
- * Retorna { code, message, details } ou null
  */
 function getFailedError(metadata: any): { code?: string; message: string; details?: string } | null {
   if (!metadata) return null;
@@ -127,6 +149,8 @@ export const MessageBubble = memo(function MessageBubble({
         </svg>
       );
 
+      const explanation = errorData ? getPortugueseExplanation(errorData.code) : null;
+
       return (
         <TooltipProvider delayDuration={200}>
           <Tooltip>
@@ -134,23 +158,33 @@ export const MessageBubble = memo(function MessageBubble({
               <span className="cursor-help">{failedIcon}</span>
             </TooltipTrigger>
             <TooltipContent
-              side="top"
-              className="max-w-[360px] text-xs bg-red-50 border-red-200 text-red-900 shadow-lg"
-              style={{ zIndex: 9999 }}
+              side="left"
+              align="end"
+              className="max-w-[340px] bg-white border border-red-300 text-red-900 shadow-xl p-3"
             >
-              <p className="font-semibold text-red-700 mb-1">Falha no envio</p>
+              <p className="font-semibold text-[13px] text-red-700 mb-1.5">Falha no envio</p>
               {errorData ? (
-                <>
-                  <p className="break-words whitespace-pre-wrap">{errorData.message}</p>
+                <div className="space-y-1.5">
+                  {explanation && (
+                    <p className="text-[12px] leading-relaxed">{explanation}</p>
+                  )}
+                  {!explanation && (
+                    <p className="text-[12px] leading-relaxed">{errorData.message}</p>
+                  )}
+                  {explanation && (
+                    <p className="text-[11px] text-red-500 border-t border-red-100 pt-1.5">
+                      API: {errorData.message}
+                    </p>
+                  )}
                   {errorData.details && (
-                    <p className="mt-1 text-red-600 break-words">{errorData.details}</p>
+                    <p className="text-[11px] text-red-400 break-words">{errorData.details}</p>
                   )}
                   {errorData.code && (
-                    <p className="mt-1 text-[10px] text-red-400">Código: {errorData.code}</p>
+                    <p className="text-[10px] text-red-300 mt-0.5">Código: {errorData.code}</p>
                   )}
-                </>
+                </div>
               ) : (
-                <p>Erro desconhecido. Recarregue a página para ver detalhes.</p>
+                <p className="text-[12px]">Erro desconhecido. Recarregue a página para mais detalhes.</p>
               )}
             </TooltipContent>
           </Tooltip>
