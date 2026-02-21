@@ -395,19 +395,27 @@ export function emitMessageStatusUpdate(
   tenantId: string,
   conversationId: string,
   messageId: string,
-  status: string
+  status: string,
+  errorInfo?: { code: string; message: string; details?: string }
 ): void {
   if (!io) {
     logger.warn({ tenantId, conversationId, messageId, status }, 'Socket.io not initialized, cannot emit status update');
     return;
   }
 
-  // Emitir para todos na conversa
-  io.to(`conversation:${conversationId}`).emit('message:status', {
+  const payload: any = {
     conversationId,
     messageId,
     status,
-  });
+  };
+
+  // Incluir info de erro para o frontend exibir no tooltip
+  if (status === 'FAILED' && errorInfo) {
+    payload.errorInfo = errorInfo;
+  }
+
+  // Emitir para todos na conversa
+  io.to(`conversation:${conversationId}`).emit('message:status', payload);
 
   logger.info(
     {
@@ -415,6 +423,7 @@ export function emitMessageStatusUpdate(
       conversationId,
       messageId,
       status,
+      hasErrorInfo: !!errorInfo,
     },
     '✅ Socket.io event [message:status] emitted to conversation room'
   );

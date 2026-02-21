@@ -241,8 +241,12 @@ export async function processOutgoingMessage(job: Job<SendMessageJobData>): Prom
         },
       });
 
-      // Emitir evento de falha
-      emitMessageStatusUpdate(tenantId, conversationId, messageId, 'FAILED');
+      // Emitir evento de falha com detalhes do erro
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      emitMessageStatusUpdate(tenantId, conversationId, messageId, 'FAILED', {
+        code: 'SEND_FAILED',
+        message: errorMsg,
+      });
 
       logger.info(
         {

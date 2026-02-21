@@ -174,7 +174,15 @@ export async function processStatusUpdate(job: Job<ProcessStatusJobData>): Promi
     );
 
     // 7.5. EMITIR EVENTO WEBSOCKET (TEMPO REAL)
-    emitMessageStatusUpdate(tenantId, message.conversationId, message.id, mappedStatus);
+    // Se FAILED, incluir info de erro para o frontend exibir no tooltip
+    const socketErrorInfo = mappedStatus === 'FAILED' && statusMetadata.errors?.length > 0
+      ? {
+          code: String(statusMetadata.errors[0].code),
+          message: statusMetadata.errors[0].message || statusMetadata.errors[0].title || 'Falha na entrega',
+          details: statusMetadata.errors[0].details,
+        }
+      : undefined;
+    emitMessageStatusUpdate(tenantId, message.conversationId, message.id, mappedStatus, socketErrorInfo);
 
     // 8. SE STATUS É FAILED, LOGAR ERRO DETALHADO
     if (mappedStatus === 'FAILED' && status.errors) {
