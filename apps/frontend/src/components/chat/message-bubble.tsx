@@ -6,8 +6,65 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Check, CheckCheck, Paperclip, X, Download, ZoomIn, ZoomOut, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { WhatsAppListMessage } from './WhatsAppListMessage';
 import { WhatsAppCarouselMessage } from './WhatsAppCarouselMessage';
+
+/**
+ * Traduz códigos de erro da Meta/WhatsApp para português
+ */
+function translateErrorMessage(code: string | undefined, message: string): string {
+  if (!code) return message;
+
+  const errorMap: Record<string, string> = {
+    '131047': 'Mensagem não entregue: janela de 24h expirada. Use um template para reenviar.',
+    '131051': 'Tipo de mensagem não suportado pelo destinatário.',
+    '131026': 'Mensagem não entregue. O destinatário pode ter bloqueado este número.',
+    '130472': 'Número do destinatário não está no WhatsApp.',
+    '131053': 'Mídia não pôde ser baixada. Verifique a URL do arquivo.',
+    '131031': 'Conta do remetente está bloqueada.',
+    '131056': 'Limite de mensagens atingido. Tente novamente mais tarde.',
+    '131009': 'Parâmetro ausente ou inválido na requisição.',
+    '100': 'Destinatário não encontrado. Verifique o número ou identificador.',
+    '190': 'Token de acesso inválido ou expirado.',
+    '368': 'Conta temporariamente bloqueada por violação de políticas.',
+    '80007': 'Limite de requisições atingido. Tente novamente em alguns minutos.',
+    'SEND_FAILED': `Falha ao enviar: ${message}`,
+  };
+
+  return errorMap[code] || `Erro ${code}: ${message}`;
+}
+
+/**
+ * Extrai mensagem de erro do metadata da mensagem
+ * Verifica múltiplos formatos possíveis de armazenamento
+ */
+function getFailedErrorMessage(metadata: any): string | null {
+  if (!metadata) return null;
+
+  // 1. Formato padronizado: delivery.error
+  if (metadata.delivery?.error?.message) {
+    return translateErrorMessage(metadata.delivery.error.code, metadata.delivery.error.message);
+  }
+
+  // 2. Formato do outgoing worker: error.message
+  if (metadata.error?.message) {
+    return translateErrorMessage('SEND_FAILED', metadata.error.message);
+  }
+
+  // 3. Formato de statusUpdates (último com errors)
+  if (Array.isArray(metadata.statusUpdates)) {
+    for (let i = metadata.statusUpdates.length - 1; i >= 0; i--) {
+      const update = metadata.statusUpdates[i];
+      if (update?.errors?.length > 0) {
+        const err = update.errors[0];
+        return translateErrorMessage(String(err.code), err.message || err.title || 'Falha na entrega');
+      }
+    }
+  }
+
+  return null;
+}
 
 interface MessageBubbleProps {
   message: Message;
@@ -81,13 +138,32 @@ export const MessageBubble = memo(function MessageBubble({
       );
     }
     if (message.status === MessageStatus.FAILED) {
-      return (
+      const errorMsg = getFailedErrorMessage(message.metadata);
+      const failedIcon = (
         <svg className="w-4 h-4 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor">
           <circle cx="12" cy="12" r="10" strokeWidth="2" />
           <line x1="12" y1="8" x2="12" y2="12" strokeWidth="2" strokeLinecap="round" />
           <line x1="12" y1="16" x2="12.01" y2="16" strokeWidth="2" strokeLinecap="round" />
         </svg>
       );
+
+      if (errorMsg) {
+        return (
+          <TooltipProvider delayDuration={200}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="cursor-help">{failedIcon}</span>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-[280px] text-xs bg-red-50 border-red-200 text-red-800">
+                <p className="font-medium">Falha no envio</p>
+                <p className="mt-0.5">{errorMsg}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        );
+      }
+
+      return failedIcon;
     }
     return null;
   };
