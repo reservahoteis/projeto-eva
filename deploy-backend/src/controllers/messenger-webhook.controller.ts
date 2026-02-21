@@ -94,6 +94,15 @@ export class MessengerWebhookController {
                 continue;
               }
 
+              // Filtrar echo messages (mensagens enviadas pelo proprio bot)
+              if (event.message?.is_echo || senderId === pageId) {
+                logger.info(
+                  { tenantId, senderId, mid: event.message?.mid, isEcho: !!event.message?.is_echo },
+                  '[MESSENGER WEBHOOK] Echo message ignorada (enviada pelo bot)'
+                );
+                continue;
+              }
+
               const eventType = event.message ? 'message' : event.postback ? 'postback' : event.delivery ? 'delivery' : event.read ? 'read' : 'unknown';
 
               logger.info(

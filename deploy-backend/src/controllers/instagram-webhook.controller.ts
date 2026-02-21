@@ -90,6 +90,15 @@ export class InstagramWebhookController {
                 continue;
               }
 
+              // Filtrar echo messages (mensagens enviadas pelo proprio bot)
+              if (event.message?.is_echo || senderId === igAccountId) {
+                logger.info(
+                  { tenantId, senderId, mid: event.message?.mid, isEcho: !!event.message?.is_echo },
+                  '[INSTAGRAM WEBHOOK] Echo message ignorada (enviada pelo bot)'
+                );
+                continue;
+              }
+
               const eventType = event.message ? 'message' : event.postback ? 'postback' : 'unknown';
 
               logger.info(
