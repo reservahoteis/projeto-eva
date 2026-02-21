@@ -11,45 +11,21 @@ import { WhatsAppListMessage } from './WhatsAppListMessage';
 import { WhatsAppCarouselMessage } from './WhatsAppCarouselMessage';
 
 /**
- * Traduz códigos de erro da Meta/WhatsApp para português
- */
-function translateErrorMessage(code: string | undefined, message: string): string {
-  if (!code) return message;
-
-  const errorMap: Record<string, string> = {
-    '131047': 'Mensagem não entregue: janela de 24h expirada. Use um template para reenviar.',
-    '131051': 'Tipo de mensagem não suportado pelo destinatário.',
-    '131026': 'Mensagem não entregue. O destinatário pode ter bloqueado este número.',
-    '130472': 'Número do destinatário não está no WhatsApp.',
-    '131053': 'Mídia não pôde ser baixada. Verifique a URL do arquivo.',
-    '131031': 'Conta do remetente está bloqueada.',
-    '131056': 'Limite de mensagens atingido. Tente novamente mais tarde.',
-    '131009': 'Parâmetro ausente ou inválido na requisição.',
-    '100': 'Destinatário não encontrado. Verifique o número ou identificador.',
-    '190': 'Token de acesso inválido ou expirado.',
-    '368': 'Conta temporariamente bloqueada por violação de políticas.',
-    '80007': 'Limite de requisições atingido. Tente novamente em alguns minutos.',
-    'SEND_FAILED': `Falha ao enviar: ${message}`,
-  };
-
-  return errorMap[code] || `Erro ${code}: ${message}`;
-}
-
-/**
- * Extrai mensagem de erro do metadata da mensagem
+ * Extrai informações de erro do metadata da mensagem FAILED
  * Verifica múltiplos formatos possíveis de armazenamento
+ * Retorna { code, message, details } ou null
  */
-function getFailedErrorMessage(metadata: any): string | null {
+function getFailedError(metadata: any): { code?: string; message: string; details?: string } | null {
   if (!metadata) return null;
 
   // 1. Formato padronizado: delivery.error
   if (metadata.delivery?.error?.message) {
-    return translateErrorMessage(metadata.delivery.error.code, metadata.delivery.error.message);
+    return metadata.delivery.error;
   }
 
   // 2. Formato do outgoing worker: error.message
   if (metadata.error?.message) {
-    return translateErrorMessage('SEND_FAILED', metadata.error.message);
+    return { code: 'SEND_FAILED', message: metadata.error.message };
   }
 
   // 3. Formato de statusUpdates (último com errors)
@@ -58,7 +34,11 @@ function getFailedErrorMessage(metadata: any): string | null {
       const update = metadata.statusUpdates[i];
       if (update?.errors?.length > 0) {
         const err = update.errors[0];
-        return translateErrorMessage(String(err.code), err.message || err.title || 'Falha na entrega');
+        return {
+          code: String(err.code),
+          message: err.message || err.title || 'Falha na entrega',
+          details: err.details,
+        };
       }
     }
   }
@@ -138,7 +118,7 @@ export const MessageBubble = memo(function MessageBubble({
       );
     }
     if (message.status === MessageStatus.FAILED) {
-      const errorMsg = getFailedErrorMessage(message.metadata);
+      const errorData = getFailedError(message.metadata as any);
       const failedIcon = (
         <svg className="w-4 h-4 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor">
           <circle cx="12" cy="12" r="10" strokeWidth="2" />
@@ -147,23 +127,35 @@ export const MessageBubble = memo(function MessageBubble({
         </svg>
       );
 
-      if (errorMsg) {
-        return (
-          <TooltipProvider delayDuration={200}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="cursor-help">{failedIcon}</span>
-              </TooltipTrigger>
-              <TooltipContent side="top" className="max-w-[280px] text-xs bg-red-50 border-red-200 text-red-800">
-                <p className="font-medium">Falha no envio</p>
-                <p className="mt-0.5">{errorMsg}</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        );
-      }
-
-      return failedIcon;
+      return (
+        <TooltipProvider delayDuration={200}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="cursor-help">{failedIcon}</span>
+            </TooltipTrigger>
+            <TooltipContent
+              side="top"
+              className="max-w-[360px] text-xs bg-red-50 border-red-200 text-red-900 shadow-lg"
+              style={{ zIndex: 9999 }}
+            >
+              <p className="font-semibold text-red-700 mb-1">Falha no envio</p>
+              {errorData ? (
+                <>
+                  <p className="break-words whitespace-pre-wrap">{errorData.message}</p>
+                  {errorData.details && (
+                    <p className="mt-1 text-red-600 break-words">{errorData.details}</p>
+                  )}
+                  {errorData.code && (
+                    <p className="mt-1 text-[10px] text-red-400">Código: {errorData.code}</p>
+                  )}
+                </>
+              ) : (
+                <p>Erro desconhecido. Recarregue a página para ver detalhes.</p>
+              )}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
     }
     return null;
   };

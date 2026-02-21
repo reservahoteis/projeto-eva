@@ -224,18 +224,31 @@ function ConversationPageContent({ params }: ConversationPageProps) {
       }
     };
 
-    handlersRef.current.handleMessageStatus = (data: { messageId: string; status: string }) => {
-      console.log('Message status update:', data);
-
-      // Update message status in cache
+    handlersRef.current.handleMessageStatus = (data: { messageId: string; status: string; errorInfo?: { code: string; message: string; details?: string } }) => {
+      // Update message status in cache (incluindo metadata de erro se FAILED)
       queryClient.setQueryData(['messages', conversationId], (oldData: any) => {
         if (!oldData) return oldData;
 
         return {
           ...oldData,
-          data: oldData.data.map((msg: Message) =>
-            msg.id === data.messageId ? { ...msg, status: data.status } : msg
-          )
+          data: oldData.data.map((msg: Message) => {
+            if (msg.id !== data.messageId) return msg;
+
+            const updated: any = { ...msg, status: data.status };
+
+            // Se FAILED com errorInfo, salvar no metadata para o tooltip
+            if (data.status === 'FAILED' && data.errorInfo) {
+              updated.metadata = {
+                ...((msg.metadata as any) || {}),
+                delivery: {
+                  ...((msg.metadata as any)?.delivery || {}),
+                  error: data.errorInfo,
+                },
+              };
+            }
+
+            return updated;
+          })
         };
       });
     };

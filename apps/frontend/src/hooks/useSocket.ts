@@ -17,7 +17,7 @@ export interface UseSocketOptions {
 
 export interface SocketEvents {
   'message:new': (data: any) => void;
-  'message:status': (data: { messageId: string; status: 'sending' | 'sent' | 'delivered' | 'read' }) => void;
+  'message:status': (data: { messageId: string; status: 'sending' | 'sent' | 'delivered' | 'read' | 'FAILED'; errorInfo?: { code: string; message: string; details?: string } }) => void;
   'conversation:updated': (data: any) => void;
   'conversation:created': (data: any) => void;
   'conversation:new': (data: { conversation: any }) => void;
