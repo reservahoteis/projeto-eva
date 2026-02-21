@@ -112,7 +112,7 @@ function toJsonValue(metadata: MediaMessageMetadata | null): Prisma.InputJsonVal
  * Usado para garantir que a URL da mídia esteja disponível no payload do N8N.
  * Se o download falhar ou exceder o timeout, a mídia é enfileirada para retry assíncrono.
  */
-const MEDIA_DOWNLOAD_TIMEOUT_MS = 15000; // 15 segundos
+const MEDIA_DOWNLOAD_TIMEOUT_MS = 4000; // 4s - falha rapido, retry assincrono depois
 
 /**
  * Tipos de mídia que requerem download antes de enviar para N8N.

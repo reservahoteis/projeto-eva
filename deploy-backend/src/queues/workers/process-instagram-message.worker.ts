@@ -194,12 +194,13 @@ export async function processInstagramMessage(job: Job<ProcessInstagramMessageJo
         contact.phoneNumber
       );
 
-      await n8nService.forwardToN8N(tenantId, n8nPayload);
-
-      logger.info(
-        { jobId: job.id, conversationId: conversation.id },
-        '[INSTAGRAM WORKER] N8N forward concluido'
-      );
+      // Fire-and-forget: nao bloquear o worker enquanto N8N processa
+      n8nService.forwardToN8N(tenantId, n8nPayload).catch((err) => {
+        logger.error(
+          { jobId: job.id, conversationId: conversation.id, error: err instanceof Error ? err.message : 'Unknown' },
+          '[INSTAGRAM WORKER] Failed to forward to N8N'
+        );
+      });
     } else {
       logger.info(
         { jobId: job.id, conversationId: conversation.id, iaLocked: true },

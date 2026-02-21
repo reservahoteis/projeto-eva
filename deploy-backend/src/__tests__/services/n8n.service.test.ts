@@ -58,6 +58,7 @@ describe('N8NService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    n8nService.clearTenantCache();
   });
 
   describe('forwardToN8N', () => {
@@ -99,7 +100,6 @@ describe('N8NService', () => {
       expect(mockPrismaTenant.findUnique).toHaveBeenCalledWith({
         where: { id: tenantId },
         select: {
-          id: true,
           slug: true,
           n8nWebhookUrl: true,
         },
@@ -110,7 +110,7 @@ describe('N8NService', () => {
         'https://n8n.example.com/webhook/test',
         { body: mockPayload },
         {
-          timeout: 10000, // 10 segundos
+          timeout: 5000,
           headers: {
             'Content-Type': 'application/json',
           },
@@ -175,7 +175,6 @@ describe('N8NService', () => {
       expect(logger.debug).toHaveBeenCalledWith(
         expect.objectContaining({
           tenantId,
-          tenantSlug: 'hotel-test',
         }),
         'N8N: No webhook URL configured'
       );
@@ -240,7 +239,7 @@ describe('N8NService', () => {
         expect.any(String),
         expect.any(Object),
         expect.objectContaining({
-          timeout: 10000,
+          timeout: 5000,
         })
       );
     });

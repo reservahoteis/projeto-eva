@@ -2,6 +2,10 @@ import axios from 'axios';
 import { prisma } from '@/config/database';
 import logger from '@/config/logger';
 
+// Cache de tenant para evitar query ao banco a cada mensagem
+const tenantN8nCache = new Map<string, { slug: string; url: string; fetchedAt: number }>();
+const TENANT_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutos
+
 /**
  * Payload enviado para o webhook do N8N
  * Formato compatível com Z-API para facilitar migração
@@ -68,6 +72,11 @@ export interface N8NWebhookPayload {
  * Serviço para integração com N8N
  */
 class N8NService {
+  /** Limpa cache de tenant (usado em testes) */
+  clearTenantCache(): void {
+    tenantN8nCache.clear();
+  }
+
   /**
    * Envia mensagem recebida para o webhook do N8N
    */
@@ -76,24 +85,33 @@ class N8NService {
     payload: N8NWebhookPayload
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      // Buscar URL unica do webhook (todos os canais usam o mesmo fluxo N8N)
-      const tenant = await prisma.tenant.findUnique({
-        where: { id: tenantId },
-        select: {
-          id: true,
-          slug: true,
-          n8nWebhookUrl: true,
-        },
-      });
+      // Buscar URL unica do webhook (com cache em memoria)
+      const cached = tenantN8nCache.get(tenantId);
+      let tenantSlug: string;
+      let webhookUrl: string;
 
-      if (!tenant) {
-        logger.warn({ tenantId }, 'N8N: Tenant not found');
-        return { success: false, error: 'Tenant not found' };
-      }
+      if (cached && Date.now() - cached.fetchedAt < TENANT_CACHE_TTL_MS) {
+        tenantSlug = cached.slug;
+        webhookUrl = cached.url;
+      } else {
+        const tenant = await prisma.tenant.findUnique({
+          where: { id: tenantId },
+          select: { slug: true, n8nWebhookUrl: true },
+        });
 
-      if (!tenant.n8nWebhookUrl) {
-        logger.debug({ tenantId, tenantSlug: tenant.slug, channel: payload.channel }, 'N8N: No webhook URL configured');
-        return { success: false, error: 'No webhook URL configured' };
+        if (!tenant) {
+          logger.warn({ tenantId }, 'N8N: Tenant not found');
+          return { success: false, error: 'Tenant not found' };
+        }
+
+        if (!tenant.n8nWebhookUrl) {
+          logger.debug({ tenantId, channel: payload.channel }, 'N8N: No webhook URL configured');
+          return { success: false, error: 'No webhook URL configured' };
+        }
+
+        tenantSlug = tenant.slug;
+        webhookUrl = tenant.n8nWebhookUrl;
+        tenantN8nCache.set(tenantId, { slug: tenantSlug, url: webhookUrl, fetchedAt: Date.now() });
       }
 
       logger.info({
@@ -102,10 +120,10 @@ class N8NService {
       }, 'N8N: Forwarding to unified webhook');
 
       // Enviar para N8N (webhook unico para todos os canais)
-      const response = await axios.post(tenant.n8nWebhookUrl, {
+      const response = await axios.post(webhookUrl, {
         body: payload,
       }, {
-        timeout: 10000,
+        timeout: 5000,
         headers: {
           'Content-Type': 'application/json',
         },
@@ -113,7 +131,7 @@ class N8NService {
 
       logger.info({
         tenantId,
-        tenantSlug: tenant.slug,
+        tenantSlug,
         phone: payload.phone,
         messageId: payload.messageId,
         channel: payload.channel || 'whatsapp',
