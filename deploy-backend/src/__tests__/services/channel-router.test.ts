@@ -1586,60 +1586,67 @@ describe('InstagramAdapter', () => {
   });
 
   // -----------------------------------------------
-  // sendButtons - degradacao para texto numerado
+  // sendButtons - Button Template com fallback para texto
   // -----------------------------------------------
 
-  describe('sendButtons - degradacao para texto numerado', () => {
+  describe('sendButtons - Button Template com fallback', () => {
     const buttons = makeButtons();
 
-    it('deve degradar botoes para lista numerada de texto (Instagram nao tem botoes inline)', async () => {
+    it('deve enviar Button Template quando API aceita', async () => {
       // Arrange
-      mockAxiosPost.mockResolvedValue({ data: { message_id: 'ig-btn-text-001' } });
+      mockAxiosPost.mockResolvedValue({ data: { message_id: 'ig-btn-template-001' } });
 
       // Act
-      await adapter.sendButtons(tenantId, to, 'Escolha uma opcao:', buttons);
+      const result = await adapter.sendButtons(tenantId, to, 'Escolha uma opcao:', buttons);
 
-      // Assert - enviado como texto, sem attachment
+      // Assert - enviado como template com attachment
+      expect(result.success).toBe(true);
+      expect(result.externalMessageId).toBe('ig-btn-template-001');
       const postedBody = mockAxiosPost.mock.calls[0]?.[1] as {
-        message?: { text?: string; attachment?: unknown };
+        message?: { attachment?: { type: string; payload: { template_type: string; buttons: unknown[] } } };
       } | undefined;
-      expect(postedBody?.message?.attachment).toBeUndefined();
-      expect(postedBody?.message?.text).toBeDefined();
+      expect(postedBody?.message?.attachment?.type).toBe('template');
+      expect(postedBody?.message?.attachment?.payload?.template_type).toBe('button');
     });
 
-    it('deve formatar botoes como "N. titulo" em texto numerado', async () => {
+    it('deve mapear botoes com URL como web_url e sem URL como postback', async () => {
       // Arrange
-      mockAxiosPost.mockResolvedValue({ data: { message_id: 'ig-btn-numbered' } });
+      const urlButtons: ButtonPayload[] = [
+        { id: 'btn1', title: 'Site', url: 'https://example.com' },
+        { id: 'btn2', title: 'Menu' },
+      ];
+      mockAxiosPost.mockResolvedValue({ data: { message_id: 'ig-btn-mixed' } });
 
       // Act
-      await adapter.sendButtons(tenantId, to, 'Escolha:', buttons);
+      await adapter.sendButtons(tenantId, to, 'Opcoes:', urlButtons);
 
       // Assert
-      const postedBody = mockAxiosPost.mock.calls[0]?.[1] as {
-        message?: { text?: string };
-      } | undefined;
-      const sentText = postedBody?.message?.text ?? '';
-      expect(sentText).toContain('1. Opcao 1');
-      expect(sentText).toContain('2. Opcao 2');
-      expect(sentText).toContain('3. Opcao 3');
+      const postedBody = mockAxiosPost.mock.calls[0]?.[1] as any;
+      const btns = postedBody?.message?.attachment?.payload?.buttons;
+      expect(btns[0].type).toBe('web_url');
+      expect(btns[0].url).toBe('https://example.com');
+      expect(btns[1].type).toBe('postback');
+      expect(btns[1].payload).toBe('btn2');
     });
 
-    it('deve incluir bodyText no inicio do texto degradado', async () => {
-      // Arrange
-      mockAxiosPost.mockResolvedValue({ data: { message_id: 'ig-btn-body' } });
+    it('deve fazer fallback para texto numerado quando Button Template falha', async () => {
+      // Arrange - primeiro call falha (Button Template), segundo sucede (sendText fallback)
+      mockAxiosPost
+        .mockRejectedValueOnce(new Error('Template not supported'))
+        .mockResolvedValueOnce({ data: { message_id: 'ig-fallback-text' } });
 
       // Act
-      await adapter.sendButtons(tenantId, to, 'Como posso te ajudar?', buttons);
+      const result = await adapter.sendButtons(tenantId, to, 'Escolha:', buttons);
 
-      // Assert - bodyText deve aparecer antes das opcoes
-      const postedBody = mockAxiosPost.mock.calls[0]?.[1] as {
-        message?: { text?: string };
-      } | undefined;
-      const sentText = postedBody?.message?.text ?? '';
-      expect(sentText).toMatch(/^Como posso te ajudar\?/);
+      // Assert - fallback para texto
+      expect(result.success).toBe(true);
+      expect(mockAxiosPost).toHaveBeenCalledTimes(2);
+      const fallbackBody = mockAxiosPost.mock.calls[1]?.[1] as { message?: { text?: string } } | undefined;
+      expect(fallbackBody?.message?.text).toContain('1. Opcao 1');
+      expect(fallbackBody?.message?.text).toContain('2. Opcao 2');
     });
 
-    it('deve retornar SendResult com success=true ao degradar botoes', async () => {
+    it('deve retornar SendResult com success=true', async () => {
       // Arrange
       mockAxiosPost.mockResolvedValue({ data: { message_id: 'ig-btn-success' } });
 
@@ -1651,7 +1658,7 @@ describe('InstagramAdapter', () => {
       expect(result.externalMessageId).toBe('ig-btn-success');
     });
 
-    it('deve ignorar headerText e footerText (Instagram nao suporta)', async () => {
+    it('deve aceitar headerText e footerText sem erro', async () => {
       // Arrange
       mockAxiosPost.mockResolvedValue({ data: { message_id: 'ig-btn-noheader' } });
 
@@ -1659,37 +1666,6 @@ describe('InstagramAdapter', () => {
       await expect(
         adapter.sendButtons(tenantId, to, 'Texto:', buttons, 'Header', 'Footer')
       ).resolves.toBeDefined();
-    });
-
-    it('deve funcionar corretamente com um unico botao', async () => {
-      // Arrange
-      const singleButton: ButtonPayload[] = [{ id: 'btn-single', title: 'Confirmar' }];
-      mockAxiosPost.mockResolvedValue({ data: { message_id: 'ig-single-btn' } });
-
-      // Act
-      const result = await adapter.sendButtons(tenantId, to, 'Confirme:', singleButton);
-
-      // Assert
-      expect(result.success).toBe(true);
-      const postedBody = mockAxiosPost.mock.calls[0]?.[1] as {
-        message?: { text?: string };
-      } | undefined;
-      expect(postedBody?.message?.text).toContain('1. Confirmar');
-    });
-
-    it('deve separar bodyText das opcoes com duas quebras de linha', async () => {
-      // Arrange
-      const singleButton: ButtonPayload[] = [{ id: 'b', title: 'Sim' }];
-      mockAxiosPost.mockResolvedValue({ data: { message_id: 'ig-newlines' } });
-
-      // Act
-      await adapter.sendButtons(tenantId, to, 'Deseja confirmar?', singleButton);
-
-      // Assert - formato: "bodyText\n\nN. titulo"
-      const postedBody = mockAxiosPost.mock.calls[0]?.[1] as {
-        message?: { text?: string };
-      } | undefined;
-      expect(postedBody?.message?.text).toBe('Deseja confirmar?\n\n1. Sim');
     });
   });
 

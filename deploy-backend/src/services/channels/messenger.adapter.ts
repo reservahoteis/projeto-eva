@@ -224,13 +224,66 @@ export class MessengerAdapter implements ChannelSendAdapter {
     }
   }
 
-  // Messenger NAO suporta listas nativas - sera degradado pelo router
-  // sendList nao implementado
+  /**
+   * Envia Generic Template (cards com imagem, titulo e botoes)
+   * Ideal para carousel degradado
+   */
+  async sendGenericTemplate(
+    tenantId: string,
+    to: string,
+    elements: Array<{
+      title: string;
+      subtitle?: string;
+      imageUrl?: string;
+      buttons?: ButtonPayload[];
+    }>
+  ): Promise<SendResult> {
+    const api = await this.getAxiosForTenant(tenantId);
 
-  // Messenger NAO suporta templates pre-aprovados
-  // sendTemplate nao implementado
+    try {
+      const response = await api.post('/me/messages', {
+        recipient: { id: to },
+        message: {
+          attachment: {
+            type: 'template',
+            payload: {
+              template_type: 'generic',
+              elements: elements.slice(0, 10).map((el) => ({
+                title: el.title.substring(0, 80),
+                subtitle: el.subtitle?.substring(0, 80),
+                image_url: el.imageUrl,
+                buttons: el.buttons?.slice(0, 3).map((btn) =>
+                  btn.url
+                    ? { type: 'web_url', title: btn.title.substring(0, 20), url: btn.url }
+                    : { type: 'postback', title: btn.title.substring(0, 20), payload: btn.id }
+                ),
+              })),
+            },
+          },
+        },
+      });
 
-  // markAsRead nao e necessario no Messenger
+      const result = {
+        externalMessageId: response.data.message_id || '',
+        success: true,
+      };
+
+      logger.info(
+        { tenantId, to, elementCount: elements.length, externalMessageId: result.externalMessageId },
+        '[MESSENGER SEND] sendGenericTemplate OK'
+      );
+
+      return result;
+    } catch (error: any) {
+      const msg = error?.message || 'Unknown';
+      const responseData = error?.response?.data;
+      logger.error(
+        { tenantId, to, elementCount: elements.length, error: msg, responseData },
+        '[MESSENGER SEND] sendGenericTemplate FAILED'
+      );
+      throw new InternalServerError(`Falha ao enviar Generic Template Messenger: ${msg}`);
+    }
+  }
 }
 
 export const messengerAdapter = new MessengerAdapter();

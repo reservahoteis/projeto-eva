@@ -3,7 +3,7 @@ import { Channel } from '@prisma/client';
 import { n8nAuthMiddleware } from '@/middlewares/n8n-auth.middleware';
 import { validate } from '@/middlewares/validate.middleware';
 import { whatsAppService } from '@/services/whatsapp.service';
-import { channelRouter } from '@/services/channels';
+import { channelRouter, instagramAdapter, messengerAdapter } from '@/services/channels';
 
 import { escalationService } from '@/services/escalation.service';
 import { messageService } from '@/services/message.service';
@@ -957,56 +957,102 @@ router.post('/send-carousel', validate(sendCarouselSchema), async (req: Request,
         buttonUrls?: (string | null)[];
       }
 
-      // Non-WhatsApp: degradar template carousel para sequencia de imagem + botoes
+      // Non-WhatsApp: usar Generic Template (cards com imagem + botao)
       if (channel !== 'WHATSAPP') {
-        const messageIds: string[] = [];
-
-        for (const card of cards as CarouselCard[]) {
-          // Enviar imagem do card
-          try {
-            const imgResult = await channelRouter.sendMedia(channel, req.tenantId!, normalizedPhone, {
-              type: 'image',
-              url: card.imageUrl,
-              caption: card.bodyParams?.join(' | ') || undefined,
-            });
-            messageIds.push(imgResult.externalMessageId);
-          } catch (imgErr) {
-            logger.warn({
-              tenantId: req.tenantId,
-              error: imgErr instanceof Error ? imgErr.message : 'Unknown',
-            }, 'Carousel template degraded: failed to send image, sending as text');
-          }
-
-          // Montar botoes com labels e URLs (quando fornecidos)
-          const bodyText = card.bodyParams?.join('\n') || template;
+        // Montar elements para Generic Template
+        const elements = (cards as CarouselCard[]).map((card) => {
+          const title = card.bodyParams?.[0] || template;
+          const subtitle = card.bodyParams?.slice(1).join(' | ') || undefined;
           const buttons = card.buttonPayloads.map((payload: string, i: number) => ({
             id: payload,
             title: card.buttonLabels?.[i] || payload.replace(/_/g, ' ').substring(0, 20),
             url: card.buttonUrls?.[i] || undefined,
           }));
 
-          const btnResult = await channelRouter.sendButtons(
-            channel, req.tenantId!, normalizedPhone, bodyText, buttons
-          );
-          messageIds.push(btnResult.externalMessageId);
-        }
-
-        logger.info({
-          tenantId: req.tenantId,
-          phone: normalizedPhone,
-          template,
-          cardsCount: cards.length,
-          channel,
-          mode: 'template-degraded',
-        }, 'N8N: Carousel template degraded to sequential messages');
-
-        return res.json({
-          success: true,
-          messageId: messageIds[0],
-          messageIds,
-          cardsCount: cards.length,
-          mode: 'template-degraded',
+          return { title, subtitle, imageUrl: card.imageUrl, buttons };
         });
+
+        try {
+          // Usar Generic Template nativo (Messenger/Instagram suportam)
+          const adapter = channel === 'INSTAGRAM' ? instagramAdapter : messengerAdapter;
+          const result = await adapter.sendGenericTemplate(req.tenantId!, normalizedPhone, elements);
+
+          // Salvar mensagem outbound
+          await messageService.saveOutboundMessage({
+            tenantId: req.tenantId!,
+            phoneNumber: normalizedPhone,
+            externalMessageId: result.externalMessageId,
+            type: 'INTERACTIVE',
+            content: `[Carousel: ${template}] ${cards.length} cards`,
+            metadata: {
+              templateType: 'carousel-generic',
+              templateName: template,
+              cardsCount: cards.length,
+              channel: channel.toLowerCase(),
+            },
+          });
+
+          logger.info({
+            tenantId: req.tenantId,
+            phone: normalizedPhone,
+            template,
+            cardsCount: cards.length,
+            channel,
+            mode: 'generic-template',
+          }, 'N8N: Carousel sent via Generic Template');
+
+          return res.json({
+            success: true,
+            messageId: result.externalMessageId,
+            cardsCount: cards.length,
+            mode: 'generic-template',
+          });
+        } catch (genericErr) {
+          // Fallback: sequencia de imagem + botoes (degradacao anterior)
+          logger.warn({
+            tenantId: req.tenantId,
+            error: genericErr instanceof Error ? genericErr.message : 'Unknown',
+            channel,
+          }, 'N8N: Generic Template failed, falling back to sequential messages');
+
+          const messageIds: string[] = [];
+
+          for (const card of cards as CarouselCard[]) {
+            try {
+              const imgResult = await channelRouter.sendMedia(channel, req.tenantId!, normalizedPhone, {
+                type: 'image',
+                url: card.imageUrl,
+                caption: card.bodyParams?.join(' | ') || undefined,
+              });
+              messageIds.push(imgResult.externalMessageId);
+            } catch (imgErr) {
+              logger.warn({
+                tenantId: req.tenantId,
+                error: imgErr instanceof Error ? imgErr.message : 'Unknown',
+              }, 'Carousel degraded: failed to send image');
+            }
+
+            const bodyText = card.bodyParams?.join('\n') || template;
+            const buttons = card.buttonPayloads.map((payload: string, i: number) => ({
+              id: payload,
+              title: card.buttonLabels?.[i] || payload.replace(/_/g, ' ').substring(0, 20),
+              url: card.buttonUrls?.[i] || undefined,
+            }));
+
+            const btnResult = await channelRouter.sendButtons(
+              channel, req.tenantId!, normalizedPhone, bodyText, buttons
+            );
+            messageIds.push(btnResult.externalMessageId);
+          }
+
+          return res.json({
+            success: true,
+            messageId: messageIds[0],
+            messageIds,
+            cardsCount: cards.length,
+            mode: 'template-degraded',
+          });
+        }
       }
 
       // WhatsApp: carousel template nativo
@@ -1082,35 +1128,67 @@ router.post('/send-carousel', validate(sendCarouselSchema), async (req: Request,
     interface InteractiveBtn { id?: string; buttonId?: string; label?: string; title?: string; text?: string; type?: string; url?: string }
     interface InteractiveCard { text: string; image?: string; buttons: InteractiveBtn[] }
 
-    // Para non-WhatsApp, enviar como sequencia de texto+botoes via channelRouter
+    // Para non-WhatsApp, usar Generic Template para cards reais
     if (channel !== 'WHATSAPP') {
       const messageIds: string[] = [];
 
+      // Enviar mensagem intro se existir
       if (message) {
         const introResult = await channelRouter.sendText(channel, req.tenantId!, normalizedPhone, message);
         messageIds.push(introResult.externalMessageId);
       }
 
-      for (const card of carousel as InteractiveCard[]) {
-        const cardText = card.image ? `${card.text}\n${card.image}` : card.text;
-        const cardButtons = card.buttons.map((btn) => ({
-          id: btn.id || btn.buttonId || '',
-          title: btn.label || btn.title || btn.text || '',
+      try {
+        // Montar elements para Generic Template
+        const elements = (carousel as InteractiveCard[]).map((card) => ({
+          title: card.text.substring(0, 80),
+          imageUrl: card.image,
+          buttons: card.buttons.map((btn) => ({
+            id: btn.id || btn.buttonId || '',
+            title: (btn.label || btn.title || btn.text || '').substring(0, 20),
+            url: btn.url,
+          })),
         }));
 
-        const cardResult = await channelRouter.sendButtons(
-          channel, req.tenantId!, normalizedPhone, cardText, cardButtons
-        );
-        messageIds.push(cardResult.externalMessageId);
-      }
+        const adapter = channel === 'INSTAGRAM' ? instagramAdapter : messengerAdapter;
+        const result = await adapter.sendGenericTemplate(req.tenantId!, normalizedPhone, elements);
+        messageIds.push(result.externalMessageId);
 
-      return res.json({
-        success: true,
-        messageId: messageIds[0],
-        messageIds,
-        cardsCount: carousel.length,
-        mode: 'interactive-degraded',
-      });
+        return res.json({
+          success: true,
+          messageId: messageIds[0],
+          messageIds,
+          cardsCount: carousel.length,
+          mode: 'generic-template',
+        });
+      } catch (genericErr) {
+        // Fallback: sequencia de botoes
+        logger.warn({
+          tenantId: req.tenantId,
+          error: genericErr instanceof Error ? genericErr.message : 'Unknown',
+        }, 'N8N: Generic Template carousel failed, falling back');
+
+        for (const card of carousel as InteractiveCard[]) {
+          const cardText = card.image ? `${card.text}\n${card.image}` : card.text;
+          const cardButtons = card.buttons.map((btn) => ({
+            id: btn.id || btn.buttonId || '',
+            title: btn.label || btn.title || btn.text || '',
+          }));
+
+          const cardResult = await channelRouter.sendButtons(
+            channel, req.tenantId!, normalizedPhone, cardText, cardButtons
+          );
+          messageIds.push(cardResult.externalMessageId);
+        }
+
+        return res.json({
+          success: true,
+          messageId: messageIds[0],
+          messageIds,
+          cardsCount: carousel.length,
+          mode: 'interactive-degraded',
+        });
+      }
     }
 
     // WhatsApp: carousel interativo nativo
