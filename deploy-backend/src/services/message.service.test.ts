@@ -570,7 +570,17 @@ describe('MessageService', () => {
 
       expect(prismaMock.message.update).toHaveBeenCalledWith({
         where: { id: 'msg-123' },
-        data: { status: 'FAILED' },
+        data: {
+          status: 'FAILED',
+          metadata: {
+            delivery: {
+              error: {
+                code: 'SEND_FAILED',
+                message: 'WhatsApp API error',
+              },
+            },
+          },
+        },
       });
     });
 

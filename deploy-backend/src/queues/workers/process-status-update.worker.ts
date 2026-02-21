@@ -128,19 +128,35 @@ export async function processStatusUpdate(job: Job<ProcessStatusJobData>): Promi
     }
 
     // 7. ATUALIZAR MENSAGEM
+    const existingMetadata = (message as any).metadata || {};
+    const updatedMetadata: any = {
+      ...existingMetadata,
+      statusUpdates: [
+        ...(existingMetadata.statusUpdates || []),
+        statusMetadata,
+      ],
+    };
+
+    // Se FAILED, salvar erro em delivery.error para o frontend exibir no tooltip
+    if (mappedStatus === 'FAILED' && statusMetadata.errors?.length > 0) {
+      const firstError = statusMetadata.errors[0];
+      updatedMetadata.delivery = {
+        ...(existingMetadata.delivery || {}),
+        error: {
+          code: String(firstError.code),
+          message: firstError.message || firstError.title || 'Falha na entrega',
+          details: firstError.details || undefined,
+        },
+      };
+    }
+
     await prisma.message.update({
       where: {
         id: message.id,
       },
       data: {
         status: mappedStatus,
-        metadata: {
-          ...(message as any).metadata, // Manter metadata existente
-          statusUpdates: [
-            ...((message as any).metadata?.statusUpdates || []),
-            statusMetadata,
-          ],
-        },
+        metadata: updatedMetadata,
       },
     });
 

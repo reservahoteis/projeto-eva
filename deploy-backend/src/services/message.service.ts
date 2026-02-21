@@ -131,10 +131,21 @@ export class MessageService {
         },
       });
     } catch (error) {
-      // Marcar como FAILED
+      // Marcar como FAILED com detalhes do erro no metadata
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
       await prisma.message.update({
         where: { id: message.id },
-        data: { status: 'FAILED' },
+        data: {
+          status: 'FAILED',
+          metadata: {
+            delivery: {
+              error: {
+                code: 'SEND_FAILED',
+                message: errorMessage,
+              },
+            },
+          },
+        },
       });
 
       logger.error({ error, messageId: message.id }, 'Failed to send message to WhatsApp');
@@ -301,7 +312,11 @@ export class MessageService {
   /**
    * Atualizar status de mensagem (via webhook status update)
    */
-  async updateMessageStatus(externalMessageId: string, status: 'SENT' | 'DELIVERED' | 'READ' | 'FAILED') {
+  async updateMessageStatus(
+    externalMessageId: string,
+    status: 'SENT' | 'DELIVERED' | 'READ' | 'FAILED',
+    errorInfo?: { code: string; message: string; details?: any }
+  ) {
     const message = await prisma.message.findUnique({
       where: { externalMessageId },
     });
@@ -311,9 +326,23 @@ export class MessageService {
       return;
     }
 
+    const updateData: any = { status };
+
+    // Se FAILED com info de erro, salvar no metadata para tooltip do frontend
+    if (status === 'FAILED' && errorInfo) {
+      const existingMetadata = (message.metadata as any) || {};
+      updateData.metadata = {
+        ...existingMetadata,
+        delivery: {
+          ...(existingMetadata.delivery || {}),
+          error: errorInfo,
+        },
+      };
+    }
+
     await prisma.message.update({
       where: { externalMessageId },
-      data: { status },
+      data: updateData,
     });
 
     logger.debug({ externalMessageId, status }, 'Message status updated');
