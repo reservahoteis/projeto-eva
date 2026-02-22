@@ -144,7 +144,8 @@ class EvaOrchestrator {
 
       if (lowerContent === '##memoria##') {
         await clearMemory(params.conversationId);
-        await this.sendAndSave(params, channelUpper, 'Memoria limpa! Como posso ajudar?', startTime);
+        await this.sendAndSave(params, channelUpper, 'Memoria limpa!', startTime);
+        await this.sendWelcomeAndUnitMenu(params, channelUpper, startTime);
         return;
       }
 

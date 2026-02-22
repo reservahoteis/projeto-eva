@@ -169,9 +169,9 @@ describe('EVA Memory Service', () => {
       expect(store['eva:memory:conv-4']).toBeUndefined();
     });
 
-    it('should call redis.del with correct key', async () => {
+    it('should call redis.del with both memory and unit keys', async () => {
       await clearMemory('conv-5');
-      expect(mockedRedis.redis.del).toHaveBeenCalledWith('eva:memory:conv-5');
+      expect(mockedRedis.redis.del).toHaveBeenCalledWith('eva:memory:conv-5', 'eva:unit:conv-5');
     });
   });
 });

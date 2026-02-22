@@ -85,12 +85,12 @@ export async function addMessage(
 }
 
 /**
- * Clears all memory for a conversation.
+ * Clears all memory for a conversation (chat history + selected unit).
  */
 export async function clearMemory(conversationId: string): Promise<void> {
   try {
-    await redis.del(memoryKey(conversationId));
-    logger.info({ conversationId }, '[EVA MEMORY] Memory cleared');
+    await redis.del(memoryKey(conversationId), unitKey(conversationId));
+    logger.info({ conversationId }, '[EVA MEMORY] Memory cleared (history + unit)');
   } catch (err) {
     logger.warn(
       { conversationId, err: err instanceof Error ? err.message : 'Unknown' },
