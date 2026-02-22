@@ -55,6 +55,80 @@ export async function getConversationHistory(
 }
 
 /**
+ * Batch fetch: gets conversation history + selected unit in a SINGLE Redis pipeline.
+ * Reduces 2 round-trips to 1 (~10-15ms saved per message).
+ */
+export async function getHistoryAndUnit(
+  conversationId: string,
+  maxMessages: number = EVA_CONFIG.MEMORY_MAX_MESSAGES
+): Promise<{ history: ChatMessage[]; unit: string | null }> {
+  try {
+    const pipeline = redis.pipeline();
+    pipeline.lrange(memoryKey(conversationId), -maxMessages, -1);
+    pipeline.get(unitKey(conversationId));
+    const results = await pipeline.exec();
+
+    // Pipeline returns [[err, result], [err, result]]
+    const historyRaw = (results?.[0]?.[1] as string[]) || [];
+    const unitRaw = (results?.[1]?.[1] as string) || null;
+
+    const history = historyRaw.map((item) => {
+      try {
+        return JSON.parse(item) as ChatMessage;
+      } catch {
+        return { role: 'user' as const, content: item };
+      }
+    });
+
+    return { history, unit: unitRaw };
+  } catch (err) {
+    logger.warn(
+      { conversationId, err: err instanceof Error ? err.message : 'Unknown' },
+      '[EVA MEMORY] Failed to batch get history+unit, returning empty'
+    );
+    return { history: [], unit: null };
+  }
+}
+
+/**
+ * Adds a message and returns the updated history in a SINGLE pipeline + fetch.
+ * Combines addMessage + getConversationHistory into 1 Redis pipeline.
+ */
+export async function addMessageAndGetHistory(
+  conversationId: string,
+  role: 'user' | 'assistant',
+  content: string,
+  maxMessages: number = EVA_CONFIG.MEMORY_MAX_MESSAGES
+): Promise<ChatMessage[]> {
+  try {
+    const key = memoryKey(conversationId);
+    const entry = JSON.stringify({ role, content });
+
+    const pipeline = redis.pipeline();
+    pipeline.rpush(key, entry);
+    pipeline.ltrim(key, -maxMessages, -1);
+    pipeline.expire(key, EVA_CONFIG.MEMORY_TTL_SECONDS);
+    pipeline.lrange(key, -maxMessages, -1);
+    const results = await pipeline.exec();
+
+    const historyRaw = (results?.[3]?.[1] as string[]) || [];
+    return historyRaw.map((item) => {
+      try {
+        return JSON.parse(item) as ChatMessage;
+      } catch {
+        return { role: 'user' as const, content: item };
+      }
+    });
+  } catch (err) {
+    logger.warn(
+      { conversationId, role, err: err instanceof Error ? err.message : 'Unknown' },
+      '[EVA MEMORY] Failed to add+get (non-critical)'
+    );
+    return [];
+  }
+}
+
+/**
  * Adds a message to the conversation memory.
  * Trims to sliding window size and refreshes TTL.
  */

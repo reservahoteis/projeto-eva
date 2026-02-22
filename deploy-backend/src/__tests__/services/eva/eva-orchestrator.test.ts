@@ -33,9 +33,11 @@ const mockSendText = jest.fn();
 const mockSendList = jest.fn();
 const mockSendQuickReplies = jest.fn();
 const mockAddMessage = jest.fn();
+const mockAddMessageAndGetHistory = jest.fn();
 const mockClearMemory = jest.fn();
 const mockClearAllMemory = jest.fn();
 const mockGetHistory = jest.fn();
+const mockGetHistoryAndUnit = jest.fn();
 const mockSetUnit = jest.fn();
 const mockGetUnit = jest.fn();
 const mockEmitEscalation = jest.fn();
@@ -94,10 +96,12 @@ jest.mock('@/config/socket', () => ({
 jest.mock('@/services/eva/memory/memory.service', () => ({
   getConversationHistory: (...args: unknown[]) => mockGetHistory(...args),
   addMessage: (...args: unknown[]) => mockAddMessage(...args),
+  addMessageAndGetHistory: (...args: unknown[]) => mockAddMessageAndGetHistory(...args),
   clearMemory: (...args: unknown[]) => mockClearMemory(...args),
   clearAllMemory: (...args: unknown[]) => mockClearAllMemory(...args),
   setUnit: (...args: unknown[]) => mockSetUnit(...args),
   getUnit: (...args: unknown[]) => mockGetUnit(...args),
+  getHistoryAndUnit: (...args: unknown[]) => mockGetHistoryAndUnit(...args),
 }));
 
 // Mock KB database
@@ -182,9 +186,11 @@ function setupMocks() {
 
   // Memory
   mockAddMessage.mockResolvedValue(undefined);
+  mockAddMessageAndGetHistory.mockResolvedValue([]);
   mockClearMemory.mockResolvedValue(undefined);
   mockClearAllMemory.mockResolvedValue(undefined);
   mockGetHistory.mockResolvedValue([]);
+  mockGetHistoryAndUnit.mockResolvedValue({ history: [], unit: null });
   mockSetUnit.mockResolvedValue(undefined);
   mockGetUnit.mockResolvedValue(null);
 
@@ -327,11 +333,13 @@ describe('EVA Orchestrator', () => {
     it('should detect unit from conversation history', async () => {
       mockCreate.mockReset();
       mockOpenAIResponse('Os quartos de Camburi sao otimos!');
-      mockGetUnit.mockResolvedValue(null);
-      mockGetHistory.mockResolvedValue([
-        { role: 'user', content: 'Gostaria de saber sobre Camburi' },
-        { role: 'assistant', content: 'Claro! Camburi e uma otima unidade.' },
-      ]);
+      mockGetHistoryAndUnit.mockResolvedValue({
+        history: [
+          { role: 'user', content: 'Gostaria de saber sobre Camburi' },
+          { role: 'assistant', content: 'Claro! Camburi e uma otima unidade.' },
+        ],
+        unit: null,
+      });
 
       const params = createParams({ content: 'Quais quartos tem?' });
       await evaOrchestrator.processMessage(params);
@@ -347,7 +355,7 @@ describe('EVA Orchestrator', () => {
     it('should detect unit from current message', async () => {
       mockCreate.mockReset();
       mockOpenAIResponse('Ilhabela e incrivel!');
-      mockGetUnit.mockResolvedValue(null);
+      mockGetHistoryAndUnit.mockResolvedValue({ history: [], unit: null });
 
       const params = createParams({ content: 'Quero saber sobre Ilhabela' });
       await evaOrchestrator.processMessage(params);
@@ -358,7 +366,7 @@ describe('EVA Orchestrator', () => {
     it('should use Redis-cached unit if available', async () => {
       mockCreate.mockReset();
       mockOpenAIResponse('Campos e lindo!');
-      mockGetUnit.mockResolvedValue('CAMPOS');
+      mockGetHistoryAndUnit.mockResolvedValue({ history: [], unit: 'CAMPOS' });
 
       const params = createParams({ content: 'Quais quartos tem?' });
       await evaOrchestrator.processMessage(params);
@@ -373,7 +381,7 @@ describe('EVA Orchestrator', () => {
     it('should pass contactName to system prompt', async () => {
       mockCreate.mockReset();
       mockOpenAIResponse('Ola Joao!');
-      mockGetUnit.mockResolvedValue('ILHABELA');
+      mockGetHistoryAndUnit.mockResolvedValue({ history: [], unit: 'ILHABELA' });
 
       const params = createParams({ contactName: 'Joao', content: 'Oi' });
       await evaOrchestrator.processMessage(params);
@@ -386,8 +394,7 @@ describe('EVA Orchestrator', () => {
 
   describe('processMessage — no unit → welcome menu', () => {
     it('should send welcome + unit selection when no unit detected', async () => {
-      mockGetUnit.mockResolvedValue(null);
-      mockGetHistory.mockResolvedValue([]);
+      mockGetHistoryAndUnit.mockResolvedValue({ history: [], unit: null });
 
       const params = createParams({ content: 'Ola' });
       await evaOrchestrator.processMessage(params);
@@ -419,8 +426,7 @@ describe('EVA Orchestrator', () => {
     });
 
     it('should personalize welcome when contactName is available', async () => {
-      mockGetUnit.mockResolvedValue(null);
-      mockGetHistory.mockResolvedValue([]);
+      mockGetHistoryAndUnit.mockResolvedValue({ history: [], unit: null });
 
       const params = createParams({ contactName: 'Maria', content: 'Oi' });
       await evaOrchestrator.processMessage(params);
@@ -560,7 +566,8 @@ describe('EVA Orchestrator', () => {
     it('should handle orcar_reserva postback → fall through to OpenAI', async () => {
       mockCreate.mockReset();
       mockOpenAIResponse('Vou te ajudar a orcar! Quais datas voce tem em mente?');
-      mockGetUnit.mockResolvedValue('CAMPOS');
+      mockGetUnit.mockResolvedValue('CAMPOS'); // handler uses getUnit directly
+      mockGetHistoryAndUnit.mockResolvedValue({ history: [], unit: 'CAMPOS' });
 
       const params = createParams({
         content: 'Quero Orcar',
@@ -569,8 +576,10 @@ describe('EVA Orchestrator', () => {
 
       await evaOrchestrator.processMessage(params);
 
-      // Should add reservation intent to memory
+      // Handler saves original intent to memory
       expect(mockAddMessage).toHaveBeenCalledWith('conv-1', 'user', 'Quero orcar uma reserva');
+      // Main pipeline saves override to memory + gets history
+      expect(mockAddMessageAndGetHistory).toHaveBeenCalledWith('conv-1', 'user', 'Quero orcar uma reserva, me mostre os quartos disponiveis');
 
       // Should call OpenAI (falls through)
       expect(mockCreate).toHaveBeenCalled();
@@ -579,7 +588,7 @@ describe('EVA Orchestrator', () => {
     it('should handle tenho_reserva postback → fall through to OpenAI', async () => {
       mockCreate.mockReset();
       mockOpenAIResponse('Entendi! Qual e o numero da sua reserva?');
-      mockGetUnit.mockResolvedValue('ILHABELA');
+      mockGetHistoryAndUnit.mockResolvedValue({ history: [], unit: 'ILHABELA' });
 
       const params = createParams({
         content: 'Ja Tenho Reserva',
@@ -588,8 +597,10 @@ describe('EVA Orchestrator', () => {
 
       await evaOrchestrator.processMessage(params);
 
-      // Should add reservation intent to memory
+      // Handler saves original intent to memory
       expect(mockAddMessage).toHaveBeenCalledWith('conv-1', 'user', 'Ja tenho uma reserva');
+      // Main pipeline saves override to memory + gets history
+      expect(mockAddMessageAndGetHistory).toHaveBeenCalledWith('conv-1', 'user', 'Ja tenho uma reserva e preciso de ajuda');
 
       // Should call OpenAI (falls through)
       expect(mockCreate).toHaveBeenCalled();
@@ -645,7 +656,7 @@ describe('EVA Orchestrator', () => {
     });
 
     it('should handle FAQ category postback (cat_checkin)', async () => {
-      mockGetUnit.mockResolvedValue('ILHABELA');
+      mockGetUnit.mockResolvedValue('ILHABELA'); // FAQ path uses getUnit directly
       mockKBQueryRawUnsafe.mockResolvedValue([
         { Pergunta: 'Horario de check-in?', Resposta: 'Check-in a partir das 15h.' },
       ]);
@@ -675,7 +686,7 @@ describe('EVA Orchestrator', () => {
     });
 
     it('should handle FAQ category without unit → send unit selection', async () => {
-      mockGetUnit.mockResolvedValue(null);
+      mockGetUnit.mockResolvedValue(null); // FAQ uses getUnit directly
 
       const params = createParams({
         content: 'Check-in e Check-out',
@@ -719,13 +730,13 @@ describe('EVA Orchestrator', () => {
     it('should process text and respond via OpenAI with quick replies', async () => {
       mockCreate.mockReset();
       mockOpenAIResponse('Os quartos em Ilhabela sao incriveis!');
-      mockGetUnit.mockResolvedValue('ILHABELA');
+      mockGetHistoryAndUnit.mockResolvedValue({ history: [], unit: 'ILHABELA' });
 
       const params = createParams({ content: 'Quero saber sobre quartos' });
       await evaOrchestrator.processMessage(params);
 
-      // Should save user message to memory
-      expect(mockAddMessage).toHaveBeenCalledWith('conv-1', 'user', 'Quero saber sobre quartos');
+      // Should save user message to memory (pipeline: addMessageAndGetHistory)
+      expect(mockAddMessageAndGetHistory).toHaveBeenCalledWith('conv-1', 'user', 'Quero saber sobre quartos');
 
       // Should call OpenAI
       expect(mockCreate).toHaveBeenCalled();
@@ -766,7 +777,7 @@ describe('EVA Orchestrator', () => {
     it('should send carousel when AI returns #CARROSSEL-GERAL tag', async () => {
       mockCreate.mockReset();
       mockOpenAIResponse('Veja as opcoes de quartos disponiveis: | #CARROSSEL-GERAL');
-      mockGetUnit.mockResolvedValue('ILHABELA');
+      mockGetHistoryAndUnit.mockResolvedValue({ history: [], unit: 'ILHABELA' });
       mockKBQueryRawUnsafe.mockResolvedValue([
         { Tipo: 'Suite Praia', Categoria: 'Luxo', Descricao: 'Vista pro mar', linkImage: 'https://img.example.com/praia.jpg' },
       ]);
@@ -795,7 +806,7 @@ describe('EVA Orchestrator', () => {
     it('should send individual carousel when AI returns #CARROSSEL-INDIVIDUAL', async () => {
       mockCreate.mockReset();
       mockOpenAIResponse('Essas suites tem varanda: | #CARROSSEL-INDIVIDUAL Suite Master, Suite Praia');
-      mockGetUnit.mockResolvedValue('CAMBURI');
+      mockGetHistoryAndUnit.mockResolvedValue({ history: [], unit: 'CAMBURI' });
       mockKBQueryRawUnsafe.mockResolvedValue([
         { Tipo: 'Suite Master', Categoria: 'Suite Master', Descricao: 'Com varanda', linkImage: 'https://img.example.com/master.jpg' },
       ]);
@@ -816,7 +827,7 @@ describe('EVA Orchestrator', () => {
     it('should send fallback message when OpenAI throws but NOT lock conversation', async () => {
       mockCreate.mockReset();
       mockCreate.mockRejectedValueOnce(new Error('API timeout'));
-      mockGetUnit.mockResolvedValue('ILHABELA');
+      mockGetHistoryAndUnit.mockResolvedValue({ history: [], unit: 'ILHABELA' });
 
       const params = createParams({ content: 'Quero reservar' });
       await evaOrchestrator.processMessage(params);
@@ -845,7 +856,7 @@ describe('EVA Orchestrator', () => {
       mockCreate.mockReset();
       // Simulate OpenAI hanging forever
       mockCreate.mockImplementation(() => new Promise(() => { /* never resolves */ }));
-      mockGetUnit.mockResolvedValue('ILHABELA');
+      mockGetHistoryAndUnit.mockResolvedValue({ history: [], unit: 'ILHABELA' });
 
       const params = createParams({ content: 'Quero reservar' });
       await evaOrchestrator.processMessage(params);
@@ -860,7 +871,7 @@ describe('EVA Orchestrator', () => {
 
   describe('processMessage — CRIT-1 allowlist validation', () => {
     it('should reject unknown FAQ category IDs', async () => {
-      mockGetUnit.mockResolvedValue('ILHABELA');
+      mockGetUnit.mockResolvedValue('ILHABELA'); // FAQ uses getUnit directly
 
       const params = createParams({
         content: 'Hack attempt',
@@ -882,7 +893,7 @@ describe('EVA Orchestrator', () => {
 
   describe('processMessage — edge cases', () => {
     it('should redirect orcar_reserva to unit selection when no unit set', async () => {
-      mockGetUnit.mockResolvedValue(null);
+      mockGetHistoryAndUnit.mockResolvedValue({ history: [], unit: null });
 
       const params = createParams({
         content: 'Quero Orcar',
@@ -912,7 +923,7 @@ describe('EVA Orchestrator', () => {
     it('should handle empty carousel results gracefully', async () => {
       mockCreate.mockReset();
       mockOpenAIResponse('Aqui estao os quartos: | #CARROSSEL-GERAL');
-      mockGetUnit.mockResolvedValue('CAMPOS');
+      mockGetHistoryAndUnit.mockResolvedValue({ history: [], unit: 'CAMPOS' });
       mockKBQueryRawUnsafe.mockResolvedValue([]); // Empty KB result
 
       const params = createParams({ content: 'Quero ver os quartos' });
@@ -931,8 +942,7 @@ describe('EVA Orchestrator', () => {
     it('should detect unit from alias in current message (campos_jordao)', async () => {
       mockCreate.mockReset();
       mockOpenAIResponse('Campos do Jordao e otimo!');
-      mockGetUnit.mockResolvedValue(null);
-      mockGetHistory.mockResolvedValue([]);
+      mockGetHistoryAndUnit.mockResolvedValue({ history: [], unit: null });
 
       const params = createParams({ content: 'Quero saber sobre campos do jordao' });
       await evaOrchestrator.processMessage(params);
@@ -948,7 +958,7 @@ describe('EVA Orchestrator', () => {
       const longParagraph = 'Lorem ipsum dolor sit amet. '.repeat(20); // ~560 chars
       const longResponse = `${longParagraph}\n\n${longParagraph}`;
       mockOpenAIResponse(longResponse);
-      mockGetUnit.mockResolvedValue('ILHABELA');
+      mockGetHistoryAndUnit.mockResolvedValue({ history: [], unit: 'ILHABELA' });
 
       const params = createParams({ content: 'Me fale tudo sobre o hotel' });
       await evaOrchestrator.processMessage(params);

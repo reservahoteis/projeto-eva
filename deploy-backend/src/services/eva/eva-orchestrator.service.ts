@@ -29,7 +29,7 @@ import {
 } from './config/prompts';
 import { VALID_HOTEL_UNITS, HOTEL_UNIT_ALIASES, UNIT_DISPLAY_NAMES } from './config/eva.constants';
 import { detectInjection, sanitizeOutput, stripPII } from './security/prompt-guard';
-import { getConversationHistory, addMessage, clearAllMemory, setUnit, getUnit } from './memory/memory.service';
+import { addMessage, addMessageAndGetHistory, clearAllMemory, setUnit, getUnit, getHistoryAndUnit } from './memory/memory.service';
 import { EVA_TOOLS } from './tools/tool-definitions';
 import { executeToolCall } from './tools/tool-handlers';
 import { getKBClient } from './config/kb-database';
@@ -167,9 +167,10 @@ class EvaOrchestrator {
         return;
       }
 
-      // 5. UNIT DETECTION (Redis first, then history scan)
-      let detectedUnit = await getUnit(params.conversationId);
-      let history = await getConversationHistory(params.conversationId);
+      // 5. UNIT DETECTION (single Redis pipeline: history + unit in 1 round-trip)
+      const batch = await getHistoryAndUnit(params.conversationId);
+      let detectedUnit = batch.unit;
+      let history = batch.history;
 
       if (!detectedUnit) {
         detectedUnit = this.detectUnitFromHistory(history, effectiveContent);
@@ -185,12 +186,11 @@ class EvaOrchestrator {
         return;
       }
 
-      // 7. ADD USER MESSAGE TO MEMORY (truncate + strip PII for OpenAI)
+      // 7. ADD USER MESSAGE + GET UPDATED HISTORY (single Redis pipeline)
       const contentForMemory = stripPII(effectiveContent.substring(0, 1000));
-      await addMessage(params.conversationId, 'user', contentForMemory);
+      history = await addMessageAndGetHistory(params.conversationId, 'user', contentForMemory);
 
-      // 8. BUILD MESSAGES ARRAY (re-fetch after addMessage so it includes the new user msg)
-      history = await getConversationHistory(params.conversationId);
+      // 8. BUILD MESSAGES ARRAY
       const systemPrompt = this.selectSystemPrompt(detectedUnit, params.contactName);
 
       const messages: ChatCompletionMessageParam[] = [
@@ -847,48 +847,52 @@ class EvaOrchestrator {
       text
     );
 
-    // 2. Save outbound message
-    const savedMsg = await prisma.message.create({
-      data: {
-        tenantId: params.tenantId,
-        conversationId: params.conversationId,
-        externalMessageId: sendResult.externalMessageId || null,
-        direction: 'OUTBOUND',
-        type: 'TEXT',
-        content: text,
-        metadata: { source: 'eva', channel: params.channel },
-        status: sendResult.success ? 'SENT' : 'FAILED',
-        timestamp: new Date(),
-      },
-    });
+    const now = new Date();
 
-    // 3. Update conversation lastMessageAt
-    await prisma.conversation.update({
-      where: { id: params.conversationId, tenantId: params.tenantId },
-      data: { lastMessageAt: savedMsg.timestamp },
-    });
-
-    // 4. Emit socket
-    try {
-      const io = getSocketIO();
-      io.to(`tenant:${params.tenantId}`).emit('message:new', {
-        conversationId: params.conversationId,
-        message: {
-          id: savedMsg.id,
+    // 2. Save message + update conversation IN PARALLEL (independent writes)
+    const [savedMsg] = await Promise.all([
+      prisma.message.create({
+        data: {
+          tenantId: params.tenantId,
           conversationId: params.conversationId,
+          externalMessageId: sendResult.externalMessageId || null,
           direction: 'OUTBOUND',
           type: 'TEXT',
           content: text,
+          metadata: { source: 'eva', channel: params.channel },
           status: sendResult.success ? 'SENT' : 'FAILED',
-          createdAt: savedMsg.createdAt,
+          timestamp: now,
         },
-      });
-    } catch (socketErr) {
-      logger.warn(
-        { conversationId: params.conversationId, err: socketErr instanceof Error ? socketErr.message : 'Unknown' },
-        '[EVA] Socket emit failed (non-critical)'
-      );
-    }
+      }),
+      prisma.conversation.update({
+        where: { id: params.conversationId, tenantId: params.tenantId },
+        data: { lastMessageAt: now },
+      }),
+    ]);
+
+    // 3. Emit socket (fire-and-forget — non-blocking)
+    setImmediate(() => {
+      try {
+        const io = getSocketIO();
+        io.to(`tenant:${params.tenantId}`).emit('message:new', {
+          conversationId: params.conversationId,
+          message: {
+            id: savedMsg.id,
+            conversationId: params.conversationId,
+            direction: 'OUTBOUND',
+            type: 'TEXT',
+            content: text,
+            status: sendResult.success ? 'SENT' : 'FAILED',
+            createdAt: savedMsg.createdAt,
+          },
+        });
+      } catch (socketErr) {
+        logger.warn(
+          { conversationId: params.conversationId, err: socketErr instanceof Error ? socketErr.message : 'Unknown' },
+          '[EVA] Socket emit failed (non-critical)'
+        );
+      }
+    });
 
     logger.info(
       {

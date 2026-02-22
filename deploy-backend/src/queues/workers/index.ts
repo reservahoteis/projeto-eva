@@ -39,13 +39,13 @@ export function registerWorkers(): void {
   whatsappMediaDownloadQueue.process(2, processMediaDownload); // 2 jobs concorrentes (I/O intensivo)
   logger.info('✅ Media download worker registered (concurrency: 2)');
 
-  // Worker: Processar mensagens Messenger
-  messengerIncomingMessageQueue.process(3, processMessengerMessage);
-  logger.info('✅ Messenger message worker registered (concurrency: 3)');
+  // Worker: Processar mensagens Messenger (I/O bound — OpenAI + Redis + DB)
+  messengerIncomingMessageQueue.process(10, processMessengerMessage);
+  logger.info('✅ Messenger message worker registered (concurrency: 10)');
 
-  // Worker: Processar mensagens Instagram
-  instagramIncomingMessageQueue.process(3, processInstagramMessage);
-  logger.info('✅ Instagram message worker registered (concurrency: 3)');
+  // Worker: Processar mensagens Instagram (I/O bound — EVA AI + Redis + DB)
+  instagramIncomingMessageQueue.process(10, processInstagramMessage);
+  logger.info('✅ Instagram message worker registered (concurrency: 10)');
 
   // Worker: Reativacao automatica de IA apos follow-up
   iaReactivationQueue.process(1, processIaReactivation); // 1 job por vez (nao e critico)

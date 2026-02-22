@@ -24,45 +24,36 @@ export async function processInstagramMessage(job: Job<ProcessInstagramMessageJo
   );
 
   try {
-    // 1. ENCONTRAR OU CRIAR CONTATO
-    let contact = await prisma.contact.findFirst({
+    // 1. ENCONTRAR OU CRIAR CONTATO (upsert: 1 query instead of find + conditional create)
+    const contact = await prisma.contact.upsert({
       where: {
+        tenantId_channel_externalId: {
+          tenantId,
+          channel: 'INSTAGRAM',
+          externalId: senderId,
+        },
+      },
+      update: {},
+      create: {
         tenantId,
         channel: 'INSTAGRAM',
         externalId: senderId,
+        name: null,
       },
       select: { id: true, name: true, phoneNumber: true, profilePictureUrl: true },
     });
 
-    if (!contact) {
-      contact = await prisma.contact.create({
-        data: {
+    // 2. ENCONTRAR OU CRIAR CONVERSA (parallel: active + closed in 1 round-trip)
+    const [activeConversation, recentClosed] = await Promise.all([
+      prisma.conversation.findFirst({
+        where: {
           tenantId,
-          channel: 'INSTAGRAM',
-          externalId: senderId,
-          name: null,
+          contactId: contact.id,
+          status: { in: ['BOT_HANDLING', 'OPEN', 'IN_PROGRESS', 'WAITING'] },
         },
-        select: { id: true, name: true, phoneNumber: true, profilePictureUrl: true },
-      });
-
-      logger.info({ tenantId, contactId: contact.id }, 'Created Instagram contact');
-    }
-
-    // 2. ENCONTRAR OU CRIAR CONVERSA (inclui CLOSED para smart reopen)
-    let conversation = await prisma.conversation.findFirst({
-      where: {
-        tenantId,
-        contactId: contact.id,
-        status: { in: ['BOT_HANDLING', 'OPEN', 'IN_PROGRESS', 'WAITING'] },
-      },
-      select: { id: true, status: true, iaLocked: true },
-    });
-
-    const isNewConversation = !conversation;
-
-    // Smart reopen: se nao achou ativa, verificar CLOSED recente (30min)
-    if (!conversation) {
-      const recentClosed = await prisma.conversation.findFirst({
+        select: { id: true, status: true, iaLocked: true },
+      }),
+      prisma.conversation.findFirst({
         where: {
           tenantId,
           contactId: contact.id,
@@ -73,20 +64,23 @@ export async function processInstagramMessage(job: Job<ProcessInstagramMessageJo
         },
         select: { id: true, status: true, iaLocked: true },
         orderBy: { lastMessageAt: 'desc' },
-      });
+      }),
+    ]);
 
-      if (recentClosed) {
-        // Reabrir conversa fechada recentemente
-        await prisma.conversation.update({
-          where: { id: recentClosed.id, tenantId },
-          data: { status: 'OPEN' },
-        });
-        conversation = { ...recentClosed, status: 'OPEN' };
-        logger.info(
-          { tenantId, conversationId: conversation.id },
-          '[INSTAGRAM WORKER] Reopened recently closed conversation'
-        );
-      }
+    let conversation = activeConversation;
+    const isNewConversation = !conversation;
+
+    // Smart reopen: se nao achou ativa, usar CLOSED recente
+    if (!conversation && recentClosed) {
+      await prisma.conversation.update({
+        where: { id: recentClosed.id, tenantId },
+        data: { status: 'OPEN' },
+      });
+      conversation = { ...recentClosed, status: 'OPEN' as const };
+      logger.info(
+        { tenantId, conversationId: conversation.id },
+        '[INSTAGRAM WORKER] Reopened recently closed conversation'
+      );
     }
 
     if (!conversation) {
@@ -148,64 +142,63 @@ export async function processInstagramMessage(job: Job<ProcessInstagramMessageJo
       '[INSTAGRAM WORKER] Conteudo normalizado'
     );
 
-    // 4. SALVAR MENSAGEM NO BANCO
-    const savedMessage = await prisma.message.create({
-      data: {
-        tenantId,
-        conversationId: conversation.id,
-        externalMessageId: message.mid,
-        direction: 'INBOUND',
-        type: messageType,
-        content,
-        metadata,
-        status: 'DELIVERED',
-        timestamp: new Date(),
-      },
-    });
+    // 4. SALVAR MENSAGEM + ATUALIZAR CONVERSA (parallel — independent writes)
+    const now = new Date();
+    const newStatus: ConversationStatus = conversation.status === 'CLOSED'
+      ? ConversationStatus.OPEN
+      : (conversation.status as ConversationStatus);
+
+    const [savedMessage] = await Promise.all([
+      prisma.message.create({
+        data: {
+          tenantId,
+          conversationId: conversation.id,
+          externalMessageId: message.mid,
+          direction: 'INBOUND',
+          type: messageType,
+          content,
+          metadata,
+          status: 'DELIVERED',
+          timestamp: now,
+        },
+      }),
+      prisma.conversation.update({
+        where: { id: conversation.id, tenantId },
+        data: {
+          lastMessageAt: now,
+          status: newStatus,
+        },
+      }),
+    ]);
 
     logger.info(
       { jobId: job.id, messageId: savedMessage.id, conversationId: conversation.id },
       '[INSTAGRAM WORKER] Mensagem salva no banco'
     );
 
-    // 5. ATUALIZAR CONVERSA (smart status: CLOSED -> OPEN)
-    const newStatus: ConversationStatus = conversation.status === 'CLOSED'
-      ? ConversationStatus.OPEN
-      : (conversation.status as ConversationStatus);
-
-    await prisma.conversation.update({
-      where: { id: conversation.id, tenantId },
-      data: {
-        lastMessageAt: savedMessage.timestamp,
-        status: newStatus,
-      },
-    });
-
-    // 6. EMITIR SOCKET (inbound message)
-    try {
-      const io = getSocketIO();
-      io.to(`tenant:${tenantId}`).emit('message:new', {
-        conversationId: conversation.id,
-        message: {
-          id: savedMessage.id,
+    // 6. EMITIR SOCKET (fire-and-forget — non-blocking)
+    setImmediate(() => {
+      try {
+        const io = getSocketIO();
+        io.to(`tenant:${tenantId}`).emit('message:new', {
           conversationId: conversation.id,
-          direction: 'INBOUND',
-          type: messageType,
-          content,
-          status: 'DELIVERED',
-          createdAt: savedMessage.createdAt,
-        },
-      });
-      logger.info(
-        { jobId: job.id, conversationId: conversation.id, room: `tenant:${tenantId}` },
-        '[INSTAGRAM WORKER] Socket emitido'
-      );
-    } catch (socketErr) {
-      logger.warn(
-        { jobId: job.id, error: socketErr instanceof Error ? socketErr.message : 'Unknown' },
-        '[INSTAGRAM WORKER] Socket emit falhou (nao critico)'
-      );
-    }
+          message: {
+            id: savedMessage.id,
+            conversationId: conversation.id,
+            direction: 'INBOUND',
+            type: messageType,
+            content,
+            status: 'DELIVERED',
+            createdAt: savedMessage.createdAt,
+          },
+        });
+      } catch (socketErr) {
+        logger.warn(
+          { jobId: job.id, error: socketErr instanceof Error ? socketErr.message : 'Unknown' },
+          '[INSTAGRAM WORKER] Socket emit falhou (nao critico)'
+        );
+      }
+    });
 
     // 7. PROCESSAR COM EVA AI (se IA nao bloqueada)
     if (!conversation.iaLocked) {
