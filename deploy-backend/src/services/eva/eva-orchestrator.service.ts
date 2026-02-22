@@ -29,7 +29,7 @@ import {
 } from './config/prompts';
 import { VALID_HOTEL_UNITS, HOTEL_UNIT_ALIASES, UNIT_DISPLAY_NAMES } from './config/eva.constants';
 import { detectInjection, sanitizeOutput, stripPII } from './security/prompt-guard';
-import { getConversationHistory, addMessage, clearMemory, setUnit, getUnit } from './memory/memory.service';
+import { getConversationHistory, addMessage, clearAllMemory, setUnit, getUnit } from './memory/memory.service';
 import { EVA_TOOLS } from './tools/tool-definitions';
 import { executeToolCall } from './tools/tool-handlers';
 import { getKBClient } from './config/kb-database';
@@ -143,7 +143,8 @@ class EvaOrchestrator {
       const lowerContent = effectiveContent.toLowerCase().trim();
 
       if (lowerContent === '##memoria##') {
-        await clearMemory(params.conversationId);
+        const kb = getKBClient();
+        await clearAllMemory(params.conversationId, params.senderId, kb);
         await this.sendAndSave(params, channelUpper, 'Memoria limpa!', startTime);
         await this.sendWelcomeAndUnitMenu(params, channelUpper, startTime);
         return;

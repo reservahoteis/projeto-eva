@@ -34,6 +34,7 @@ const mockSendList = jest.fn();
 const mockSendQuickReplies = jest.fn();
 const mockAddMessage = jest.fn();
 const mockClearMemory = jest.fn();
+const mockClearAllMemory = jest.fn();
 const mockGetHistory = jest.fn();
 const mockSetUnit = jest.fn();
 const mockGetUnit = jest.fn();
@@ -42,6 +43,7 @@ const mockEmitLLMCall = jest.fn();
 const mockHashPII = jest.fn();
 const mockGetSocketIO = jest.fn();
 const mockKBQueryRawUnsafe = jest.fn();
+const mockKBExecuteRawUnsafe = jest.fn();
 const mockSendGenericTemplate = jest.fn();
 
 // Mock OpenAI client
@@ -93,6 +95,7 @@ jest.mock('@/services/eva/memory/memory.service', () => ({
   getConversationHistory: (...args: unknown[]) => mockGetHistory(...args),
   addMessage: (...args: unknown[]) => mockAddMessage(...args),
   clearMemory: (...args: unknown[]) => mockClearMemory(...args),
+  clearAllMemory: (...args: unknown[]) => mockClearAllMemory(...args),
   setUnit: (...args: unknown[]) => mockSetUnit(...args),
   getUnit: (...args: unknown[]) => mockGetUnit(...args),
 }));
@@ -101,6 +104,7 @@ jest.mock('@/services/eva/memory/memory.service', () => ({
 jest.mock('@/services/eva/config/kb-database', () => ({
   getKBClient: jest.fn(() => ({
     $queryRawUnsafe: (...args: unknown[]) => mockKBQueryRawUnsafe(...args),
+    $executeRawUnsafe: (...args: unknown[]) => mockKBExecuteRawUnsafe(...args),
   })),
 }));
 
@@ -150,6 +154,7 @@ function setupMocks() {
   };
   mockedKB.getKBClient.mockReturnValue({
     $queryRawUnsafe: (...args: unknown[]) => mockKBQueryRawUnsafe(...args),
+    $executeRawUnsafe: (...args: unknown[]) => mockKBExecuteRawUnsafe(...args),
   });
 
   // Prisma
@@ -178,12 +183,14 @@ function setupMocks() {
   // Memory
   mockAddMessage.mockResolvedValue(undefined);
   mockClearMemory.mockResolvedValue(undefined);
+  mockClearAllMemory.mockResolvedValue(undefined);
   mockGetHistory.mockResolvedValue([]);
   mockSetUnit.mockResolvedValue(undefined);
   mockGetUnit.mockResolvedValue(null);
 
   // KB database
   mockKBQueryRawUnsafe.mockResolvedValue([]);
+  mockKBExecuteRawUnsafe.mockResolvedValue(0);
 
   // AI event bus
   mockHashPII.mockImplementation((v: string) => 'hashed_' + v);
@@ -227,16 +234,23 @@ describe('EVA Orchestrator', () => {
       expect(mockAddMessage).not.toHaveBeenCalled();
     });
 
-    it('should handle ##memoria## command', async () => {
+    it('should handle ##memoria## command — clears EVA + N8N legacy + DB', async () => {
       const params = createParams({ content: '##memoria##' });
 
       await evaOrchestrator.processMessage(params);
 
-      expect(mockClearMemory).toHaveBeenCalledWith('conv-1');
+      // Should call clearAllMemory with conversationId, senderId, and KB client
+      expect(mockClearAllMemory).toHaveBeenCalledWith(
+        'conv-1',
+        '12345',
+        expect.objectContaining({ $executeRawUnsafe: expect.any(Function) })
+      );
       expect(mockSendText).toHaveBeenCalledWith(
         'INSTAGRAM', 'tenant-1', '12345',
         expect.stringContaining('Memoria limpa')
       );
+      // Should also send welcome + unit menu for fresh start
+      expect(mockSendList).toHaveBeenCalled();
     });
 
     it('should handle cancelar command', async () => {

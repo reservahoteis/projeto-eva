@@ -103,6 +103,13 @@ export const REDIS_PREFIX = {
   EVA_UNIT: 'eva:unit:',     // eva:unit:{conversationId}
 };
 
+/** Prefixos Redis legados do N8N (para limpeza no ##memoria##) */
+export const N8N_LEGACY_REDIS = {
+  SUFFIX_MEMORY: 'marcioHotel',  // {phone}marcioHotel
+  PREFIX_ALT: '|MARCIO-',        // |MARCIO-{phone}
+  // Terceira chave: {phone} puro
+};
+
 /** Configuracoes da IA */
 export const EVA_CONFIG = {
   /** Modelo para agente comercial */

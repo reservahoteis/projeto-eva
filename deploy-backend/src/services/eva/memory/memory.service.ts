@@ -5,7 +5,7 @@
 
 import { redis } from '@/config/redis';
 import logger from '@/config/logger';
-import { REDIS_PREFIX, EVA_CONFIG } from '../config/eva.constants';
+import { REDIS_PREFIX, EVA_CONFIG, N8N_LEGACY_REDIS } from '../config/eva.constants';
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
@@ -95,6 +95,57 @@ export async function clearMemory(conversationId: string): Promise<void> {
     logger.warn(
       { conversationId, err: err instanceof Error ? err.message : 'Unknown' },
       '[EVA MEMORY] Failed to clear memory'
+    );
+  }
+}
+
+/**
+ * Full memory reset: clears EVA Redis keys + N8N legacy Redis keys + IA_SDR_CAMPOS row.
+ * Replicates the exact behavior of the N8N ##memoria## workflow.
+ *
+ * @param conversationId - EVA conversation ID (for eva:memory/eva:unit keys)
+ * @param senderId - Phone number or IGSID (for N8N legacy keys + DB cleanup)
+ * @param kbClient - Prisma client with access to IA_SDR_CAMPOS table
+ */
+export async function clearAllMemory(
+  conversationId: string,
+  senderId: string,
+  kbClient: { $executeRawUnsafe: (query: string, ...values: unknown[]) => Promise<number> }
+): Promise<void> {
+  // 1. Clear EVA Redis keys (memory + unit)
+  await clearMemory(conversationId);
+
+  // 2. Clear N8N legacy Redis keys (non-critical — may not exist)
+  try {
+    const legacyKeys = [
+      `${senderId}${N8N_LEGACY_REDIS.SUFFIX_MEMORY}`,  // {phone}marcioHotel
+      `${N8N_LEGACY_REDIS.PREFIX_ALT}${senderId}`,      // |MARCIO-{phone}
+      senderId,                                           // {phone}
+    ];
+    const deleted = await redis.del(...legacyKeys);
+    if (deleted > 0) {
+      logger.info({ conversationId, senderId, deleted }, '[EVA MEMORY] N8N legacy Redis keys cleared');
+    }
+  } catch (err) {
+    logger.warn(
+      { conversationId, senderId, err: err instanceof Error ? err.message : 'Unknown' },
+      '[EVA MEMORY] Failed to clear N8N legacy Redis keys (non-critical)'
+    );
+  }
+
+  // 3. Delete lead from IA_SDR_CAMPOS (non-critical — may not exist)
+  try {
+    const deletedRows = await kbClient.$executeRawUnsafe(
+      'DELETE FROM "IA_SDR_CAMPOS" WHERE "numero" = $1',
+      senderId
+    );
+    if (deletedRows > 0) {
+      logger.info({ conversationId, senderId, deletedRows }, '[EVA MEMORY] IA_SDR_CAMPOS lead deleted');
+    }
+  } catch (err) {
+    logger.warn(
+      { conversationId, senderId, err: err instanceof Error ? err.message : 'Unknown' },
+      '[EVA MEMORY] Failed to delete from IA_SDR_CAMPOS (non-critical — table may not exist)'
     );
   }
 }
