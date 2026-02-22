@@ -820,5 +820,49 @@ describe('EVA Orchestrator', () => {
         })
       );
     });
+
+    it('should trigger fallback when OpenAI exceeds PROCESSING_TIMEOUT_MS', async () => {
+      // Override timeout to 200ms for fast test execution
+      const { EVA_CONFIG } = jest.requireActual('@/services/eva/config/eva.constants') as
+        { EVA_CONFIG: { PROCESSING_TIMEOUT_MS: number } };
+      const originalTimeout = EVA_CONFIG.PROCESSING_TIMEOUT_MS;
+      EVA_CONFIG.PROCESSING_TIMEOUT_MS = 200;
+
+      mockCreate.mockReset();
+      // Simulate OpenAI hanging forever
+      mockCreate.mockImplementation(() => new Promise(() => { /* never resolves */ }));
+      mockGetUnit.mockResolvedValue('ILHABELA');
+
+      const params = createParams({ content: 'Quero reservar' });
+      await evaOrchestrator.processMessage(params);
+
+      // Should send fallback message (timeout triggered)
+      expect(mockSendText).toHaveBeenCalled();
+
+      // Restore original timeout
+      EVA_CONFIG.PROCESSING_TIMEOUT_MS = originalTimeout;
+    }, 15_000);
+  });
+
+  describe('processMessage — CRIT-1 allowlist validation', () => {
+    it('should reject unknown FAQ category IDs', async () => {
+      mockGetUnit.mockResolvedValue('ILHABELA');
+
+      const params = createParams({
+        content: 'Hack attempt',
+        metadata: { source: 'instagram', button: { id: 'cat_malicious_payload' } },
+      });
+
+      await evaOrchestrator.processMessage(params);
+
+      // Should NOT query KB with unvalidated input
+      expect(mockKBQueryRawUnsafe).not.toHaveBeenCalled();
+
+      // Should send rejection message
+      expect(mockSendText).toHaveBeenCalledWith(
+        'INSTAGRAM', 'tenant-1', '12345',
+        expect.stringContaining('nao reconhecida')
+      );
+    });
   });
 });

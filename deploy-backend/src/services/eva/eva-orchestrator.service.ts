@@ -107,17 +107,19 @@ class EvaOrchestrator {
     try {
       // 0. INTERCEPT INTERACTIVE CLICKS (postbacks / quick_replies)
       const buttonId = this.extractButtonId(params.metadata);
+      let effectiveContent = params.content;
 
       if (buttonId) {
-        const handled = await this.handleInteractiveClick(
+        const result = await this.handleInteractiveClick(
           buttonId, params, channelUpper, startTime, sessionId
         );
-        if (handled) return;
-        // If not handled (e.g. unknown payload), fall through to normal flow
+        if (result.handled) return;
+        // Use overridden content if provided (e.g. orcar_reserva, tenho_reserva)
+        if (result.contentOverride) effectiveContent = result.contentOverride;
       }
 
       // 1. PROMPT GUARD
-      if (detectInjection(params.content)) {
+      if (detectInjection(effectiveContent)) {
         logger.warn(
           { sessionId, conversationId: params.conversationId },
           '[EVA] Prompt injection blocked'
@@ -138,7 +140,7 @@ class EvaOrchestrator {
       }
 
       // 3. SPECIAL COMMANDS
-      const lowerContent = params.content.toLowerCase().trim();
+      const lowerContent = effectiveContent.toLowerCase().trim();
 
       if (lowerContent === '##memoria##') {
         await clearMemory(params.conversationId);
@@ -157,7 +159,7 @@ class EvaOrchestrator {
       }
 
       // 4. HUMAN REQUEST DETECTION
-      if (this.detectHumanRequest(params.content)) {
+      if (this.detectHumanRequest(effectiveContent)) {
         await this.handleEscalation(params, channelUpper, 'user_requested', startTime, sessionId);
         return;
       }
@@ -168,7 +170,7 @@ class EvaOrchestrator {
       if (!detectedUnit) {
         // Try detecting from message content + history
         const history = await getConversationHistory(params.conversationId);
-        detectedUnit = this.detectUnitFromHistory(history, params.content);
+        detectedUnit = this.detectUnitFromHistory(history, effectiveContent);
 
         if (detectedUnit) {
           await setUnit(params.conversationId, detectedUnit);
@@ -182,7 +184,7 @@ class EvaOrchestrator {
       }
 
       // 7. ADD USER MESSAGE TO MEMORY (truncate + strip PII for OpenAI)
-      const contentForMemory = stripPII(params.content.substring(0, 1000));
+      const contentForMemory = stripPII(effectiveContent.substring(0, 1000));
       await addMessage(params.conversationId, 'user', contentForMemory);
 
       // 8. BUILD MESSAGES ARRAY
@@ -264,7 +266,7 @@ class EvaOrchestrator {
 
   /**
    * Handle interactive clicks (postbacks / quick_replies).
-   * Returns true if the click was handled, false if unrecognized.
+   * Returns { handled, contentOverride } — never mutates params.
    */
   private async handleInteractiveClick(
     buttonId: string,
@@ -272,7 +274,7 @@ class EvaOrchestrator {
     channelUpper: ChannelUpperCase,
     startTime: number,
     sessionId: string
-  ): Promise<boolean> {
+  ): Promise<{ handled: boolean; contentOverride?: string }> {
     logger.info(
       { conversationId: params.conversationId, buttonId, channel: params.channel },
       '[EVA] Interactive click received'
@@ -281,7 +283,7 @@ class EvaOrchestrator {
     // MENU INICIAL → re-send welcome + unit list
     if (buttonId === 'menu_inicial') {
       await this.sendWelcomeAndUnitMenu(params, channelUpper, startTime);
-      return true;
+      return { handled: true };
     }
 
     // UNIT SELECTION (info_ilhabela, info_campos, etc.)
@@ -297,20 +299,20 @@ class EvaOrchestrator {
       await this.sendAndSave(params, channelUpper, confirmText, startTime);
       await this.sendMainMenu(params, channelUpper);
 
-      return true;
+      return { handled: true };
     }
 
     // FAQ CATEGORIES (cat_checkin, cat_acesso, etc.)
     if (buttonId.startsWith('cat_')) {
       await this.handleFaqCategory(params, channelUpper, buttonId, startTime, sessionId);
-      return true;
+      return { handled: true };
     }
 
     // DUVIDAS FREQUENTES → FAQ category menu
     if (buttonId === 'duvidas_frequentes') {
       await this.sendAndSave(params, channelUpper, 'Sobre qual assunto voce tem duvida?', startTime);
       await this.sendQuickReplies(params, channelUpper, 'Escolha o tema:', FAQ_CATEGORY_QUICK_REPLIES);
-      return true;
+      return { handled: true };
     }
 
     // JA ESTOU HOSPEDADO → ask for room number (same as N8N)
@@ -319,44 +321,42 @@ class EvaOrchestrator {
       const guestMsg = 'Para que eu possa ajuda-lo da melhor maneira, poderia me informar o numero da sua suite e qual e a sua duvida ou necessidade?\n\nEstou aqui para oferecer o suporte que voce precisar durante a sua estadia!';
       await this.sendAndSave(params, channelUpper, guestMsg, startTime);
       await addMessage(params.conversationId, 'assistant', guestMsg);
-      return true;
+      return { handled: true };
     }
 
-    // QUERO ORCAR → commercial flow (show rooms + availability)
+    // QUERO ORCAR → fall through to OpenAI with overridden content
     if (buttonId === 'orcar_reserva') {
       const unit = await getUnit(params.conversationId);
       if (unit) {
         await addMessage(params.conversationId, 'user', 'Quero orcar uma reserva');
-        params.content = 'Quero orcar uma reserva, me mostre os quartos disponiveis';
-        return false; // Fall through to OpenAI
+        return { handled: false, contentOverride: 'Quero orcar uma reserva, me mostre os quartos disponiveis' };
       }
       await this.sendWelcomeAndUnitMenu(params, channelUpper, startTime);
-      return true;
+      return { handled: true };
     }
 
-    // JA TENHO RESERVA → connect to attendant
+    // JA TENHO RESERVA → fall through to OpenAI with overridden content
     if (buttonId === 'tenho_reserva') {
       await addMessage(params.conversationId, 'user', 'Ja tenho uma reserva');
-      params.content = 'Ja tenho uma reserva e preciso de ajuda';
-      return false; // Fall through to OpenAI
+      return { handled: false, contentOverride: 'Ja tenho uma reserva e preciso de ajuda' };
     }
 
     // ALTERAR UNIDADE → back to unit selection
     if (buttonId === 'alterar_unidade') {
       await this.sendWelcomeAndUnitMenu(params, channelUpper, startTime);
-      return true;
+      return { handled: true };
     }
 
     // MENU PRINCIPAL → resend main menu (after AI responses)
     if (buttonId === 'menu_principal') {
       await this.sendMainMenu(params, channelUpper);
-      return true;
+      return { handled: true };
     }
 
     // FALAR HUMANO → escalation
     if (buttonId === 'falar_humano') {
       await this.handleEscalation(params, channelUpper, 'user_requested', startTime, sessionId);
-      return true;
+      return { handled: true };
     }
 
     // Unrecognized button — log and fall through
@@ -364,7 +364,7 @@ class EvaOrchestrator {
       { conversationId: params.conversationId, buttonId },
       '[EVA] Unrecognized interactive button, falling through to normal flow'
     );
-    return false;
+    return { handled: false };
   }
 
   // ============================================
@@ -453,11 +453,19 @@ class EvaOrchestrator {
       return;
     }
 
-    // Find category label
+    // Validate category against known allowlist (prevent SQL injection via crafted payload)
     const category = FAQ_CATEGORIES.find((c) => c.id === categoryId);
-    const categoryLabel = category?.title || categoryId.replace('cat_', '');
+    if (!category) {
+      logger.warn(
+        { conversationId: params.conversationId, categoryId },
+        '[EVA] Unknown FAQ category, ignoring'
+      );
+      await this.sendAndSave(params, channelUpper, 'Categoria nao reconhecida. Posso ajudar com outra coisa?', startTime);
+      return;
+    }
+    const categoryLabel = category.title;
 
-    // Query KB for FAQs
+    // Query KB for FAQs — catSearch is safe (validated above against FAQ_CATEGORIES allowlist)
     const kb = getKBClient();
     const catSearch = categoryId.replace('cat_', '');
 
@@ -497,6 +505,24 @@ class EvaOrchestrator {
    * Max iterations to prevent infinite tool loops.
    */
   private async callOpenAI(
+    messages: ChatCompletionMessageParam[],
+    params: EvaProcessParams,
+    sessionId: string
+  ): Promise<string | null> {
+    // Enforce global timeout (CRIT-3: prevents OpenAI from hanging forever)
+    return new Promise<string | null>((resolve, reject) => {
+      const timer = setTimeout(
+        () => reject(new Error('OpenAI timeout')),
+        EVA_CONFIG.PROCESSING_TIMEOUT_MS
+      );
+
+      this.callOpenAIInternal(messages, params, sessionId)
+        .then((result) => { clearTimeout(timer); resolve(result); })
+        .catch((err) => { clearTimeout(timer); reject(err); });
+    });
+  }
+
+  private async callOpenAIInternal(
     messages: ChatCompletionMessageParam[],
     params: EvaProcessParams,
     sessionId: string
