@@ -11,7 +11,7 @@ services:
     image: postgres:16-alpine
     container_name: crm-postgres
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     restart: always
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-crm_user}
@@ -89,6 +89,7 @@ services:
       INSTAGRAM_ACCOUNT_ID: ${INSTAGRAM_ACCOUNT_ID:-}
       # EVA AI Engine
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      KB_DATABASE_URL: ${KB_DATABASE_URL:-}
       # Media Storage
       MEDIA_STORAGE_PATH: /var/lib/whatsapp-crm/media
       MEDIA_BASE_URL: ${MEDIA_BASE_URL:-https://api.botreserva.com.br/api/media}

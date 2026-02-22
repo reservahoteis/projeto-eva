@@ -260,6 +260,51 @@ describe('EVA Orchestrator', () => {
     });
   });
 
+  describe('processMessage — unit detection', () => {
+    it('should detect unit from conversation history', async () => {
+      mockCreate.mockReset();
+      mockOpenAIResponse('Os quartos de Camburi sao otimos!');
+      // History contains a mention of Camburi
+      mockGetHistory.mockResolvedValue([
+        { role: 'user', content: 'Gostaria de saber sobre Camburi' },
+        { role: 'assistant', content: 'Claro! Camburi e uma otima unidade.' },
+      ]);
+
+      const params = createParams({ content: 'Quais quartos tem?' });
+      await evaOrchestrator.processMessage(params);
+
+      // Should call OpenAI with system prompt containing CAMBURI
+      expect(mockCreate).toHaveBeenCalled();
+      const callArgs = mockCreate.mock.calls[0][0];
+      const systemMsg = callArgs.messages[0];
+      expect(systemMsg.content).toContain('CAMBURI');
+    });
+
+    it('should detect unit from current message', async () => {
+      mockCreate.mockReset();
+      mockOpenAIResponse('Ilhabela e incrivel!');
+
+      const params = createParams({ content: 'Quero saber sobre Ilhabela' });
+      await evaOrchestrator.processMessage(params);
+
+      const callArgs = mockCreate.mock.calls[0][0];
+      const systemMsg = callArgs.messages[0];
+      expect(systemMsg.content).toContain('ILHABELA');
+    });
+
+    it('should pass contactName to system prompt', async () => {
+      mockCreate.mockReset();
+      mockOpenAIResponse('Ola Joao!');
+
+      const params = createParams({ contactName: 'Joao', content: 'Oi' });
+      await evaOrchestrator.processMessage(params);
+
+      const callArgs = mockCreate.mock.calls[0][0];
+      const systemMsg = callArgs.messages[0];
+      expect(systemMsg.content).toContain('Joao');
+    });
+  });
+
   describe('processMessage — normal AI flow', () => {
     it('should process text and respond via OpenAI', async () => {
       // Clear default response from beforeEach, set custom one

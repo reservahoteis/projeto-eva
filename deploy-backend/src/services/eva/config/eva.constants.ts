@@ -36,15 +36,17 @@ export const HOTEL_UNIT_ALIASES: Record<string, string> = {
   ilhabela: 'Ilhabela',
   campos_jordao: 'Campos do Jordao',
   camposdojordao: 'Campos do Jordao',
+  'campos do jordao': 'Campos do Jordao',
   camburi: 'Camburi',
   santo_antonio: 'Santo Antonio do Pinhal',
   santoantonio: 'Santo Antonio do Pinhal',
+  'santo antonio': 'Santo Antonio do Pinhal',
   santo_antonio_pinhal: 'Santo Antonio do Pinhal',
-  santa: 'Santa Smart Hotel',
   santa_smart: 'Santa Smart Hotel',
   santasmart: 'Santa Smart Hotel',
   santa_smart_hotel: 'Santa Smart Hotel',
-  st: 'Santa Smart Hotel',
+  // NOTE: "st" and "santa" removed — too many false positives
+  // ("estacionamento", "restaurante", "santa catarina", etc.)
 };
 
 /** Unidades validas (nomes de exibicao) */

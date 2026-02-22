@@ -12,6 +12,7 @@ import {
   FALLBACK_MESSAGE,
   AUDIO_NOT_SUPPORTED_MESSAGE,
 } from './config/prompts';
+import { VALID_HOTEL_UNITS, HOTEL_UNIT_ALIASES } from './config/eva.constants';
 import { detectInjection, sanitizeOutput, stripPII } from './security/prompt-guard';
 import { getConversationHistory, addMessage, clearMemory } from './memory/memory.service';
 import { EVA_TOOLS } from './tools/tool-definitions';
@@ -135,7 +136,10 @@ class EvaOrchestrator {
 
       // 6. BUILD MESSAGES ARRAY
       const history = await getConversationHistory(params.conversationId);
-      const systemPrompt = this.selectSystemPrompt(null); // TODO: detectar unidade do contexto
+
+      // Detect hotel unit from conversation history
+      const detectedUnit = this.detectUnitFromHistory(history, params.content);
+      const systemPrompt = this.selectSystemPrompt(detectedUnit, params.contactName);
 
       const messages: ChatCompletionMessageParam[] = [
         { role: 'system', content: systemPrompt },
@@ -301,8 +305,8 @@ class EvaOrchestrator {
     response: string,
     startTime: number
   ): Promise<void> {
-    // Check for carousel tags
-    const carouselMatch = response.match(/\|\s*#CARROSSEL-(GERAL|INDIVIDUAL)\s*(.*)?$/);
+    // Check for carousel tags (trimEnd to handle trailing newlines from OpenAI)
+    const carouselMatch = response.trimEnd().match(/\|\s*#CARROSSEL-(GERAL|INDIVIDUAL)\s*(.*)$/);
 
     if (carouselMatch) {
       const textBeforeTag = response.replace(/\|\s*#CARROSSEL-.*$/, '').trim();
@@ -545,15 +549,65 @@ class EvaOrchestrator {
   /**
    * Select the appropriate system prompt based on context.
    */
-  private selectSystemPrompt(hotelUnit: string | null): string {
+  private selectSystemPrompt(hotelUnit: string | null, contactName: string | null): string {
     if (!isWithinBusinessHours()) {
       const nextAvailable = getNextBusinessHoursMessage();
-      return getAfterHoursSystemPrompt(hotelUnit, nextAvailable);
+      return getAfterHoursSystemPrompt(hotelUnit, nextAvailable, contactName);
     }
 
-    // Default to commercial prompt
-    // TODO: detect guest vs commercial based on IA_SDR_CAMPOS.fluxo_atual
-    return getCommercialSystemPrompt(hotelUnit);
+    return getCommercialSystemPrompt(hotelUnit, contactName);
+  }
+
+  /**
+   * Detect hotel unit from conversation history and current message.
+   * Scans for unit names/aliases using word-boundary matching.
+   */
+  private detectUnitFromHistory(
+    history: Array<{ role: string; content: string }>,
+    currentContent: string
+  ): string | null {
+    // Scan current message + full history (most recent first)
+    const textsToScan = [
+      currentContent,
+      ...history.slice().reverse().map((h) => h.content),
+    ];
+
+    for (const text of textsToScan) {
+      const lower = text.toLowerCase();
+
+      // Check exact unit names (word boundary to avoid false positives)
+      for (const unit of VALID_HOTEL_UNITS) {
+        const needle = unit.toLowerCase();
+        const regex = new RegExp(`(?<![a-zA-ZÀ-ÿ])${this.escapeRegex(needle)}(?![a-zA-ZÀ-ÿ])`, 'i');
+        if (regex.test(lower)) {
+          return this.normalizeUnitKey(unit.toUpperCase());
+        }
+      }
+
+      // Check aliases (word boundary matching)
+      for (const [alias, displayName] of Object.entries(HOTEL_UNIT_ALIASES)) {
+        const needle = alias.replace(/_/g, ' ');
+        const regex = new RegExp(`(?<![a-zA-ZÀ-ÿ])${this.escapeRegex(needle)}(?![a-zA-ZÀ-ÿ])`, 'i');
+        if (regex.test(lower)) {
+          return this.normalizeUnitKey(displayName.toUpperCase());
+        }
+      }
+    }
+
+    return null;
+  }
+
+  /** Normalize display name to DB key */
+  private normalizeUnitKey(upper: string): string {
+    if (upper === 'CAMPOS DO JORDAO') return 'CAMPOS';
+    if (upper === 'SANTO ANTONIO DO PINHAL') return 'SANTO ANTONIO';
+    if (upper === 'SANTA SMART HOTEL') return 'SANTA';
+    return upper;
+  }
+
+  /** Escape string for use in RegExp */
+  private escapeRegex(s: string): string {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 }
 

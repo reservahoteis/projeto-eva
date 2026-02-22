@@ -4,13 +4,17 @@
 // ============================================
 
 import { prisma } from '@/config/database';
+import { getKBClient } from '../config/kb-database';
 import { hbookScraperService } from '@/services/hbook-scraper.service';
 import logger from '@/config/logger';
 import { FAQ_CATEGORIES } from '../config/eva.constants';
 import type { EvaToolName } from './tool-definitions';
 
-/** Categorias permitidas para FAQ (previne SQL abuse via LIKE) */
+/** Categorias permitidas para FAQ */
 const FAQ_ALLOWED_CATEGORIES = FAQ_CATEGORIES.map((c) => c.id.replace('cat_', ''));
+
+/** Unidades validas (allowlist para prevenir queries com dados arbitrarios) */
+const VALID_UNITS_UPPER = ['ILHABELA', 'CAMPOS', 'CAMBURI', 'SANTO ANTONIO', 'SANTA'];
 
 /** Formato de data DD/MM/YYYY */
 const DATE_FORMAT_REGEX = /^\d{2}\/\d{2}\/\d{4}$/;
@@ -20,13 +24,12 @@ const DATE_FORMAT_REGEX = /^\d{2}\/\d{2}\/\d{4}$/;
 // ============================================
 
 /**
- * Executa query no banco de dados do Knowledge Base.
- * Se KB_DATABASE_URL estiver definida, chama via HTTP interno.
- * Senao, usa Prisma raw query no mesmo banco.
+ * Executa query no banco de dados do Knowledge Base (N8N PostgreSQL).
+ * Usa KB_DATABASE_URL se configurado, senao fallback para banco principal.
  */
 async function queryKB(sql: string, params: unknown[] = []): Promise<Record<string, unknown>[]> {
-  // Usa Prisma raw query (as tabelas de KB devem existir no mesmo banco)
-  return prisma.$queryRawUnsafe(sql, ...params) as Promise<Record<string, unknown>[]>;
+  const kb = getKBClient();
+  return kb.$queryRawUnsafe(sql, ...params) as Promise<Record<string, unknown>[]>;
 }
 
 // ============================================
@@ -89,7 +92,9 @@ export async function executeToolCall(
 
 async function handleBuscarQuartos(args: Record<string, unknown>): Promise<string> {
   const unidade = String(args.unidade || '').toUpperCase();
-  if (!unidade) return JSON.stringify({ error: 'Unidade nao informada' });
+  if (!unidade || !VALID_UNITS_UPPER.includes(unidade)) {
+    return JSON.stringify({ error: 'Unidade invalida. Opcoes: Ilhabela, Campos, Camburi, Santo Antonio, Santa' });
+  }
 
   const rows = await queryKB(
     `SELECT "Tipo", "Categoria", "Capacidade", "Descricao", "linkImage"
@@ -117,7 +122,9 @@ async function handleBuscarQuartos(args: Record<string, unknown>): Promise<strin
 
 async function handleBuscarFaq(args: Record<string, unknown>): Promise<string> {
   const unidade = String(args.unidade || '').toUpperCase();
-  if (!unidade) return JSON.stringify({ error: 'Unidade nao informada' });
+  if (!unidade || !VALID_UNITS_UPPER.includes(unidade)) {
+    return JSON.stringify({ error: 'Unidade invalida' });
+  }
 
   // Validar categoria contra allowlist (previne SQL abuse via LIKE)
   const categoriaRaw = args.categoria ? String(args.categoria).toLowerCase().trim() : null;
@@ -163,7 +170,9 @@ async function handleBuscarFaq(args: Record<string, unknown>): Promise<string> {
 
 async function handleBuscarServicos(args: Record<string, unknown>): Promise<string> {
   const unidade = String(args.unidade || '').toUpperCase();
-  if (!unidade) return JSON.stringify({ error: 'Unidade nao informada' });
+  if (!unidade || !VALID_UNITS_UPPER.includes(unidade)) {
+    return JSON.stringify({ error: 'Unidade invalida' });
+  }
 
   const rows = await queryKB(
     `SELECT "Nome", "Descricao", "Horario", "Preco"
@@ -190,7 +199,9 @@ async function handleBuscarServicos(args: Record<string, unknown>): Promise<stri
 
 async function handleBuscarConcierge(args: Record<string, unknown>): Promise<string> {
   const unidade = String(args.unidade || '').toUpperCase();
-  if (!unidade) return JSON.stringify({ error: 'Unidade nao informada' });
+  if (!unidade || !VALID_UNITS_UPPER.includes(unidade)) {
+    return JSON.stringify({ error: 'Unidade invalida' });
+  }
 
   const rows = await queryKB(
     `SELECT "Nome", "Tipo", "Descricao", "Endereco", "Telefone"
@@ -277,7 +288,7 @@ async function handleNotificarAtendente(
   args: Record<string, unknown>,
   ctx: ToolContext
 ): Promise<string> {
-  const motivo = String(args.motivo || 'Solicitado pelo cliente');
+  const motivo = String(args.motivo || 'Solicitado pelo cliente').substring(0, 500);
 
   // Marcar iaLocked e criar escalacao
   await prisma.conversation.update({
