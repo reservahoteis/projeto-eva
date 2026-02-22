@@ -115,8 +115,8 @@ export const EVA_CONFIG = {
   MEMORY_TTL_SECONDS: 86_400,
   /** Max iteracoes de tool calling */
   MAX_TOOL_ITERATIONS: 3,
-  /** Timeout geral do processamento EVA (ms) */
-  PROCESSING_TIMEOUT_MS: 10_000,
+  /** Timeout geral do processamento EVA (ms) — 25s para 3 iteracoes de tool calling */
+  PROCESSING_TIMEOUT_MS: 25_000,
   /** Temperature padrao */
   TEMPERATURE: 0.7,
 };
