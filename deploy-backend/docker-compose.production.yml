@@ -87,6 +87,8 @@ services:
       INSTAGRAM_WEBHOOK_VERIFY_TOKEN: ${INSTAGRAM_WEBHOOK_VERIFY_TOKEN:-}
       INSTAGRAM_ACCESS_TOKEN: ${INSTAGRAM_ACCESS_TOKEN:-}
       INSTAGRAM_ACCOUNT_ID: ${INSTAGRAM_ACCOUNT_ID:-}
+      # EVA AI Engine
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       # Media Storage
       MEDIA_STORAGE_PATH: /var/lib/whatsapp-crm/media
       MEDIA_BASE_URL: ${MEDIA_BASE_URL:-https://api.botreserva.com.br/api/media}
