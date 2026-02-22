@@ -865,4 +865,90 @@ describe('EVA Orchestrator', () => {
       );
     });
   });
+
+  describe('processMessage — edge cases', () => {
+    it('should redirect orcar_reserva to unit selection when no unit set', async () => {
+      mockGetUnit.mockResolvedValue(null);
+
+      const params = createParams({
+        content: 'Quero Orcar',
+        metadata: { source: 'instagram', button: { id: 'orcar_reserva', title: 'Quero Orcar' } },
+      });
+
+      await evaOrchestrator.processMessage(params);
+
+      // Should send unit selection (no unit yet)
+      expect(mockSendList).toHaveBeenCalledWith(
+        'INSTAGRAM', 'tenant-1', '12345',
+        expect.any(String),
+        expect.any(String),
+        expect.arrayContaining([
+          expect.objectContaining({
+            rows: expect.arrayContaining([
+              expect.objectContaining({ id: 'info_ilhabela' }),
+            ]),
+          }),
+        ])
+      );
+
+      // Should NOT call OpenAI
+      expect(mockCreate).not.toHaveBeenCalled();
+    });
+
+    it('should handle empty carousel results gracefully', async () => {
+      mockCreate.mockReset();
+      mockOpenAIResponse('Aqui estao os quartos: | #CARROSSEL-GERAL');
+      mockGetUnit.mockResolvedValue('CAMPOS');
+      mockKBQueryRawUnsafe.mockResolvedValue([]); // Empty KB result
+
+      const params = createParams({ content: 'Quero ver os quartos' });
+      await evaOrchestrator.processMessage(params);
+
+      // Should NOT send Generic Template (no rooms found)
+      expect(mockSendGenericTemplate).not.toHaveBeenCalled();
+
+      // Should send "no rooms" fallback text
+      expect(mockSendText).toHaveBeenCalledWith(
+        'INSTAGRAM', 'tenant-1', '12345',
+        expect.stringContaining('Nao encontrei quartos')
+      );
+    });
+
+    it('should detect unit from alias in current message (campos_jordao)', async () => {
+      mockCreate.mockReset();
+      mockOpenAIResponse('Campos do Jordao e otimo!');
+      mockGetUnit.mockResolvedValue(null);
+      mockGetHistory.mockResolvedValue([]);
+
+      const params = createParams({ content: 'Quero saber sobre campos do jordao' });
+      await evaOrchestrator.processMessage(params);
+
+      // Should detect CAMPOS via alias
+      expect(mockSetUnit).toHaveBeenCalledWith('conv-1', 'CAMPOS');
+      expect(mockCreate).toHaveBeenCalled();
+    });
+
+    it('should split long AI responses by character limit', async () => {
+      mockCreate.mockReset();
+      // Generate a response over 950 chars with paragraph breaks
+      const longParagraph = 'Lorem ipsum dolor sit amet. '.repeat(20); // ~560 chars
+      const longResponse = `${longParagraph}\n\n${longParagraph}`;
+      mockOpenAIResponse(longResponse);
+      mockGetUnit.mockResolvedValue('ILHABELA');
+
+      const params = createParams({ content: 'Me fale tudo sobre o hotel' });
+      await evaOrchestrator.processMessage(params);
+
+      // Should have split into multiple sendText calls
+      const sendTextCalls = mockSendText.mock.calls.filter(
+        (call: unknown[]) => typeof call[3] === 'string' && call[3].includes('Lorem')
+      );
+      expect(sendTextCalls.length).toBeGreaterThanOrEqual(2);
+
+      // Each chunk should be under 950 chars
+      for (const call of sendTextCalls) {
+        expect((call[3] as string).length).toBeLessThanOrEqual(950);
+      }
+    });
+  });
 });

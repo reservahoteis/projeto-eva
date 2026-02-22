@@ -658,16 +658,14 @@ class EvaOrchestrator {
       return;
     }
 
-    // Split multi-line responses (EVA can return multiple messages separated by \n)
-    const lines = response.split('\n').filter((line) => line.trim().length > 0);
+    // Split long responses by character limit (Instagram ~1000 chars max)
+    const MAX_MSG_LENGTH = 950;
+    const messages = response.length <= MAX_MSG_LENGTH
+      ? [response]
+      : this.splitByCharLimit(response, MAX_MSG_LENGTH);
 
-    if (lines.length <= 3) {
-      await this.sendAndSave(params, channelUpper, response, startTime);
-    } else {
-      const chunks = this.chunkMessages(lines, 3);
-      for (const chunk of chunks) {
-        await this.sendAndSave(params, channelUpper, chunk, startTime);
-      }
+    for (const msg of messages) {
+      await this.sendAndSave(params, channelUpper, msg, startTime);
     }
 
     // Send contextual quick replies after AI response
@@ -675,18 +673,37 @@ class EvaOrchestrator {
   }
 
   /**
-   * Groups lines into max N chunks
+   * Split text into chunks respecting a character limit.
+   * Splits at paragraph boundaries (\n\n), then line boundaries (\n).
    */
-  private chunkMessages(lines: string[], maxChunks: number): string[] {
-    if (lines.length <= maxChunks) {
-      return lines;
+  private splitByCharLimit(text: string, maxLength: number): string[] {
+    const chunks: string[] = [];
+    let remaining = text;
+
+    while (remaining.length > maxLength) {
+      // Try splitting at paragraph boundary
+      let splitIdx = remaining.lastIndexOf('\n\n', maxLength);
+      if (splitIdx <= 0) {
+        // Try line boundary
+        splitIdx = remaining.lastIndexOf('\n', maxLength);
+      }
+      if (splitIdx <= 0) {
+        // Hard cut at last space
+        splitIdx = remaining.lastIndexOf(' ', maxLength);
+      }
+      if (splitIdx <= 0) {
+        // Absolute fallback
+        splitIdx = maxLength;
+      }
+
+      chunks.push(remaining.substring(0, splitIdx).trim());
+      remaining = remaining.substring(splitIdx).trim();
     }
 
-    const linesPerChunk = Math.ceil(lines.length / maxChunks);
-    const chunks: string[] = [];
-    for (let i = 0; i < lines.length; i += linesPerChunk) {
-      chunks.push(lines.slice(i, i + linesPerChunk).join('\n'));
+    if (remaining.length > 0) {
+      chunks.push(remaining);
     }
+
     return chunks;
   }
 

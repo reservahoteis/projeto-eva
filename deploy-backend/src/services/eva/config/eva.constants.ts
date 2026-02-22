@@ -125,20 +125,6 @@ export const EVA_CONFIG = {
 export const CUPON_DESCONTO = 'BOT005';
 export const SITE_EMPRESA = 'https://hoteisreserva.com.br/';
 
-/** Mapeamento de templates de carousel por quantidade de cards */
-export const CAROUSEL_TEMPLATE_MAP: Record<number, string> = {
-  1: 'carousel_acomodacoes_1card',
-  2: 'carousel_acomodacoes_2cards',
-  3: 'carousel_acomodacoes_3cards',
-  4: 'carousel_acomodacoes_4cards',
-  5: 'carousel_acomodacoes_5cards',
-  6: 'carousel_acomodacoes_6cards',
-  7: 'carousel_fotos_acomodacoes_7cards',
-  8: 'carousel_fotos_acomodacoes_8cards',
-  9: 'carousel_fotos_acomodacoes_9cards',
-  10: 'carousel_acomodacoes_10cards',
-};
-
 // ============================================
 // Interactive Menu Constants
 // Replicate N8N interactive elements
