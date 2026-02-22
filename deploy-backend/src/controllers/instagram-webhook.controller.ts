@@ -99,7 +99,32 @@ export class InstagramWebhookController {
                 continue;
               }
 
-              const eventType = event.message ? 'message' : event.postback ? 'postback' : 'unknown';
+              const eventType = event.message
+                ? 'message'
+                : event.postback
+                  ? 'postback'
+                  : event.delivery
+                    ? 'delivery'
+                    : event.read
+                      ? 'read'
+                      : 'unknown';
+
+              // Delivery/read are normal — only log messages and postbacks at info level
+              if (eventType === 'delivery' || eventType === 'read') {
+                logger.debug(
+                  { tenantId, senderId, eventType },
+                  '[INSTAGRAM WEBHOOK] Delivery/read receipt (ignorado)'
+                );
+                continue;
+              }
+
+              if (eventType === 'unknown') {
+                logger.warn(
+                  { tenantId, senderId, eventKeys: Object.keys(event) },
+                  '[INSTAGRAM WEBHOOK] Evento desconhecido (ignorado)'
+                );
+                continue;
+              }
 
               logger.info(
                 {
