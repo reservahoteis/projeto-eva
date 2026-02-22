@@ -436,7 +436,7 @@ describe('EVA Orchestrator', () => {
       expect(mockCreate).not.toHaveBeenCalled();
     });
 
-    it('should handle unit selection postback (info_ilhabela)', async () => {
+    it('should handle unit selection postback (info_ilhabela) → main menu', async () => {
       const params = createParams({
         content: 'Ilhabela',
         metadata: { source: 'instagram', button: { id: 'info_ilhabela', title: 'Ilhabela' } },
@@ -447,18 +447,27 @@ describe('EVA Orchestrator', () => {
       // Should set unit in Redis
       expect(mockSetUnit).toHaveBeenCalledWith('conv-1', 'ILHABELA');
 
-      // Should send confirmation
+      // Should send confirmation text
       expect(mockSendText).toHaveBeenCalledWith(
         'INSTAGRAM', 'tenant-1', '12345',
         expect.stringContaining('Ilhabela')
       );
 
-      // Should send commercial quick replies
-      expect(mockSendQuickReplies).toHaveBeenCalledWith(
+      // Should send main menu LIST (not quick replies)
+      expect(mockSendList).toHaveBeenCalledWith(
         'INSTAGRAM', 'tenant-1', '12345',
-        expect.any(String),
+        expect.any(String), // body text
+        expect.any(String), // button text
         expect.arrayContaining([
-          expect.objectContaining({ payload: 'ver_quartos' }),
+          expect.objectContaining({
+            rows: expect.arrayContaining([
+              expect.objectContaining({ id: 'duvidas_frequentes' }),
+              expect.objectContaining({ id: 'hospedado_ajuda' }),
+              expect.objectContaining({ id: 'orcar_reserva' }),
+              expect.objectContaining({ id: 'tenho_reserva' }),
+              expect.objectContaining({ id: 'alterar_unidade' }),
+            ]),
+          }),
         ])
       );
 
@@ -486,24 +495,137 @@ describe('EVA Orchestrator', () => {
       );
     });
 
-    it('should handle ver_faq postback → FAQ category menu', async () => {
+    it('should handle duvidas_frequentes postback → FAQ category menu', async () => {
       const params = createParams({
-        content: 'FAQ',
-        metadata: { source: 'instagram', button: { id: 'ver_faq', title: 'FAQ' } },
+        content: 'Duvidas Frequentes',
+        metadata: { source: 'instagram', button: { id: 'duvidas_frequentes', title: 'Duvidas Frequentes' } },
       });
 
       await evaOrchestrator.processMessage(params);
 
-      // Should send FAQ category selection
+      // Should send FAQ intro text
       expect(mockSendText).toHaveBeenCalledWith(
         'INSTAGRAM', 'tenant-1', '12345',
         expect.stringContaining('duvida')
       );
+
+      // Should send FAQ category quick replies
       expect(mockSendQuickReplies).toHaveBeenCalledWith(
         'INSTAGRAM', 'tenant-1', '12345',
         expect.any(String),
         expect.arrayContaining([
           expect.objectContaining({ payload: 'cat_checkin' }),
+        ])
+      );
+    });
+
+    it('should handle hospedado_ajuda postback → ask room number', async () => {
+      const params = createParams({
+        content: 'Ja Estou Hospedado',
+        metadata: { source: 'instagram', button: { id: 'hospedado_ajuda', title: 'Ja Estou Hospedado' } },
+      });
+
+      await evaOrchestrator.processMessage(params);
+
+      // Should add user message to memory
+      expect(mockAddMessage).toHaveBeenCalledWith('conv-1', 'user', 'Ja estou hospedado e quero ajuda');
+
+      // Should send guest message asking for room number
+      expect(mockSendText).toHaveBeenCalledWith(
+        'INSTAGRAM', 'tenant-1', '12345',
+        expect.stringContaining('numero da sua suite')
+      );
+
+      // Should save assistant response to memory
+      expect(mockAddMessage).toHaveBeenCalledWith('conv-1', 'assistant', expect.stringContaining('numero da sua suite'));
+
+      // Should NOT call OpenAI
+      expect(mockCreate).not.toHaveBeenCalled();
+    });
+
+    it('should handle orcar_reserva postback → fall through to OpenAI', async () => {
+      mockCreate.mockReset();
+      mockOpenAIResponse('Vou te ajudar a orcar! Quais datas voce tem em mente?');
+      mockGetUnit.mockResolvedValue('CAMPOS');
+
+      const params = createParams({
+        content: 'Quero Orcar',
+        metadata: { source: 'instagram', button: { id: 'orcar_reserva', title: 'Quero Orcar' } },
+      });
+
+      await evaOrchestrator.processMessage(params);
+
+      // Should add reservation intent to memory
+      expect(mockAddMessage).toHaveBeenCalledWith('conv-1', 'user', 'Quero orcar uma reserva');
+
+      // Should call OpenAI (falls through)
+      expect(mockCreate).toHaveBeenCalled();
+    });
+
+    it('should handle tenho_reserva postback → fall through to OpenAI', async () => {
+      mockCreate.mockReset();
+      mockOpenAIResponse('Entendi! Qual e o numero da sua reserva?');
+      mockGetUnit.mockResolvedValue('ILHABELA');
+
+      const params = createParams({
+        content: 'Ja Tenho Reserva',
+        metadata: { source: 'instagram', button: { id: 'tenho_reserva', title: 'Ja Tenho Reserva' } },
+      });
+
+      await evaOrchestrator.processMessage(params);
+
+      // Should add reservation intent to memory
+      expect(mockAddMessage).toHaveBeenCalledWith('conv-1', 'user', 'Ja tenho uma reserva');
+
+      // Should call OpenAI (falls through)
+      expect(mockCreate).toHaveBeenCalled();
+    });
+
+    it('should handle alterar_unidade postback → resend unit selection', async () => {
+      const params = createParams({
+        content: 'Alterar Unidade',
+        metadata: { source: 'instagram', button: { id: 'alterar_unidade', title: 'Alterar Unidade' } },
+      });
+
+      await evaOrchestrator.processMessage(params);
+
+      // Should send welcome + unit list
+      expect(mockSendList).toHaveBeenCalledWith(
+        'INSTAGRAM', 'tenant-1', '12345',
+        expect.any(String),
+        expect.any(String),
+        expect.arrayContaining([
+          expect.objectContaining({
+            rows: expect.arrayContaining([
+              expect.objectContaining({ id: 'info_ilhabela' }),
+            ]),
+          }),
+        ])
+      );
+
+      // Should NOT call OpenAI
+      expect(mockCreate).not.toHaveBeenCalled();
+    });
+
+    it('should handle menu_principal postback → resend main menu', async () => {
+      const params = createParams({
+        content: 'Menu principal',
+        metadata: { source: 'instagram', quick_reply: { payload: 'menu_principal' } },
+      });
+
+      await evaOrchestrator.processMessage(params);
+
+      // Should send main menu list
+      expect(mockSendList).toHaveBeenCalledWith(
+        'INSTAGRAM', 'tenant-1', '12345',
+        expect.any(String),
+        expect.any(String),
+        expect.arrayContaining([
+          expect.objectContaining({
+            rows: expect.arrayContaining([
+              expect.objectContaining({ id: 'duvidas_frequentes' }),
+            ]),
+          }),
         ])
       );
     });
@@ -538,34 +660,32 @@ describe('EVA Orchestrator', () => {
       expect(mockSendQuickReplies).toHaveBeenCalled();
     });
 
-    it('should handle ver_quartos postback → carousel', async () => {
-      mockGetUnit.mockResolvedValue('CAMBURI');
-      mockKBQueryRawUnsafe.mockResolvedValue([
-        { Tipo: 'Suite Master', Categoria: 'Premium', Descricao: 'Suite linda', linkImage: 'https://img.example.com/1.jpg' },
-        { Tipo: 'Suite Standard', Categoria: 'Standard', Descricao: 'Suite confortavel', linkImage: 'https://img.example.com/2.jpg' },
-      ]);
+    it('should handle FAQ category without unit → send unit selection', async () => {
+      mockGetUnit.mockResolvedValue(null);
 
       const params = createParams({
-        content: 'Ver quartos',
-        metadata: { source: 'instagram', button: { id: 'ver_quartos', title: 'Ver quartos' } },
+        content: 'Check-in e Check-out',
+        metadata: { source: 'instagram', button: { id: 'cat_checkin', title: 'Check-in e Check-out' } },
       });
 
       await evaOrchestrator.processMessage(params);
 
-      // Should query KB for rooms
-      expect(mockKBQueryRawUnsafe).toHaveBeenCalledWith(
-        expect.stringContaining('infos_quartos'),
-        'CAMBURI'
-      );
-
-      // Should send Generic Template (carousel)
-      expect(mockSendGenericTemplate).toHaveBeenCalledWith(
-        'tenant-1',
-        '12345',
+      // Should send unit selection (no unit yet)
+      expect(mockSendList).toHaveBeenCalledWith(
+        'INSTAGRAM', 'tenant-1', '12345',
+        expect.any(String),
+        expect.any(String),
         expect.arrayContaining([
-          expect.objectContaining({ title: 'Suite Master' }),
+          expect.objectContaining({
+            rows: expect.arrayContaining([
+              expect.objectContaining({ id: 'info_ilhabela' }),
+            ]),
+          }),
         ])
       );
+
+      // Should NOT query KB
+      expect(mockKBQueryRawUnsafe).not.toHaveBeenCalled();
     });
 
     it('should handle quick_reply metadata format', async () => {
@@ -602,12 +722,12 @@ describe('EVA Orchestrator', () => {
         expect.stringContaining('Ilhabela')
       );
 
-      // Should send contextual quick replies
+      // Should send contextual quick replies (Menu principal + Falar c/ atendente)
       expect(mockSendQuickReplies).toHaveBeenCalledWith(
         'INSTAGRAM', 'tenant-1', '12345',
         expect.any(String),
         expect.arrayContaining([
-          expect.objectContaining({ payload: 'ver_quartos' }),
+          expect.objectContaining({ payload: 'menu_principal' }),
           expect.objectContaining({ payload: 'falar_humano' }),
         ])
       );

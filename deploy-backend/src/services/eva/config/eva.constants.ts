@@ -157,13 +157,26 @@ export const UNIT_SELECTION_SECTIONS: ListSection[] = [
   },
 ];
 
-/** Quick Replies do menu comercial (apos selecionar unidade) */
-export const COMMERCIAL_QUICK_REPLIES: QuickReplyPayload[] = [
-  { title: 'Ver quartos', payload: 'ver_quartos' },
-  { title: 'Disponibilidade', payload: 'check_availability' },
-  { title: 'FAQ', payload: 'ver_faq' },
+/** Menu principal apos selecao de unidade (lista interativa — replica N8N) */
+export const MAIN_MENU_SECTIONS: ListSection[] = [
+  {
+    title: 'Menu Principal',
+    rows: [
+      { id: 'duvidas_frequentes', title: 'Duvidas Frequentes' },
+      { id: 'hospedado_ajuda', title: 'Ja Estou Hospedado' },
+      { id: 'orcar_reserva', title: 'Quero Orcar' },
+      { id: 'tenho_reserva', title: 'Ja Tenho Reserva' },
+      { id: 'alterar_unidade', title: 'Alterar Unidade' },
+    ],
+  },
+];
+export const MAIN_MENU_BODY_TEXT = 'Selecione uma opcao:';
+export const MAIN_MENU_BUTTON_TEXT = 'Ver opcoes';
+
+/** Quick Replies contextuais (apos resposta da IA) */
+export const CONTEXTUAL_QUICK_REPLIES: QuickReplyPayload[] = [
+  { title: 'Menu principal', payload: 'menu_principal' },
   { title: 'Falar c/ atendente', payload: 'falar_humano' },
-  { title: 'Menu inicial', payload: 'menu_inicial' },
 ];
 
 /** Quick Replies de categorias FAQ */

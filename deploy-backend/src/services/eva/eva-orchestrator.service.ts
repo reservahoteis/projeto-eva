@@ -11,7 +11,10 @@ import {
   UNIDADES_MAP,
   HBOOK_COMPANY_IDS,
   UNIT_SELECTION_SECTIONS,
-  COMMERCIAL_QUICK_REPLIES,
+  MAIN_MENU_SECTIONS,
+  MAIN_MENU_BODY_TEXT,
+  MAIN_MENU_BUTTON_TEXT,
+  CONTEXTUAL_QUICK_REPLIES,
   FAQ_CATEGORY_QUICK_REPLIES,
   FAQ_CATEGORIES,
   WELCOME_TEXT,
@@ -289,10 +292,10 @@ class EvaOrchestrator {
       // Add to memory so OpenAI knows the unit
       await addMessage(params.conversationId, 'user', `Escolhi a unidade ${unit}`);
 
-      // Send confirmation + commercial quick replies
+      // Send confirmation + main menu list (replicating N8N)
       const confirmText = `Otimo! Voce escolheu a unidade ${this.formatUnitName(unit)}. Como posso ajudar?`;
       await this.sendAndSave(params, channelUpper, confirmText, startTime);
-      await this.sendQuickReplies(params, channelUpper, 'Escolha uma opcao:', COMMERCIAL_QUICK_REPLIES);
+      await this.sendMainMenu(params, channelUpper);
 
       return true;
     }
@@ -303,32 +306,50 @@ class EvaOrchestrator {
       return true;
     }
 
-    // VER QUARTOS → trigger carousel
-    if (buttonId === 'ver_quartos') {
-      const unit = await getUnit(params.conversationId);
-      if (unit) {
-        // Add to memory
-        await addMessage(params.conversationId, 'user', 'Quero ver os quartos');
-
-        // Send carousel directly
-        await this.sendCarouselCards(params, channelUpper, 'GERAL', '', unit, startTime);
-      } else {
-        await this.sendWelcomeAndUnitMenu(params, channelUpper, startTime);
-      }
+    // DUVIDAS FREQUENTES → FAQ category menu
+    if (buttonId === 'duvidas_frequentes') {
+      await this.sendAndSave(params, channelUpper, 'Sobre qual assunto voce tem duvida?', startTime);
+      await this.sendQuickReplies(params, channelUpper, 'Escolha o tema:', FAQ_CATEGORY_QUICK_REPLIES);
       return true;
     }
 
-    // CHECK AVAILABILITY → pass to OpenAI with hint
-    if (buttonId === 'check_availability') {
-      // Rewrite content so OpenAI handles naturally
-      params.content = 'Quero verificar disponibilidade e precos';
-      return false; // Fall through to normal OpenAI flow
+    // JA ESTOU HOSPEDADO → ask for room number (same as N8N)
+    if (buttonId === 'hospedado_ajuda') {
+      await addMessage(params.conversationId, 'user', 'Ja estou hospedado e quero ajuda');
+      const guestMsg = 'Para que eu possa ajuda-lo da melhor maneira, poderia me informar o numero da sua suite e qual e a sua duvida ou necessidade?\n\nEstou aqui para oferecer o suporte que voce precisar durante a sua estadia!';
+      await this.sendAndSave(params, channelUpper, guestMsg, startTime);
+      await addMessage(params.conversationId, 'assistant', guestMsg);
+      return true;
     }
 
-    // VER FAQ → send FAQ category menu
-    if (buttonId === 'ver_faq') {
-      await this.sendAndSave(params, channelUpper, 'Sobre qual assunto voce tem duvida?', startTime);
-      await this.sendQuickReplies(params, channelUpper, 'Escolha o tema:', FAQ_CATEGORY_QUICK_REPLIES);
+    // QUERO ORCAR → commercial flow (show rooms + availability)
+    if (buttonId === 'orcar_reserva') {
+      const unit = await getUnit(params.conversationId);
+      if (unit) {
+        await addMessage(params.conversationId, 'user', 'Quero orcar uma reserva');
+        params.content = 'Quero orcar uma reserva, me mostre os quartos disponiveis';
+        return false; // Fall through to OpenAI
+      }
+      await this.sendWelcomeAndUnitMenu(params, channelUpper, startTime);
+      return true;
+    }
+
+    // JA TENHO RESERVA → connect to attendant
+    if (buttonId === 'tenho_reserva') {
+      await addMessage(params.conversationId, 'user', 'Ja tenho uma reserva');
+      params.content = 'Ja tenho uma reserva e preciso de ajuda';
+      return false; // Fall through to OpenAI
+    }
+
+    // ALTERAR UNIDADE → back to unit selection
+    if (buttonId === 'alterar_unidade') {
+      await this.sendWelcomeAndUnitMenu(params, channelUpper, startTime);
+      return true;
+    }
+
+    // MENU PRINCIPAL → resend main menu (after AI responses)
+    if (buttonId === 'menu_principal') {
+      await this.sendMainMenu(params, channelUpper);
       return true;
     }
 
@@ -385,6 +406,33 @@ class EvaOrchestrator {
   }
 
   // ============================================
+  // Main Menu (after unit selection)
+  // ============================================
+
+  /**
+   * Send main menu list after unit selection (replicating N8N).
+   * Options: Duvidas Frequentes, Ja Estou Hospedado, Quero Orcar, Ja Tenho Reserva, Alterar Unidade.
+   */
+  private async sendMainMenu(
+    params: EvaProcessParams,
+    channelUpper: ChannelUpperCase
+  ): Promise<void> {
+    await channelRouter.sendList(
+      channelUpper,
+      params.tenantId,
+      params.senderId,
+      MAIN_MENU_BODY_TEXT,
+      MAIN_MENU_BUTTON_TEXT,
+      MAIN_MENU_SECTIONS
+    );
+
+    logger.info(
+      { conversationId: params.conversationId, channel: params.channel },
+      '[EVA] Main menu sent'
+    );
+  }
+
+  // ============================================
   // FAQ Category Handling
   // ============================================
 
@@ -437,7 +485,7 @@ class EvaOrchestrator {
     }
 
     // Send commercial quick replies for navigation
-    await this.sendQuickReplies(params, channelUpper, 'Como posso ajudar mais?', COMMERCIAL_QUICK_REPLIES);
+    await this.sendQuickReplies(params, channelUpper, 'Como posso ajudar mais?', CONTEXTUAL_QUICK_REPLIES);
   }
 
   // ============================================
@@ -573,7 +621,7 @@ class EvaOrchestrator {
       }
 
       // Send contextual quick replies after carousel
-      await this.sendQuickReplies(params, channelUpper, 'Como posso ajudar mais?', COMMERCIAL_QUICK_REPLIES);
+      await this.sendQuickReplies(params, channelUpper, 'Como posso ajudar mais?', CONTEXTUAL_QUICK_REPLIES);
       return;
     }
 
@@ -590,7 +638,7 @@ class EvaOrchestrator {
     }
 
     // Send contextual quick replies after AI response
-    await this.sendQuickReplies(params, channelUpper, 'Como posso ajudar mais?', COMMERCIAL_QUICK_REPLIES);
+    await this.sendQuickReplies(params, channelUpper, 'Como posso ajudar mais?', CONTEXTUAL_QUICK_REPLIES);
   }
 
   /**
