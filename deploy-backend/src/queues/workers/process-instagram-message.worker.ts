@@ -1,24 +1,25 @@
 // ============================================
 // Worker: Process Incoming Instagram Messages
+// Uses EVA AI Engine (replaces N8N fire-and-forget)
 // ============================================
 
 import { Job } from 'bull';
-import { MessageType, Prisma } from '@prisma/client';
+import { ConversationStatus, MessageType, Prisma } from '@prisma/client';
 import { prisma } from '@/config/database';
 import logger from '@/config/logger';
-import { n8nService } from '@/services/n8n.service';
 import { getSocketIO } from '@/config/socket';
+import { evaOrchestrator } from '@/services/eva/eva-orchestrator.service';
 import type { ProcessInstagramMessageJobData } from '@/queues/whatsapp-webhook.queue';
 
 /**
  * Worker para processar mensagens recebidas do Instagram.
- * Pipeline: findOrCreateContact -> findOrCreateConversation -> saveMessage -> forwardN8N -> emitSocket
+ * Pipeline: findOrCreateContact -> findOrCreateConversation -> saveMessage -> emitSocket -> EVA AI
  */
 export async function processInstagramMessage(job: Job<ProcessInstagramMessageJobData>): Promise<void> {
   const { tenantId, senderId, message, postback } = job.data;
 
   logger.info(
-    { jobId: job.id, tenantId, senderId, messageId: message.mid },
+    { jobId: job.id, tenantId, senderIdPrefix: senderId.substring(0, 8), messageId: message.mid },
     'Processing Instagram message'
   );
 
@@ -44,10 +45,10 @@ export async function processInstagramMessage(job: Job<ProcessInstagramMessageJo
         select: { id: true, name: true, phoneNumber: true, profilePictureUrl: true },
       });
 
-      logger.info({ tenantId, contactId: contact.id, senderId }, 'Created Instagram contact');
+      logger.info({ tenantId, contactId: contact.id }, 'Created Instagram contact');
     }
 
-    // 2. ENCONTRAR OU CRIAR CONVERSA
+    // 2. ENCONTRAR OU CRIAR CONVERSA (inclui CLOSED para smart reopen)
     let conversation = await prisma.conversation.findFirst({
       where: {
         tenantId,
@@ -58,6 +59,35 @@ export async function processInstagramMessage(job: Job<ProcessInstagramMessageJo
     });
 
     const isNewConversation = !conversation;
+
+    // Smart reopen: se nao achou ativa, verificar CLOSED recente (30min)
+    if (!conversation) {
+      const recentClosed = await prisma.conversation.findFirst({
+        where: {
+          tenantId,
+          contactId: contact.id,
+          status: 'CLOSED',
+          lastMessageAt: {
+            gte: new Date(Date.now() - 30 * 60 * 1000), // 30 min
+          },
+        },
+        select: { id: true, status: true, iaLocked: true },
+        orderBy: { lastMessageAt: 'desc' },
+      });
+
+      if (recentClosed) {
+        // Reabrir conversa fechada recentemente
+        await prisma.conversation.update({
+          where: { id: recentClosed.id, tenantId },
+          data: { status: 'OPEN' },
+        });
+        conversation = { ...recentClosed, status: 'OPEN' };
+        logger.info(
+          { tenantId, conversationId: conversation.id },
+          '[INSTAGRAM WORKER] Reopened recently closed conversation'
+        );
+      }
+    }
 
     if (!conversation) {
       conversation = await prisma.conversation.create({
@@ -85,7 +115,6 @@ export async function processInstagramMessage(job: Job<ProcessInstagramMessageJo
       metadata.postback = { payload: postback.payload, title: postback.title };
       metadata.button = { id: postback.payload, title: postback.title };
     } else if (message.quick_reply?.payload) {
-      // Quick Reply: usuario tocou um botao de Quick Reply
       content = message.text || message.quick_reply.payload;
       metadata.quick_reply = { payload: message.quick_reply.payload };
       metadata.button = { id: message.quick_reply.payload, title: message.text || message.quick_reply.payload };
@@ -112,7 +141,7 @@ export async function processInstagramMessage(job: Job<ProcessInstagramMessageJo
         tenantId,
         messageType,
         contentLength: content.length,
-        contentPreview: content.substring(0, 100),
+        contentPreview: content.substring(0, 40),
         hasPostback: !!postback,
         hasAttachments: !!(message.attachments?.length),
       },
@@ -139,13 +168,20 @@ export async function processInstagramMessage(job: Job<ProcessInstagramMessageJo
       '[INSTAGRAM WORKER] Mensagem salva no banco'
     );
 
-    // 5. ATUALIZAR CONVERSA
+    // 5. ATUALIZAR CONVERSA (smart status: CLOSED -> OPEN)
+    const newStatus: ConversationStatus = conversation.status === 'CLOSED'
+      ? ConversationStatus.OPEN
+      : (conversation.status as ConversationStatus);
+
     await prisma.conversation.update({
-      where: { id: conversation.id },
-      data: { lastMessageAt: savedMessage.timestamp },
+      where: { id: conversation.id, tenantId },
+      data: {
+        lastMessageAt: savedMessage.timestamp,
+        status: newStatus,
+      },
     });
 
-    // 6. EMITIR SOCKET
+    // 6. EMITIR SOCKET (inbound message)
     try {
       const io = getSocketIO();
       io.to(`tenant:${tenantId}`).emit('message:new', {
@@ -171,40 +207,41 @@ export async function processInstagramMessage(job: Job<ProcessInstagramMessageJo
       );
     }
 
-    // 7. ENCAMINHAR PARA N8N (se IA nao bloqueada)
+    // 7. PROCESSAR COM EVA AI (se IA nao bloqueada)
     if (!conversation.iaLocked) {
       logger.info(
         { jobId: job.id, conversationId: conversation.id, iaLocked: false },
-        '[INSTAGRAM WORKER] Encaminhando para N8N'
+        '[INSTAGRAM WORKER] Processando com EVA AI'
       );
 
-      const n8nPayload = n8nService.buildPayload(
-        senderId,
-        {
-          id: savedMessage.id,
-          type: messageType,
+      try {
+        await evaOrchestrator.processMessage({
+          tenantId,
+          conversationId: conversation.id,
+          contactId: contact.id,
+          contactName: contact.name,
+          senderId,
+          channel: 'instagram',
+          messageType: String(messageType),
           content,
-          metadata,
-          timestamp: savedMessage.timestamp,
-        },
-        conversation.id,
-        contact.name,
-        isNewConversation,
-        'instagram',
-        contact.phoneNumber
-      );
-
-      // Fire-and-forget: nao bloquear o worker enquanto N8N processa
-      n8nService.forwardToN8N(tenantId, n8nPayload).catch((err) => {
+          metadata: metadata as Record<string, unknown>,
+          isNewConversation,
+        });
+      } catch (evaErr) {
+        // EVA has its own fallback, but log if it completely fails
         logger.error(
-          { jobId: job.id, conversationId: conversation.id, error: err instanceof Error ? err.message : 'Unknown' },
-          '[INSTAGRAM WORKER] Failed to forward to N8N'
+          {
+            jobId: job.id,
+            conversationId: conversation.id,
+            error: evaErr instanceof Error ? evaErr.message : 'Unknown',
+          },
+          '[INSTAGRAM WORKER] EVA processing failed (fallback should have fired)'
         );
-      });
+      }
     } else {
       logger.info(
         { jobId: job.id, conversationId: conversation.id, iaLocked: true },
-        '[INSTAGRAM WORKER] IA bloqueada, nao encaminhar para N8N'
+        '[INSTAGRAM WORKER] IA bloqueada, mensagem salva sem processamento EVA'
       );
     }
 
@@ -214,7 +251,7 @@ export async function processInstagramMessage(job: Job<ProcessInstagramMessageJo
     );
   } catch (error) {
     logger.error(
-      { jobId: job.id, tenantId, senderId, error: error instanceof Error ? error.message : 'Unknown' },
+      { jobId: job.id, tenantId, error: error instanceof Error ? error.message : 'Unknown' },
       'Failed to process Instagram message'
     );
     throw error;

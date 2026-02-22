@@ -41,6 +41,10 @@ const envSchema = z.object({
   // N8N
   N8N_API_KEY: z.string(),
 
+  // EVA AI Engine (OpenAI)
+  OPENAI_API_KEY: z.string().optional(),
+  KB_DATABASE_URL: z.string().optional(),
+
   // Super Admin
   SUPER_ADMIN_EMAIL: z.string().email().default('admin@seucrm.com'),
   SUPER_ADMIN_PASSWORD: z.string().default('change_me_in_production'),
