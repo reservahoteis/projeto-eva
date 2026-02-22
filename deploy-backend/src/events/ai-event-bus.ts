@@ -249,7 +249,7 @@ class AIEventBus extends EventEmitter {
           JSON.stringify(row.payload),
           row.retain_until
         );
-        return `($${base + 1},$${base + 2},$${base + 3},$${base + 4},$${base + 5},$${base + 6},$${base + 7},$${base + 8},$${base + 9},$${base + 10},$${base + 11},$${base + 12}::jsonb,$${base + 13})`;
+        return `($${base + 1}::uuid,$${base + 2},$${base + 3},$${base + 4},$${base + 5},$${base + 6},$${base + 7},$${base + 8},$${base + 9},$${base + 10},$${base + 11},$${base + 12}::jsonb,$${base + 13})`;
       });
 
       await prisma.$executeRawUnsafe(
