@@ -298,7 +298,7 @@ describe('EVA Orchestrator', () => {
   });
 
   describe('processMessage — fallback', () => {
-    it('should escalate when OpenAI throws', async () => {
+    it('should send fallback message when OpenAI throws but NOT lock conversation', async () => {
       mockCreate.mockReset();
       mockCreate.mockRejectedValueOnce(new Error('API timeout'));
 
@@ -306,17 +306,18 @@ describe('EVA Orchestrator', () => {
 
       await evaOrchestrator.processMessage(params);
 
-      // Should create escalation with AI_UNABLE
-      expect(mockEscalationCreate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            reason: 'AI_UNABLE',
-          }),
-        })
-      );
-
       // Should send fallback message
       expect(mockSendText).toHaveBeenCalled();
+
+      // Should NOT create escalation record (no iaLocked)
+      expect(mockEscalationCreate).not.toHaveBeenCalled();
+
+      // Should NOT lock conversation (next message should retry)
+      expect(mockConversationUpdate).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ iaLocked: true }),
+        })
+      );
     });
   });
 });

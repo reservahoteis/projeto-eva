@@ -497,13 +497,40 @@ class EvaOrchestrator {
     );
   }
 
+  /**
+   * Fallback on technical errors (OpenAI timeout, API key missing, etc.)
+   * IMPORTANT: Does NOT set iaLocked=true — the next message should retry.
+   * Only user-requested escalation locks the conversation.
+   */
   private async handleFallback(
     params: EvaProcessParams,
     channelUpper: ChannelUpperCase,
     startTime: number,
     sessionId: string
   ): Promise<void> {
-    await this.handleEscalation(params, channelUpper, 'ai_unable', startTime, sessionId);
+    // Send fallback message WITHOUT locking the conversation
+    await this.sendAndSave(params, channelUpper, FALLBACK_MESSAGE, startTime);
+
+    // Emit escalation event for observability (but don't lock)
+    emitEscalation({
+      tenantId: params.tenantId,
+      tenantSlugHash: hashPII(params.tenantId),
+      conversationId: params.conversationId,
+      messageId: null,
+      channel: params.channel,
+      contactIdHash: hashPII(params.senderId),
+      sessionId,
+      reason: 'ai_unable',
+      turnsBeforeEscalation: 0,
+      triggerIntent: null,
+      isAutomatic: true,
+      hotelUnit: null,
+    });
+
+    logger.warn(
+      { conversationId: params.conversationId, reason: 'ai_unable' },
+      '[EVA] Fallback sent (conversation NOT locked — next message will retry)'
+    );
   }
 
   // ============================================
