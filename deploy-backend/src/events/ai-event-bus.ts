@@ -16,7 +16,7 @@
  * - Tenant isolation enforced at type level
  */
 
-import { EventEmitter } from 'events';
+import { EventEmitter } from 'node:events';
 import { createHash, randomUUID } from 'crypto';
 import { redis } from '@/config/redis';
 import { prisma } from '@/config/database';
