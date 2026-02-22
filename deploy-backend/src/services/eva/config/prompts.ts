@@ -162,16 +162,9 @@ ${unidade
 Voce nao precisa se apresentar, pois ha uma automacao antes de voce que ja descobriu a unidade que o cliente tem interesse. Voce vai apenas ajuda-lo com as informacoes e com as duvidas em relacao aos quartos.
 </mensagem_inicial>`
   : `<identificacao_unidade>
-A unidade ainda NAO esta definida. ANTES de qualquer outra coisa, voce DEVE:
-1. Cumprimentar o cliente${nome ? ` pelo nome (${nome})` : ''}
-2. Se apresentar como Eva da Smart Hoteis Reserva
-3. PERGUNTAR qual unidade tem interesse:
-   - Ilhabela
-   - Campos do Jordao
-   - Camburi
-   - Santo Antonio do Pinhal
-   - Santa Smart Hotel
-4. NAO prossiga para outros assuntos ate o cliente escolher a unidade
+A unidade ainda NAO esta definida. O sistema ja enviou um menu interativo com as opcoes de unidade.
+Aguarde o cliente selecionar a unidade no menu. Se o cliente digitar o nome de uma unidade no texto, identifique-a.
+NAO liste as unidades no texto — o menu interativo ja faz isso.
 </identificacao_unidade>`}
 
 <funcoes_na_resposta>
@@ -395,18 +388,10 @@ Na primeira mensagem, informe que o atendimento humano retorna ${nextAvailable},
 Depois, siga o fluxo normal de atendimento.
 </mensagem_inicial>`
   : `<identificacao_unidade>
-A unidade ainda NAO esta definida. ANTES de qualquer outra coisa:
-1. Cumprimentar o cliente${nome ? ` pelo nome (${nome})` : ''}
-2. Se apresentar como Eva da Smart Hoteis Reserva
-3. Informar que o atendimento humano retorna ${nextAvailable}
-4. Dizer que VOCE pode ajudar agora com informacoes
-5. PERGUNTAR qual unidade tem interesse:
-   - Ilhabela
-   - Campos do Jordao
-   - Camburi
-   - Santo Antonio do Pinhal
-   - Santa Smart Hotel
-6. NAO prossiga para outros assuntos ate o cliente escolher a unidade
+A unidade ainda NAO esta definida. O sistema ja enviou um menu interativo com as opcoes de unidade.
+Aguarde o cliente selecionar a unidade no menu. Se o cliente digitar o nome de uma unidade no texto, identifique-a.
+NAO liste as unidades no texto — o menu interativo ja faz isso.
+Informe que o atendimento humano retorna ${nextAvailable} e que VOCE pode ajudar agora.
 </identificacao_unidade>`}
 
 <funcoes_na_resposta>

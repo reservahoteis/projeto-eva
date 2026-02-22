@@ -20,6 +20,13 @@ function memoryKey(conversationId: string): string {
 }
 
 /**
+ * Builds the Redis key for a conversation's selected unit.
+ */
+function unitKey(conversationId: string): string {
+  return `${REDIS_PREFIX.EVA_UNIT}${conversationId}`;
+}
+
+/**
  * Retrieves conversation history from Redis.
  * Returns the last N messages as ChatMessage array (compatible with OpenAI).
  */
@@ -89,5 +96,36 @@ export async function clearMemory(conversationId: string): Promise<void> {
       { conversationId, err: err instanceof Error ? err.message : 'Unknown' },
       '[EVA MEMORY] Failed to clear memory'
     );
+  }
+}
+
+/**
+ * Persists the selected hotel unit for a conversation.
+ * TTL matches memory TTL (24h).
+ */
+export async function setUnit(conversationId: string, unit: string): Promise<void> {
+  try {
+    const key = unitKey(conversationId);
+    await redis.set(key, unit, 'EX', EVA_CONFIG.MEMORY_TTL_SECONDS);
+  } catch (err) {
+    logger.warn(
+      { conversationId, unit, err: err instanceof Error ? err.message : 'Unknown' },
+      '[EVA MEMORY] Failed to set unit (non-critical)'
+    );
+  }
+}
+
+/**
+ * Retrieves the selected hotel unit for a conversation.
+ */
+export async function getUnit(conversationId: string): Promise<string | null> {
+  try {
+    return await redis.get(unitKey(conversationId));
+  } catch (err) {
+    logger.warn(
+      { conversationId, err: err instanceof Error ? err.message : 'Unknown' },
+      '[EVA MEMORY] Failed to get unit'
+    );
+    return null;
   }
 }

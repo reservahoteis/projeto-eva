@@ -97,6 +97,7 @@ export const FAQ_CATEGORIES = [
 /** Prefixos Redis de sessao */
 export const REDIS_PREFIX = {
   EVA_MEMORY: 'eva:memory:', // eva:memory:{conversationId}
+  EVA_UNIT: 'eva:unit:',     // eva:unit:{conversationId}
 };
 
 /** Configuracoes da IA */
@@ -134,3 +135,48 @@ export const CAROUSEL_TEMPLATE_MAP: Record<number, string> = {
   9: 'carousel_fotos_acomodacoes_9cards',
   10: 'carousel_acomodacoes_10cards',
 };
+
+// ============================================
+// Interactive Menu Constants
+// Replicate N8N interactive elements
+// ============================================
+
+import type { ListSection, QuickReplyPayload } from '@/services/channels/channel-send.interface';
+
+/** Secoes da lista de selecao de unidades (replicando N8N) */
+export const UNIT_SELECTION_SECTIONS: ListSection[] = [
+  {
+    title: 'Unidades',
+    rows: [
+      { id: 'info_ilhabela', title: 'Ilhabela' },
+      { id: 'info_campos', title: 'Campos do Jordao' },
+      { id: 'info_camburi', title: 'Camburi' },
+      { id: 'info_santo_antonio', title: 'Santo Antonio' },
+      { id: 'info_santa', title: 'Santa Smart Hotel' },
+    ],
+  },
+];
+
+/** Quick Replies do menu comercial (apos selecionar unidade) */
+export const COMMERCIAL_QUICK_REPLIES: QuickReplyPayload[] = [
+  { title: 'Ver quartos', payload: 'ver_quartos' },
+  { title: 'Disponibilidade', payload: 'check_availability' },
+  { title: 'FAQ', payload: 'ver_faq' },
+  { title: 'Falar c/ atendente', payload: 'falar_humano' },
+  { title: 'Menu inicial', payload: 'menu_inicial' },
+];
+
+/** Quick Replies de categorias FAQ */
+export const FAQ_CATEGORY_QUICK_REPLIES: QuickReplyPayload[] = FAQ_CATEGORIES.map((cat) => ({
+  title: cat.title.substring(0, 20),
+  payload: cat.id,
+}));
+
+/** Texto de boas-vindas (primeira mensagem sem unidade) */
+export const WELCOME_TEXT =
+  'Ola! Eu sou a Eva, assistente virtual da Smart Hoteis Reserva. ' +
+  'Estou aqui para ajudar voce a encontrar a hospedagem perfeita!';
+
+/** Texto do botao da lista de unidades */
+export const UNIT_LIST_BODY_TEXT = 'Qual unidade voce gostaria de conhecer?';
+export const UNIT_LIST_BUTTON_TEXT = 'Ver unidades';

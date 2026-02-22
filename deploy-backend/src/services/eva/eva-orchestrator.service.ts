@@ -5,7 +5,19 @@
 
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
 import { getOpenAIClient } from './config/openai.client';
-import { EVA_CONFIG, HUMAN_REQUEST_KEYWORDS } from './config/eva.constants';
+import {
+  EVA_CONFIG,
+  HUMAN_REQUEST_KEYWORDS,
+  UNIDADES_MAP,
+  HBOOK_COMPANY_IDS,
+  UNIT_SELECTION_SECTIONS,
+  COMMERCIAL_QUICK_REPLIES,
+  FAQ_CATEGORY_QUICK_REPLIES,
+  FAQ_CATEGORIES,
+  WELCOME_TEXT,
+  UNIT_LIST_BODY_TEXT,
+  UNIT_LIST_BUTTON_TEXT,
+} from './config/eva.constants';
 import {
   getCommercialSystemPrompt,
   getAfterHoursSystemPrompt,
@@ -14,11 +26,15 @@ import {
 } from './config/prompts';
 import { VALID_HOTEL_UNITS, HOTEL_UNIT_ALIASES } from './config/eva.constants';
 import { detectInjection, sanitizeOutput, stripPII } from './security/prompt-guard';
-import { getConversationHistory, addMessage, clearMemory } from './memory/memory.service';
+import { getConversationHistory, addMessage, clearMemory, setUnit, getUnit } from './memory/memory.service';
 import { EVA_TOOLS } from './tools/tool-definitions';
 import { executeToolCall } from './tools/tool-handlers';
+import { getKBClient } from './config/kb-database';
 import { isWithinBusinessHours, getNextBusinessHoursMessage } from './utils/business-hours';
 import { channelRouter } from '@/services/channels/channel-router';
+import { instagramAdapter } from '@/services/channels/instagram.adapter';
+import { messengerAdapter } from '@/services/channels/messenger.adapter';
+import type { QuickReplyPayload } from '@/services/channels/channel-send.interface';
 import { prisma } from '@/config/database';
 import { getSocketIO } from '@/config/socket';
 import { hashPII } from '@/events/ai-event-bus';
@@ -55,15 +71,18 @@ class EvaOrchestrator {
    * This replaces the N8N fire-and-forget approach.
    *
    * Flow:
+   * 0. Intercept interactive postbacks/quick_replies
    * 1. Input validation + prompt guard
    * 2. Special commands (menu, cancelar, ##memoria##)
    * 3. Human request detection
-   * 4. Build context (memory + system prompt)
-   * 5. Call OpenAI with tools (max 3 iterations)
-   * 6. Process response (carousels, multi-message)
-   * 7. Send via Channel Router
-   * 8. Save outbound message + emit socket
-   * 9. Fallback if any step fails
+   * 4. Unit detection (Redis + history)
+   * 5. If no unit: send interactive unit selection menu
+   * 6. Build context (memory + system prompt)
+   * 7. Call OpenAI with tools (max 3 iterations)
+   * 8. Process response (carousels, multi-message)
+   * 9. Send via Channel Router + Quick Replies
+   * 10. Save outbound message + emit socket
+   * 11. Fallback if any step fails
    */
   async processMessage(params: EvaProcessParams): Promise<void> {
     const sessionId = randomUUID();
@@ -83,13 +102,23 @@ class EvaOrchestrator {
     );
 
     try {
+      // 0. INTERCEPT INTERACTIVE CLICKS (postbacks / quick_replies)
+      const buttonId = this.extractButtonId(params.metadata);
+
+      if (buttonId) {
+        const handled = await this.handleInteractiveClick(
+          buttonId, params, channelUpper, startTime, sessionId
+        );
+        if (handled) return;
+        // If not handled (e.g. unknown payload), fall through to normal flow
+      }
+
       // 1. PROMPT GUARD
       if (detectInjection(params.content)) {
         logger.warn(
           { sessionId, conversationId: params.conversationId },
           '[EVA] Prompt injection blocked'
         );
-        // Respond normally as if it's a regular message (don't reveal detection)
         await this.sendAndSave(
           params,
           channelUpper,
@@ -130,15 +159,31 @@ class EvaOrchestrator {
         return;
       }
 
-      // 5. ADD USER MESSAGE TO MEMORY (truncate + strip PII for OpenAI)
+      // 5. UNIT DETECTION (Redis first, then history scan)
+      let detectedUnit = await getUnit(params.conversationId);
+
+      if (!detectedUnit) {
+        // Try detecting from message content + history
+        const history = await getConversationHistory(params.conversationId);
+        detectedUnit = this.detectUnitFromHistory(history, params.content);
+
+        if (detectedUnit) {
+          await setUnit(params.conversationId, detectedUnit);
+        }
+      }
+
+      // 6. NO UNIT → SEND WELCOME + UNIT SELECTION MENU
+      if (!detectedUnit) {
+        await this.sendWelcomeAndUnitMenu(params, channelUpper, startTime);
+        return;
+      }
+
+      // 7. ADD USER MESSAGE TO MEMORY (truncate + strip PII for OpenAI)
       const contentForMemory = stripPII(params.content.substring(0, 1000));
       await addMessage(params.conversationId, 'user', contentForMemory);
 
-      // 6. BUILD MESSAGES ARRAY
+      // 8. BUILD MESSAGES ARRAY
       const history = await getConversationHistory(params.conversationId);
-
-      // Detect hotel unit from conversation history
-      const detectedUnit = this.detectUnitFromHistory(history, params.content);
       const systemPrompt = this.selectSystemPrompt(detectedUnit, params.contactName);
 
       const messages: ChatCompletionMessageParam[] = [
@@ -149,23 +194,22 @@ class EvaOrchestrator {
         })),
       ];
 
-      // 7. CALL OPENAI WITH TOOL LOOP
+      // 9. CALL OPENAI WITH TOOL LOOP
       const aiResponse = await this.callOpenAI(messages, params, sessionId);
 
       if (!aiResponse) {
-        // OpenAI failed — fallback
         await this.handleFallback(params, channelUpper, startTime, sessionId);
         return;
       }
 
-      // 8. SANITIZE OUTPUT
+      // 10. SANITIZE OUTPUT
       const sanitized = sanitizeOutput(aiResponse);
 
-      // 9. SAVE AI RESPONSE TO MEMORY
+      // 11. SAVE AI RESPONSE TO MEMORY
       await addMessage(params.conversationId, 'assistant', sanitized);
 
-      // 10. PROCESS AND SEND RESPONSE
-      await this.processAndSendResponse(params, channelUpper, sanitized, startTime);
+      // 12. PROCESS AND SEND RESPONSE (includes carousel handling)
+      await this.processAndSendResponse(params, channelUpper, sanitized, startTime, detectedUnit);
 
       logger.info(
         {
@@ -195,6 +239,205 @@ class EvaOrchestrator {
         );
       }
     }
+  }
+
+  // ============================================
+  // Interactive Click Processing
+  // ============================================
+
+  /**
+   * Extract button ID from metadata (postback or quick_reply).
+   * Instagram worker puts these at metadata.button.id.
+   */
+  private extractButtonId(metadata: Record<string, unknown>): string | null {
+    const button = metadata.button as Record<string, unknown> | undefined;
+    if (button?.id) return String(button.id);
+
+    const quickReply = metadata.quick_reply as Record<string, unknown> | undefined;
+    if (quickReply?.payload) return String(quickReply.payload);
+
+    return null;
+  }
+
+  /**
+   * Handle interactive clicks (postbacks / quick_replies).
+   * Returns true if the click was handled, false if unrecognized.
+   */
+  private async handleInteractiveClick(
+    buttonId: string,
+    params: EvaProcessParams,
+    channelUpper: ChannelUpperCase,
+    startTime: number,
+    sessionId: string
+  ): Promise<boolean> {
+    logger.info(
+      { conversationId: params.conversationId, buttonId, channel: params.channel },
+      '[EVA] Interactive click received'
+    );
+
+    // MENU INICIAL → re-send welcome + unit list
+    if (buttonId === 'menu_inicial') {
+      await this.sendWelcomeAndUnitMenu(params, channelUpper, startTime);
+      return true;
+    }
+
+    // UNIT SELECTION (info_ilhabela, info_campos, etc.)
+    if (UNIDADES_MAP[buttonId]) {
+      const unit = UNIDADES_MAP[buttonId];
+      await setUnit(params.conversationId, unit);
+
+      // Add to memory so OpenAI knows the unit
+      await addMessage(params.conversationId, 'user', `Escolhi a unidade ${unit}`);
+
+      // Send confirmation + commercial quick replies
+      const confirmText = `Otimo! Voce escolheu a unidade ${this.formatUnitName(unit)}. Como posso ajudar?`;
+      await this.sendAndSave(params, channelUpper, confirmText, startTime);
+      await this.sendQuickReplies(params, channelUpper, 'Escolha uma opcao:', COMMERCIAL_QUICK_REPLIES);
+
+      return true;
+    }
+
+    // FAQ CATEGORIES (cat_checkin, cat_acesso, etc.)
+    if (buttonId.startsWith('cat_')) {
+      await this.handleFaqCategory(params, channelUpper, buttonId, startTime, sessionId);
+      return true;
+    }
+
+    // VER QUARTOS → trigger carousel
+    if (buttonId === 'ver_quartos') {
+      const unit = await getUnit(params.conversationId);
+      if (unit) {
+        // Add to memory
+        await addMessage(params.conversationId, 'user', 'Quero ver os quartos');
+
+        // Send carousel directly
+        await this.sendCarouselCards(params, channelUpper, 'GERAL', '', unit, startTime);
+      } else {
+        await this.sendWelcomeAndUnitMenu(params, channelUpper, startTime);
+      }
+      return true;
+    }
+
+    // CHECK AVAILABILITY → pass to OpenAI with hint
+    if (buttonId === 'check_availability') {
+      // Rewrite content so OpenAI handles naturally
+      params.content = 'Quero verificar disponibilidade e precos';
+      return false; // Fall through to normal OpenAI flow
+    }
+
+    // VER FAQ → send FAQ category menu
+    if (buttonId === 'ver_faq') {
+      await this.sendAndSave(params, channelUpper, 'Sobre qual assunto voce tem duvida?', startTime);
+      await this.sendQuickReplies(params, channelUpper, 'Escolha o tema:', FAQ_CATEGORY_QUICK_REPLIES);
+      return true;
+    }
+
+    // FALAR HUMANO → escalation
+    if (buttonId === 'falar_humano') {
+      await this.handleEscalation(params, channelUpper, 'user_requested', startTime, sessionId);
+      return true;
+    }
+
+    // Unrecognized button — log and fall through
+    logger.warn(
+      { conversationId: params.conversationId, buttonId },
+      '[EVA] Unrecognized interactive button, falling through to normal flow'
+    );
+    return false;
+  }
+
+  // ============================================
+  // Welcome + Unit Selection
+  // ============================================
+
+  /**
+   * Send welcome message + interactive unit selection list.
+   * On Instagram/Messenger: degrades to Quick Replies (5 items = perfect).
+   * On WhatsApp: sends native interactive list.
+   */
+  private async sendWelcomeAndUnitMenu(
+    params: EvaProcessParams,
+    channelUpper: ChannelUpperCase,
+    startTime: number
+  ): Promise<void> {
+    const contactName = params.contactName;
+    const greeting = contactName
+      ? `Ola, ${contactName}! ${WELCOME_TEXT.replace('Ola! ', '')}`
+      : WELCOME_TEXT;
+
+    // Send welcome text
+    await this.sendAndSave(params, channelUpper, greeting, startTime);
+
+    // Send interactive unit list (degrades to Quick Replies on Instagram)
+    await channelRouter.sendList(
+      channelUpper,
+      params.tenantId,
+      params.senderId,
+      UNIT_LIST_BODY_TEXT,
+      UNIT_LIST_BUTTON_TEXT,
+      UNIT_SELECTION_SECTIONS
+    );
+
+    logger.info(
+      { conversationId: params.conversationId, channel: params.channel },
+      '[EVA] Welcome + unit selection menu sent'
+    );
+  }
+
+  // ============================================
+  // FAQ Category Handling
+  // ============================================
+
+  /**
+   * Handle FAQ category selection (cat_checkin, cat_acesso, etc.)
+   * Queries KB directly and sends result without calling OpenAI.
+   */
+  private async handleFaqCategory(
+    params: EvaProcessParams,
+    channelUpper: ChannelUpperCase,
+    categoryId: string,
+    startTime: number,
+    _sessionId: string
+  ): Promise<void> {
+    const unit = await getUnit(params.conversationId);
+    if (!unit) {
+      await this.sendWelcomeAndUnitMenu(params, channelUpper, startTime);
+      return;
+    }
+
+    // Find category label
+    const category = FAQ_CATEGORIES.find((c) => c.id === categoryId);
+    const categoryLabel = category?.title || categoryId.replace('cat_', '');
+
+    // Query KB for FAQs
+    const kb = getKBClient();
+    const catSearch = categoryId.replace('cat_', '');
+
+    const rows = await kb.$queryRawUnsafe(
+      `SELECT "Pergunta", "Resposta" FROM infos_faq
+       WHERE UPPER("Unidade") = $1 AND LOWER("Categoria") LIKE $2
+       LIMIT 10`,
+      unit,
+      `%${catSearch}%`
+    ) as Array<{ Pergunta: string; Resposta: string }>;
+
+    if (rows.length === 0) {
+      await this.sendAndSave(
+        params, channelUpper,
+        `Nao encontrei informacoes sobre "${categoryLabel}" para esta unidade. Posso ajudar com outra coisa?`,
+        startTime
+      );
+    } else {
+      // Format FAQ as text (max 3 to avoid spam)
+      const faqText = rows.slice(0, 3).map((r) =>
+        `*${r.Pergunta}*\n${r.Resposta}`
+      ).join('\n\n');
+
+      await this.sendAndSave(params, channelUpper, faqText, startTime);
+    }
+
+    // Send commercial quick replies for navigation
+    await this.sendQuickReplies(params, channelUpper, 'Como posso ajudar mais?', COMMERCIAL_QUICK_REPLIES);
   }
 
   // ============================================
@@ -251,7 +494,6 @@ class EvaOrchestrator {
       currentMessages.push(choice.message);
 
       for (const toolCall of choice.message.tool_calls) {
-        // OpenAI SDK v6: tool calls can be 'function' type
         if (toolCall.type !== 'function') continue;
 
         let args: Record<string, unknown> = {};
@@ -298,30 +540,40 @@ class EvaOrchestrator {
 
   /**
    * Process AI response: detect carousel tags, split multi-messages, send.
+   * Now also sends contextual quick replies after the AI response.
    */
   private async processAndSendResponse(
     params: EvaProcessParams,
     channelUpper: ChannelUpperCase,
     response: string,
-    startTime: number
+    startTime: number,
+    detectedUnit: string | null
   ): Promise<void> {
     // Check for carousel tags (trimEnd to handle trailing newlines from OpenAI)
     const carouselMatch = response.trimEnd().match(/\|\s*#CARROSSEL-(GERAL|INDIVIDUAL)\s*(.*)$/);
 
     if (carouselMatch) {
       const textBeforeTag = response.replace(/\|\s*#CARROSSEL-.*$/, '').trim();
+      const carouselType = carouselMatch[1] as 'GERAL' | 'INDIVIDUAL';
+      const roomNames = carouselMatch[2]?.trim() || '';
 
       // Send text portion first
       if (textBeforeTag) {
         await this.sendAndSave(params, channelUpper, textBeforeTag, startTime);
       }
 
-      // TODO: implement carousel sending when KB tables are connected
-      // For now, log that carousel was requested
-      logger.info(
-        { conversationId: params.conversationId, carouselType: carouselMatch[1], rooms: carouselMatch[2] },
-        '[EVA] Carousel tag detected (sending text only for MVP)'
-      );
+      // Send carousel
+      if (detectedUnit) {
+        await this.sendCarouselCards(params, channelUpper, carouselType, roomNames, detectedUnit, startTime);
+      } else {
+        logger.warn(
+          { conversationId: params.conversationId, carouselType },
+          '[EVA] Carousel requested but no unit detected'
+        );
+      }
+
+      // Send contextual quick replies after carousel
+      await this.sendQuickReplies(params, channelUpper, 'Como posso ajudar mais?', COMMERCIAL_QUICK_REPLIES);
       return;
     }
 
@@ -329,15 +581,16 @@ class EvaOrchestrator {
     const lines = response.split('\n').filter((line) => line.trim().length > 0);
 
     if (lines.length <= 3) {
-      // Send as single message
       await this.sendAndSave(params, channelUpper, response, startTime);
     } else {
-      // Send as multiple messages (max 3 to avoid spam)
       const chunks = this.chunkMessages(lines, 3);
       for (const chunk of chunks) {
         await this.sendAndSave(params, channelUpper, chunk, startTime);
       }
     }
+
+    // Send contextual quick replies after AI response
+    await this.sendQuickReplies(params, channelUpper, 'Como posso ajudar mais?', COMMERCIAL_QUICK_REPLIES);
   }
 
   /**
@@ -354,6 +607,123 @@ class EvaOrchestrator {
       chunks.push(lines.slice(i, i + linesPerChunk).join('\n'));
     }
     return chunks;
+  }
+
+  // ============================================
+  // Carousel Sending
+  // ============================================
+
+  /**
+   * Send carousel cards via Instagram/Messenger Generic Template.
+   * Queries KB for room data and builds card elements.
+   */
+  private async sendCarouselCards(
+    params: EvaProcessParams,
+    channelUpper: ChannelUpperCase,
+    carouselType: 'GERAL' | 'INDIVIDUAL',
+    roomNames: string,
+    unit: string,
+    startTime: number
+  ): Promise<void> {
+    try {
+      const kb = getKBClient();
+      let rows: Array<Record<string, unknown>>;
+
+      if (carouselType === 'INDIVIDUAL' && roomNames) {
+        // Individual carousel: specific rooms by name
+        const names = roomNames.split(',').map((n) => n.trim()).filter(Boolean);
+        if (names.length === 0) {
+          logger.warn({ conversationId: params.conversationId }, '[EVA] Individual carousel with no room names');
+          return;
+        }
+
+        // Build parameterized query
+        const placeholders = names.map((_, i) => `$${i + 1}`).join(', ');
+        rows = await kb.$queryRawUnsafe(
+          `SELECT "Tipo", "Categoria", "Descricao", "linkImage"
+           FROM infos_carrossel_individual
+           WHERE "Categoria" IN (${placeholders})
+           LIMIT 10`,
+          ...names
+        ) as Array<Record<string, unknown>>;
+      } else {
+        // General carousel: all rooms for the unit
+        rows = await kb.$queryRawUnsafe(
+          `SELECT "Tipo", "Categoria", "Descricao", "linkImage"
+           FROM infos_quartos
+           WHERE UPPER("Unidade") = $1
+           ORDER BY "Categoria"
+           LIMIT 10`,
+          unit
+        ) as Array<Record<string, unknown>>;
+      }
+
+      if (rows.length === 0) {
+        await this.sendAndSave(
+          params, channelUpper,
+          'Nao encontrei quartos disponiveis para esta unidade no momento.',
+          startTime
+        );
+        return;
+      }
+
+      // Build HBook reservation link
+      const companyId = HBOOK_COMPANY_IDS[unit] || '';
+      const reserveUrl = companyId
+        ? `https://reserva.hoteis.app/${companyId}?utm_source=eva&utm_medium=instagram`
+        : 'https://hoteisreserva.com.br';
+
+      // Build card elements for Generic Template
+      const elements = rows.map((row) => ({
+        title: String(row.Tipo || row.Categoria || 'Quarto'),
+        subtitle: String(row.Descricao || '').substring(0, 80),
+        imageUrl: row.linkImage ? String(row.linkImage) : undefined,
+        buttons: [
+          { id: 'ver_quartos', title: 'Ver detalhes', url: reserveUrl },
+        ],
+      }));
+
+      // Instagram/Messenger: use Generic Template (real carousel)
+      if (channelUpper === 'INSTAGRAM' || channelUpper === 'MESSENGER') {
+        const adapter = channelUpper === 'INSTAGRAM' ? instagramAdapter : messengerAdapter;
+
+        if ('sendGenericTemplate' in adapter) {
+          await (adapter as typeof instagramAdapter).sendGenericTemplate(
+            params.tenantId,
+            params.senderId,
+            elements
+          );
+
+          logger.info(
+            { conversationId: params.conversationId, cardCount: elements.length, carouselType, unit },
+            '[EVA] Carousel sent via Generic Template'
+          );
+          return;
+        }
+      }
+
+      // WhatsApp/fallback: send text list with image links
+      const textCards = elements.map((el, i) =>
+        `${i + 1}. *${el.title}*\n${el.subtitle}\n${reserveUrl}`
+      ).join('\n\n');
+
+      await this.sendAndSave(params, channelUpper, textCards, startTime);
+
+      logger.info(
+        { conversationId: params.conversationId, cardCount: elements.length, carouselType },
+        '[EVA] Carousel sent as text (WhatsApp fallback)'
+      );
+    } catch (err) {
+      logger.error(
+        { conversationId: params.conversationId, err: err instanceof Error ? err.message : 'Unknown', carouselType },
+        '[EVA] Carousel send failed'
+      );
+      await this.sendAndSave(
+        params, channelUpper,
+        'Nao consegui carregar os quartos no momento. Tente novamente ou fale com um atendente.',
+        startTime
+      );
+    }
   }
 
   // ============================================
@@ -432,6 +802,32 @@ class EvaOrchestrator {
     );
   }
 
+  /**
+   * Send Quick Replies via Channel Router (fire-and-forget, not saved to DB).
+   * Quick Replies are ephemeral UI elements, not persistent messages.
+   */
+  private async sendQuickReplies(
+    params: EvaProcessParams,
+    channelUpper: ChannelUpperCase,
+    text: string,
+    quickReplies: QuickReplyPayload[]
+  ): Promise<void> {
+    try {
+      await channelRouter.sendQuickReplies(
+        channelUpper,
+        params.tenantId,
+        params.senderId,
+        text,
+        quickReplies
+      );
+    } catch (err) {
+      logger.warn(
+        { conversationId: params.conversationId, err: err instanceof Error ? err.message : 'Unknown' },
+        '[EVA] Quick Replies send failed (non-critical)'
+      );
+    }
+  }
+
   // ============================================
   // Escalation + Fallback
   // ============================================
@@ -504,7 +900,6 @@ class EvaOrchestrator {
   /**
    * Fallback on technical errors (OpenAI timeout, API key missing, etc.)
    * IMPORTANT: Does NOT set iaLocked=true — the next message should retry.
-   * Only user-requested escalation locks the conversation.
    */
   private async handleFallback(
     params: EvaProcessParams,
@@ -512,10 +907,8 @@ class EvaOrchestrator {
     startTime: number,
     sessionId: string
   ): Promise<void> {
-    // Send fallback message WITHOUT locking the conversation
     await this.sendAndSave(params, channelUpper, FALLBACK_MESSAGE, startTime);
 
-    // Emit escalation event for observability (but don't lock)
     emitEscalation({
       tenantId: params.tenantId,
       tenantSlugHash: hashPII(params.tenantId),
@@ -560,13 +953,11 @@ class EvaOrchestrator {
 
   /**
    * Detect hotel unit from conversation history and current message.
-   * Scans for unit names/aliases using word-boundary matching.
    */
   private detectUnitFromHistory(
     history: Array<{ role: string; content: string }>,
     currentContent: string
   ): string | null {
-    // Scan current message + full history (most recent first)
     const textsToScan = [
       currentContent,
       ...history.slice().reverse().map((h) => h.content),
@@ -575,7 +966,6 @@ class EvaOrchestrator {
     for (const text of textsToScan) {
       const lower = text.toLowerCase();
 
-      // Check exact unit names (word boundary to avoid false positives)
       for (const unit of VALID_HOTEL_UNITS) {
         const needle = unit.toLowerCase();
         const regex = new RegExp(`(?<![a-zA-ZÀ-ÿ])${this.escapeRegex(needle)}(?![a-zA-ZÀ-ÿ])`, 'i');
@@ -584,7 +974,6 @@ class EvaOrchestrator {
         }
       }
 
-      // Check aliases (word boundary matching)
       for (const [alias, displayName] of Object.entries(HOTEL_UNIT_ALIASES)) {
         const needle = alias.replace(/_/g, ' ');
         const regex = new RegExp(`(?<![a-zA-ZÀ-ÿ])${this.escapeRegex(needle)}(?![a-zA-ZÀ-ÿ])`, 'i');
@@ -595,6 +984,18 @@ class EvaOrchestrator {
     }
 
     return null;
+  }
+
+  /** Format unit key to display name */
+  private formatUnitName(key: string): string {
+    const map: Record<string, string> = {
+      ILHABELA: 'Ilhabela',
+      CAMPOS: 'Campos do Jordao',
+      CAMBURI: 'Camburi',
+      'SANTO ANTONIO': 'Santo Antonio do Pinhal',
+      SANTA: 'Santa Smart Hotel',
+    };
+    return map[key] || key;
   }
 
   /** Normalize display name to DB key */
