@@ -27,7 +27,7 @@ import {
   FALLBACK_MESSAGE,
   AUDIO_NOT_SUPPORTED_MESSAGE,
 } from './config/prompts';
-import { VALID_HOTEL_UNITS, HOTEL_UNIT_ALIASES } from './config/eva.constants';
+import { VALID_HOTEL_UNITS, HOTEL_UNIT_ALIASES, UNIT_DISPLAY_NAMES } from './config/eva.constants';
 import { detectInjection, sanitizeOutput, stripPII } from './security/prompt-guard';
 import { getConversationHistory, addMessage, clearMemory, setUnit, getUnit } from './memory/memory.service';
 import { EVA_TOOLS } from './tools/tool-definitions';
@@ -160,16 +160,16 @@ class EvaOrchestrator {
 
       // 4. HUMAN REQUEST DETECTION
       if (this.detectHumanRequest(effectiveContent)) {
-        await this.handleEscalation(params, channelUpper, 'user_requested', startTime, sessionId);
+        const cachedUnit = await getUnit(params.conversationId);
+        await this.handleEscalation(params, channelUpper, 'user_requested', startTime, sessionId, cachedUnit);
         return;
       }
 
       // 5. UNIT DETECTION (Redis first, then history scan)
       let detectedUnit = await getUnit(params.conversationId);
+      let history = await getConversationHistory(params.conversationId);
 
       if (!detectedUnit) {
-        // Try detecting from message content + history
-        const history = await getConversationHistory(params.conversationId);
         detectedUnit = this.detectUnitFromHistory(history, effectiveContent);
 
         if (detectedUnit) {
@@ -187,8 +187,8 @@ class EvaOrchestrator {
       const contentForMemory = stripPII(effectiveContent.substring(0, 1000));
       await addMessage(params.conversationId, 'user', contentForMemory);
 
-      // 8. BUILD MESSAGES ARRAY
-      const history = await getConversationHistory(params.conversationId);
+      // 8. BUILD MESSAGES ARRAY (re-fetch after addMessage so it includes the new user msg)
+      history = await getConversationHistory(params.conversationId);
       const systemPrompt = this.selectSystemPrompt(detectedUnit, params.contactName);
 
       const messages: ChatCompletionMessageParam[] = [
@@ -203,7 +203,7 @@ class EvaOrchestrator {
       const aiResponse = await this.callOpenAI(messages, params, sessionId);
 
       if (!aiResponse) {
-        await this.handleFallback(params, channelUpper, startTime, sessionId);
+        await this.handleFallback(params, channelUpper, startTime, sessionId, detectedUnit);
         return;
       }
 
@@ -236,7 +236,8 @@ class EvaOrchestrator {
       );
 
       try {
-        await this.handleFallback(params, channelUpper, startTime, sessionId);
+        const fallbackUnit = await getUnit(params.conversationId).catch(() => null);
+        await this.handleFallback(params, channelUpper, startTime, sessionId, fallbackUnit);
       } catch (fallbackErr) {
         logger.error(
           { conversationId: params.conversationId, err: fallbackErr instanceof Error ? fallbackErr.message : 'Unknown' },
@@ -297,6 +298,7 @@ class EvaOrchestrator {
       // Send confirmation + main menu list (replicating N8N)
       const confirmText = `Otimo! Voce escolheu a unidade ${this.formatUnitName(unit)}. Como posso ajudar?`;
       await this.sendAndSave(params, channelUpper, confirmText, startTime);
+      await addMessage(params.conversationId, 'assistant', confirmText);
       await this.sendMainMenu(params, channelUpper);
 
       return { handled: true };
@@ -310,7 +312,10 @@ class EvaOrchestrator {
 
     // DUVIDAS FREQUENTES → FAQ category menu
     if (buttonId === 'duvidas_frequentes') {
-      await this.sendAndSave(params, channelUpper, 'Sobre qual assunto voce tem duvida?', startTime);
+      const faqIntro = 'Sobre qual assunto voce tem duvida?';
+      await addMessage(params.conversationId, 'user', 'Duvidas frequentes');
+      await this.sendAndSave(params, channelUpper, faqIntro, startTime);
+      await addMessage(params.conversationId, 'assistant', faqIntro);
       await this.sendQuickReplies(params, channelUpper, 'Escolha o tema:', FAQ_CATEGORY_QUICK_REPLIES);
       return { handled: true };
     }
@@ -355,7 +360,8 @@ class EvaOrchestrator {
 
     // FALAR HUMANO → escalation
     if (buttonId === 'falar_humano') {
-      await this.handleEscalation(params, channelUpper, 'user_requested', startTime, sessionId);
+      const unit = await getUnit(params.conversationId);
+      await this.handleEscalation(params, channelUpper, 'user_requested', startTime, sessionId, unit);
       return { handled: true };
     }
 
@@ -386,8 +392,9 @@ class EvaOrchestrator {
       ? `Ola, ${contactName}! ${WELCOME_TEXT.replace('Ola! ', '')}`
       : WELCOME_TEXT;
 
-    // Send welcome text
+    // Send welcome text + persist to memory
     await this.sendAndSave(params, channelUpper, greeting, startTime);
+    await addMessage(params.conversationId, 'assistant', greeting);
 
     // Send interactive unit list (degrades to Quick Replies on Instagram)
     await channelRouter.sendList(
@@ -477,19 +484,19 @@ class EvaOrchestrator {
       `%${catSearch}%`
     ) as Array<{ Pergunta: string; Resposta: string }>;
 
+    await addMessage(params.conversationId, 'user', `FAQ: ${categoryLabel}`);
+
     if (rows.length === 0) {
-      await this.sendAndSave(
-        params, channelUpper,
-        `Nao encontrei informacoes sobre "${categoryLabel}" para esta unidade. Posso ajudar com outra coisa?`,
-        startTime
-      );
+      const noResultMsg = `Nao encontrei informacoes sobre "${categoryLabel}" para esta unidade. Posso ajudar com outra coisa?`;
+      await this.sendAndSave(params, channelUpper, noResultMsg, startTime);
+      await addMessage(params.conversationId, 'assistant', noResultMsg);
     } else {
-      // Format FAQ as text (max 3 to avoid spam)
       const faqText = rows.slice(0, 3).map((r) =>
         `*${r.Pergunta}*\n${r.Resposta}`
       ).join('\n\n');
 
       await this.sendAndSave(params, channelUpper, faqText, startTime);
+      await addMessage(params.conversationId, 'assistant', faqText);
     }
 
     // Send commercial quick replies for navigation
@@ -911,7 +918,8 @@ class EvaOrchestrator {
     channelUpper: ChannelUpperCase,
     reason: 'user_requested' | 'ai_unable',
     startTime: number,
-    sessionId: string
+    sessionId: string,
+    hotelUnit?: string | null
   ): Promise<void> {
     // 1. Lock IA
     await prisma.conversation.update({
@@ -949,7 +957,7 @@ class EvaOrchestrator {
       });
     } catch { /* non-critical */ }
 
-    // 5. Emit AI event
+    // 5. Emit AI event (pass actual hotelUnit when known)
     emitEscalation({
       tenantId: params.tenantId,
       tenantSlugHash: hashPII(params.tenantId),
@@ -962,7 +970,7 @@ class EvaOrchestrator {
       turnsBeforeEscalation: 0,
       triggerIntent: null,
       isAutomatic: reason !== 'user_requested',
-      hotelUnit: null,
+      hotelUnit: hotelUnit ?? null,
     });
 
     logger.info(
@@ -979,7 +987,8 @@ class EvaOrchestrator {
     params: EvaProcessParams,
     channelUpper: ChannelUpperCase,
     startTime: number,
-    sessionId: string
+    sessionId: string,
+    hotelUnit?: string | null
   ): Promise<void> {
     await this.sendAndSave(params, channelUpper, FALLBACK_MESSAGE, startTime);
 
@@ -995,7 +1004,7 @@ class EvaOrchestrator {
       turnsBeforeEscalation: 0,
       triggerIntent: null,
       isAutomatic: true,
-      hotelUnit: null,
+      hotelUnit: hotelUnit ?? null,
     });
 
     logger.warn(
@@ -1060,16 +1069,9 @@ class EvaOrchestrator {
     return null;
   }
 
-  /** Format unit key to display name */
+  /** Format unit key to display name (uses canonical UNIT_DISPLAY_NAMES) */
   private formatUnitName(key: string): string {
-    const map: Record<string, string> = {
-      ILHABELA: 'Ilhabela',
-      CAMPOS: 'Campos do Jordao',
-      CAMBURI: 'Camburi',
-      'SANTO ANTONIO': 'Santo Antonio do Pinhal',
-      SANTA: 'Santa Smart Hotel',
-    };
-    return map[key] || key;
+    return UNIT_DISPLAY_NAMES[key] || key;
   }
 
   /** Normalize display name to DB key */

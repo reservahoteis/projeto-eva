@@ -49,14 +49,17 @@ export const HOTEL_UNIT_ALIASES: Record<string, string> = {
   // ("estacionamento", "restaurante", "santa catarina", etc.)
 };
 
-/** Unidades validas (nomes de exibicao) */
-export const VALID_HOTEL_UNITS = [
-  'Ilhabela',
-  'Campos do Jordao',
-  'Camburi',
-  'Santo Antonio do Pinhal',
-  'Santa Smart Hotel',
-];
+/** Mapeamento canonico: DB key → nome de exibicao (single source of truth) */
+export const UNIT_DISPLAY_NAMES: Record<string, string> = {
+  ILHABELA: 'Ilhabela',
+  CAMPOS: 'Campos do Jordao',
+  CAMBURI: 'Camburi',
+  'SANTO ANTONIO': 'Santo Antonio do Pinhal',
+  SANTA: 'Santa Smart Hotel',
+};
+
+/** Unidades validas (nomes de exibicao) — derivado de UNIT_DISPLAY_NAMES */
+export const VALID_HOTEL_UNITS = Object.values(UNIT_DISPLAY_NAMES);
 
 /** Keywords que indicam pedido de atendente humano */
 export const HUMAN_REQUEST_KEYWORDS = [
