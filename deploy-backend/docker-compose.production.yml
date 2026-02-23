@@ -1,9 +1,66 @@
-version: '3.8'
-
 # ============================================
 # Production Docker Compose - Backend Only
-# Deploy apenas o backend na VPS
+# Blue/Green zero-downtime deploy
 # ============================================
+
+# YAML anchor: configuracao compartilhada entre backend-blue e backend-green
+x-backend: &backend-common
+  build:
+    context: .
+    dockerfile: Dockerfile
+  restart: always
+  environment:
+    NODE_ENV: production
+    PORT: 3001
+    DATABASE_URL: postgresql://${POSTGRES_USER:-crm_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-crm_whatsapp_saas}
+    REDIS_HOST: redis
+    REDIS_PORT: 6379
+    REDIS_PASSWORD: ${REDIS_PASSWORD}
+    JWT_SECRET: ${JWT_SECRET}
+    JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+    ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+    FRONTEND_URL: ${FRONTEND_URL}
+    BASE_DOMAIN: ${BASE_DOMAIN}
+    WHATSAPP_API_VERSION: ${WHATSAPP_API_VERSION:-v21.0}
+    WHATSAPP_WEBHOOK_VERIFY_TOKEN: ${WHATSAPP_WEBHOOK_VERIFY_TOKEN}
+    N8N_API_KEY: ${N8N_API_KEY}
+    SUPER_ADMIN_EMAIL: ${SUPER_ADMIN_EMAIL}
+    SUPER_ADMIN_PASSWORD: ${SUPER_ADMIN_PASSWORD}
+    # Messenger
+    MESSENGER_WEBHOOK_VERIFY_TOKEN: ${MESSENGER_WEBHOOK_VERIFY_TOKEN:-}
+    MESSENGER_PAGE_ACCESS_TOKEN: ${MESSENGER_PAGE_ACCESS_TOKEN:-}
+    MESSENGER_PAGE_ID: ${MESSENGER_PAGE_ID:-}
+    # Instagram
+    INSTAGRAM_WEBHOOK_VERIFY_TOKEN: ${INSTAGRAM_WEBHOOK_VERIFY_TOKEN:-}
+    INSTAGRAM_ACCESS_TOKEN: ${INSTAGRAM_ACCESS_TOKEN:-}
+    INSTAGRAM_ACCOUNT_ID: ${INSTAGRAM_ACCOUNT_ID:-}
+    # EVA AI Engine
+    OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    KB_DATABASE_URL: ${KB_DATABASE_URL:-}
+    # Media Storage
+    MEDIA_STORAGE_PATH: /var/lib/whatsapp-crm/media
+    MEDIA_BASE_URL: ${MEDIA_BASE_URL:-https://api.botreserva.com.br/api/media}
+    MEDIA_RETENTION_DAYS: ${MEDIA_RETENTION_DAYS:-30}
+  volumes:
+    - media_data:/var/lib/whatsapp-crm/media
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  networks:
+    - crm-network
+  healthcheck:
+    test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+    interval: 10s
+    timeout: 5s
+    retries: 3
+    start_period: 40s
+  logging:
+    driver: "json-file"
+    options:
+      max-size: "10m"
+      max-file: "3"
 
 services:
   # PostgreSQL Database
@@ -55,65 +112,17 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  # Backend Application
-  backend:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: crm-backend
-    restart: always
-    environment:
-      NODE_ENV: production
-      PORT: 3001
-      DATABASE_URL: postgresql://${POSTGRES_USER:-crm_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-crm_whatsapp_saas}
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_PASSWORD: ${REDIS_PASSWORD}
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
-      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
-      FRONTEND_URL: ${FRONTEND_URL}
-      BASE_DOMAIN: ${BASE_DOMAIN}
-      WHATSAPP_API_VERSION: ${WHATSAPP_API_VERSION:-v21.0}
-      WHATSAPP_WEBHOOK_VERIFY_TOKEN: ${WHATSAPP_WEBHOOK_VERIFY_TOKEN}
-      N8N_API_KEY: ${N8N_API_KEY}
-      SUPER_ADMIN_EMAIL: ${SUPER_ADMIN_EMAIL}
-      SUPER_ADMIN_PASSWORD: ${SUPER_ADMIN_PASSWORD}
-      # Messenger
-      MESSENGER_WEBHOOK_VERIFY_TOKEN: ${MESSENGER_WEBHOOK_VERIFY_TOKEN:-}
-      MESSENGER_PAGE_ACCESS_TOKEN: ${MESSENGER_PAGE_ACCESS_TOKEN:-}
-      MESSENGER_PAGE_ID: ${MESSENGER_PAGE_ID:-}
-      # Instagram
-      INSTAGRAM_WEBHOOK_VERIFY_TOKEN: ${INSTAGRAM_WEBHOOK_VERIFY_TOKEN:-}
-      INSTAGRAM_ACCESS_TOKEN: ${INSTAGRAM_ACCESS_TOKEN:-}
-      INSTAGRAM_ACCOUNT_ID: ${INSTAGRAM_ACCOUNT_ID:-}
-      # EVA AI Engine
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      KB_DATABASE_URL: ${KB_DATABASE_URL:-}
-      # Media Storage
-      MEDIA_STORAGE_PATH: /var/lib/whatsapp-crm/media
-      MEDIA_BASE_URL: ${MEDIA_BASE_URL:-https://api.botreserva.com.br/api/media}
-      MEDIA_RETENTION_DAYS: ${MEDIA_RETENTION_DAYS:-30}
-    volumes:
-      - media_data:/var/lib/whatsapp-crm/media
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - crm-network
-    healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+  # Backend Blue (active or standby - managed by zero-downtime-deploy.sh)
+  backend-blue:
+    <<: *backend-common
+    container_name: crm-backend-blue
+    profiles: ["blue"]
+
+  # Backend Green (active or standby - managed by zero-downtime-deploy.sh)
+  backend-green:
+    <<: *backend-common
+    container_name: crm-backend-green
+    profiles: ["green"]
 
   # Nginx Reverse Proxy
   nginx:
@@ -125,12 +134,10 @@ services:
       - "443:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d
       - ./certbot/conf:/etc/letsencrypt:ro
       - ./certbot/www:/var/www/certbot:ro
       - /var/lib/whatsapp-crm/hotel-images:/var/lib/whatsapp-crm/hotel-images:ro
-    depends_on:
-      - backend
     networks:
       - crm-network
     healthcheck:

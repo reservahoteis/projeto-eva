@@ -98,11 +98,9 @@ jobs:
               docker exec crm-postgres pg_dump -U crm_user crm_whatsapp_saas > "backups/pre-deploy-$(date +%Y%m%d-%H%M%S).sql" 2>/dev/null || echo "Warning: Database backup failed"
             fi
 
-            # Salvar imagem atual para rollback
-            if docker images | grep -q "deploy-backend-backend"; then
-              echo "Saving current image for rollback..."
-              docker tag deploy-backend-backend:latest deploy-backend-backend:rollback 2>/dev/null || true
-            fi
+            # Log current deploy state
+            CURRENT_COLOR=$(cat .deploy-color 2>/dev/null || echo "none")
+            echo "Current active color: $CURRENT_COLOR"
 
             # Limpar backups antigos (manter ultimos 5)
             ls -t backups/*.sql 2>/dev/null | tail -n +6 | xargs -r rm -f || true
@@ -122,6 +120,8 @@ jobs:
             --exclude 'src/test' \
             --exclude 'logs' \
             --exclude 'uploads' \
+            --exclude '.deploy-color' \
+            --exclude 'nginx/conf.d/upstream-backend.conf' \
             deploy-backend/ \
             ${{ env.VPS_USER }}@${{ env.VPS_HOST }}:${{ env.VPS_PATH }}/
 
@@ -158,62 +158,64 @@ jobs:
             echo "All manual migrations up to date"
           EOF
 
-      - name: Build and restart container
+      - name: Zero-downtime deploy (blue/green)
         run: |
           ssh ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'EOF'
             set -e
             cd /root/deploy-backend
-
-            echo "Building Docker image..."
-            docker compose -f docker-compose.production.yml build backend
-
-            echo "Stopping and removing old container..."
-            docker stop crm-backend 2>/dev/null || true
-            docker rm -f crm-backend 2>/dev/null || true
-
-            echo "Starting new container..."
-            docker compose -f docker-compose.production.yml up -d --no-deps backend
-
-            echo "Waiting for container to start..."
-            sleep 10
-
-            echo "Container status:"
-            docker compose -f docker-compose.production.yml ps backend
+            chmod +x scripts/zero-downtime-deploy.sh
+            bash scripts/zero-downtime-deploy.sh
           EOF
 
       - name: Health check with rollback
         run: |
-          for i in $(seq 1 30); do
+          for i in $(seq 1 20); do
             RESPONSE=$(curl -s -o /dev/null -w '%{http_code}' https://api.botreserva.com.br/api/health || echo "000")
             if [ "$RESPONSE" = "200" ]; then
-              echo "Health check OK!"
+              echo "External health check OK!"
               curl -s https://api.botreserva.com.br/api/health | jq '.' || true
-
-              # Limpar imagem de rollback apos sucesso
-              ssh ${{ env.VPS_USER }}@${{ env.VPS_HOST }} "docker rmi deploy-backend-backend:rollback 2>/dev/null || true"
               exit 0
             fi
-            echo "Attempt $i/30 - Status: $RESPONSE"
-            sleep 5
+            echo "Attempt $i/20 - Status: $RESPONSE"
+            sleep 3
           done
 
-          echo "Health check failed! Initiating rollback..."
+          echo "External health check failed! Rolling back..."
           ssh ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'EOF'
             cd /root/deploy-backend
-            echo "Container logs before rollback:"
-            docker logs crm-backend --tail=50
+            TARGET=$(cat .deploy-color 2>/dev/null || echo "blue")
+            PREVIOUS=$([ "$TARGET" = "blue" ] && echo "green" || echo "blue")
 
-            if docker images | grep -q "deploy-backend-backend:rollback"; then
-              echo "Rolling back to previous version..."
-              docker tag deploy-backend-backend:rollback deploy-backend-backend:latest
-              docker stop crm-backend 2>/dev/null || true
-              docker rm -f crm-backend 2>/dev/null || true
-              docker compose -f docker-compose.production.yml up -d --no-deps backend
+            echo "Current: $TARGET, Rolling back to: $PREVIOUS"
+            echo "Container logs:"
+            docker logs "crm-backend-$TARGET" --tail=30 2>/dev/null || true
+
+            # Verificar se container anterior existe
+            if docker ps -a --format '{{.Names}}' | grep -q "crm-backend-$PREVIOUS"; then
+              echo "Starting previous container: crm-backend-$PREVIOUS"
+              docker start "crm-backend-$PREVIOUS" 2>/dev/null || true
               sleep 10
-              echo "Rollback completed. Checking health..."
-              docker compose -f docker-compose.production.yml ps backend
+
+              # Switch nginx back
+              cat > nginx/conf.d/upstream-backend.conf << NGINXEOF
+          # Managed by zero-downtime-deploy.sh - ROLLBACK
+          upstream backend {
+              server crm-backend-$PREVIOUS:3001;
+              keepalive 32;
+              keepalive_timeout 60s;
+              keepalive_requests 100;
+          }
+          NGINXEOF
+              docker exec crm-nginx nginx -t && docker exec crm-nginx nginx -s reload
+
+              # Stop failed container
+              docker compose -f docker-compose.production.yml --profile $TARGET stop backend-$TARGET 2>/dev/null || true
+              docker compose -f docker-compose.production.yml --profile $TARGET rm -f backend-$TARGET 2>/dev/null || true
+
+              echo "$PREVIOUS" > .deploy-color
+              echo "Rolled back to $PREVIOUS"
             else
-              echo "No rollback image available!"
+              echo "No previous container available for rollback!"
             fi
           EOF
           exit 1
