@@ -47,6 +47,11 @@ jest.mock('@/utils/encryption', () => ({
   decrypt: jest.fn(),
 }));
 
+// Mock axios-retry (no-op em testes)
+jest.mock('@/utils/axios-retry', () => ({
+  addRetryInterceptor: jest.fn((instance: any) => instance),
+}));
+
 // Mock do logger
 jest.mock('@/config/logger', () => ({
   __esModule: true,

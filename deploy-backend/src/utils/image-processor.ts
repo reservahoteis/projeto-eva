@@ -204,35 +204,57 @@ export async function uploadImageToWhatsApp(
   accessToken: string,
   phoneNumberId: string
 ): Promise<string | null> {
-  try {
-    const FormData = (await import('form-data')).default;
-    const formData = new FormData();
+  const MAX_RETRIES = 3;
+  const BASE_DELAY = 1500;
 
-    formData.append('file', buffer, {
-      filename: 'image.jpg',
-      contentType: 'image/jpeg',
-    });
-    formData.append('messaging_product', 'whatsapp');
-    formData.append('type', 'image/jpeg');
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const FormData = (await import('form-data')).default;
+      const formData = new FormData();
 
-    const response = await axios.post(
-      `https://graph.facebook.com/v21.0/${phoneNumberId}/media`,
-      formData,
-      {
-        headers: {
-          ...formData.getHeaders(),
-          Authorization: `Bearer ${accessToken}`,
-        },
-        timeout: 60000,
+      formData.append('file', buffer, {
+        filename: 'image.jpg',
+        contentType: 'image/jpeg',
+      });
+      formData.append('messaging_product', 'whatsapp');
+      formData.append('type', 'image/jpeg');
+
+      const response = await axios.post(
+        `https://graph.facebook.com/v21.0/${phoneNumberId}/media`,
+        formData,
+        {
+          headers: {
+            ...formData.getHeaders(),
+            Authorization: `Bearer ${accessToken}`,
+          },
+          timeout: 60000,
+        }
+      );
+
+      const mediaId = response.data?.id;
+      logger.info({ mediaId, size: buffer.length, attempt }, 'Image uploaded to WhatsApp Media API');
+
+      return mediaId;
+    } catch (error: any) {
+      const code = error.code || '';
+      const status = error.response?.status;
+      const isRetryable = ['ECONNRESET', 'ECONNREFUSED', 'ETIMEDOUT', 'EPIPE'].includes(code)
+        || [429, 502, 503, 504].includes(status);
+
+      if (isRetryable && attempt < MAX_RETRIES) {
+        const delay = BASE_DELAY * Math.pow(2, attempt) + Math.random() * 500;
+        logger.warn(
+          { attempt: attempt + 1, maxRetries: MAX_RETRIES, delay: Math.round(delay), errorCode: code || status },
+          'WhatsApp image upload: Retrying after error'
+        );
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
       }
-    );
 
-    const mediaId = response.data?.id;
-    logger.info({ mediaId, size: buffer.length }, 'Image uploaded to WhatsApp Media API');
-
-    return mediaId;
-  } catch (error: any) {
-    logger.error({ error: error.response?.data || error.message }, 'Failed to upload image to WhatsApp');
-    return null;
+      logger.error({ error: error.response?.data || error.message, attempt }, 'Failed to upload image to WhatsApp');
+      return null;
+    }
   }
+
+  return null;
 }

@@ -32,6 +32,11 @@ jest.mock('@/utils/encryption', () => ({
   encrypt: (text: string) => `encrypted:${text}`,
 }));
 
+// Mock axios-retry (no-op em testes)
+jest.mock('@/utils/axios-retry', () => ({
+  addRetryInterceptor: jest.fn((instance: any) => instance),
+}));
+
 describe('WhatsAppService', () => {
   let whatsappService: WhatsAppService;
   let mockAxiosInstance: any;

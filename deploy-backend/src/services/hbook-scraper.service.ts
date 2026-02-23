@@ -14,6 +14,9 @@ const COMPANY_IDS: Record<string, string> = {
   'SANTA': '59f07097c19a3b1a60c6d113',
 };
 
+/** Tempo de inatividade antes de fechar o Chromium (60s) */
+const BROWSER_IDLE_TIMEOUT_MS = 60_000;
+
 /**
  * Interface para quarto disponível
  */
@@ -52,12 +55,18 @@ export interface AvailabilityResult {
  */
 class HBookScraperService {
   private browser: Browser | null = null;
+  private idleTimer: ReturnType<typeof setTimeout> | null = null;
+  private activePages = 0;
 
   /**
-   * Obtém ou cria instância do browser
+   * Obtém ou cria instância do browser.
+   * Fecha automaticamente após BROWSER_IDLE_TIMEOUT_MS de inatividade.
    */
   private async getBrowser(): Promise<Browser> {
+    this.clearIdleTimer();
+
     if (!this.browser || !this.browser.connected) {
+      logger.info('HBook Scraper: Launching Chromium');
       this.browser = await puppeteer.launch({
         headless: true,
         // Usar Chromium do sistema em Docker (definido por PUPPETEER_EXECUTABLE_PATH)
@@ -72,17 +81,63 @@ class HBookScraperService {
           '--single-process', // Necessário para Alpine
         ],
       });
+
+      // Lidar com browser fechando inesperadamente
+      this.browser.on('disconnected', () => {
+        logger.info('HBook Scraper: Chromium disconnected');
+        this.browser = null;
+        this.activePages = 0;
+        this.clearIdleTimer();
+      });
     }
+
+    this.activePages++;
     return this.browser;
+  }
+
+  /**
+   * Marca uma pagina como fechada e agenda idle timeout
+   */
+  private releasePage(): void {
+    this.activePages = Math.max(0, this.activePages - 1);
+    if (this.activePages === 0) {
+      this.scheduleIdleClose();
+    }
+  }
+
+  /**
+   * Agenda fechamento do browser por inatividade
+   */
+  private scheduleIdleClose(): void {
+    this.clearIdleTimer();
+    this.idleTimer = setTimeout(async () => {
+      if (this.activePages === 0 && this.browser) {
+        logger.info('HBook Scraper: Closing Chromium (idle timeout)');
+        await this.closeBrowser();
+      }
+    }, BROWSER_IDLE_TIMEOUT_MS);
+  }
+
+  private clearIdleTimer(): void {
+    if (this.idleTimer) {
+      clearTimeout(this.idleTimer);
+      this.idleTimer = null;
+    }
   }
 
   /**
    * Fecha o browser
    */
   async closeBrowser(): Promise<void> {
+    this.clearIdleTimer();
     if (this.browser) {
-      await this.browser.close();
+      try {
+        await this.browser.close();
+      } catch {
+        // Browser may already be closed
+      }
       this.browser = null;
+      this.activePages = 0;
     }
   }
 
@@ -301,8 +356,9 @@ class HBookScraperService {
       };
     } finally {
       if (page) {
-        await page.close();
+        await page.close().catch(() => {});
       }
+      this.releasePage();
     }
   }
 

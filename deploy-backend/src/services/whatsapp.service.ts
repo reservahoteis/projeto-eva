@@ -6,6 +6,7 @@ import logger from '@/config/logger';
 import { decrypt } from '@/utils/encryption';
 import { processImageForWhatsApp, uploadImageToWhatsApp } from '@/utils/image-processor';
 import { mediaStorageService, type MediaType } from '@/services/media-storage.service';
+import { addRetryInterceptor } from '@/utils/axios-retry';
 
 interface SendMessageResult {
   externalMessageId: string;
@@ -46,7 +47,7 @@ export class WhatsAppService {
       throw new BadRequestError('Configuração WhatsApp inválida');
     }
 
-    return axios.create({
+    const instance = axios.create({
       baseURL: this.baseUrl,
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -54,6 +55,15 @@ export class WhatsAppService {
       },
       timeout: 30000,
     });
+
+    addRetryInterceptor(instance, {
+      maxRetries: 3,
+      baseDelay: 1000,
+      maxDelay: 15000,
+      logPrefix: 'WhatsApp V1',
+    });
+
+    return instance;
   }
 
   /**

@@ -5,6 +5,7 @@ import { BadRequestError, InternalServerError } from '@/utils/errors';
 import logger from '@/config/logger';
 import { validateMediaUrl } from '@/utils/url-validator';
 import { decrypt } from '@/utils/encryption';
+import { addRetryInterceptor } from '@/utils/axios-retry';
 
 // ============================================
 // Types & Interfaces
@@ -137,7 +138,15 @@ export class WhatsAppServiceV2 {
       timeout: 30000, // 30 segundos
     });
 
-    // Interceptor para logging
+    // Retry com exponential backoff para erros de rede e 429
+    addRetryInterceptor(instance, {
+      maxRetries: 3,
+      baseDelay: 1000,
+      maxDelay: 15000,
+      logPrefix: 'WhatsApp V2',
+    });
+
+    // Interceptor para logging (roda APOS retries esgotarem)
     instance.interceptors.response.use(
       (response) => response,
       (error: AxiosError) => {

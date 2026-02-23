@@ -31,6 +31,11 @@ jest.mock('@/utils/url-validator', () => ({
   validateMediaUrl: jest.fn(),
 }));
 
+// Mock axios-retry (no-op em testes)
+jest.mock('@/utils/axios-retry', () => ({
+  addRetryInterceptor: jest.fn((instance: any) => instance),
+}));
+
 describe('WhatsAppServiceV2', () => {
   let service: WhatsAppServiceV2;
   let mockAxiosInstance: {

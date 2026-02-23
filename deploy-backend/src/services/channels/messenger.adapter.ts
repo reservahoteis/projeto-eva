@@ -9,6 +9,7 @@ import { env } from '@/config/env';
 import { BadRequestError, InternalServerError } from '@/utils/errors';
 import { decrypt } from '@/utils/encryption';
 import logger from '@/config/logger';
+import { addRetryInterceptor } from '@/utils/axios-retry';
 import type {
   ChannelSendAdapter,
   SendResult,
@@ -62,6 +63,13 @@ export class MessengerAdapter implements ChannelSendAdapter {
       params: { access_token: accessToken },
       headers: { 'Content-Type': 'application/json' },
       timeout: 30000,
+    });
+
+    addRetryInterceptor(instance, {
+      maxRetries: 3,
+      baseDelay: 1000,
+      maxDelay: 15000,
+      logPrefix: 'Messenger',
     });
 
     this.axiosCache.set(tenantId, instance);
