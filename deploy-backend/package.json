@@ -21,7 +21,7 @@
     "clean": "rm -rf dist node_modules"
   },
   "dependencies": {
-    "@prisma/client": "^5.22.0",
+    "@prisma/client": "^7.3.0",
     "async-local-storage": "^2.3.1",
     "axios": "^1.7.9",
     "bcrypt": "^5.1.1",
