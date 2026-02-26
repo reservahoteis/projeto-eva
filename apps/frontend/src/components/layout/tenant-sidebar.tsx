@@ -34,6 +34,7 @@ import {
   Target,
   ScrollText,
   Tag,
+  Zap,
 } from 'lucide-react';
 import { getInitials } from '@/lib/utils';
 import { UserRole } from '@/types';
@@ -74,6 +75,12 @@ const navigation = [
     name: 'Tags',
     href: '/dashboard/tags',
     icon: Tag,
+    adminOnly: true,
+  },
+  {
+    name: 'Respostas Rapidas',
+    href: '/dashboard/quick-replies',
+    icon: Zap,
     adminOnly: true,
   },
   {

@@ -274,6 +274,22 @@ export interface Tag {
 }
 
 // ============================================
+// QUICK REPLY
+// ============================================
+
+export interface QuickReply {
+  id: string;
+  title: string;
+  shortcut: string;
+  content: string;
+  category?: string;
+  order: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ============================================
 // WEBHOOK
 // ============================================
 

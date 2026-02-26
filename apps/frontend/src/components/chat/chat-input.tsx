@@ -3,6 +3,8 @@
 import { useState, useRef, KeyboardEvent } from 'react';
 import { Smile, Paperclip, Mic, Send } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useQuickReplies } from '@/hooks/use-quick-replies';
+import { QuickReplyPopup } from './quick-reply-popup';
 
 interface ChatInputProps {
   onSendMessage: (content: string) => void;
@@ -15,6 +17,8 @@ export function ChatInput({ onSendMessage, onTypingChange, disabled, isLoading }
   const [message, setMessage] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const qr = useQuickReplies();
 
   const handleSubmit = (e?: React.FormEvent) => {
     if (e) {
@@ -32,12 +36,16 @@ export function ChatInput({ onSendMessage, onTypingChange, disabled, isLoading }
 
     onSendMessage(message.trim());
     setMessage('');
+    qr.close();
     inputRef.current?.focus();
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setMessage(value);
+
+    // Detecta slash-command para respostas rapidas
+    qr.handleInputChange(value, e.target.selectionStart ?? value.length);
 
     // Typing indicator logic
     if (value.length > 0 && onTypingChange) {
@@ -62,6 +70,17 @@ export function ChatInput({ onSendMessage, onTypingChange, disabled, isLoading }
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    // Primeiro tenta navegar/selecionar no popup de respostas rapidas
+    const selectedReply = qr.handleKeyDown(e);
+    if (selectedReply) {
+      const cursorPos = inputRef.current?.selectionStart ?? message.length;
+      const textBeforeCursor = message.substring(0, cursorPos);
+      const lastSlashIndex = textBeforeCursor.lastIndexOf('/');
+      const newMessage = message.substring(0, lastSlashIndex) + selectedReply.content;
+      setMessage(newMessage);
+      return;
+    }
+
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSubmit();
@@ -69,7 +88,25 @@ export function ChatInput({ onSendMessage, onTypingChange, disabled, isLoading }
   };
 
   return (
-    <div className="h-[62px] bg-[#f0f2f5] px-2 sm:px-4 flex items-center gap-1 sm:gap-2">
+    <div className="relative h-[62px] bg-[#f0f2f5] px-2 sm:px-4 flex items-center gap-1 sm:gap-2">
+      {/* Popup de respostas rapidas — renderizado acima do input */}
+      {qr.isOpen && (
+        <QuickReplyPopup
+          replies={qr.filteredReplies}
+          selectedIndex={qr.selectedIndex}
+          filterText={qr.filterText}
+          onSelect={(reply) => {
+            const cursorPos = inputRef.current?.selectionStart ?? message.length;
+            const textBeforeCursor = message.substring(0, cursorPos);
+            const lastSlashIndex = textBeforeCursor.lastIndexOf('/');
+            const newMessage = message.substring(0, lastSlashIndex) + reply.content;
+            setMessage(newMessage);
+            qr.close();
+            inputRef.current?.focus();
+          }}
+        />
+      )}
+
       {/* Emoji Button - Hidden on very small screens */}
       <button
         type="button"
@@ -100,6 +137,10 @@ export function ChatInput({ onSendMessage, onTypingChange, disabled, isLoading }
           onKeyDown={handleKeyDown}
           placeholder="Digite uma mensagem"
           disabled={disabled || isLoading}
+          aria-label="Campo de mensagem"
+          aria-haspopup={qr.isOpen ? 'listbox' : undefined}
+          aria-expanded={qr.isOpen}
+          aria-autocomplete="list"
           className={cn(
             "flex-1 h-10 px-3 sm:px-4 py-2 bg-white rounded-lg text-[14px] sm:text-[15px] text-[#111b21] placeholder:text-[#667781]",
             "border-none outline-none focus:outline-none",
