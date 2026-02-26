@@ -43,18 +43,15 @@ export function useQuickReplies(): UseQuickRepliesReturn {
   // Filtra por shortcut ou title, correspondendo ao texto apos a /
   const filteredReplies = useMemo(() => {
     if (!filterText) {
-      return allReplies
-        .filter((r) => r.isActive)
-        .sort((a, b) => a.order - b.order);
+      return allReplies.sort((a, b) => a.order - b.order);
     }
 
     const lower = filterText.toLowerCase();
     return allReplies
       .filter(
         (r) =>
-          r.isActive &&
-          (r.shortcut.toLowerCase().includes(lower) ||
-            r.title.toLowerCase().includes(lower))
+          r.shortcut.toLowerCase().includes(lower) ||
+          r.title.toLowerCase().includes(lower)
       )
       .sort((a, b) => a.order - b.order);
   }, [allReplies, filterText]);

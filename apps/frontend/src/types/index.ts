@@ -282,7 +282,7 @@ export interface QuickReply {
   title: string;
   shortcut: string;
   content: string;
-  category?: string;
+  category?: string | null;
   order: number;
   isActive: boolean;
   createdAt: string;

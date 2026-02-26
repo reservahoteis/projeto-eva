@@ -309,6 +309,23 @@ function QuickReplyFormDialog({
   );
 }
 
+function QuickRepliesSkeleton() {
+  return (
+    <div className="space-y-3">
+      {[...Array(5)].map((_, i) => (
+        <div key={i} className="flex items-center space-x-4 p-4">
+          <Skeleton className="h-8 w-20 rounded-md" />
+          <div className="space-y-2 flex-1">
+            <Skeleton className="h-4 w-[200px]" />
+            <Skeleton className="h-4 w-[300px]" />
+          </div>
+          <Skeleton className="h-8 w-8" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function QuickRepliesPageContent() {
   const queryClient = useQueryClient();
 
@@ -399,21 +416,6 @@ function QuickRepliesPageContent() {
     if (!deletingQuickReply) return;
     await deleteMutation.mutateAsync(deletingQuickReply.id);
   };
-
-  const QuickRepliesSkeleton = () => (
-    <div className="space-y-3">
-      {[...Array(5)].map((_, i) => (
-        <div key={i} className="flex items-center space-x-4 p-4">
-          <Skeleton className="h-8 w-20 rounded-md" />
-          <div className="space-y-2 flex-1">
-            <Skeleton className="h-4 w-[200px]" />
-            <Skeleton className="h-4 w-[300px]" />
-          </div>
-          <Skeleton className="h-8 w-8" />
-        </div>
-      ))}
-    </div>
-  );
 
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6 liquid-bg min-h-screen">

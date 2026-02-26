@@ -75,8 +75,9 @@ export function ChatInput({ onSendMessage, onTypingChange, disabled, isLoading }
     if (selectedReply) {
       const cursorPos = inputRef.current?.selectionStart ?? message.length;
       const textBeforeCursor = message.substring(0, cursorPos);
-      const lastSlashIndex = textBeforeCursor.lastIndexOf('/');
-      const newMessage = message.substring(0, lastSlashIndex) + selectedReply.content;
+      const slashMatch = textBeforeCursor.match(/(^|\s)\/\S*$/);
+      const slashIndex = slashMatch ? textBeforeCursor.length - slashMatch[0].length + (slashMatch[1] ? slashMatch[1].length : 0) : cursorPos;
+      const newMessage = message.substring(0, slashIndex) + selectedReply.content;
       setMessage(newMessage);
       return;
     }
@@ -98,8 +99,9 @@ export function ChatInput({ onSendMessage, onTypingChange, disabled, isLoading }
           onSelect={(reply) => {
             const cursorPos = inputRef.current?.selectionStart ?? message.length;
             const textBeforeCursor = message.substring(0, cursorPos);
-            const lastSlashIndex = textBeforeCursor.lastIndexOf('/');
-            const newMessage = message.substring(0, lastSlashIndex) + reply.content;
+            const slashMatch = textBeforeCursor.match(/(^|\s)\/\S*$/);
+            const slashIndex = slashMatch ? textBeforeCursor.length - slashMatch[0].length + (slashMatch[1] ? slashMatch[1].length : 0) : cursorPos;
+            const newMessage = message.substring(0, slashIndex) + reply.content;
             setMessage(newMessage);
             qr.close();
             inputRef.current?.focus();

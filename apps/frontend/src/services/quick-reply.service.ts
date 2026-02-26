@@ -18,7 +18,6 @@ interface CreateQuickReplyData {
   content: string;
   category?: string;
   order?: number;
-  isActive?: boolean;
 }
 
 interface UpdateQuickReplyData {
