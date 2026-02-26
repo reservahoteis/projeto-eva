@@ -79,6 +79,14 @@ jest.mock('@/config/database', () => ({
       create: jest.fn(),
       update: jest.fn(),
     },
+    quickReply: {
+      findFirst: jest.fn(),
+      findMany: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+      deleteMany: jest.fn(),
+    },
   },
 }));
 

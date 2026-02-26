@@ -71,6 +71,7 @@ model Tenant {
   conversations Conversation[]
   messages      Message[]
   tags          Tag[]
+  quickReplies  QuickReply[]
   usageTracking UsageTracking[]
 
   @@index([slug])
@@ -139,8 +140,9 @@ model User {
   lastLogin DateTime?
 
   // Relações
-  tenant        Tenant?        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  conversations Conversation[] // Conversas atribuídas
+  tenant             Tenant?        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  conversations      Conversation[] // Conversas atribuídas
+  quickRepliesCreated QuickReply[]  @relation("QuickReplyCreatedBy")
 
   @@index([tenantId])
   @@index([email])
@@ -363,6 +365,35 @@ model Tag {
   @@unique([tenantId, name])
   @@index([tenantId])
   @@map("tags")
+}
+
+// ============================================
+// QUICK REPLY (Respostas rapidas para atendentes)
+// Atalhos /comando no chat - Isolado por tenant
+// ============================================
+model QuickReply {
+  id        String  @id @default(uuid())
+  tenantId  String
+
+  title     String      // "Check-in e Check-out"
+  shortcut  String      // "checkin" (sem /)
+  content   String  @db.Text
+  category  String?     // "Politicas", "Vendas"
+  order     Int     @default(0)
+  isActive  Boolean @default(true)
+
+  createdById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy User?  @relation("QuickReplyCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, shortcut])
+  @@index([tenantId])
+  @@index([tenantId, isActive])
+  @@map("quick_replies")
 }
 
 // ============================================
