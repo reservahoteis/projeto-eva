@@ -103,40 +103,38 @@ export class QuickReplyService {
    * Criar quick reply
    */
   async createQuickReply(tenantId: string, data: CreateQuickReplyInput, createdById?: string) {
-    // Verificar se atalho ja existe no tenant (@@unique([tenantId, shortcut]))
-    const existing = await prisma.quickReply.findFirst({
-      where: {
-        tenantId,
-        shortcut: data.shortcut,
-      },
-      select: { id: true },
-    });
+    const quickReply = await prisma.$transaction(async (tx) => {
+      const existing = await tx.quickReply.findFirst({
+        where: { tenantId, shortcut: data.shortcut },
+        select: { id: true },
+      });
 
-    if (existing) {
-      throw new BadRequestError('Ja existe uma quick reply com este atalho');
-    }
+      if (existing) {
+        throw new BadRequestError('Ja existe uma quick reply com este atalho');
+      }
 
-    const quickReply = await prisma.quickReply.create({
-      data: {
-        tenantId,
-        title: data.title,
-        shortcut: data.shortcut,
-        content: data.content,
-        category: data.category,
-        order: data.order ?? 0,
-        ...(createdById && { createdById }),
-      },
-      select: {
-        id: true,
-        title: true,
-        shortcut: true,
-        content: true,
-        category: true,
-        order: true,
-        isActive: true,
-        createdAt: true,
-        updatedAt: true,
-      },
+      return tx.quickReply.create({
+        data: {
+          tenantId,
+          title: data.title,
+          shortcut: data.shortcut,
+          content: data.content,
+          category: data.category,
+          order: data.order ?? 0,
+          ...(createdById && { createdById }),
+        },
+        select: {
+          id: true,
+          title: true,
+          shortcut: true,
+          content: true,
+          category: true,
+          order: true,
+          isActive: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
     });
 
     logger.info({ quickReplyId: quickReply.id, tenantId, shortcut: quickReply.shortcut }, 'QuickReply created');

@@ -29,8 +29,15 @@ const mockPrismaTransaction = prisma.$transaction as jest.Mock;
 // O array de chamadas pode ser undefined em tempo de tipos, mas no contexto
 // de teste sempre existira apos a chamada ter ocorrido.
 // --------------------------------------------------------------------------
-function getCallArg(mock: jest.Mock, callIndex: number): any {
-  return (mock.mock.calls[callIndex] as any[])[0];
+interface PrismaCallArg {
+  where: Record<string, unknown>;
+  data: Record<string, unknown>;
+  select?: Record<string, unknown>;
+  orderBy?: unknown;
+}
+
+function getCallArg(mock: jest.Mock, callIndex: number): PrismaCallArg {
+  return mock.mock.calls[callIndex][0] as PrismaCallArg;
 }
 
 // --------------------------------------------------------------------------
