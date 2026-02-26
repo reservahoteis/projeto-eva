@@ -1030,9 +1030,6 @@ async function handleHumanRequest(
       data: {
         isOpportunity: true,
         opportunityAt: now,
-        iaLocked: true,
-        iaLockedAt: now,
-        iaLockedBy: 'system',
         status: 'OPEN',
       } as any,
       include: {
@@ -1058,9 +1055,6 @@ async function handleHumanRequest(
     try {
       emitConversationUpdate(tenantId, conversationId, {
         isOpportunity: true,
-        iaLocked: true,
-        iaLockedAt: now.toISOString(),
-        iaLockedBy: 'system',
         status: 'OPEN',
       }, updatedConversation.hotelUnit ?? undefined);
     } catch (socketError) {
@@ -1071,7 +1065,7 @@ async function handleHumanRequest(
       tenantId,
       conversationId,
       trigger: messageContent,
-    }, 'Conversation escalated to human - client requested attendant (isOpportunity=true, iaLocked=true)');
+    }, 'Conversation marked as opportunity - IA remains active, sales team deactivates manually');
   } catch (error) {
     logger.error({
       error: error instanceof Error ? error.message : 'Unknown error',
