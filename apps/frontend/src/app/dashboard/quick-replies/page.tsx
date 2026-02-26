@@ -117,7 +117,6 @@ function QuickReplyFormDialog({
   }, [isOpen, quickReply]);
 
   const handleShortcutChange = (value: string) => {
-    // Auto-lowercase and strip invalid chars
     const sanitized = value.toLowerCase().replace(/[^a-z0-9-]/g, '');
     setFormData({ ...formData, shortcut: sanitized });
   };
@@ -150,61 +149,59 @@ function QuickReplyFormDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg glass-card">
+      <DialogContent className="max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/60 shadow-2xl rounded-2xl">
         <DialogHeader>
-          <DialogTitle className="text-[var(--text-primary)]">
+          <DialogTitle className="text-lg font-semibold text-slate-900 dark:text-slate-50">
             {quickReply ? 'Editar Resposta Rapida' : 'Nova Resposta Rapida'}
           </DialogTitle>
-          <DialogDescription className="text-[var(--text-muted)]">
+          <DialogDescription className="text-sm text-slate-500 dark:text-slate-400">
             {quickReply
               ? 'Atualize as informacoes da resposta rapida'
               : 'Adicione uma nova resposta rapida ao sistema'}
           </DialogDescription>
         </DialogHeader>
+
         <form onSubmit={handleSubmit}>
-          <div className="space-y-4 py-4">
+          <div className="space-y-5 py-2">
             {/* Titulo */}
-            <div className="space-y-2">
-              <Label htmlFor="title" className="text-[var(--text-secondary)]">
-                Titulo *
+            <div className="space-y-1.5">
+              <Label htmlFor="title" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                Titulo <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="title"
                 placeholder="Ex: Confirmacao de reserva, Politica de cancelamento..."
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                className="glass-input"
+                className="h-10 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-600 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20"
                 maxLength={100}
                 required
               />
-              <p className="text-xs text-[var(--text-muted)]">
+              <p className="text-xs text-slate-400 dark:text-slate-500">
                 {formData.title.length}/100 caracteres
               </p>
             </div>
 
             {/* Atalho */}
-            <div className="space-y-2">
-              <Label htmlFor="shortcut" className="text-[var(--text-secondary)]">
-                Atalho *
+            <div className="space-y-1.5">
+              <Label htmlFor="shortcut" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                Atalho <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="shortcut"
                 placeholder="Ex: confirmacao, cancelamento, check-in"
                 value={formData.shortcut}
                 onChange={(e) => handleShortcutChange(e.target.value)}
-                className="glass-input font-mono"
+                className="h-10 font-mono bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-600 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20"
                 maxLength={50}
                 required
               />
               <div className="flex items-center justify-between">
-                <p className="text-xs text-[var(--text-muted)]">
-                  {formData.shortcut.length}/50 caracteres - apenas letras minusculas, numeros e hifens
+                <p className="text-xs text-slate-400 dark:text-slate-500">
+                  Apenas letras minusculas, numeros e hifens
                 </p>
                 {formData.shortcut && (
-                  <Badge
-                    variant="secondary"
-                    className="font-mono text-xs bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                  >
+                  <Badge className="font-mono text-xs bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/25">
                     /{formData.shortcut}
                   </Badge>
                 )}
@@ -212,77 +209,71 @@ function QuickReplyFormDialog({
             </div>
 
             {/* Conteudo */}
-            <div className="space-y-2">
-              <Label htmlFor="content" className="text-[var(--text-secondary)]">
-                Conteudo *
+            <div className="space-y-1.5">
+              <Label htmlFor="content" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                Conteudo <span className="text-red-500">*</span>
               </Label>
               <Textarea
                 id="content"
                 placeholder="Digite o texto completo da resposta rapida..."
                 value={formData.content}
                 onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                className="glass-input min-h-[120px]"
+                className="min-h-[120px] bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-600 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20 resize-y"
                 maxLength={4000}
                 required
               />
-              <p className="text-xs text-[var(--text-muted)]">
+              <p className="text-xs text-slate-400 dark:text-slate-500">
                 {formData.content.length}/4000 caracteres
               </p>
             </div>
 
-            {/* Categoria */}
-            <div className="space-y-2">
-              <Label htmlFor="category" className="text-[var(--text-secondary)]">
-                Categoria (opcional)
-              </Label>
-              <Input
-                id="category"
-                placeholder="Ex: Politicas, Vendas, Informacoes"
-                value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                className="glass-input"
-                maxLength={50}
-              />
-            </div>
-
-            {/* Ordem */}
-            <div className="space-y-2">
-              <Label htmlFor="order" className="text-[var(--text-secondary)]">
-                Ordem (opcional)
-              </Label>
-              <Input
-                id="order"
-                type="number"
-                min={0}
-                placeholder="0"
-                value={formData.order}
-                onChange={(e) =>
-                  setFormData({ ...formData, order: parseInt(e.target.value) || 0 })
-                }
-                className="glass-input"
-              />
-              <p className="text-xs text-[var(--text-muted)]">
-                Menor numero aparece primeiro na lista
-              </p>
+            {/* Categoria e Ordem lado a lado */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="category" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Categoria
+                </Label>
+                <Input
+                  id="category"
+                  placeholder="Ex: Vendas"
+                  value={formData.category}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  className="h-10 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-600 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20"
+                  maxLength={50}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="order" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Ordem
+                </Label>
+                <Input
+                  id="order"
+                  type="number"
+                  min={0}
+                  placeholder="0"
+                  value={formData.order}
+                  onChange={(e) =>
+                    setFormData({ ...formData, order: parseInt(e.target.value) || 0 })
+                  }
+                  className="h-10 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-600 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20"
+                />
+              </div>
             </div>
 
             {/* Preview */}
-            <div className="space-y-2">
-              <Label className="text-[var(--text-secondary)]">Preview</Label>
-              <div className="p-4 rounded-ios-xs border border-[var(--glass-border)] bg-[var(--glass-bg-hover)] space-y-2">
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Preview</Label>
+              <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 space-y-2">
                 <div className="flex items-center gap-2">
-                  <Badge
-                    variant="secondary"
-                    className="font-mono text-xs bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                  >
+                  <Badge className="font-mono text-xs bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/25">
                     /{formData.shortcut || 'atalho'}
                   </Badge>
-                  <span className="text-sm font-medium text-[var(--text-primary)]">
+                  <span className="text-sm font-medium text-slate-800 dark:text-slate-200">
                     {formData.title || 'Titulo da resposta'}
                   </span>
                 </div>
                 {formData.content && (
-                  <p className="text-xs text-[var(--text-muted)] line-clamp-2">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">
                     {formData.content}
                   </p>
                 )}
@@ -290,20 +281,20 @@ function QuickReplyFormDialog({
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="pt-4 border-t border-slate-100 dark:border-slate-800">
             <Button
               type="button"
               variant="outline"
               onClick={onClose}
               disabled={isLoading}
-              className="glass-btn"
+              className="border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
             >
               Cancelar
             </Button>
             <Button
               type="submit"
               disabled={isLoading}
-              className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white"
+              className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
             >
               {isLoading
                 ? 'Salvando...'
@@ -709,22 +700,24 @@ function QuickRepliesPageContent() {
         open={!!deletingQuickReply}
         onOpenChange={(open) => !open && setDeletingQuickReply(null)}
       >
-        <AlertDialogContent className="glass-card">
+        <AlertDialogContent className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/60 shadow-2xl rounded-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-[var(--text-primary)]">
+            <AlertDialogTitle className="text-slate-900 dark:text-slate-50">
               Confirmar Exclusao
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-[var(--text-muted)]">
+            <AlertDialogDescription className="text-slate-500 dark:text-slate-400">
               Tem certeza que deseja remover a resposta rapida{' '}
-              <strong>&quot;{deletingQuickReply?.title}&quot;</strong>? Esta acao nao pode
+              <strong className="text-slate-700 dark:text-slate-200">&quot;{deletingQuickReply?.title}&quot;</strong>? Esta acao nao pode
               ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="glass-btn">Cancelar</AlertDialogCancel>
+            <AlertDialogCancel className="border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">
+              Cancelar
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteConfirm}
-              className="bg-red-600 hover:bg-red-700"
+              className="bg-red-600 hover:bg-red-700 text-white"
             >
               Remover
             </AlertDialogAction>
