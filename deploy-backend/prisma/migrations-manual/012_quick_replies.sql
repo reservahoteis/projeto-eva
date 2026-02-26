@@ -9,15 +9,15 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'quick_replies') THEN
 
     CREATE TABLE quick_replies (
-      id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      "tenantId"    UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      id            TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+      "tenantId"    TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
       title         VARCHAR(100) NOT NULL,
       shortcut      VARCHAR(50) NOT NULL,
       content       TEXT NOT NULL,
       category      VARCHAR(50),
       "order"       INTEGER NOT NULL DEFAULT 0,
       "isActive"    BOOLEAN NOT NULL DEFAULT true,
-      "createdById" UUID REFERENCES users(id) ON DELETE SET NULL,
+      "createdById" TEXT REFERENCES users(id) ON DELETE SET NULL,
       "createdAt"   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       "updatedAt"   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
