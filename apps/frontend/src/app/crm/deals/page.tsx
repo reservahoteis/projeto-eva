@@ -1350,6 +1350,21 @@ export default function DealsPage() {
                   </div>
                 ))}
               </div>
+            ) : kanbanQuery.isError ? (
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '80px 0',
+                  textAlign: 'center',
+                }}
+              >
+                <p style={{ fontSize: '14px', color: 'var(--ink-gray-5)' }}>
+                  Erro ao carregar o Kanban.
+                </p>
+              </div>
             ) : (
               <div
                 style={{
@@ -1371,7 +1386,7 @@ export default function DealsPage() {
                     onDelete={setDeletingDeal}
                   />
                 ))}
-                {!kanbanQuery.data?.columns.length && (
+                {!kanbanQuery.data?.columns?.length && (
                   <div
                     style={{
                       flex: 1,
@@ -1406,9 +1421,24 @@ export default function DealsPage() {
                   />
                 ))}
               </div>
+            ) : groupByQuery.isError ? (
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '80px 0',
+                  textAlign: 'center',
+                }}
+              >
+                <p style={{ fontSize: '14px', color: 'var(--ink-gray-5)' }}>
+                  Erro ao carregar agrupamento.
+                </p>
+              </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {groupByQuery.data?.buckets.map((bucket) => (
+                {groupByQuery.data?.buckets?.map((bucket) => (
                   <div
                     key={bucket.group_id ?? 'ungrouped'}
                     style={{
@@ -1504,7 +1534,7 @@ export default function DealsPage() {
                     </div>
                   </div>
                 ))}
-                {!groupByQuery.data?.buckets.length && (
+                {!groupByQuery.data?.buckets?.length && (
                   <div
                     style={{
                       textAlign: 'center',

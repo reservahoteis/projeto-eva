@@ -1170,7 +1170,7 @@ export default function LeadsPage() {
                     onDelete={setDeletingLead}
                   />
                 ))}
-                {!kanbanQuery.data?.columns.length && (
+                {!kanbanQuery.data?.columns?.length && (
                   <div
                     className="flex-1 flex items-center justify-center"
                     style={{ color: 'var(--ink-gray-5)' }}
@@ -1295,7 +1295,7 @@ export default function LeadsPage() {
                     </div>
                   </div>
                 ))}
-                {!groupByQuery.data?.buckets.length && (
+                {!groupByQuery.data?.buckets?.length && (
                   <div className="flex flex-col items-center justify-center py-20 text-center">
                     <p className="text-sm" style={{ color: 'var(--ink-gray-5)' }}>
                       Nenhum lead para agrupar.

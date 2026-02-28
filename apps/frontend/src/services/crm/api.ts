@@ -63,10 +63,14 @@ const leads = {
     api.get<CrmPaginatedResponse<LeadListItem>>(`${CRM}/leads`, { params }),
 
   kanban: (params?: CrmKanbanParams) =>
-    api.get<KanbanResponse<LeadListItem>>(`${CRM}/leads/kanban`, { params }),
+    api.get<KanbanResponse<LeadListItem>>(`${CRM}/leads`, {
+      params: { ...params, view_type: 'kanban', column_field: 'status_id' },
+    }),
 
   groupBy: (params: CrmGroupByParams) =>
-    api.get<GroupByResponse<LeadListItem>>(`${CRM}/leads/group-by`, { params }),
+    api.get<GroupByResponse<LeadListItem>>(`${CRM}/leads`, {
+      params: { ...params, view_type: 'group_by' },
+    }),
 
   get: (id: string) =>
     api.get<Lead>(`${CRM}/leads/${id}`),
@@ -105,10 +109,14 @@ const deals = {
     api.get<CrmPaginatedResponse<DealListItem>>(`${CRM}/deals`, { params }),
 
   kanban: (params?: CrmKanbanParams) =>
-    api.get<KanbanResponse<DealListItem>>(`${CRM}/deals/kanban`, { params }),
+    api.get<KanbanResponse<DealListItem>>(`${CRM}/deals`, {
+      params: { ...params, view_type: 'kanban', column_field: 'status_id' },
+    }),
 
   groupBy: (params: CrmGroupByParams) =>
-    api.get<GroupByResponse<DealListItem>>(`${CRM}/deals/group-by`, { params }),
+    api.get<GroupByResponse<DealListItem>>(`${CRM}/deals`, {
+      params: { ...params, view_type: 'group_by' },
+    }),
 
   get: (id: string) =>
     api.get<Deal>(`${CRM}/deals/${id}`),
@@ -150,7 +158,9 @@ const contacts = {
     api.get<CrmPaginatedResponse<CrmContact>>(`${CRM}/contacts`, { params }),
 
   groupBy: (params: CrmGroupByParams) =>
-    api.get<GroupByResponse<CrmContact>>(`${CRM}/contacts/group-by`, { params }),
+    api.get<GroupByResponse<CrmContact>>(`${CRM}/contacts`, {
+      params: { ...params, view_type: 'group_by' },
+    }),
 
   get: (id: string) =>
     api.get<CrmContact>(`${CRM}/contacts/${id}`),
@@ -180,7 +190,9 @@ const organizations = {
     api.get<CrmPaginatedResponse<Organization>>(`${CRM}/organizations`, { params }),
 
   groupBy: (params: CrmGroupByParams) =>
-    api.get<GroupByResponse<Organization>>(`${CRM}/organizations/group-by`, { params }),
+    api.get<GroupByResponse<Organization>>(`${CRM}/organizations`, {
+      params: { ...params, view_type: 'group_by' },
+    }),
 
   get: (id: string) =>
     api.get<Organization>(`${CRM}/organizations/${id}`),
