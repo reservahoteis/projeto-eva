@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     CORS_ORIGINS: list[str] = [
         "http://localhost:3000",
         "https://hoteisreserva.com.br",
+        "https://develop.botreserva.com.br",
+        "https://app.botreserva.com.br",
+        "https://www.botreserva.com.br",
+        "https://botreserva.com.br",
     ]
 
     # Pagination
