@@ -32,7 +32,6 @@ from app.schemas.deal import (
     DealResponse,
     DealUpdate,
     MarkLostRequest,
-    PaginatedDeals,
 )
 from app.services.deal_service import DealListParams, DealService
 
@@ -46,10 +45,14 @@ router = APIRouter()
 # ---------------------------------------------------------------------------
 
 
-@router.get("/", response_model=PaginatedDeals, summary="List deals")
+@router.get("/", summary="List deals")
 async def list_deals(
     page: int = Query(1, ge=1, description="Page number (1-indexed)"),
     page_size: int = Query(20, ge=1, le=100, description="Records per page"),
+    view_type: str = Query("list", description="Response shape: list | kanban | group_by"),
+    column_field: str | None = Query(None, description="Kanban column field (e.g. status_id). Required when view_type=kanban"),
+    group_by_field: str | None = Query(None, description="Group-by field (e.g. status_id). Required when view_type=group_by"),
+    order_by: str = Query("created_at desc", description="Sort token: field asc|desc"),
     status_id: uuid.UUID | None = Query(None, description="Filter by deal status"),
     deal_owner_id: uuid.UUID | None = Query(None, description="Filter by deal owner user"),
     organization_id: uuid.UUID | None = Query(None, description="Filter by organization"),
@@ -57,14 +60,20 @@ async def list_deals(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
     tenant_id: uuid.UUID = Depends(get_tenant_id),
-) -> PaginatedDeals:
-    """Return a paginated list of deals for the authenticated tenant.
+):
+    """Return deals in list, kanban, or group_by format for the authenticated tenant.
 
-    Results are ordered by creation date descending (newest first).
+    - ``view_type=list`` (default): paginated list ordered by creation date desc.
+    - ``view_type=kanban``: columns grouped by ``column_field`` (e.g. ``status_id``).
+    - ``view_type=group_by``: buckets aggregated by ``group_by_field``.
     """
     params = DealListParams(
         page=page,
         page_size=page_size,
+        view_type=view_type,
+        column_field=column_field,
+        group_by_field=group_by_field,
+        order_by=order_by,
         status_id=status_id,
         deal_owner_id=deal_owner_id,
         organization_id=organization_id,

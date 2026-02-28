@@ -16,6 +16,7 @@ from typing import Any
 import structlog
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.core.exceptions import BadRequestError, NotFoundError
 from app.models.assignment import Assignment
@@ -30,12 +31,18 @@ from app.schemas.deal import (
     MarkLostRequest,
     PaginatedDeals,
 )
+from app.schemas.lead import (
+    GroupByBucket,
+    GroupByResponse,
+    KanbanColumn,
+    KanbanResponse,
+)
 
 logger = structlog.get_logger()
 
 
 # ---------------------------------------------------------------------------
-# Helpers
+# Module-level helpers
 # ---------------------------------------------------------------------------
 
 
@@ -77,6 +84,24 @@ async def _next_naming_series(db: AsyncSession, tenant_id: uuid.UUID) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Query builder
+# ---------------------------------------------------------------------------
+
+
+def _build_deal_query(tenant_id: uuid.UUID):
+    """Base SELECT with eager-loaded relationships for Deal list responses."""
+    return (
+        select(Deal)
+        .where(Deal.tenant_id == tenant_id)
+        .options(
+            selectinload(Deal.status),
+            selectinload(Deal.deal_owner),
+            selectinload(Deal.organization),
+        )
+    )
+
+
+# ---------------------------------------------------------------------------
 # List query parameters (simple DTO — extend with filter fields as needed)
 # ---------------------------------------------------------------------------
 
@@ -92,6 +117,11 @@ class DealListParams:
         self,
         page: int = 1,
         page_size: int = 20,
+        view_type: str = "list",
+        column_field: str | None = None,
+        group_by_field: str | None = None,
+        order_by: str = "created_at desc",
+        filters: dict | None = None,
         status_id: uuid.UUID | None = None,
         deal_owner_id: uuid.UUID | None = None,
         organization_id: uuid.UUID | None = None,
@@ -99,6 +129,11 @@ class DealListParams:
     ) -> None:
         self.page = max(1, page)
         self.page_size = min(max(1, page_size), 100)
+        self.view_type = view_type
+        self.column_field = column_field
+        self.group_by_field = group_by_field
+        self.order_by = order_by
+        self.filters = filters
         self.status_id = status_id
         self.deal_owner_id = deal_owner_id
         self.organization_id = organization_id
@@ -122,22 +157,35 @@ class DealService:
         db: AsyncSession,
         tenant_id: uuid.UUID,
         params: DealListParams,
+    ) -> PaginatedDeals | KanbanResponse[DealListItem] | GroupByResponse[DealListItem]:
+        """Dispatch to list, kanban, or group_by based on params.view_type."""
+        if params.view_type == "kanban":
+            return await DealService._list_kanban(db, tenant_id, params)
+        if params.view_type == "group_by":
+            return await DealService._list_group_by(db, tenant_id, params)
+        return await DealService._list_paginated(db, tenant_id, params)
+
+    @staticmethod
+    async def _list_paginated(
+        db: AsyncSession,
+        tenant_id: uuid.UUID,
+        params: DealListParams,
     ) -> PaginatedDeals:
         """Return a paginated list of DealListItem for the given tenant.
 
         Filters are additive (all applied with AND).
         """
-        base_where = [Deal.tenant_id == tenant_id]
+        base_query = _build_deal_query(tenant_id)
 
         if params.status_id:
-            base_where.append(Deal.status_id == params.status_id)
+            base_query = base_query.where(Deal.status_id == params.status_id)
         if params.deal_owner_id:
-            base_where.append(Deal.deal_owner_id == params.deal_owner_id)
+            base_query = base_query.where(Deal.deal_owner_id == params.deal_owner_id)
         if params.organization_id:
-            base_where.append(Deal.organization_id == params.organization_id)
+            base_query = base_query.where(Deal.organization_id == params.organization_id)
         if params.search:
             term = f"%{params.search}%"
-            base_where.append(
+            base_query = base_query.where(
                 Deal.lead_name.ilike(term)
                 | Deal.organization_name.ilike(term)
                 | Deal.email.ilike(term)
@@ -145,18 +193,14 @@ class DealService:
 
         # Total count (separate query to avoid subquery complexity)
         count_result = await db.execute(
-            select(func.count()).select_from(Deal).where(*base_where)
+            select(func.count()).select_from(Deal).where(Deal.tenant_id == tenant_id)
         )
         total: int = count_result.scalar_one()
 
         # Paginated rows
         offset = (params.page - 1) * params.page_size
         rows_result = await db.execute(
-            select(Deal)
-            .where(*base_where)
-            .order_by(Deal.created_at.desc())
-            .offset(offset)
-            .limit(params.page_size)
+            base_query.order_by(Deal.created_at.desc()).offset(offset).limit(params.page_size)
         )
         deals = rows_result.scalars().all()
 
@@ -178,6 +222,129 @@ class DealService:
             page=params.page,
             page_size=params.page_size,
             total_pages=total_pages,
+        )
+
+    @staticmethod
+    async def _list_kanban(
+        db: AsyncSession,
+        tenant_id: uuid.UUID,
+        params: DealListParams,
+    ) -> KanbanResponse[DealListItem]:
+        """Group deals by column_field into kanban columns.
+
+        Fetches all matching deals (up to a safety cap), then groups in Python
+        to avoid complex SQL PARTITION BY on the ORM layer while keeping
+        N+1 queries away.
+        """
+        if not params.column_field:
+            raise BadRequestError(
+                "column_field is required when view_type is 'kanban'"
+            )
+
+        base_query = _build_deal_query(tenant_id).order_by(Deal.created_at.desc())
+
+        # Safety cap: max 200 deals per column, 50 columns
+        base_query = base_query.limit(200 * 50)
+
+        rows = await db.execute(base_query)
+        deals = rows.scalars().all()
+
+        # Group by column_field value
+        columns_map: dict[Any, list[Deal]] = {}
+        for deal in deals:
+            key = getattr(deal, params.column_field)
+            columns_map.setdefault(key, []).append(deal)
+
+        # Build KanbanColumn list — enrich with metadata from status if applicable
+        kanban_columns: list[KanbanColumn[DealListItem]] = []
+        for col_key, col_deals in columns_map.items():
+            color = None
+            position = None
+            column_id: uuid.UUID | None = None
+            column_value: str | None = None
+
+            if params.column_field == "status_id" and col_deals:
+                status = col_deals[0].status
+                color = status.color
+                position = status.position
+                column_id = status.id
+                column_value = status.label
+            elif col_key is not None:
+                column_id = col_key if isinstance(col_key, uuid.UUID) else None
+                column_value = str(col_key)
+
+            kanban_columns.append(
+                KanbanColumn[DealListItem](
+                    column_value=column_value,
+                    column_id=column_id,
+                    color=color,
+                    position=position,
+                    count=len(col_deals),
+                    data=[DealListItem.model_validate(d) for d in col_deals],
+                )
+            )
+
+        # Sort columns by position (kanban board order)
+        kanban_columns.sort(key=lambda c: (c.position is None, c.position or 0))
+
+        logger.debug(
+            "deal.list_kanban",
+            tenant_id=str(tenant_id),
+            column_field=params.column_field,
+            total=len(deals),
+            columns=len(kanban_columns),
+        )
+
+        return KanbanResponse[DealListItem](
+            columns=kanban_columns,
+            total_count=len(deals),
+        )
+
+    @staticmethod
+    async def _list_group_by(
+        db: AsyncSession,
+        tenant_id: uuid.UUID,
+        params: DealListParams,
+    ) -> GroupByResponse[DealListItem]:
+        """Aggregate deals into buckets by group_by_field."""
+        if not params.group_by_field:
+            raise BadRequestError(
+                "group_by_field is required when view_type is 'group_by'"
+            )
+
+        base_query = _build_deal_query(tenant_id).order_by(Deal.created_at.desc())
+
+        rows = await db.execute(base_query)
+        deals = rows.scalars().all()
+
+        buckets_map: dict[Any, list[Deal]] = {}
+        for deal in deals:
+            key = getattr(deal, params.group_by_field)
+            buckets_map.setdefault(key, []).append(deal)
+
+        buckets: list[GroupByBucket[DealListItem]] = []
+        for grp_key, grp_deals in buckets_map.items():
+            group_id = grp_key if isinstance(grp_key, uuid.UUID) else None
+            buckets.append(
+                GroupByBucket[DealListItem](
+                    group_value=str(grp_key) if grp_key is not None else None,
+                    group_id=group_id,
+                    count=len(grp_deals),
+                    data=[DealListItem.model_validate(d) for d in grp_deals],
+                )
+            )
+
+        logger.debug(
+            "deal.list_group_by",
+            tenant_id=str(tenant_id),
+            group_by_field=params.group_by_field,
+            total=len(deals),
+            buckets=len(buckets),
+        )
+
+        return GroupByResponse[DealListItem](
+            buckets=buckets,
+            total_count=len(deals),
         )
 
     # ------------------------------------------------------------------
