@@ -69,7 +69,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (response.user.role === 'SUPER_ADMIN') {
         router.push('/super-admin/tenants');
       } else {
-        router.push('/dashboard');
+        router.push('/crm/leads');
       }
     } catch (error: any) {
       const message = error.response?.data?.message || 'Erro ao fazer login';
