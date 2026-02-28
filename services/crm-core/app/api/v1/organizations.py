@@ -229,7 +229,7 @@ async def delete_organization(
     organization_id: uuid.UUID,
     db: DB,
     current_user: User = Depends(require_roles("SUPER_ADMIN", "TENANT_ADMIN", "HEAD", "SALES_MANAGER")),
-    tenant_id: TenantId = Depends(get_tenant_id),
+    tenant_id: TenantId,
 ):
     await organization_service.delete_organization(db, tenant_id, organization_id)
 
@@ -396,7 +396,7 @@ async def bulk_delete_organizations(
     body: BulkDeleteRequest,
     db: DB,
     current_user: User = Depends(require_roles("SUPER_ADMIN", "TENANT_ADMIN", "HEAD", "SALES_MANAGER")),
-    tenant_id: TenantId = Depends(get_tenant_id),
+    tenant_id: TenantId,
 ) -> BulkDeleteResponse:
     deleted_count = await organization_service.bulk_delete(
         db=db,
