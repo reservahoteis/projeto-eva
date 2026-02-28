@@ -328,8 +328,8 @@ function NoteForm({ initialData, onSubmit, onCancel, isLoading, submitLabel }: N
             Tipo de referencia
           </Label>
           <Select
-            value={refDoctype}
-            onValueChange={(v) => setRefDoctype(v as CrmDoctype | '')}
+            value={refDoctype || '__none__'}
+            onValueChange={(v) => setRefDoctype(v === '__none__' ? '' : v as CrmDoctype)}
           >
             <SelectTrigger
               className="h-8 text-sm rounded border"
@@ -344,7 +344,7 @@ function NoteForm({ initialData, onSubmit, onCancel, isLoading, submitLabel }: N
                 borderColor: 'var(--outline-gray-2)',
               }}
             >
-              <SelectItem value="">Nenhum</SelectItem>
+              <SelectItem value="__none__">Nenhum</SelectItem>
               {REFERENCE_DOCTYPES.map((d) => (
                 <SelectItem key={d.value} value={d.value}>
                   {d.label}
@@ -550,8 +550,8 @@ export default function NotesPage() {
 
         {/* Filter by doctype */}
         <Select
-          value={filterDoctype ?? ''}
-          onValueChange={(v) => setFilterDoctype(v ? (v as CrmDoctype) : null)}
+          value={filterDoctype ?? '__none__'}
+          onValueChange={(v) => setFilterDoctype(v === '__none__' ? null : (v as CrmDoctype))}
         >
           <SelectTrigger
             className="h-7 text-xs border rounded w-36"
@@ -570,7 +570,7 @@ export default function NotesPage() {
               borderColor: 'var(--outline-gray-2)',
             }}
           >
-            <SelectItem value="">Todos os tipos</SelectItem>
+            <SelectItem value="__none__">Todos os tipos</SelectItem>
             {REFERENCE_DOCTYPES.map((d) => (
               <SelectItem key={d.value} value={d.value}>
                 {d.label}

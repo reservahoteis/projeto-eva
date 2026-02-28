@@ -854,9 +854,9 @@ export default function TasksPage() {
 
         {/* Status filter */}
         <Select
-          value={filterStatus ?? ''}
+          value={filterStatus ?? '__none__'}
           onValueChange={(v) => {
-            setFilterStatus(v ? (v as TaskStatus) : null)
+            setFilterStatus(v === '__none__' ? null : (v as TaskStatus))
             setPage(1)
           }}
         >
@@ -877,7 +877,7 @@ export default function TasksPage() {
               borderColor: 'var(--outline-gray-2)',
             }}
           >
-            <SelectItem value="">Todos os status</SelectItem>
+            <SelectItem value="__none__">Todos os status</SelectItem>
             {TASK_STATUSES.map((s) => (
               <SelectItem key={s.value} value={s.value}>
                 <span className="flex items-center gap-2">
@@ -891,9 +891,9 @@ export default function TasksPage() {
 
         {/* Priority filter */}
         <Select
-          value={filterPriority ?? ''}
+          value={filterPriority ?? '__none__'}
           onValueChange={(v) => {
-            setFilterPriority(v ? (v as TaskPriority) : null)
+            setFilterPriority(v === '__none__' ? null : (v as TaskPriority))
             setPage(1)
           }}
         >
@@ -914,7 +914,7 @@ export default function TasksPage() {
               borderColor: 'var(--outline-gray-2)',
             }}
           >
-            <SelectItem value="">Todas as prioridades</SelectItem>
+            <SelectItem value="__none__">Todas as prioridades</SelectItem>
             {TASK_PRIORITIES.map((p) => (
               <SelectItem key={p.value} value={p.value}>
                 <span className="flex items-center gap-2">
