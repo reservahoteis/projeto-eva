@@ -90,7 +90,6 @@ export function SocketProvider({ children }: SocketProviderProps) {
       };
 
       setMessageQueue(prev => [...prev, queueItem]);
-      console.log('Message queued for retry:', queueItem);
     }
 
     return success;
@@ -98,57 +97,29 @@ export function SocketProvider({ children }: SocketProviderProps) {
 
   // Subscribe to a conversation room
   const subscribeToConversation = useCallback((conversationId: string) => {
-    console.log('🔔 SUBSCRIBE INICIADO:', conversationId);
+    if (!conversationId) return;
 
-    if (!conversationId) {
-      console.error('❌ conversationId está undefined!');
-      return;
-    }
+    if (subscribedConversations.current.has(conversationId)) return;
 
-    if (subscribedConversations.current.has(conversationId)) {
-      console.warn('⚠️ Já está subscrito:', conversationId);
-      return;
-    }
-
-    console.log('📤 Emitindo conversation:join com payload:', { conversationId });
     // CORREÇÃO CRÍTICA: Backend espera objeto { conversationId }, não string!
     const success = emit('conversation:join', { conversationId });
-    console.log('📡 Resultado do emit:', success ? '✅ Sucesso' : '❌ Falhou');
 
     if (success) {
       subscribedConversations.current.add(conversationId);
-      console.log('✅ SUBSCRITO COM SUCESSO:', conversationId);
-      console.log('📊 Total de conversas subscritas:', subscribedConversations.current.size);
-    } else {
-      console.error('❌ FALHA AO SUBSCREVER:', conversationId);
     }
   }, [emit]);
 
   // Unsubscribe from a conversation room
   const unsubscribeFromConversation = useCallback((conversationId: string) => {
-    console.log('🔕 UNSUBSCRIBE INICIADO:', conversationId);
+    if (!conversationId) return;
 
-    if (!conversationId) {
-      console.error('❌ conversationId está undefined ao fazer unsubscribe!');
-      return;
-    }
+    if (!subscribedConversations.current.has(conversationId)) return;
 
-    if (!subscribedConversations.current.has(conversationId)) {
-      console.warn('⚠️ Não estava subscrito:', conversationId);
-      return;
-    }
-
-    console.log('📤 Emitindo conversation:leave com payload:', { conversationId });
     // CORREÇÃO CRÍTICA: Backend espera objeto { conversationId }, não string!
     const success = emit('conversation:leave', { conversationId });
-    console.log('📡 Resultado do emit leave:', success ? '✅ Sucesso' : '❌ Falhou');
 
     if (success) {
       subscribedConversations.current.delete(conversationId);
-      console.log('✅ DESSUBSCRITO COM SUCESSO:', conversationId);
-      console.log('📊 Total de conversas subscritas restantes:', subscribedConversations.current.size);
-    } else {
-      console.error('❌ FALHA AO DESSUBSCREVER:', conversationId);
     }
   }, [emit]);
 
@@ -202,8 +173,6 @@ export function SocketProvider({ children }: SocketProviderProps) {
   // Process message queue when reconnected
   useEffect(() => {
     if (isConnected && messageQueue.length > 0) {
-      console.log('Processing message queue:', messageQueue.length, 'messages');
-
       messageQueue.forEach(item => {
         if (item.status === 'pending' || item.status === 'failed') {
           // Update status to sending
@@ -243,19 +212,6 @@ export function SocketProvider({ children }: SocketProviderProps) {
 
     // Listen for new messages
     const handleNewMessage = (data: { message: Message; conversation: Conversation }) => {
-      console.log('🔵🔵🔵 EVENTO message:new RECEBIDO NO SOCKET-CONTEXT:', {
-        fullData: data,
-        messageId: data.message?.id,
-        conversationId: data.message?.conversationId || data.conversation?.id,
-        content: data.message?.content?.substring(0, 50),
-        hasMessage: !!data.message,
-        hasConversation: !!data.conversation,
-        messageDirection: data.message?.direction,
-        timestamp: new Date().toISOString(),
-        subscribedConversations: Array.from(subscribedConversations.current),
-        isSubscribed: subscribedConversations.current.has(data.message?.conversationId || data.conversation?.id)
-      });
-
       // Show notification for inbound messages ONLY if chat is NOT open
       const messageConversationId = data.message?.conversationId || data.conversation?.id;
       const isChatOpen = activeConversationId === messageConversationId;
@@ -264,8 +220,8 @@ export function SocketProvider({ children }: SocketProviderProps) {
         // Play notification sound using Web Audio API
         try {
           notificationSoundManager.playMessage();
-        } catch (error) {
-          console.error('Error playing notification sound:', error);
+        } catch {
+          // Sound playback failed silently
         }
 
         // Show toast notification
@@ -279,13 +235,12 @@ export function SocketProvider({ children }: SocketProviderProps) {
     };
 
     // Listen for conversation updates
-    const handleConversationUpdate = (data: { conversation: Conversation }) => {
-      console.log('🔄 Conversation updated:', data);
+    const handleConversationUpdate = (_data: { conversation: Conversation }) => {
+      // Placeholder for conversation update handling
     };
 
     // Handle typing events
     const handleTyping = (data: { conversationId: string; userId: string; isTyping: boolean }) => {
-      console.log('⌨️ Typing indicator:', data);
       setTypingUsers(prev => {
         const newMap = new Map(prev);
         const conversationTypers = newMap.get(data.conversationId) || new Set();
@@ -308,12 +263,10 @@ export function SocketProvider({ children }: SocketProviderProps) {
 
     // Handle online/offline events
     const handleUserOnline = (data: { userId: string }) => {
-      console.log('🟢 User online:', data.userId);
       setOnlineUsers(prev => new Set(prev).add(data.userId));
     };
 
     const handleUserOffline = (data: { userId: string }) => {
-      console.log('🔴 User offline:', data.userId);
       setOnlineUsers(prev => {
         const newSet = new Set(prev);
         newSet.delete(data.userId);
@@ -322,19 +275,17 @@ export function SocketProvider({ children }: SocketProviderProps) {
     };
 
     // Handle message status updates
-    const handleMessageStatus = (data: { messageId: string; status: string }) => {
-      console.log('📬 Message status:', data);
+    const handleMessageStatus = (_data: { messageId: string; status: string }) => {
+      // Placeholder for message status handling
     };
 
     // Register all event listeners
-    console.log('🎯 REGISTRANDO LISTENERS DE EVENTOS DO SOCKET.IO');
     on('message:new', handleNewMessage);
     on('conversation:updated', handleConversationUpdate);
     on('user:typing', handleTyping);
     on('user:online', handleUserOnline);
     on('user:offline', handleUserOffline);
     on('message:status', handleMessageStatus);
-    console.log('✅ TODOS OS LISTENERS REGISTRADOS COM SUCESSO');
 
     // Cleanup
     return () => {

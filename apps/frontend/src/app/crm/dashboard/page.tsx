@@ -8,19 +8,6 @@
 import React, { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip as RTooltip,
-  ResponsiveContainer,
-  Cell,
-  Legend,
-} from 'recharts'
-import {
   Target,
   Handshake,
   DollarSign,
@@ -106,10 +93,10 @@ export default function DashboardPage() {
 
     const totalLeads = leads.length
     const totalDeals = deals.length
-    const wonDeals = deals.filter((d: any) => d.status_label === 'Won' || d.status_type === 'Won')
-    const totalRevenue = wonDeals.reduce((sum: number, d: any) => sum + (d.deal_value || 0), 0)
+    const wonDeals = deals.filter((d) => d.status?.label === 'Won' || d.status?.status_type === 'Won')
+    const totalRevenue = wonDeals.reduce((sum, d) => sum + (d.deal_value || 0), 0)
     const conversionRate = totalLeads > 0 ? ((totalDeals / totalLeads) * 100).toFixed(1) : '0'
-    const openTasks = tasks.filter((t: any) => !['Done', 'Canceled'].includes(t.status)).length
+    const openTasks = tasks.filter((t) => !['Done', 'Canceled'].includes(t.status)).length
 
     return { totalLeads, totalDeals, totalRevenue, conversionRate, openTasks }
   }, [leadsData, dealsData, tasksData])
@@ -118,8 +105,8 @@ export default function DashboardPage() {
   const pipelineData = useMemo(() => {
     const deals = dealsData?.data || []
     const statusCounts: Record<string, number> = {}
-    deals.forEach((d: any) => {
-      const label = d.status_label || 'Unknown'
+    deals.forEach((d) => {
+      const label = d.status?.label || 'Unknown'
       statusCounts[label] = (statusCounts[label] || 0) + 1
     })
     return Object.entries(statusCounts).map(([name, value]) => ({ name, value }))
@@ -129,7 +116,7 @@ export default function DashboardPage() {
   const taskChartData = useMemo(() => {
     const tasks = tasksData?.data || []
     const statusCounts: Record<string, number> = {}
-    tasks.forEach((t: any) => {
+    tasks.forEach((t) => {
       statusCounts[t.status] = (statusCounts[t.status] || 0) + 1
     })
     return Object.entries(statusCounts).map(([name, value]) => ({
@@ -252,76 +239,154 @@ export default function DashboardPage() {
 
         {/* Charts Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Deal Pipeline */}
+          {/* Deal Pipeline — horizontal bar chart */}
           <ChartCard title="Pipeline de Negociações">
             {pipelineData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={pipelineData} layout="vertical" margin={{ left: 80 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--outline-gray-1)" />
-                  <XAxis type="number" tick={{ fill: 'var(--ink-gray-5)', fontSize: 12 }} />
-                  <YAxis
-                    type="category"
-                    dataKey="name"
-                    tick={{ fill: 'var(--ink-gray-8)', fontSize: 13 }}
-                    width={80}
-                  />
-                  <RTooltip
-                    contentStyle={{
-                      backgroundColor: 'var(--surface-white)',
-                      border: '1px solid var(--outline-gray-1)',
-                      borderRadius: '8px',
-                      fontSize: '13px',
-                    }}
-                  />
-                  <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-                    {pipelineData.map((_, i) => (
-                      <Cell key={i} fill={PIPELINE_COLORS[i % PIPELINE_COLORS.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+              <HorizontalBarChart data={pipelineData} colors={PIPELINE_COLORS} />
             ) : (
               <EmptyChart />
             )}
           </ChartCard>
 
-          {/* Tasks by Status */}
+          {/* Tasks by Status — donut chart */}
           <ChartCard title="Tarefas por Status">
             {taskChartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={taskChartData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
-                    dataKey="value"
-                    nameKey="name"
-                    paddingAngle={2}
-                  >
-                    {taskChartData.map((entry, i) => (
-                      <Cell key={i} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <RTooltip
-                    contentStyle={{
-                      backgroundColor: 'var(--surface-white)',
-                      border: '1px solid var(--outline-gray-1)',
-                      borderRadius: '8px',
-                      fontSize: '13px',
-                    }}
-                  />
-                  <Legend
-                    wrapperStyle={{ fontSize: '12px', color: 'var(--ink-gray-5)' }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+              <DonutChart data={taskChartData} />
             ) : (
               <EmptyChart />
             )}
           </ChartCard>
         </div>
+      </div>
+    </div>
+  )
+}
+
+// ============================================
+// Chart components (pure CSS/SVG, no recharts)
+// ============================================
+
+function HorizontalBarChart({
+  data,
+  colors,
+}: {
+  data: { name: string; value: number }[]
+  colors: string[]
+}) {
+  const maxValue = Math.max(...data.map((d) => d.value), 1)
+
+  return (
+    <div className="space-y-3" style={{ minHeight: '200px' }}>
+      {data.map((item, i) => (
+        <div key={item.name} className="flex items-center gap-3">
+          <span
+            className="shrink-0 text-right"
+            style={{
+              width: '90px',
+              fontSize: '13px',
+              color: 'var(--ink-gray-8)',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+            title={item.name}
+          >
+            {item.name}
+          </span>
+          <div className="flex-1 h-7 rounded" style={{ backgroundColor: 'var(--surface-gray-2)' }}>
+            <div
+              className="h-full rounded flex items-center justify-end pr-2 transition-all duration-500"
+              style={{
+                width: `${Math.max((item.value / maxValue) * 100, 8)}%`,
+                backgroundColor: colors[i % colors.length],
+              }}
+            >
+              <span style={{ fontSize: '12px', color: '#fff', fontWeight: 600 }}>
+                {item.value}
+              </span>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function DonutChart({ data }: { data: { name: string; value: number; color: string }[] }) {
+  const total = data.reduce((sum, d) => sum + d.value, 0)
+  const size = 200
+  const strokeWidth = 40
+  const radius = (size - strokeWidth) / 2
+  const circumference = 2 * Math.PI * radius
+
+  let accumulated = 0
+
+  return (
+    <div className="flex flex-col items-center gap-4" style={{ minHeight: '200px' }}>
+      <div className="relative" style={{ width: size, height: size }}>
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+          {/* Background circle */}
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            stroke="var(--surface-gray-2)"
+            strokeWidth={strokeWidth}
+          />
+          {/* Segments */}
+          {data.map((item) => {
+            const ratio = item.value / total
+            const dashLength = circumference * ratio
+            const gapLength = circumference - dashLength
+            const offset = circumference * accumulated
+            accumulated += ratio
+
+            return (
+              <circle
+                key={item.name}
+                cx={size / 2}
+                cy={size / 2}
+                r={radius}
+                fill="none"
+                stroke={item.color}
+                strokeWidth={strokeWidth}
+                strokeDasharray={`${dashLength} ${gapLength}`}
+                strokeDashoffset={-offset}
+                style={{
+                  transformOrigin: 'center',
+                  transform: 'rotate(-90deg)',
+                  transition: 'stroke-dasharray 0.5s ease',
+                }}
+              />
+            )
+          })}
+        </svg>
+        {/* Center label */}
+        <div
+          className="absolute inset-0 flex flex-col items-center justify-center"
+          style={{ pointerEvents: 'none' }}
+        >
+          <span style={{ fontSize: '24px', fontWeight: 700, color: 'var(--ink-gray-9)' }}>
+            {total}
+          </span>
+          <span style={{ fontSize: '11px', color: 'var(--ink-gray-5)' }}>total</span>
+        </div>
+      </div>
+
+      {/* Legend */}
+      <div className="flex flex-wrap justify-center gap-x-4 gap-y-1">
+        {data.map((item) => (
+          <div key={item.name} className="flex items-center gap-1.5">
+            <div
+              className="rounded-full"
+              style={{ width: '8px', height: '8px', backgroundColor: item.color }}
+            />
+            <span style={{ fontSize: '12px', color: 'var(--ink-gray-5)' }}>
+              {item.name} ({item.value})
+            </span>
+          </div>
+        ))}
       </div>
     </div>
   )

@@ -1,0 +1,8 @@
+export { NotesTab } from './notes-tab'
+export { TasksTab } from './tasks-tab'
+export { CommentsTab } from './comments-tab'
+export { DataTab } from './data-tab'
+export type { DataField } from './data-tab'
+export { EmailsTab } from './emails-tab'
+export { AttachmentsTab } from './attachments-tab'
+export { ChannelTab } from './channel-tab'
