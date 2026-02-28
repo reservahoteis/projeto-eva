@@ -44,6 +44,15 @@ def create_refresh_token(user_id: UUID, tenant_id: UUID | None = None) -> str:
 def decode_token(token: str) -> dict:
     try:
         payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+
+        # Normalize Express tokens: Express uses "userId" instead of "sub"
+        if "userId" in payload and "sub" not in payload:
+            payload["sub"] = payload["userId"]
+
+        # Normalize Express tokens: Express uses "tenantId" (camelCase)
+        if "tenantId" in payload and "tenant_id" not in payload:
+            payload["tenant_id"] = payload["tenantId"]
+
         return payload
     except JWTError as e:
         raise ValueError(f"Invalid token: {e}") from e

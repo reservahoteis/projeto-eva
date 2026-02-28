@@ -28,7 +28,9 @@ async def get_current_user(
     except ValueError:
         raise UnauthorizedError("Invalid token")
 
-    if payload.get("type") != "access":
+    # Accept tokens without "type" claim (Express backend doesn't set it)
+    token_type = payload.get("type")
+    if token_type and token_type != "access":
         raise UnauthorizedError("Invalid token type")
 
     user_id = payload.get("sub")
