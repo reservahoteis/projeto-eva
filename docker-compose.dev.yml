@@ -1,0 +1,193 @@
+# =============================================================================
+# CRM Frappe Clone - Development Docker Compose
+#
+# Usage:
+#   docker compose -f docker-compose.dev.yml up --build
+#   docker compose -f docker-compose.dev.yml down -v   # also removes volumes
+#
+# Design decisions:
+# - Named volumes for Postgres data and Redis data so they persist across
+#   container restarts without needing a host-path bind.
+# - Source code is bind-mounted into crm-core so uvicorn --reload picks up
+#   file changes instantly without a rebuild (hot reload).
+# - Services declare healthchecks; dependents use condition: service_healthy
+#   to avoid race conditions on startup (e.g. crm-core starting before
+#   Postgres is ready to accept connections).
+# - No production secrets here. All sensitive values come from .env files
+#   that are never committed to version control.
+# =============================================================================
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL 16
+  # ---------------------------------------------------------------------------
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: crm_dev
+    ports:
+      # Expose to host so developers can connect with psql / DBeaver directly.
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      # pg_isready exits 0 only when Postgres is accepting connections.
+      test: ["CMD-SHELL", "pg_isready -U postgres -d crm_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ---------------------------------------------------------------------------
+  # Redis 7
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    # Append-only file ensures data survives container restarts in dev.
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  # ---------------------------------------------------------------------------
+  # CRM Core (FastAPI / Python 3.11)
+  # ---------------------------------------------------------------------------
+  crm-core:
+    build:
+      context: ./services/crm-core
+      dockerfile: Dockerfile
+      # target: runtime builds the final slim stage only.
+      # Remove 'target' to include the builder stage cache during development
+      # if you want faster incremental builds when requirements.txt changes.
+      target: runtime
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      # Bind-mount source code for hot reload.
+      # Only app/ is mounted — requirements and config inside the image stay
+      # immutable, which avoids accidental local overrides of installed packages.
+      - ./services/crm-core/app:/app/app
+    env_file:
+      # Developers copy .env.example -> .env and customise locally.
+      # Docker Compose silently skips a missing env_file; add "required: true"
+      # (Compose v2.24+) if you want a hard error when the file is absent.
+      - ./services/crm-core/.env
+    environment:
+      # Override DATABASE_URL and REDIS_URL to point at the sibling containers
+      # using their service names as hostnames (Docker internal DNS).
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/crm_dev
+      REDIS_URL: redis://redis:6379/0
+      DEBUG: "true"
+    # In dev mode, override the Dockerfile CMD to enable uvicorn --reload.
+    # --reload-dir limits the file watcher to just the app source tree,
+    # preventing spurious reloads from .pyc files or test output.
+    command:
+      - uvicorn
+      - app.main:app
+      - --host
+      - "0.0.0.0"
+      - --port
+      - "8001"
+      - --reload
+      - --reload-dir
+      - /app/app
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8001/health')\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  # ---------------------------------------------------------------------------
+  # Future services (uncomment as they are implemented)
+  # ---------------------------------------------------------------------------
+
+  # chat-service:
+  #   build:
+  #     context: ./services/chat-service
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "8002:8002"
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #   env_file:
+  #     - ./services/chat-service/.env
+  #   environment:
+  #     DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/crm_dev
+  #     REDIS_URL: redis://redis:6379/0
+
+  # eva-service:
+  #   build:
+  #     context: ./services/eva-service
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "8003:8003"
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #   env_file:
+  #     - ./services/eva-service/.env
+
+  # channels-service:
+  #   build:
+  #     context: ./services/channels-service
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "8004:8004"
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #   env_file:
+  #     - ./services/channels-service/.env
+
+  # scheduler:
+  #   build:
+  #     context: ./services/crm-core
+  #     dockerfile: Dockerfile
+  #   command: celery -A app.worker.celery_app worker --loglevel=info
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #   env_file:
+  #     - ./services/crm-core/.env
+  #   environment:
+  #     DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/crm_dev
+  #     REDIS_URL: redis://redis:6379/0
+
+# =============================================================================
+# Named volumes
+# Using named (not anonymous) volumes so "docker compose down" does NOT remove
+# data unless -v flag is explicitly passed.
+# =============================================================================
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local

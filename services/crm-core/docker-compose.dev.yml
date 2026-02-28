@@ -1,0 +1,71 @@
+version: "3.9"
+
+services:
+  # ─── PostgreSQL 16 ────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: crm-postgres
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: crm
+      POSTGRES_PASSWORD: crm_dev_password
+      POSTGRES_DB: crm_core
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U crm -d crm_core"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ─── Redis 7 ──────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: crm-redis
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ─── CRM Core API (FastAPI) ──────────────────────────────────
+  crm-core:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: crm-core-api
+    ports:
+      - "8001:8001"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://crm:crm_dev_password@postgres:5432/crm_core
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: dev-jwt-secret-change-in-prod
+      JWT_ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 30
+      REFRESH_TOKEN_EXPIRE_DAYS: 7
+      CORS_ORIGINS: '["http://localhost:3000","http://localhost:3001"]'
+      APP_NAME: CRM Core
+      APP_VERSION: 0.1.0
+      API_PREFIX: /api/v1
+      LOG_LEVEL: DEBUG
+    volumes:
+      - ./app:/app/app:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command:
+      - uvicorn
+      - app.main:app
+      - --host=0.0.0.0
+      - --port=8001
+      - --reload
+      - --reload-dir=/app/app
+      - --forwarded-allow-ips=*
+
+volumes:
+  pgdata:
