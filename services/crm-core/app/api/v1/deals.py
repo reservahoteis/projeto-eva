@@ -55,8 +55,8 @@ async def list_deals(
     organization_id: uuid.UUID | None = Query(None, description="Filter by organization"),
     search: str | None = Query(None, description="Full-text search on name / email / org"),
     db: AsyncSession = Depends(get_db),
-    tenant_id: uuid.UUID = Depends(get_tenant_id),
     current_user: User = Depends(get_current_user),
+    tenant_id: uuid.UUID = Depends(get_tenant_id),
 ) -> PaginatedDeals:
     """Return a paginated list of deals for the authenticated tenant.
 
@@ -87,8 +87,8 @@ async def list_deals(
 async def create_deal(
     body: DealCreate,
     db: AsyncSession = Depends(get_db),
-    tenant_id: uuid.UUID = Depends(get_tenant_id),
     current_user: User = Depends(get_current_user),
+    tenant_id: uuid.UUID = Depends(get_tenant_id),
 ) -> DealResponse:
     """Create a new deal record for the authenticated tenant.
 
@@ -112,8 +112,8 @@ async def create_deal(
 async def bulk_delete_deals(
     body: BulkDeleteRequest,
     db: AsyncSession = Depends(get_db),
-    tenant_id: uuid.UUID = Depends(get_tenant_id),
     current_user: User = Depends(require_roles("SUPER_ADMIN", "TENANT_ADMIN", "HEAD", "SALES_MANAGER")),
+    tenant_id: uuid.UUID = Depends(get_tenant_id),
 ) -> dict:
     """Delete multiple deals in a single request.
 
@@ -133,8 +133,8 @@ async def bulk_delete_deals(
 async def get_deal(
     deal_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    tenant_id: uuid.UUID = Depends(get_tenant_id),
     current_user: User = Depends(get_current_user),
+    tenant_id: uuid.UUID = Depends(get_tenant_id),
 ) -> DealResponse:
     """Retrieve a single deal by ID, including all nested relationships."""
     deal = await DealService.get_deal(db, tenant_id, deal_id)
@@ -151,8 +151,8 @@ async def update_deal(
     deal_id: uuid.UUID,
     body: DealUpdate,
     db: AsyncSession = Depends(get_db),
-    tenant_id: uuid.UUID = Depends(get_tenant_id),
     current_user: User = Depends(get_current_user),
+    tenant_id: uuid.UUID = Depends(get_tenant_id),
 ) -> DealResponse:
     """Partially update a deal.
 
@@ -176,8 +176,8 @@ async def update_deal(
 async def delete_deal(
     deal_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    tenant_id: uuid.UUID = Depends(get_tenant_id),
     current_user: User = Depends(require_roles("SUPER_ADMIN", "TENANT_ADMIN", "HEAD", "SALES_MANAGER")),
+    tenant_id: uuid.UUID = Depends(get_tenant_id),
 ):
     """Permanently delete a single deal."""
     await DealService.delete_deal(db, tenant_id, deal_id)
@@ -192,8 +192,8 @@ async def delete_deal(
 async def mark_deal_won(
     deal_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    tenant_id: uuid.UUID = Depends(get_tenant_id),
     current_user: User = Depends(get_current_user),
+    tenant_id: uuid.UUID = Depends(get_tenant_id),
 ) -> DealResponse:
     """Transition the deal to the tenant's Won pipeline stage.
 
@@ -214,8 +214,8 @@ async def mark_deal_lost(
     deal_id: uuid.UUID,
     body: MarkLostRequest,
     db: AsyncSession = Depends(get_db),
-    tenant_id: uuid.UUID = Depends(get_tenant_id),
     current_user: User = Depends(get_current_user),
+    tenant_id: uuid.UUID = Depends(get_tenant_id),
 ) -> DealResponse:
     """Transition the deal to the tenant's Lost pipeline stage.
 
@@ -241,8 +241,8 @@ async def assign_deal(
     deal_id: uuid.UUID,
     body: AssignRequest,
     db: AsyncSession = Depends(get_db),
-    tenant_id: uuid.UUID = Depends(get_tenant_id),
     current_user: User = Depends(get_current_user),
+    tenant_id: uuid.UUID = Depends(get_tenant_id),
 ) -> dict:
     """Assign a deal to a team member.
 

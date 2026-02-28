@@ -40,8 +40,8 @@ router = APIRouter()
 async def list_statuses(
     doctype: str,
     db: AsyncSession = Depends(get_db),
-    tenant_id: uuid.UUID = Depends(get_tenant_id),
     current_user: User = Depends(get_current_user),
+    tenant_id: uuid.UUID = Depends(get_tenant_id),
 ) -> list[StatusItem]:
     statuses = await settings_service.list_statuses(db, tenant_id, doctype)
     return [StatusItem.model_validate(s) for s in statuses]
@@ -56,8 +56,8 @@ async def create_status(
     doctype: str,
     data: StatusCreate,
     db: AsyncSession = Depends(get_db),
-    tenant_id: uuid.UUID = Depends(get_tenant_id),
     current_user: User = Depends(require_roles("ADMIN", "SUPER_ADMIN")),
+    tenant_id: uuid.UUID = Depends(get_tenant_id),
 ) -> StatusItem:
     s = await settings_service.create_status(
         db,
@@ -78,8 +78,8 @@ async def update_status(
     status_id: uuid.UUID,
     data: StatusUpdate,
     db: AsyncSession = Depends(get_db),
-    tenant_id: uuid.UUID = Depends(get_tenant_id),
     current_user: User = Depends(require_roles("ADMIN", "SUPER_ADMIN")),
+    tenant_id: uuid.UUID = Depends(get_tenant_id),
 ) -> StatusItem:
     update_data = data.model_dump(exclude_none=True)
     s = await settings_service.update_status(
@@ -97,8 +97,8 @@ async def delete_status(
     doctype: str,
     status_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    tenant_id: uuid.UUID = Depends(get_tenant_id),
     current_user: User = Depends(require_roles("ADMIN", "SUPER_ADMIN")),
+    tenant_id: uuid.UUID = Depends(get_tenant_id),
 ):
     await settings_service.delete_status(db, tenant_id, doctype, status_id)
 
@@ -109,8 +109,8 @@ async def reorder_statuses(
     doctype: str,
     data: StatusReorderRequest,
     db: AsyncSession = Depends(get_db),
-    tenant_id: uuid.UUID = Depends(get_tenant_id),
     current_user: User = Depends(require_roles("ADMIN", "SUPER_ADMIN")),
+    tenant_id: uuid.UUID = Depends(get_tenant_id),
 ) -> list[StatusItem]:
     statuses = await settings_service.reorder_statuses(
         db, tenant_id, doctype, data.ordered_ids
@@ -127,8 +127,8 @@ async def reorder_statuses(
 async def list_lookups(
     lookup_type: str,
     db: AsyncSession = Depends(get_db),
-    tenant_id: uuid.UUID = Depends(get_tenant_id),
     current_user: User = Depends(get_current_user),
+    tenant_id: uuid.UUID = Depends(get_tenant_id),
 ) -> list[LookupItem]:
     items = await settings_service.list_lookups(db, tenant_id, lookup_type)
     return [LookupItem.model_validate(i) for i in items]
@@ -143,8 +143,8 @@ async def create_lookup(
     lookup_type: str,
     data: LookupCreate,
     db: AsyncSession = Depends(get_db),
-    tenant_id: uuid.UUID = Depends(get_tenant_id),
     current_user: User = Depends(require_roles("ADMIN", "SUPER_ADMIN")),
+    tenant_id: uuid.UUID = Depends(get_tenant_id),
 ) -> LookupItem:
     item = await settings_service.create_lookup(db, tenant_id, lookup_type, data.name)
 
@@ -157,8 +157,8 @@ async def update_lookup(
     item_id: uuid.UUID,
     data: LookupCreate,
     db: AsyncSession = Depends(get_db),
-    tenant_id: uuid.UUID = Depends(get_tenant_id),
     current_user: User = Depends(require_roles("ADMIN", "SUPER_ADMIN")),
+    tenant_id: uuid.UUID = Depends(get_tenant_id),
 ) -> LookupItem:
     item = await settings_service.update_lookup(
         db, tenant_id, lookup_type, item_id, name=data.name
@@ -176,8 +176,8 @@ async def delete_lookup(
     lookup_type: str,
     item_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    tenant_id: uuid.UUID = Depends(get_tenant_id),
     current_user: User = Depends(require_roles("ADMIN", "SUPER_ADMIN")),
+    tenant_id: uuid.UUID = Depends(get_tenant_id),
 ):
     await settings_service.delete_lookup(db, tenant_id, lookup_type, item_id)
 
@@ -191,8 +191,8 @@ async def delete_lookup(
 @router.get("/territories", summary="List territories")
 async def list_territories(
     db: AsyncSession = Depends(get_db),
-    tenant_id: uuid.UUID = Depends(get_tenant_id),
     current_user: User = Depends(get_current_user),
+    tenant_id: uuid.UUID = Depends(get_tenant_id),
 ) -> list[TerritoryItem]:
     items = await settings_service.list_lookups(db, tenant_id, "territory")
     return [TerritoryItem.model_validate(i) for i in items]
@@ -206,8 +206,8 @@ async def list_territories(
 async def create_territory(
     data: TerritoryCreate,
     db: AsyncSession = Depends(get_db),
-    tenant_id: uuid.UUID = Depends(get_tenant_id),
     current_user: User = Depends(require_roles("ADMIN", "SUPER_ADMIN")),
+    tenant_id: uuid.UUID = Depends(get_tenant_id),
 ) -> TerritoryItem:
     item = await settings_service.create_lookup(
         db, tenant_id, "territory", data.name, parent_id=data.parent_id
@@ -224,8 +224,8 @@ async def create_territory(
 @router.get("/products", summary="List products")
 async def list_products(
     db: AsyncSession = Depends(get_db),
-    tenant_id: uuid.UUID = Depends(get_tenant_id),
     current_user: User = Depends(get_current_user),
+    tenant_id: uuid.UUID = Depends(get_tenant_id),
 ) -> list[ProductItem]:
     items = await settings_service.list_lookups(db, tenant_id, "product")
     return [ProductItem.model_validate(i) for i in items]
@@ -239,8 +239,8 @@ async def list_products(
 async def create_product(
     data: ProductCreate,
     db: AsyncSession = Depends(get_db),
-    tenant_id: uuid.UUID = Depends(get_tenant_id),
     current_user: User = Depends(require_roles("ADMIN", "SUPER_ADMIN")),
+    tenant_id: uuid.UUID = Depends(get_tenant_id),
 ) -> ProductItem:
     item = await settings_service.create_lookup(
         db,
@@ -260,8 +260,8 @@ async def update_product(
     product_id: uuid.UUID,
     data: ProductUpdate,
     db: AsyncSession = Depends(get_db),
-    tenant_id: uuid.UUID = Depends(get_tenant_id),
     current_user: User = Depends(require_roles("ADMIN", "SUPER_ADMIN")),
+    tenant_id: uuid.UUID = Depends(get_tenant_id),
 ) -> ProductItem:
     update_data = data.model_dump(exclude_none=True)
     item = await settings_service.update_lookup(
@@ -279,8 +279,8 @@ async def update_product(
 async def delete_product(
     product_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    tenant_id: uuid.UUID = Depends(get_tenant_id),
     current_user: User = Depends(require_roles("ADMIN", "SUPER_ADMIN")),
+    tenant_id: uuid.UUID = Depends(get_tenant_id),
 ):
     await settings_service.delete_lookup(db, tenant_id, "product", product_id)
 

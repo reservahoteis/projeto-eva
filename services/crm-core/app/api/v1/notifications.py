@@ -15,7 +15,6 @@ from app.schemas.notification import (
     MarkReadResponse,
     NotificationListItem,
     NotificationListParams,
-    NotificationResponse,
     UnreadCountResponse,
 )
 from app.services.notification_service import notification_service
@@ -29,8 +28,8 @@ async def list_notifications(
     page_size: int = 20,
     read: bool | None = None,
     db: AsyncSession = Depends(get_db),
-    tenant_id: uuid.UUID = Depends(get_tenant_id),
     current_user: User = Depends(get_current_user),
+    tenant_id: uuid.UUID = Depends(get_tenant_id),
 ) -> PaginatedResponse[NotificationListItem]:
     params = NotificationListParams(page=page, page_size=page_size, read=read)
     return await notification_service.list_notifications(
@@ -41,8 +40,8 @@ async def list_notifications(
 @router.get("/unread-count", summary="Get unread notification count")
 async def unread_count(
     db: AsyncSession = Depends(get_db),
-    tenant_id: uuid.UUID = Depends(get_tenant_id),
     current_user: User = Depends(get_current_user),
+    tenant_id: uuid.UUID = Depends(get_tenant_id),
 ) -> UnreadCountResponse:
     count = await notification_service.get_unread_count(
         db, tenant_id, current_user.id
@@ -58,8 +57,8 @@ async def unread_count(
 async def mark_read(
     notification_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    tenant_id: uuid.UUID = Depends(get_tenant_id),
     current_user: User = Depends(get_current_user),
+    tenant_id: uuid.UUID = Depends(get_tenant_id),
 ):
     await notification_service.mark_read(
         db, tenant_id, current_user.id, notification_id
@@ -69,8 +68,8 @@ async def mark_read(
 @router.put("/read-all", summary="Mark all notifications as read")
 async def mark_all_read(
     db: AsyncSession = Depends(get_db),
-    tenant_id: uuid.UUID = Depends(get_tenant_id),
     current_user: User = Depends(get_current_user),
+    tenant_id: uuid.UUID = Depends(get_tenant_id),
 ) -> MarkReadResponse:
     count = await notification_service.mark_all_read(
         db, tenant_id, current_user.id

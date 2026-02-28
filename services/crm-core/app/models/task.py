@@ -73,7 +73,7 @@ class Task(TenantBase, CreatedByMixin):
     )
     created_by: Mapped["User | None"] = relationship(
         "User",
-        foreign_keys=[CreatedByMixin.created_by_id],
+        foreign_keys="[Task.created_by_id]",
         lazy="selectin",
     )
 

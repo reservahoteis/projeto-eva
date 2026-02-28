@@ -24,8 +24,8 @@ router = APIRouter()
 async def list_views(
     doctype: str,
     db: AsyncSession = Depends(get_db),
-    tenant_id: uuid.UUID = Depends(get_tenant_id),
     current_user: User = Depends(get_current_user),
+    tenant_id: uuid.UUID = Depends(get_tenant_id),
 ) -> list[ViewSettingsResponse]:
     views = await view_service.list_views(db, tenant_id, current_user.id, doctype)
     return [ViewSettingsResponse.model_validate(v) for v in views]
@@ -35,8 +35,8 @@ async def list_views(
 async def create_view(
     data: ViewSettingsCreate,
     db: AsyncSession = Depends(get_db),
-    tenant_id: uuid.UUID = Depends(get_tenant_id),
     current_user: User = Depends(get_current_user),
+    tenant_id: uuid.UUID = Depends(get_tenant_id),
 ) -> ViewSettingsResponse:
     view = await view_service.create_view(db, tenant_id, current_user.id, data)
     return ViewSettingsResponse.model_validate(view)
@@ -47,8 +47,8 @@ async def update_view(
     view_id: uuid.UUID,
     data: ViewSettingsUpdate,
     db: AsyncSession = Depends(get_db),
-    tenant_id: uuid.UUID = Depends(get_tenant_id),
     current_user: User = Depends(get_current_user),
+    tenant_id: uuid.UUID = Depends(get_tenant_id),
 ) -> ViewSettingsResponse:
     view = await view_service.update_view(
         db, tenant_id, current_user.id, view_id, data
@@ -64,7 +64,7 @@ async def update_view(
 async def delete_view(
     view_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    tenant_id: uuid.UUID = Depends(get_tenant_id),
     current_user: User = Depends(get_current_user),
+    tenant_id: uuid.UUID = Depends(get_tenant_id),
 ):
     await view_service.delete_view(db, tenant_id, current_user.id, view_id)
