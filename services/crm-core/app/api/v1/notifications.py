@@ -60,7 +60,7 @@ async def mark_read(
     db: AsyncSession = Depends(get_db),
     tenant_id: uuid.UUID = Depends(get_tenant_id),
     current_user: User = Depends(get_current_user),
-) -> None:
+):
     await notification_service.mark_read(
         db, tenant_id, current_user.id, notification_id
     )

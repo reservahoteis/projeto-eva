@@ -212,7 +212,7 @@ async def delete_note(
     db: DB,
     current_user: CurrentUser,
     tenant_id: TenantId,
-) -> None:
+):
     await note_service.delete_note(db, tenant_id, note_id)
 
 

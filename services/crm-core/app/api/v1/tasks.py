@@ -242,7 +242,7 @@ async def delete_task(
     db: DB,
     current_user: CurrentUser,
     tenant_id: TenantId,
-) -> None:
+):
     await task_service.delete_task(db, tenant_id, task_id)
 
 

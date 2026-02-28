@@ -66,5 +66,5 @@ async def delete_view(
     db: AsyncSession = Depends(get_db),
     tenant_id: uuid.UUID = Depends(get_tenant_id),
     current_user: User = Depends(get_current_user),
-) -> None:
+):
     await view_service.delete_view(db, tenant_id, current_user.id, view_id)

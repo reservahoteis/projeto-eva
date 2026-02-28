@@ -164,7 +164,7 @@ async def delete_comment(
     db: DB,
     current_user: CurrentUser,
     tenant_id: TenantId,
-) -> None:
+):
     await comment_service.delete_comment(
         db=db,
         tenant_id=tenant_id,

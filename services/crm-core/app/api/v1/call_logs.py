@@ -199,5 +199,5 @@ async def delete_call_log(
     db: DB,
     current_user: CurrentUser,
     tenant_id: TenantId,
-) -> None:
+):
     await call_log_service.delete_call_log(db, tenant_id, call_log_id)

@@ -191,5 +191,5 @@ async def delete_rule(
     db: DB,
     current_user: AdminUser,
     tenant_id: TenantId,
-) -> None:
+):
     await assignment_rule_service.delete_rule(db, tenant_id, rule_id)

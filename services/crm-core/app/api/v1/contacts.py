@@ -225,7 +225,7 @@ async def delete_contact(
     db: DB,
     current_user: User = Depends(require_roles("SUPER_ADMIN", "TENANT_ADMIN", "HEAD", "SALES_MANAGER")),
     tenant_id: TenantId = Depends(get_tenant_id),
-) -> None:
+):
     await contact_service.delete_contact(db, tenant_id, contact_id)
 
 

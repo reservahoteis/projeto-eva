@@ -178,7 +178,7 @@ async def delete_deal(
     db: AsyncSession = Depends(get_db),
     tenant_id: uuid.UUID = Depends(get_tenant_id),
     current_user: User = Depends(require_roles("SUPER_ADMIN", "TENANT_ADMIN", "HEAD", "SALES_MANAGER")),
-) -> None:
+):
     """Permanently delete a single deal."""
     await DealService.delete_deal(db, tenant_id, deal_id)
 

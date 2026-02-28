@@ -99,7 +99,7 @@ async def delete_status(
     db: AsyncSession = Depends(get_db),
     tenant_id: uuid.UUID = Depends(get_tenant_id),
     current_user: User = Depends(require_roles("ADMIN", "SUPER_ADMIN")),
-) -> None:
+):
     await settings_service.delete_status(db, tenant_id, doctype, status_id)
 
 
@@ -178,7 +178,7 @@ async def delete_lookup(
     db: AsyncSession = Depends(get_db),
     tenant_id: uuid.UUID = Depends(get_tenant_id),
     current_user: User = Depends(require_roles("ADMIN", "SUPER_ADMIN")),
-) -> None:
+):
     await settings_service.delete_lookup(db, tenant_id, lookup_type, item_id)
 
 
@@ -281,6 +281,6 @@ async def delete_product(
     db: AsyncSession = Depends(get_db),
     tenant_id: uuid.UUID = Depends(get_tenant_id),
     current_user: User = Depends(require_roles("ADMIN", "SUPER_ADMIN")),
-) -> None:
+):
     await settings_service.delete_lookup(db, tenant_id, "product", product_id)
 

@@ -230,7 +230,7 @@ async def delete_organization(
     db: DB,
     current_user: User = Depends(require_roles("SUPER_ADMIN", "TENANT_ADMIN", "HEAD", "SALES_MANAGER")),
     tenant_id: TenantId = Depends(get_tenant_id),
-) -> None:
+):
     await organization_service.delete_organization(db, tenant_id, organization_id)
 
 

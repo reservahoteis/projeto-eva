@@ -212,5 +212,5 @@ async def delete_sla(
     db: DB,
     current_user: AdminUser,
     tenant_id: TenantId,
-) -> None:
+):
     await sla_service.delete_sla(db, tenant_id, sla_id)

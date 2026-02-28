@@ -243,7 +243,7 @@ async def delete_lead(
     db: DB,
     current_user: User = Depends(require_roles("SUPER_ADMIN", "TENANT_ADMIN", "HEAD", "SALES_MANAGER")),
     tenant_id: TenantId = Depends(get_tenant_id),
-) -> None:
+):
     await lead_service.delete_lead(db, tenant_id, lead_id)
 
 
@@ -328,7 +328,7 @@ async def remove_assignment(
     current_user: CurrentUser,
     tenant_id: TenantId,
     user_id: uuid.UUID = Query(..., description="ID of the user whose assignment to cancel"),
-) -> None:
+):
     await lead_service.remove_assignment(
         db=db,
         tenant_id=tenant_id,
