@@ -241,8 +241,8 @@ async def update_lead(
 async def delete_lead(
     lead_id: uuid.UUID,
     db: DB,
-    current_user: User = Depends(require_roles("SUPER_ADMIN", "TENANT_ADMIN", "HEAD", "SALES_MANAGER")),
     tenant_id: TenantId,
+    current_user: User = Depends(require_roles("SUPER_ADMIN", "TENANT_ADMIN", "HEAD", "SALES_MANAGER")),
 ):
     await lead_service.delete_lead(db, tenant_id, lead_id)
 
@@ -356,8 +356,8 @@ async def remove_assignment(
 async def bulk_delete_leads(
     body: BulkDeleteRequest,
     db: DB,
-    current_user: User = Depends(require_roles("SUPER_ADMIN", "TENANT_ADMIN", "HEAD", "SALES_MANAGER")),
     tenant_id: TenantId,
+    current_user: User = Depends(require_roles("SUPER_ADMIN", "TENANT_ADMIN", "HEAD", "SALES_MANAGER")),
 ) -> BulkDeleteResponse:
     deleted_count = await lead_service.bulk_delete(
         db=db,

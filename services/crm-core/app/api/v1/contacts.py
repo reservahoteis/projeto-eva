@@ -223,8 +223,8 @@ async def update_contact(
 async def delete_contact(
     contact_id: uuid.UUID,
     db: DB,
-    current_user: User = Depends(require_roles("SUPER_ADMIN", "TENANT_ADMIN", "HEAD", "SALES_MANAGER")),
     tenant_id: TenantId,
+    current_user: User = Depends(require_roles("SUPER_ADMIN", "TENANT_ADMIN", "HEAD", "SALES_MANAGER")),
 ):
     await contact_service.delete_contact(db, tenant_id, contact_id)
 
@@ -313,8 +313,8 @@ async def list_contact_deals(
 async def bulk_delete_contacts(
     body: BulkDeleteRequest,
     db: DB,
-    current_user: User = Depends(require_roles("SUPER_ADMIN", "TENANT_ADMIN", "HEAD", "SALES_MANAGER")),
     tenant_id: TenantId,
+    current_user: User = Depends(require_roles("SUPER_ADMIN", "TENANT_ADMIN", "HEAD", "SALES_MANAGER")),
 ) -> BulkDeleteResponse:
     deleted_count = await contact_service.bulk_delete(
         db=db,
