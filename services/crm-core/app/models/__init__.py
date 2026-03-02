@@ -25,6 +25,8 @@ from app.models.communication import Communication, Comment
 from app.models.notification import Notification
 from app.models.status_change_log import StatusChangeLog
 from app.models.pivot_tables import DealContact, LeadProduct, DealProduct
+from app.models.tag import Tag
+from app.models.quick_reply import QuickReply
 
 __all__ = [
     "TenantBase",
@@ -58,4 +60,6 @@ __all__ = [
     "DealContact",
     "LeadProduct",
     "DealProduct",
+    "Tag",
+    "QuickReply",
 ]

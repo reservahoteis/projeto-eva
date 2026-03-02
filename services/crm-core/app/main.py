@@ -51,6 +51,7 @@ from app.api.v1 import (  # noqa: E402
     organizations,
     tasks,
     notes,
+    tags,
     call_logs,
     activities,
     comments,
@@ -62,6 +63,7 @@ from app.api.v1 import (  # noqa: E402
     sla,
     assignment_rules,
     data_import,
+    quick_replies,
 )
 
 app.include_router(leads.router, prefix=f"{settings.API_PREFIX}/leads", tags=["Leads"])
@@ -72,6 +74,7 @@ app.include_router(
 )
 app.include_router(tasks.router, prefix=f"{settings.API_PREFIX}/tasks", tags=["Tasks"])
 app.include_router(notes.router, prefix=f"{settings.API_PREFIX}/notes", tags=["Notes"])
+app.include_router(tags.router, prefix=f"{settings.API_PREFIX}/tags", tags=["Tags"])
 app.include_router(
     call_logs.router, prefix=f"{settings.API_PREFIX}/call-logs", tags=["Call Logs"]
 )
@@ -104,6 +107,9 @@ app.include_router(
 )
 app.include_router(
     data_import.router, prefix=f"{settings.API_PREFIX}/import", tags=["Data Import"]
+)
+app.include_router(
+    quick_replies.router, prefix=f"{settings.API_PREFIX}/quick-replies", tags=["Quick Replies"]
 )
 
 
