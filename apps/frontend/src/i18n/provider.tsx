@@ -20,9 +20,15 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const stored = getStoredLocale()
     setLocale(stored)
-    import(`../../messages/${stored}.json`).then((mod) => {
-      setMessages(mod.default)
-    })
+    import(`../../messages/${stored}.json`)
+      .then((mod) => {
+        setMessages(mod.default)
+      })
+      .catch(() => {
+        import(`../../messages/pt-BR.json`).then((mod) => {
+          setMessages(mod.default)
+        })
+      })
   }, [])
 
   if (!messages) return <>{children}</>

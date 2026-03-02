@@ -28,7 +28,11 @@
     "export": "Export",
     "import": "Import",
     "settings": "Settings",
-    "language": "Language"
+    "language": "Language",
+    "help": "Help",
+    "expand": "Expand",
+    "collapse": "Collapse",
+    "chat": "Chat"
   },
   "auth": {
     "login": "Sign in",
@@ -217,7 +221,11 @@
     "wonDeals": "Won Deals",
     "revenue": "Revenue",
     "conversionRate": "Conversion Rate",
-    "recentActivity": "Recent Activity"
+    "recentActivity": "Recent Activity",
+    "contacts": "Contacts",
+    "organizations": "Organizations",
+    "loading": "Loading...",
+    "errorLoading": "Failed to load dashboard data."
   },
   "notifications": {
     "title": "Notifications",

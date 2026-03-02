@@ -66,11 +66,12 @@ function formatCurrency(value: number): string {
 export default function CrmDashboardPage() {
   const t = useTranslations('dashboard')
 
-  const { data: stats, isLoading } = useQuery({
+  const { data: stats, isLoading, isError } = useQuery({
     queryKey: ['crm-dashboard-stats'],
     queryFn: () => crmApi.dashboard.stats(),
     select: (res) => res.data,
     refetchInterval: 60_000,
+    staleTime: 30_000,
   })
 
   if (isLoading) {
@@ -82,9 +83,19 @@ export default function CrmDashboardPage() {
             style={{ borderColor: 'var(--ink-gray-3)', borderTopColor: 'transparent' }}
           />
           <span className="text-sm" style={{ color: 'var(--ink-gray-5)' }}>
-            Loading...
+            {t('loading')}
           </span>
         </div>
+      </div>
+    )
+  }
+
+  if (isError) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <p className="text-sm" style={{ color: 'var(--ink-gray-5)' }}>
+          {t('errorLoading')}
+        </p>
       </div>
     )
   }
@@ -137,13 +148,13 @@ export default function CrmDashboardPage() {
         />
         <StatCard
           icon={Users}
-          label="Contacts"
+          label={t('contacts')}
           value={stats?.total_contacts ?? 0}
           color="#EC4899"
         />
         <StatCard
           icon={Building2}
-          label="Organizations"
+          label={t('organizations')}
           value={stats?.total_organizations ?? 0}
           color="#14B8A6"
         />

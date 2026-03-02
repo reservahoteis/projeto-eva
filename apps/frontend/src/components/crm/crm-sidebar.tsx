@@ -187,6 +187,7 @@ export function CrmSidebar() {
     queryKey: ['crm-notifications-count'],
     queryFn: () => crmApi.notifications.unreadCount(),
     refetchInterval: 60_000,
+    staleTime: 30_000,
     select: (res) => res.data.count,
   })
 
@@ -278,7 +279,7 @@ export function CrmSidebar() {
               <DropdownMenuItem asChild>
                 <Link href="/dashboard" className="cursor-pointer">
                   <MessageSquare className="mr-2 h-4 w-4" />
-                  Chat
+                  {tc('chat')}
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
@@ -331,9 +332,9 @@ export function CrmSidebar() {
           </div>
           <SidebarLink
             icon={HelpCircle}
-            label="Help"
+            label={tc('help')}
             isCollapsed={isCollapsed}
-            onClick={() => window.open('https://docs.hoteisreserva.com.br', '_blank')}
+            onClick={() => window.open('https://docs.hoteisreserva.com.br', '_blank', 'noopener,noreferrer')}
           />
           <SidebarLink
             icon={({ className }) => (
@@ -353,7 +354,7 @@ export function CrmSidebar() {
                 <path d="M11 2L5 8l6 6" />
               </svg>
             )}
-            label={isCollapsed ? 'Expandir' : 'Recolher'}
+            label={isCollapsed ? tc('expand') : tc('collapse')}
             isCollapsed={isCollapsed}
             onClick={() => setIsCollapsed(!isCollapsed)}
           />

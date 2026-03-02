@@ -28,7 +28,11 @@
     "export": "Exportar",
     "import": "Importar",
     "settings": "Configurações",
-    "language": "Idioma"
+    "language": "Idioma",
+    "help": "Ajuda",
+    "expand": "Expandir",
+    "collapse": "Recolher",
+    "chat": "Chat"
   },
   "auth": {
     "login": "Entrar",
@@ -217,7 +221,11 @@
     "wonDeals": "Negociações Ganhas",
     "revenue": "Receita",
     "conversionRate": "Taxa de Conversão",
-    "recentActivity": "Atividade Recente"
+    "recentActivity": "Atividade Recente",
+    "contacts": "Contatos",
+    "organizations": "Organizações",
+    "loading": "Carregando...",
+    "errorLoading": "Erro ao carregar dados do dashboard."
   },
   "notifications": {
     "title": "Notificações",
