@@ -31,7 +31,16 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
       })
   }, [])
 
-  if (!messages) return <>{children}</>
+  if (!messages) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <div
+          className="h-8 w-8 animate-spin rounded-full border-2 border-t-transparent"
+          style={{ borderColor: '#d1d5db', borderTopColor: 'transparent' }}
+        />
+      </div>
+    )
+  }
 
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
