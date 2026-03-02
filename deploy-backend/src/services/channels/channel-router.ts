@@ -16,14 +16,18 @@ import type {
 import { whatsappAdapter } from './whatsapp.adapter';
 import { messengerAdapter } from './messenger.adapter';
 import { instagramAdapter } from './instagram.adapter';
+import { smsAdapter } from './sms.adapter';
+import { emailAdapter } from './email.adapter';
 
-type Channel = 'WHATSAPP' | 'MESSENGER' | 'INSTAGRAM';
+type Channel = 'WHATSAPP' | 'MESSENGER' | 'INSTAGRAM' | 'SMS' | 'EMAIL';
 
 export class ChannelRouter {
   private adapters: Record<Channel, ChannelSendAdapter> = {
     WHATSAPP: whatsappAdapter,
     MESSENGER: messengerAdapter,
     INSTAGRAM: instagramAdapter,
+    SMS: smsAdapter,
+    EMAIL: emailAdapter,
   };
 
   getAdapter(channel: Channel): ChannelSendAdapter {

@@ -45,7 +45,7 @@ export interface TemplateParameter {
  * Metodos opcionais retornam null se o canal nao suporta.
  */
 export interface ChannelSendAdapter {
-  readonly channel: 'WHATSAPP' | 'MESSENGER' | 'INSTAGRAM';
+  readonly channel: 'WHATSAPP' | 'MESSENGER' | 'INSTAGRAM' | 'SMS' | 'EMAIL';
 
   sendText(tenantId: string, to: string, text: string): Promise<SendResult>;
 
