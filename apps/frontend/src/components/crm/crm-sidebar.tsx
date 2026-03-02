@@ -8,6 +8,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
+import { useTranslations } from 'next-intl'
 import { useAuth } from '@/contexts/auth-context'
 import { useLocalStorage } from '@/hooks/use-local-storage'
 import {
@@ -41,18 +42,24 @@ import {
   HelpCircle,
 } from 'lucide-react'
 import { crmApi } from '@/services/crm/api'
+import { LanguageSwitcher } from './language-switcher'
 
-// Frappe CRM sidebar links — matches AppSidebar.vue `links` array
-const sidebarLinks = [
-  { label: 'Dashboard', icon: LayoutDashboard, href: '/crm', exact: true },
-  { label: 'Leads', icon: Target, href: '/crm/leads' },
-  { label: 'Negociações', icon: Handshake, href: '/crm/deals' },
-  { label: 'Contatos', icon: Users, href: '/crm/contacts' },
-  { label: 'Organizações', icon: Building2, href: '/crm/organizations' },
-  { label: 'Notas', icon: FileText, href: '/crm/notes' },
-  { label: 'Tarefas', icon: ListTodo, href: '/crm/tasks' },
-  { label: 'Calendário', icon: Calendar, href: '/crm/calendar' },
-  { label: 'Chamadas', icon: PhoneCall, href: '/crm/call-logs' },
+// Sidebar link definitions — labels are i18n keys resolved at render time
+const sidebarLinkDefs: Array<{
+  key: string
+  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>
+  href: string
+  exact?: boolean
+}> = [
+  { key: 'dashboard', icon: LayoutDashboard, href: '/crm', exact: true },
+  { key: 'leads', icon: Target, href: '/crm/leads' },
+  { key: 'deals', icon: Handshake, href: '/crm/deals' },
+  { key: 'contacts', icon: Users, href: '/crm/contacts' },
+  { key: 'organizations', icon: Building2, href: '/crm/organizations' },
+  { key: 'notes', icon: FileText, href: '/crm/notes' },
+  { key: 'tasks', icon: ListTodo, href: '/crm/tasks' },
+  { key: 'calendar', icon: Calendar, href: '/crm/calendar' },
+  { key: 'callLogs', icon: PhoneCall, href: '/crm/call-logs' },
 ]
 
 // Hook for localStorage-backed collapse state (matches Frappe's useStorage)
@@ -172,6 +179,9 @@ function SidebarLink({
 export function CrmSidebar() {
   const { user, logout } = useAuth()
   const [isCollapsed, setIsCollapsed] = useCollapsed()
+  const t = useTranslations('nav')
+  const tc = useTranslations('common')
+  const ta = useTranslations('auth')
 
   const { data: notifCount } = useQuery({
     queryKey: ['crm-notifications-count'],
@@ -262,19 +272,19 @@ export function CrmSidebar() {
               <DropdownMenuItem asChild>
                 <Link href="/crm/settings" className="cursor-pointer">
                   <Settings className="mr-2 h-4 w-4" />
-                  Configurações
+                  {tc('settings')}
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href="/dashboard" className="cursor-pointer">
                   <MessageSquare className="mr-2 h-4 w-4" />
-                  Voltar ao Chat
+                  Chat
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={logout} className="cursor-pointer text-red-600">
                 <LogOut className="mr-2 h-4 w-4" />
-                Sair
+                {ta('logout')}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -287,7 +297,7 @@ export function CrmSidebar() {
             <div className="mx-2 my-[1.5px]">
               <SidebarLink
                 icon={Bell}
-                label="Notificações"
+                label={t('notifications')}
                 href="/crm/notifications"
                 isCollapsed={isCollapsed}
                 badge={unreadCount}
@@ -300,11 +310,11 @@ export function CrmSidebar() {
 
           {/* All Views section */}
           <nav className="flex flex-col">
-            {sidebarLinks.map((link) => (
-              <div key={link.label} className="mx-2 my-[1.5px]">
+            {sidebarLinkDefs.map((link) => (
+              <div key={link.key} className="mx-2 my-[1.5px]">
                 <SidebarLink
                   icon={link.icon}
-                  label={link.label}
+                  label={t(link.key)}
                   href={link.href}
                   exact={link.exact}
                   isCollapsed={isCollapsed}
@@ -314,13 +324,16 @@ export function CrmSidebar() {
           </nav>
         </div>
 
-        {/* Footer — collapse toggle + help */}
+        {/* Footer — language, help, collapse */}
         <div className="m-2 flex flex-col gap-1">
+          <div className="mx-0 my-[1.5px]">
+            <LanguageSwitcher collapsed={isCollapsed} />
+          </div>
           <SidebarLink
             icon={HelpCircle}
-            label="Ajuda"
+            label="Help"
             isCollapsed={isCollapsed}
-            onClick={() => window.open('https://docs.frappe.io/crm', '_blank')}
+            onClick={() => window.open('https://docs.hoteisreserva.com.br', '_blank')}
           />
           <SidebarLink
             icon={({ className }) => (

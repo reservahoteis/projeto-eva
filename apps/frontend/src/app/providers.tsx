@@ -6,6 +6,7 @@ import { Toaster } from 'sonner';
 import { useState } from 'react';
 import { AuthProvider } from '@/contexts/auth-context';
 import { SocketProvider } from '@/contexts/socket-context';
+import { I18nProvider } from '@/i18n/provider';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -23,13 +24,15 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <SocketProvider>
-          {children}
-          <Toaster position="top-right" richColors />
-          <ReactQueryDevtools initialIsOpen={false} />
-        </SocketProvider>
-      </AuthProvider>
+      <I18nProvider>
+        <AuthProvider>
+          <SocketProvider>
+            {children}
+            <Toaster position="top-right" richColors />
+            <ReactQueryDevtools initialIsOpen={false} />
+          </SocketProvider>
+        </AuthProvider>
+      </I18nProvider>
     </QueryClientProvider>
   );
 }
