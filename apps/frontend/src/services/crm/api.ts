@@ -48,6 +48,14 @@ import type {
   MarkDealLostData,
   ReorderStatusData,
   CrmDoctype,
+  CrmTag,
+  CreateTagData,
+  UpdateTagData,
+  CrmQuickReply,
+  CrmQuickReplyListItem,
+  CreateQuickReplyData,
+  UpdateQuickReplyData,
+  QuickReplyListParams,
 } from '@/types/crm'
 
 // Base path for all CRM API calls
@@ -468,6 +476,48 @@ const users = {
 }
 
 // ============================================
+// TAGS
+// ============================================
+
+const tags = {
+  list: (params?: { page?: number; page_size?: number; search?: string }) =>
+    api.get<CrmPaginatedResponse<CrmTag>>(`${CRM}/tags`, { params }),
+
+  get: (id: string) =>
+    api.get<CrmTag>(`${CRM}/tags/${id}`),
+
+  create: (data: CreateTagData) =>
+    api.post<CrmTag>(`${CRM}/tags`, data),
+
+  update: (id: string, data: UpdateTagData) =>
+    api.patch<CrmTag>(`${CRM}/tags/${id}`, data),
+
+  delete: (id: string) =>
+    api.delete(`${CRM}/tags/${id}`),
+}
+
+// ============================================
+// QUICK REPLIES
+// ============================================
+
+const quickReplies = {
+  list: (params?: QuickReplyListParams) =>
+    api.get<CrmPaginatedResponse<CrmQuickReplyListItem>>(`${CRM}/quick-replies`, { params }),
+
+  get: (id: string) =>
+    api.get<CrmQuickReply>(`${CRM}/quick-replies/${id}`),
+
+  create: (data: CreateQuickReplyData) =>
+    api.post<CrmQuickReply>(`${CRM}/quick-replies`, data),
+
+  update: (id: string, data: UpdateQuickReplyData) =>
+    api.patch<CrmQuickReply>(`${CRM}/quick-replies/${id}`, data),
+
+  delete: (id: string) =>
+    api.delete(`${CRM}/quick-replies/${id}`),
+}
+
+// ============================================
 // MAIN EXPORT
 // ============================================
 
@@ -485,6 +535,8 @@ export const crmApi = {
   views,
   settings,
   users,
+  tags,
+  quickReplies,
 }
 
 export default crmApi

@@ -525,3 +525,82 @@ export interface MarkDealLostData {
 export interface ReorderStatusData {
   items: Array<{ id: string; position: number }>
 }
+
+// ============================================
+// TAG TYPES
+// ============================================
+
+export interface CrmTag {
+  id: string
+  name: string
+  color: string
+  created_at: string
+  updated_at: string
+}
+
+export interface CreateTagData {
+  name: string
+  color?: string
+}
+
+export interface UpdateTagData {
+  name?: string
+  color?: string
+}
+
+// ============================================
+// QUICK REPLY TYPES
+// ============================================
+
+export interface CrmQuickReply {
+  id: string
+  tenant_id: string
+  title: string
+  shortcut: string
+  content: string
+  category: string | null
+  order: number
+  is_active: boolean
+  created_by_id: string | null
+  created_by: UserEmbed | null
+  created_at: string
+  updated_at: string
+}
+
+export interface CrmQuickReplyListItem {
+  id: string
+  title: string
+  shortcut: string
+  content: string
+  category: string | null
+  order: number
+  is_active: boolean
+  created_by: UserEmbed | null
+  created_at: string
+  updated_at: string
+}
+
+export interface CreateQuickReplyData {
+  title: string
+  shortcut: string
+  content: string
+  category?: string
+  order?: number
+}
+
+export interface UpdateQuickReplyData {
+  title?: string
+  shortcut?: string
+  content?: string
+  category?: string
+  order?: number
+  is_active?: boolean
+}
+
+export interface QuickReplyListParams {
+  page?: number
+  page_size?: number
+  search?: string
+  category?: string
+  is_active?: boolean
+}
