@@ -28,7 +28,7 @@ import type {
  *   AIRBNB_ACCESS_TOKEN
  */
 class AirbnbAdapter implements ChannelSendAdapter {
-  readonly channel = 'WHATSAPP' as const; // placeholder until union type is extended
+  readonly channel = 'WHATSAPP' as const; // placeholder — no AIRBNB union member yet
 
   private readonly STUB_MSG = 'Airbnb adapter not yet active — awaiting partnership approval';
 

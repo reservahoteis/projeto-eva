@@ -9,7 +9,6 @@ import type {
   SendResult,
   MediaPayload,
   ButtonPayload,
-  QuickReplyPayload,
 } from './channel-send.interface';
 
 /**
@@ -21,8 +20,10 @@ import type {
  *   TWILIO_AUTH_TOKEN
  *   TWILIO_PHONE_NUMBER  (E.164 format, e.g. +15551234567)
  */
+const E164_REGEX = /^\+[1-9]\d{1,14}$/;
+
 class SmsAdapter implements ChannelSendAdapter {
-  readonly channel = 'WHATSAPP' as const; // reuse union type for now
+  readonly channel = 'SMS' as const;
 
   private get accountSid(): string {
     return process.env.TWILIO_ACCOUNT_SID || '';
@@ -46,6 +47,11 @@ class SmsAdapter implements ChannelSendAdapter {
       return { externalMessageId: '', success: false };
     }
 
+    if (!E164_REGEX.test(to)) {
+      logger.warn({ to }, 'Invalid phone number format — must be E.164');
+      return { externalMessageId: '', success: false };
+    }
+
     try {
       const url = `https://api.twilio.com/2010-04-01/Accounts/${this.accountSid}/Messages.json`;
       const credentials = Buffer.from(`${this.accountSid}:${this.authToken}`).toString('base64');
@@ -55,6 +61,9 @@ class SmsAdapter implements ChannelSendAdapter {
       params.append('From', this.fromNumber);
       params.append('Body', body);
 
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15_000);
+
       const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -62,9 +71,12 @@ class SmsAdapter implements ChannelSendAdapter {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
         body: params.toString(),
+        signal: controller.signal,
       });
 
-      const result = await response.json();
+      clearTimeout(timeout);
+
+      const result = (await response.json()) as { sid?: string; message?: string };
 
       if (!response.ok) {
         logger.error({ status: response.status, error: result }, 'Twilio SMS send failed');
@@ -72,7 +84,7 @@ class SmsAdapter implements ChannelSendAdapter {
       }
 
       logger.info({ sid: result.sid, to }, 'SMS sent via Twilio');
-      return { externalMessageId: result.sid, success: true };
+      return { externalMessageId: result.sid || '', success: true };
     } catch (error) {
       logger.error({ error: error instanceof Error ? error.message : 'Unknown', to }, 'SMS send error');
       return { externalMessageId: '', success: false };

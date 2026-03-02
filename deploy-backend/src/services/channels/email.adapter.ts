@@ -9,7 +9,6 @@ import type {
   SendResult,
   MediaPayload,
   ButtonPayload,
-  QuickReplyPayload,
 } from './channel-send.interface';
 
 /**
@@ -21,8 +20,28 @@ import type {
  *   SENDGRID_FROM_EMAIL   (verified sender, e.g. noreply@hoteisreserva.com.br)
  *   SENDGRID_FROM_NAME    (e.g. "Hoteis Reserva")
  */
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function validateUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 class EmailAdapter implements ChannelSendAdapter {
-  readonly channel = 'WHATSAPP' as const; // reuse union type for now
+  readonly channel = 'EMAIL' as const;
 
   private get apiKey(): string {
     return process.env.SENDGRID_API_KEY || '';
@@ -46,7 +65,15 @@ class EmailAdapter implements ChannelSendAdapter {
       return { externalMessageId: '', success: false };
     }
 
+    if (!EMAIL_REGEX.test(to)) {
+      logger.warn({ to }, 'Invalid email address format');
+      return { externalMessageId: '', success: false };
+    }
+
     try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15_000);
+
       const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
         method: 'POST',
         headers: {
@@ -56,12 +83,15 @@ class EmailAdapter implements ChannelSendAdapter {
         body: JSON.stringify({
           personalizations: [{ to: [{ email: to }] }],
           from: { email: this.fromEmail, name: this.fromName },
-          subject,
+          subject: escapeHtml(subject),
           content: [
             { type: 'text/html', value: htmlContent },
           ],
         }),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeout);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -94,12 +124,21 @@ class EmailAdapter implements ChannelSendAdapter {
   }
 
   async sendMedia(_tenantId: string, to: string, media: MediaPayload): Promise<SendResult> {
+    if (!validateUrl(media.url)) {
+      logger.warn({ url: media.url }, 'Invalid media URL — must be http/https');
+      return { externalMessageId: '', success: false };
+    }
+
+    const safeUrl = escapeHtml(media.url);
+    const safeCaption = media.caption ? escapeHtml(media.caption) : '';
+    const safeFilename = media.filename ? escapeHtml(media.filename) : escapeHtml(media.type);
+
     let html: string;
     if (media.type === 'image') {
-      html = `<img src="${media.url}" alt="${media.caption || 'Image'}" style="max-width:600px">`;
+      html = `<img src="${safeUrl}" alt="${safeCaption || 'Image'}" style="max-width:600px">`;
       if (media.caption) html += `<p>${this.textToHtml(media.caption)}</p>`;
     } else {
-      html = `<p>${media.caption || ''}</p><p><a href="${media.url}">Download ${media.filename || media.type}</a></p>`;
+      html = `<p>${safeCaption}</p><p><a href="${safeUrl}">Download ${safeFilename}</a></p>`;
     }
     return this.sendGridSend(to, media.caption || 'Hoteis Reserva', html);
   }
@@ -112,10 +151,12 @@ class EmailAdapter implements ChannelSendAdapter {
   ): Promise<SendResult> {
     const buttonHtml = buttons
       .map((b) => {
-        if (b.url) {
-          return `<a href="${b.url}" style="display:inline-block;padding:10px 20px;margin:5px;background:#2563EB;color:#fff;text-decoration:none;border-radius:6px">${b.title}</a>`;
+        const safeTitle = escapeHtml(b.title);
+        if (b.url && validateUrl(b.url)) {
+          const safeUrl = escapeHtml(b.url);
+          return `<a href="${safeUrl}" style="display:inline-block;padding:10px 20px;margin:5px;background:#2563EB;color:#fff;text-decoration:none;border-radius:6px">${safeTitle}</a>`;
         }
-        return `<span style="display:inline-block;padding:10px 20px;margin:5px;background:#E5E7EB;border-radius:6px">${b.title}</span>`;
+        return `<span style="display:inline-block;padding:10px 20px;margin:5px;background:#E5E7EB;border-radius:6px">${safeTitle}</span>`;
       })
       .join('');
 

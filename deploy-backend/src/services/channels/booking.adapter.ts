@@ -29,7 +29,7 @@ import type {
  *   BOOKING_API_SECRET
  */
 class BookingAdapter implements ChannelSendAdapter {
-  readonly channel = 'WHATSAPP' as const; // placeholder until union type is extended
+  readonly channel = 'WHATSAPP' as const; // placeholder — no BOOKING union member yet
 
   private readonly STUB_MSG = 'Booking.com adapter not yet active — awaiting partnership approval';
 
