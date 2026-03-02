@@ -64,6 +64,7 @@ from app.api.v1 import (  # noqa: E402
     assignment_rules,
     data_import,
     quick_replies,
+    dashboard,
 )
 
 app.include_router(leads.router, prefix=f"{settings.API_PREFIX}/leads", tags=["Leads"])
@@ -110,6 +111,9 @@ app.include_router(
 )
 app.include_router(
     quick_replies.router, prefix=f"{settings.API_PREFIX}/quick-replies", tags=["Quick Replies"]
+)
+app.include_router(
+    dashboard.router, prefix=f"{settings.API_PREFIX}/dashboard", tags=["Dashboard"]
 )
 
 
