@@ -725,7 +725,7 @@ export default function LeadsPage() {
                   Tentar novamente
                 </Button>
               </div>
-            ) : !listQuery.data?.data.length ? (
+            ) : !listQuery.data?.data?.length ? (
               <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
                 <div
                   className="w-12 h-12 rounded-xl flex items-center justify-center mb-4"
@@ -807,7 +807,7 @@ export default function LeadsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {listQuery.data.data.map((lead) => {
+                    {listQuery.data?.data?.map((lead) => {
                       const palette = getAvatarPalette(lead.id)
                       return (
                         <TableRow
@@ -1000,7 +1000,7 @@ export default function LeadsPage() {
                   className="md:hidden divide-y"
                   style={{ borderColor: 'var(--outline-gray-1)' }}
                 >
-                  {listQuery.data.data.map((lead) => {
+                  {listQuery.data?.data?.map((lead) => {
                     const palette = getAvatarPalette(lead.id)
                     return (
                       <div
@@ -1092,7 +1092,7 @@ export default function LeadsPage() {
                 </div>
 
                 {/* Pagination */}
-                {listQuery.data.total_count > PAGE_SIZE && (
+                {(listQuery.data?.total_count ?? 0) > PAGE_SIZE && (
                   <div
                     className="flex items-center justify-between px-5 py-2.5 border-t flex-shrink-0"
                     style={{
@@ -1101,7 +1101,7 @@ export default function LeadsPage() {
                     }}
                   >
                     <span className="text-xs" style={{ color: 'var(--ink-gray-5)' }}>
-                      Mostrando {listQuery.data.data.length} de {listQuery.data.total_count} leads
+                      Mostrando {listQuery.data?.data?.length ?? 0} de {listQuery.data?.total_count ?? 0} leads
                     </span>
                     <div className="flex items-center gap-2">
                       <Button
@@ -1115,13 +1115,13 @@ export default function LeadsPage() {
                         Anterior
                       </Button>
                       <span className="text-xs px-2" style={{ color: 'var(--ink-gray-5)' }}>
-                        {page} / {Math.ceil(listQuery.data.total_count / PAGE_SIZE)}
+                        {page} / {Math.ceil((listQuery.data?.total_count ?? 0) / PAGE_SIZE)}
                       </span>
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => setPage((p: number) => p + 1)}
-                        disabled={page >= Math.ceil(listQuery.data.total_count / PAGE_SIZE)}
+                        disabled={page >= Math.ceil((listQuery.data?.total_count ?? 0) / PAGE_SIZE)}
                         className="h-7 text-xs px-2.5"
                         style={{ borderColor: 'var(--outline-gray-2)', color: 'var(--ink-gray-7)' }}
                       >
@@ -1159,7 +1159,7 @@ export default function LeadsPage() {
               </div>
             ) : (
               <div className="flex gap-4 overflow-x-auto pb-4 min-h-[400px]">
-                {kanbanQuery.data?.columns.map((col) => (
+                {kanbanQuery.data?.columns?.map((col) => (
                   <KanbanColumn
                     key={col.column_id ?? 'no-status'}
                     label={col.column_value ?? 'Sem status'}
@@ -1200,7 +1200,7 @@ export default function LeadsPage() {
               </div>
             ) : (
               <div className="space-y-2">
-                {groupByQuery.data?.buckets.map((bucket) => (
+                {groupByQuery.data?.buckets?.map((bucket) => (
                   <div
                     key={bucket.group_id ?? 'ungrouped'}
                     className="rounded-lg overflow-hidden"
@@ -1236,7 +1236,7 @@ export default function LeadsPage() {
                       className="divide-y"
                       style={{ borderColor: 'var(--outline-gray-1)' }}
                     >
-                      {bucket.data.slice(0, 5).map((lead) => {
+                      {(bucket.data ?? []).slice(0, 5).map((lead) => {
                         const palette = getAvatarPalette(lead.id)
                         return (
                           <div

@@ -859,7 +859,7 @@ export default function DealsPage() {
                   Tentar novamente
                 </Button>
               </div>
-            ) : !listQuery.data?.data.length ? (
+            ) : !listQuery.data?.data?.length ? (
               <div style={{ textAlign: 'center', padding: '64px 0' }}>
                 <Handshake
                   style={{
@@ -985,7 +985,7 @@ export default function DealsPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {listQuery.data.data.map((deal) => (
+                      {listQuery.data?.data?.map((deal) => (
                         <TableRow
                           key={deal.id}
                           style={{ borderBottom: '1px solid var(--outline-gray-1)' }}
@@ -1151,7 +1151,7 @@ export default function DealsPage() {
 
                 {/* Mobile Cards */}
                 <div className="md:hidden" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {listQuery.data.data.map((deal) => (
+                  {listQuery.data?.data?.map((deal) => (
                     <div
                       key={deal.id}
                       style={{
@@ -1263,7 +1263,7 @@ export default function DealsPage() {
                 </div>
 
                 {/* Pagination */}
-                {listQuery.data.total_count > PAGE_SIZE && (
+                {(listQuery.data?.total_count ?? 0) > PAGE_SIZE && (
                   <div
                     style={{
                       display: 'flex',
@@ -1275,7 +1275,7 @@ export default function DealsPage() {
                     }}
                   >
                     <p style={{ fontSize: '13px', color: 'var(--ink-gray-5)' }}>
-                      Mostrando {listQuery.data.data.length} de {listQuery.data.total_count}{' '}
+                      Mostrando {listQuery.data?.data?.length ?? 0} de {listQuery.data?.total_count ?? 0}{' '}
                       negociações
                     </p>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1294,13 +1294,13 @@ export default function DealsPage() {
                         Anterior
                       </Button>
                       <span style={{ fontSize: '13px', color: 'var(--ink-gray-5)', padding: '0 8px' }}>
-                        {page} / {Math.ceil(listQuery.data.total_count / PAGE_SIZE)}
+                        {page} / {Math.ceil((listQuery.data?.total_count ?? 0) / PAGE_SIZE)}
                       </span>
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => setPage((p: number) => p + 1)}
-                        disabled={page >= Math.ceil(listQuery.data.total_count / PAGE_SIZE)}
+                        disabled={page >= Math.ceil((listQuery.data?.total_count ?? 0) / PAGE_SIZE)}
                         style={{
                           border: '1px solid var(--outline-gray-2)',
                           backgroundColor: 'var(--surface-white)',
@@ -1375,7 +1375,7 @@ export default function DealsPage() {
                   minHeight: '400px',
                 }}
               >
-                {kanbanQuery.data?.columns.map((col) => (
+                {kanbanQuery.data?.columns?.map((col) => (
                   <KanbanColumn
                     key={col.column_id ?? 'no-status'}
                     label={col.column_value ?? 'Sem status'}
@@ -1476,7 +1476,7 @@ export default function DealsPage() {
                       </Badge>
                     </div>
                     <div>
-                      {bucket.data.slice(0, 5).map((deal) => (
+                      {(bucket.data ?? []).slice(0, 5).map((deal) => (
                         <div
                           key={deal.id}
                           style={{
