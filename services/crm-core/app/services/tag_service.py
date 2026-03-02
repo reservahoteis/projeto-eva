@@ -18,6 +18,7 @@ import uuid
 
 import structlog
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ConflictError, NotFoundError
@@ -36,6 +37,11 @@ logger = structlog.get_logger()
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+def _escape_ilike(value: str) -> str:
+    """Escape ILIKE special characters (%, _, \\) to prevent wildcard injection."""
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
 def _build_tag_query(tenant_id: uuid.UUID):
@@ -91,8 +97,9 @@ class TagService:
         base_query = _build_tag_query(tenant_id)
 
         if params.search:
+            safe_term = f"%{_escape_ilike(params.search)}%"
             base_query = base_query.where(
-                Tag.name.ilike(f"%{params.search}%")
+                Tag.name.ilike(safe_term)
             )
 
         # Count total matching rows before pagination
@@ -102,7 +109,8 @@ class TagService:
             .where(Tag.tenant_id == tenant_id)
         )
         if params.search:
-            count_query = count_query.where(Tag.name.ilike(f"%{params.search}%"))
+            safe_term = f"%{_escape_ilike(params.search)}%"
+            count_query = count_query.where(Tag.name.ilike(safe_term))
 
         total_result = await db.execute(count_query)
         total_count = total_result.scalar_one()
@@ -168,7 +176,11 @@ class TagService:
         )
 
         db.add(tag)
-        await db.flush()  # populate tag.id
+        try:
+            await db.flush()  # populate tag.id
+        except IntegrityError:
+            await db.rollback()
+            raise ConflictError(f"A tag named '{data.name}' already exists for this tenant")
 
         # Reload to return a clean, fully populated instance
         tag = await self.get_tag(db, tenant_id, tag.id)
@@ -205,7 +217,11 @@ class TagService:
         for field, value in update_data.items():
             setattr(tag, field, value)
 
-        await db.flush()
+        try:
+            await db.flush()
+        except IntegrityError:
+            await db.rollback()
+            raise ConflictError(f"A tag with that name already exists for this tenant")
 
         tag = await self.get_tag(db, tenant_id, tag_id)
         logger.info(

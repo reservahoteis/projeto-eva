@@ -99,7 +99,6 @@ class QuickReplyResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
-    tenant_id: uuid.UUID
 
     title: str
     shortcut: str
@@ -107,9 +106,6 @@ class QuickReplyResponse(BaseModel):
     category: str | None = None
     order: int
     is_active: bool
-
-    # Authorship FK (raw)
-    created_by_id: uuid.UUID | None = None
 
     # Nested author embed (populated via SQLAlchemy selectin relationship)
     created_by: UserEmbed | None = None
@@ -169,7 +165,7 @@ class QuickReplyListParams(BaseModel):
     page_size: int = Field(20, ge=1, le=200, description="Results per page (max 200)")
 
     # Full-text search — matches against title, shortcut, and content (ilike)
-    search: str | None = Field(None, description="ILIKE search across title, shortcut, content")
+    search: str | None = Field(None, max_length=100, description="ILIKE search across title, shortcut, content")
 
     # Category filter
     category: str | None = Field(None, max_length=50)

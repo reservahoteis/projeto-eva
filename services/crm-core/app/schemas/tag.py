@@ -118,4 +118,4 @@ class TagListParams(BaseModel):
     page_size: int = Field(20, ge=1, le=200, description="Results per page (max 200)")
 
     # Optional name filter
-    search: str | None = Field(None, description="Case-insensitive name substring filter")
+    search: str | None = Field(None, max_length=100, description="Case-insensitive name substring filter")

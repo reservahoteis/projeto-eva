@@ -21,8 +21,10 @@ import structlog
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from fastapi.responses import Response as FastAPIResponse
+
 from app.core.database import get_db
-from app.core.dependencies import get_current_user, get_tenant_id
+from app.core.dependencies import get_current_user, get_tenant_id, require_roles
 from app.models.user import User
 from app.schemas.lead import PaginatedResponse
 from app.schemas.tag import (
@@ -43,6 +45,7 @@ router = APIRouter()
 # ---------------------------------------------------------------------------
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
+AdminUser = Annotated[User, Depends(require_roles("SUPER_ADMIN", "ADMIN", "MANAGER"))]
 TenantId = Annotated[uuid.UUID, Depends(get_tenant_id)]
 DB = Annotated[AsyncSession, Depends(get_db)]
 
@@ -111,7 +114,7 @@ async def list_tags(
 async def create_tag(
     payload: TagCreate,
     db: DB,
-    current_user: CurrentUser,
+    current_user: AdminUser,
     tenant_id: TenantId,
 ) -> TagResponse:
     tag = await tag_service.create_tag(
@@ -163,7 +166,7 @@ async def update_tag(
     tag_id: uuid.UUID,
     payload: TagUpdate,
     db: DB,
-    current_user: CurrentUser,
+    current_user: AdminUser,
     tenant_id: TenantId,
 ) -> TagResponse:
     tag = await tag_service.update_tag(
@@ -184,11 +187,13 @@ async def update_tag(
     "/{tag_id}",
     summary="Delete a tag",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_class=FastAPIResponse,
 )
 async def delete_tag(
     tag_id: uuid.UUID,
     db: DB,
-    current_user: CurrentUser,
+    current_user: AdminUser,
     tenant_id: TenantId,
 ):
     await tag_service.delete_tag(db, tenant_id, tag_id)
+    return FastAPIResponse(status_code=status.HTTP_204_NO_CONTENT)

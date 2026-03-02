@@ -70,7 +70,7 @@ async def get_current_user(
 def require_roles(*allowed_roles: str):
     async def role_checker(current_user: User = Depends(get_current_user)) -> User:
         if current_user.role not in allowed_roles:
-            raise ForbiddenError(f"Role {current_user.role} not authorized")
+            raise ForbiddenError("Insufficient permissions")
         return current_user
 
     return role_checker

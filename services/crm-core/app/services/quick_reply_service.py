@@ -22,6 +22,7 @@ import uuid
 
 import structlog
 from sqlalchemy import func, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -51,10 +52,15 @@ def _base_query(tenant_id: uuid.UUID):
     )
 
 
+def _escape_ilike(value: str) -> str:
+    """Escape ILIKE special characters (%, _, \\) to prevent wildcard injection."""
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 def _apply_list_filters(query, params: QuickReplyListParams):
     """Append optional list filters to a base query in-place (functional style)."""
     if params.search:
-        term = f"%{params.search}%"
+        term = f"%{_escape_ilike(params.search)}%"
         query = query.where(
             or_(
                 QuickReply.title.ilike(term),
@@ -205,7 +211,11 @@ class QuickReplyService:
         )
 
         db.add(qr)
-        await db.flush()  # populate qr.id
+        try:
+            await db.flush()  # populate qr.id
+        except IntegrityError:
+            await db.rollback()
+            raise ConflictError(f"Shortcut '{data.shortcut}' is already in use by another quick reply")
 
         # Reload with relationships eager-loaded
         qr = await self.get_quick_reply(db, tenant_id, qr.id)
@@ -247,7 +257,11 @@ class QuickReplyService:
         for field, value in update_data.items():
             setattr(qr, field, value)
 
-        await db.flush()
+        try:
+            await db.flush()
+        except IntegrityError:
+            await db.rollback()
+            raise ConflictError("Shortcut is already in use by another quick reply")
 
         qr = await self.get_quick_reply(db, tenant_id, qr_id)
         logger.info(
