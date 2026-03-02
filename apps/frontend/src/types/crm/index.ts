@@ -604,3 +604,18 @@ export interface QuickReplyListParams {
   category?: string
   is_active?: boolean
 }
+
+// ============================================
+// DASHBOARD TYPES
+// ============================================
+
+export interface DashboardStats {
+  total_leads: number
+  total_deals: number
+  open_deals: number
+  won_deals: number
+  won_value: number
+  total_contacts: number
+  total_organizations: number
+  conversion_rate: number
+}

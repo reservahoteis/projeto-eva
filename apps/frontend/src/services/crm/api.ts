@@ -56,6 +56,7 @@ import type {
   CreateQuickReplyData,
   UpdateQuickReplyData,
   QuickReplyListParams,
+  DashboardStats,
 } from '@/types/crm'
 
 // Base path for all CRM API calls
@@ -476,6 +477,15 @@ const users = {
 }
 
 // ============================================
+// DASHBOARD
+// ============================================
+
+const dashboard = {
+  stats: () =>
+    api.get<DashboardStats>(`${CRM}/dashboard/stats`),
+}
+
+// ============================================
 // TAGS
 // ============================================
 
@@ -537,6 +547,7 @@ export const crmApi = {
   users,
   tags,
   quickReplies,
+  dashboard,
 }
 
 export default crmApi
