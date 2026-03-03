@@ -136,11 +136,7 @@ ListParams = Annotated[LeadListParams, Depends(_lead_list_params)]
         "Use `filters` (JSON dict) to narrow results by any Lead field. "
         "Use `order_by` for multi-column sorting (comma-separated 'field dir' tokens)."
     ),
-    response_model=PaginatedResponse[LeadListItem],
-    # Note: Kanban / GroupBy responses have different shapes.
-    # FastAPI will still serialise them correctly at runtime because we return
-    # the raw Pydantic models — response_model is set to the common case for
-    # OpenAPI doc generation.
+    response_model=PaginatedResponse[LeadListItem] | KanbanResponse | GroupByResponse,
     status_code=status.HTTP_200_OK,
 )
 async def list_leads(
