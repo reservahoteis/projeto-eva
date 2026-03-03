@@ -256,7 +256,7 @@ class SettingsService:
 
     @staticmethod
     def _get_status_model(doctype: str) -> Type[LeadStatus] | Type[DealStatus]:
-        model = _STATUS_MODELS.get(doctype)
+        model = _STATUS_MODELS.get(doctype) or _STATUS_MODELS.get(doctype.title())
         if not model:
             raise BadRequestError(
                 f"Invalid doctype '{doctype}'. Must be one of: {list(_STATUS_MODELS.keys())}"
