@@ -15,23 +15,25 @@ interface CrmConversationListProps {
 }
 
 const STATUS_FILTERS = [
-  { key: 'all', label: 'Todos' },
+  { key: 'all' as const, label: 'Todos' },
   { key: ConversationStatus.OPEN, label: 'Aberto' },
   { key: ConversationStatus.IN_PROGRESS, label: 'Em andamento' },
   { key: ConversationStatus.WAITING, label: 'Aguardando' },
   { key: ConversationStatus.CLOSED, label: 'Fechado' },
-] as const
+]
+
+type StatusFilterKey = 'all' | ConversationStatus
 
 export function CrmConversationList({ activeConversationId }: CrmConversationListProps) {
   const [searchQuery, setSearchQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [statusFilter, setStatusFilter] = useState<StatusFilterKey>('all')
   const { on, off, isConnected } = useSocketContext()
   const queryClient = useQueryClient()
 
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const scrollPositionRef = useRef<number>(0)
 
-  const { data: conversationsData, refetch } = useQuery({
+  const { data: conversationsData, isLoading, refetch } = useQuery({
     queryKey: ['conversations-sidebar'],
     queryFn: () => conversationService.list({ limit: 50 }),
     refetchInterval: false,
@@ -55,11 +57,10 @@ export function CrmConversationList({ activeConversationId }: CrmConversationLis
   useEffect(() => {
     if (!isConnected) return
 
-    const handleUpdate = () => {
+    const handleUpdate = async () => {
       saveScrollPosition()
-      refetch().then(() => {
-        requestAnimationFrame(restoreScrollPosition)
-      })
+      await refetch()
+      requestAnimationFrame(restoreScrollPosition)
     }
 
     on('conversation:new', handleUpdate)
@@ -132,7 +133,7 @@ export function CrmConversationList({ activeConversationId }: CrmConversationLis
 
   return (
     <div className="flex h-full w-full flex-col" style={{ backgroundColor: 'var(--surface-white, #fff)' }}>
-      {/* Header — Frappe LayoutHeader pattern */}
+      {/* Header */}
       <div
         className="flex h-[46px] items-center justify-between px-4 flex-shrink-0"
         style={{ borderBottom: '1px solid var(--outline-gray-1)' }}
@@ -143,7 +144,7 @@ export function CrmConversationList({ activeConversationId }: CrmConversationLis
         >
           Conversas
         </h2>
-        {conversations.length > 0 && (
+        {sortedConversations.length > 0 && (
           <span
             className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
             style={{
@@ -151,7 +152,7 @@ export function CrmConversationList({ activeConversationId }: CrmConversationLis
               color: 'var(--ink-gray-6)',
             }}
           >
-            {conversations.length}
+            {sortedConversations.length}
           </span>
         )}
       </div>
@@ -192,6 +193,7 @@ export function CrmConversationList({ activeConversationId }: CrmConversationLis
         {STATUS_FILTERS.map((filter) => (
           <button
             key={filter.key}
+            type="button"
             onClick={() => setStatusFilter(filter.key)}
             className="whitespace-nowrap rounded-md px-2.5 py-1 text-xs font-medium transition-colors"
             style={{
@@ -209,14 +211,29 @@ export function CrmConversationList({ activeConversationId }: CrmConversationLis
 
       {/* Conversation list */}
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto">
-        {sortedConversations.length === 0 ? (
+        {isLoading ? (
+          <div className="flex flex-col gap-2 px-3 py-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-3 px-1 py-2"
+              >
+                <div className="h-10 w-10 flex-shrink-0 rounded-full animate-pulse" style={{ backgroundColor: 'var(--surface-gray-2)' }} />
+                <div className="flex-1 space-y-2">
+                  <div className="h-3 w-2/3 rounded animate-pulse" style={{ backgroundColor: 'var(--surface-gray-2)' }} />
+                  <div className="h-2.5 w-full rounded animate-pulse" style={{ backgroundColor: 'var(--surface-gray-1)' }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : sortedConversations.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full p-4">
             <MessageSquare
               className="h-10 w-10 mb-3"
               style={{ color: 'var(--ink-gray-4)' }}
             />
             <p className="text-sm" style={{ color: 'var(--ink-gray-5)' }}>
-              {searchQuery ? 'Nenhuma conversa encontrada' : 'Nenhuma conversa'}
+              {searchQuery || statusFilter !== 'all' ? 'Nenhuma conversa encontrada' : 'Nenhuma conversa'}
             </p>
           </div>
         ) : (
@@ -251,7 +268,6 @@ function ConversationCard({ conversation, isActive, onMouseEnter, statusDotColor
   return (
     <Link
       href={`/crm/conversations/${conversation.id}`}
-      prefetch={true}
       onMouseEnter={onMouseEnter}
       className="flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-colors"
       style={{
@@ -261,7 +277,7 @@ function ConversationCard({ conversation, isActive, onMouseEnter, statusDotColor
       onMouseOver={(e) => {
         if (!isActive) e.currentTarget.style.backgroundColor = 'var(--surface-gray-2)'
       }}
-      onMouseOut={(e) => {
+      onMouseLeave={(e) => {
         if (!isActive) e.currentTarget.style.backgroundColor = ''
       }}
     >

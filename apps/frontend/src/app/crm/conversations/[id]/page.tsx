@@ -29,23 +29,24 @@ function CrmConversationContent({ params }: CrmConversationPageProps) {
   } = useSocketContext()
   const [isTyping, setIsTyping] = useState(false)
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const didMountRef = useRef(false)
   const conversationId = params.id
 
   // Stable handler refs (P0-3 fix)
   const handlersRef = useRef({
-    handleNewMessage: null as any,
-    handleConversationUpdate: null as any,
-    handleMessageStatus: null as any,
+    handleNewMessage: null as ((data: any) => void) | null,
+    handleConversationUpdate: null as ((data: any) => void) | null,
+    handleMessageStatus: null as ((data: any) => void) | null,
   })
 
-  const { data: conversation, isLoading: conversationLoading } = useQuery({
+  const { data: conversation, isLoading: conversationLoading, isError: conversationError } = useQuery({
     queryKey: ['conversation', conversationId],
     queryFn: () => conversationService.getById(conversationId),
     staleTime: 30000,
     enabled: !!conversationId,
   })
 
-  const { data: messagesData, isLoading: messagesLoading, refetch: refetchMessages } = useQuery({
+  const { data: messagesData, isLoading: messagesLoading, isError: messagesError, refetch: refetchMessages } = useQuery({
     queryKey: ['messages', conversationId],
     queryFn: () => messageService.list(conversationId, { limit: 100 }),
     staleTime: 30000,
@@ -162,8 +163,9 @@ function CrmConversationContent({ params }: CrmConversationPageProps) {
     }
   }, [isConnected, conversationId, on, off, subscribeToConversation, unsubscribeFromConversation])
 
-  // Refetch on reconnect
+  // Refetch on reconnect (skip first mount)
   useEffect(() => {
+    if (!didMountRef.current) { didMountRef.current = true; return }
     if (isConnected) refetchMessages()
   }, [isConnected, refetchMessages])
 
@@ -198,6 +200,29 @@ function CrmConversationContent({ params }: CrmConversationPageProps) {
   }, [conversationId, setSocketActiveConversationId])
 
   const isLoading = conversationLoading || messagesLoading
+  const isError = conversationError || messagesError
+
+  if (isError) {
+    return (
+      <div className="flex h-full items-center justify-center" style={{ backgroundColor: 'var(--surface-gray-1)' }}>
+        <div className="text-center">
+          <p className="text-sm font-medium" style={{ color: 'var(--ink-gray-7)' }}>Erro ao carregar conversa</p>
+          <p className="mt-1 text-xs" style={{ color: 'var(--ink-gray-5)' }}>Verifique sua conexao e tente novamente</p>
+          <button
+            type="button"
+            onClick={() => router.push('/crm/conversations')}
+            className="mt-3 rounded-md px-4 py-1.5 text-sm font-medium transition-colors"
+            style={{
+              backgroundColor: 'var(--surface-gray-2)',
+              color: 'var(--ink-gray-8)',
+            }}
+          >
+            Voltar
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   if (isLoading || !conversation) {
     return (
@@ -247,10 +272,9 @@ function CrmConversationContent({ params }: CrmConversationPageProps) {
         <ContactSidebar
           conversation={conversation}
           onIaLockChange={(locked) => {
-            queryClient.setQueryData(['conversation', conversationId], (old: any) => ({
-              ...old,
-              iaLocked: locked,
-            }))
+            queryClient.setQueryData(['conversation', conversationId], (old: any) =>
+              old ? { ...old, iaLocked: locked } : old
+            )
           }}
           onArchive={() => router.push('/crm/conversations')}
           onDelete={() => router.push('/crm/conversations')}
