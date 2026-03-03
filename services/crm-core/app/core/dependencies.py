@@ -77,7 +77,10 @@ def require_roles(*allowed_roles: str):
     return role_checker
 
 
-def get_tenant_id(request: Request) -> UUID:
+def get_tenant_id(
+    request: Request,
+    _current_user: User = Depends(get_current_user),
+) -> UUID:
     tenant_id = getattr(request.state, "tenant_id", None)
     if not tenant_id:
         raise UnauthorizedError("Tenant not identified")
