@@ -175,8 +175,7 @@ export function initializeSocketIO(httpServer: HTTPServer): SocketIOServer {
     }
 
     // Event: Entrar em uma conversa específica
-    socket.on('conversation:join', (data: { conversationId: string } | string): void => {
-      // CORREÇÃO: Aceitar tanto objeto quanto string para backward compatibility
+    socket.on('conversation:join', async (data: { conversationId: string } | string): Promise<void> => {
       const conversationId = typeof data === 'string' ? data : data.conversationId;
 
       if (!conversationId) {
@@ -184,14 +183,48 @@ export function initializeSocketIO(httpServer: HTTPServer): SocketIOServer {
         return;
       }
 
+      // SECURITY: Verificar que a conversa pertence ao tenant do usuario
+      const tenantId = socket.tenantId || socket.user?.tenantId;
+      if (tenantId) {
+        try {
+          const conversation = await prisma.conversation.findFirst({
+            where: { id: conversationId, tenantId },
+            select: { id: true, assignedToId: true, hotelUnit: true },
+          });
+
+          if (!conversation) {
+            socket.emit('error', { message: 'Conversation not found' });
+            logger.warn(
+              { socketId: socket.id, conversationId, tenantId, userId: socket.user?.userId },
+              'Socket tried to join unauthorized conversation room'
+            );
+            return;
+          }
+
+          // SECURITY: ATTENDANT so pode acessar conversas atribuidas ou da mesma unidade
+          if (socket.user?.role === 'ATTENDANT') {
+            const isAssigned = conversation.assignedToId === socket.user.userId;
+            const isSameUnit = socket.user.hotelUnit && conversation.hotelUnit === socket.user.hotelUnit;
+            if (!isAssigned && !isSameUnit) {
+              socket.emit('error', { message: 'Access denied' });
+              logger.warn(
+                { socketId: socket.id, conversationId, userId: socket.user.userId, role: 'ATTENDANT' },
+                'ATTENDANT tried to join conversation without permission'
+              );
+              return;
+            }
+          }
+        } catch (err) {
+          logger.error({ err, conversationId }, 'Error checking conversation access for socket join');
+          socket.emit('error', { message: 'Internal error' });
+          return;
+        }
+      }
+
       socket.join(`conversation:${conversationId}`);
       logger.info(
-        {
-          socketId: socket.id,
-          conversationId,
-          userId: socket.user?.userId,
-        },
-        '✅ Socket joined conversation room - FRONTEND IS NOW SUBSCRIBED'
+        { socketId: socket.id, conversationId, userId: socket.user?.userId },
+        'Socket joined conversation room'
       );
 
       socket.emit('conversation:joined', { conversationId });
