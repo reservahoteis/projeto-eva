@@ -30,11 +30,12 @@ class Communication(TenantBase):
         # Fetching all communications for a given document is the hottest query
         # path; also need a per-type filter for email vs WhatsApp views.
         Index("ix_comm_tenant_doctype_docname", "tenant_id", "reference_doctype", "reference_docname"),
-        Index("ix_comm_tenant_type", "tenant_id", "comm_type"),
+        Index("ix_comm_tenant_type", "tenant_id", "communication_type"),
     )
 
-    # Channel
+    # Channel — model attr is comm_type, DB column is communication_type
     comm_type: Mapped[str] = mapped_column(
+        "communication_type",
         String(20),
         nullable=False,
         comment="Email | WhatsApp | Call",
