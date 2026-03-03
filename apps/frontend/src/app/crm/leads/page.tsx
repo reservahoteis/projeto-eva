@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
+import { useRouter } from 'next/navigation'
 import { useDebounce } from '@/hooks/use-debounce'
 import { crmApi } from '@/services/crm/api'
 import { Button } from '@/components/ui/button'
@@ -406,6 +407,7 @@ function StatsCard({ title, value, icon: Icon, iconBg, iconColor }: StatsCardPro
 
 export default function LeadsPage() {
   const queryClient = useQueryClient()
+  const router = useRouter()
 
   // UI state
   const [view, setView] = useState<ViewType>('list')
@@ -814,6 +816,7 @@ export default function LeadsPage() {
                           key={lead.id}
                           className="border-b cursor-pointer transition-colors"
                           style={{ borderColor: 'var(--outline-gray-1)' }}
+                          onClick={() => router.push(`/crm/leads/${lead.id}`)}
                           onMouseEnter={(e) => {
                             e.currentTarget.style.backgroundColor = 'var(--surface-gray-1)'
                           }}
@@ -1005,8 +1008,9 @@ export default function LeadsPage() {
                     return (
                       <div
                         key={lead.id}
-                        className="p-4"
+                        className="p-4 cursor-pointer"
                         style={{ backgroundColor: 'var(--surface-white)' }}
+                        onClick={() => router.push(`/crm/leads/${lead.id}`)}
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -1032,7 +1036,7 @@ export default function LeadsPage() {
                           </div>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="flex-shrink-0 h-7 w-7">
+                              <Button variant="ghost" size="icon" className="flex-shrink-0 h-7 w-7" onClick={(e) => e.stopPropagation()}>
                                 <MoreHorizontal className="h-4 w-4" style={{ color: 'var(--ink-gray-5)' }} />
                               </Button>
                             </DropdownMenuTrigger>

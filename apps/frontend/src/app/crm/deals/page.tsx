@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
+import { useRouter } from 'next/navigation'
 import { useDebounce } from '@/hooks/use-debounce'
 import { crmApi } from '@/services/crm/api'
 import { Button } from '@/components/ui/button'
@@ -438,6 +439,7 @@ function QuickFilterChip({ label, active, onClick }: QuickFilterChipProps) {
 
 export default function DealsPage() {
   const queryClient = useQueryClient()
+  const router = useRouter()
 
   const [view, setView] = useState<ViewType>('list')
   const [search, setSearch] = useState('')
@@ -988,7 +990,9 @@ export default function DealsPage() {
                       {listQuery.data?.data?.map((deal) => (
                         <TableRow
                           key={deal.id}
+                          className="cursor-pointer"
                           style={{ borderBottom: '1px solid var(--outline-gray-1)' }}
+                          onClick={() => router.push(`/crm/deals/${deal.id}`)}
                           onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--surface-gray-1)' }}
                           onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '' }}
                         >
@@ -1092,6 +1096,7 @@ export default function DealsPage() {
                                   variant="ghost"
                                   size="icon"
                                   style={{ color: 'var(--ink-gray-5)' }}
+                                  onClick={(e) => e.stopPropagation()}
                                 >
                                   <MoreHorizontal className="h-4 w-4" />
                                 </Button>
@@ -1159,7 +1164,9 @@ export default function DealsPage() {
                         borderRadius: '10px',
                         border: '1px solid var(--outline-gray-1)',
                         backgroundColor: 'var(--surface-white)',
+                        cursor: 'pointer',
                       }}
+                      onClick={() => router.push(`/crm/deals/${deal.id}`)}
                     >
                       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>

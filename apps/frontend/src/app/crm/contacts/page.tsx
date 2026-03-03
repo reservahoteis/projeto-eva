@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
+import { useRouter } from 'next/navigation'
 import { useDebounce } from '@/hooks/use-debounce'
 import { crmApi } from '@/services/crm/api'
 import { crmKeys } from '@/hooks/crm/use-crm-queries'
@@ -334,6 +335,7 @@ const PAGE_SIZE = 25
 
 export default function ContactsPage() {
   const queryClient = useQueryClient()
+  const router = useRouter()
 
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
@@ -590,6 +592,7 @@ export default function ContactsPage() {
                     key={contact.id}
                     className="border-b cursor-pointer transition-colors"
                     style={{ borderColor: 'var(--outline-gray-1)' }}
+                    onClick={() => router.push(`/crm/contacts/${contact.id}`)}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.backgroundColor = 'var(--surface-gray-1)'
                     }}
