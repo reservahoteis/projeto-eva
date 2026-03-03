@@ -300,8 +300,8 @@ const callLogs = {
 
 const activities = {
   list: (doctype: CrmDoctype, docname: string, params?: CrmListParams) =>
-    api.get<CrmPaginatedResponse<Activity>>(`${CRM}/activities`, {
-      params: { reference_doctype: doctype, reference_docname: docname, ...params },
+    api.get<CrmPaginatedResponse<Activity>>(`${CRM}/activities/${doctype}/${docname}`, {
+      params,
     }),
 }
 
@@ -372,34 +372,34 @@ const views = {
 const settings = {
   statuses: {
     listLead: () =>
-      api.get<LeadStatus[]>(`${CRM}/settings/statuses/lead`),
+      api.get<LeadStatus[]>(`${CRM}/settings/statuses/Lead`),
 
     listDeal: () =>
-      api.get<DealStatus[]>(`${CRM}/settings/statuses/deal`),
+      api.get<DealStatus[]>(`${CRM}/settings/statuses/Deal`),
 
     createLead: (data: Partial<LeadStatus>) =>
-      api.post<LeadStatus>(`${CRM}/settings/statuses/lead`, data),
+      api.post<LeadStatus>(`${CRM}/settings/statuses/Lead`, data),
 
     createDeal: (data: Partial<DealStatus>) =>
-      api.post<DealStatus>(`${CRM}/settings/statuses/deal`, data),
+      api.post<DealStatus>(`${CRM}/settings/statuses/Deal`, data),
 
     updateLead: (id: string, data: Partial<LeadStatus>) =>
-      api.put<LeadStatus>(`${CRM}/settings/statuses/lead/${id}`, data),
+      api.put<LeadStatus>(`${CRM}/settings/statuses/Lead/${id}`, data),
 
     updateDeal: (id: string, data: Partial<DealStatus>) =>
-      api.put<DealStatus>(`${CRM}/settings/statuses/deal/${id}`, data),
+      api.put<DealStatus>(`${CRM}/settings/statuses/Deal/${id}`, data),
 
     deleteLead: (id: string) =>
-      api.delete(`${CRM}/settings/statuses/lead/${id}`),
+      api.delete(`${CRM}/settings/statuses/Lead/${id}`),
 
     deleteDeal: (id: string) =>
-      api.delete(`${CRM}/settings/statuses/deal/${id}`),
+      api.delete(`${CRM}/settings/statuses/Deal/${id}`),
 
     reorderLead: (data: ReorderStatusData) =>
-      api.put(`${CRM}/settings/statuses/lead/reorder`, data),
+      api.put(`${CRM}/settings/statuses/Lead/reorder`, data),
 
     reorderDeal: (data: ReorderStatusData) =>
-      api.put(`${CRM}/settings/statuses/deal/reorder`, data),
+      api.put(`${CRM}/settings/statuses/Deal/reorder`, data),
   },
 
   lookups: {
