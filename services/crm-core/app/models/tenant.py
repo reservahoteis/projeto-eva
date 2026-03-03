@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Integer, String, func
+from sqlalchemy import DateTime, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -19,42 +19,37 @@ class Tenant(Base):
     # Identity
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     slug: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
-    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
     # Subscription
-    plan: Mapped[str] = mapped_column(
-        String(20), nullable=False, default="BASIC"
-    )  # BASIC | PRO | ENTERPRISE
+    plan: Mapped[str | None] = mapped_column(String(50), nullable=True)
     status: Mapped[str] = mapped_column(
-        String(20), nullable=False, default="TRIAL"
-    )  # TRIAL | ACTIVE | SUSPENDED | CANCELLED
+        String(20), nullable=False, server_default="ACTIVE"
+    )
 
-    # Localisation
-    currency: Mapped[str] = mapped_column(String(10), nullable=False, default="BRL")
-    timezone: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    date_format: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    # Branding
+    logo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     # WhatsApp Cloud API
-    whatsapp_phone_number_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    whatsapp_business_account_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    whatsapp_access_token: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    whatsapp_phone_number_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    whatsapp_access_token: Mapped[str | None] = mapped_column(Text, nullable=True)
+    whatsapp_verify_token: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    whatsapp_webhook_secret: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
-    # Meta Messenger / Instagram
-    messenger_page_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    messenger_page_access_token: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    instagram_account_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Instagram
+    instagram_page_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    instagram_access_token: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    # N8N Automation
-    n8n_api_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    n8n_webhook_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # Messenger
+    messenger_page_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    messenger_access_token: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Billing (Stripe)
-    stripe_customer_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    stripe_subscription_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    stripe_customer_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    stripe_subscription_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
-    # Limits
-    max_attendants: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Localisation
+    currency: Mapped[str | None] = mapped_column(String(10), nullable=True, server_default="BRL")
+    timezone: Mapped[str | None] = mapped_column(String(50), nullable=True, server_default="America/Sao_Paulo")
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
