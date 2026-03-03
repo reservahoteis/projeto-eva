@@ -343,6 +343,7 @@ class LeadService:
             raise BadRequestError(
                 "column_field is required when view_type is 'kanban'"
             )
+        _validate_column(params.column_field)
 
         base_query = _build_lead_query(tenant_id)
         base_query = _apply_filters(base_query, params.filters)
@@ -408,6 +409,7 @@ class LeadService:
             raise BadRequestError(
                 "group_by_field is required when view_type is 'group_by'"
             )
+        _validate_column(params.group_by_field)
 
         base_query = _build_lead_query(tenant_id)
         base_query = _apply_filters(base_query, params.filters)

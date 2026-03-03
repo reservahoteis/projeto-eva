@@ -17,6 +17,7 @@ Design decisions:
 
 from __future__ import annotations
 
+import hashlib
 import uuid
 from datetime import UTC, datetime
 
@@ -62,7 +63,8 @@ class AuthService:
         5. Update last_login_at and commit.
         6. Return tokens + UserResponse.
         """
-        log = logger.bind(tenant_slug=tenant_slug, email=email)
+        email_hash = hashlib.sha256(email.lower().encode()).hexdigest()[:12]
+        log = logger.bind(tenant_slug=tenant_slug, email_hash=email_hash)
 
         # --- 1. Resolve tenant ---
         tenant_result = await db.execute(
@@ -180,9 +182,15 @@ class AuthService:
         self,
         db: AsyncSession,
         user_id: uuid.UUID,
+        tenant_id: uuid.UUID | None = None,
     ) -> UserResponse:
         """Return the current user's profile."""
-        result = await db.execute(select(User).where(User.id == user_id))
+        query = select(User).where(User.id == user_id)
+        if tenant_id:
+            query = query.where(User.tenant_id == tenant_id)
+        else:
+            query = query.where(User.tenant_id.is_(None))
+        result = await db.execute(query)
         user = result.scalar_one_or_none()
         if not user:
             raise NotFoundError("User not found")
@@ -197,13 +205,19 @@ class AuthService:
         db: AsyncSession,
         user_id: uuid.UUID,
         data: ChangePasswordRequest,
+        tenant_id: uuid.UUID | None = None,
     ) -> None:
         """Verify the current password and update to the new one.
 
         Raises BadRequestError if the current password does not match to
         prevent unauthenticated password resets via replayed tokens.
         """
-        result = await db.execute(select(User).where(User.id == user_id))
+        query = select(User).where(User.id == user_id)
+        if tenant_id:
+            query = query.where(User.tenant_id == tenant_id)
+        else:
+            query = query.where(User.tenant_id.is_(None))
+        result = await db.execute(query)
         user = result.scalar_one_or_none()
         if not user:
             raise NotFoundError("User not found")
@@ -211,10 +225,13 @@ class AuthService:
         if not verify_password(data.current_password, user.password_hash):
             raise BadRequestError("Current password is incorrect")
 
+        update_query = update(User).where(User.id == user_id)
+        if tenant_id:
+            update_query = update_query.where(User.tenant_id == tenant_id)
+        else:
+            update_query = update_query.where(User.tenant_id.is_(None))
         await db.execute(
-            update(User)
-            .where(User.id == user_id)
-            .values(password_hash=hash_password(data.new_password))
+            update_query.values(password_hash=hash_password(data.new_password))
         )
         await db.flush()
         logger.info("password_changed", user_id=str(user_id))

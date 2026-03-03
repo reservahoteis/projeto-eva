@@ -103,7 +103,7 @@ async def me(
     current_user: CurrentUser,
     db: DB,
 ) -> UserResponse:
-    return await auth_service.me(db=db, user_id=current_user.id)
+    return await auth_service.me(db=db, user_id=current_user.id, tenant_id=current_user.tenant_id)
 
 
 # ---------------------------------------------------------------------------
@@ -130,5 +130,6 @@ async def change_password(
         db=db,
         user_id=current_user.id,
         data=body,
+        tenant_id=current_user.tenant_id,
     )
     return FastAPIResponse(status_code=status.HTTP_204_NO_CONTENT)

@@ -258,18 +258,14 @@ class SettingsService:
     def _get_status_model(doctype: str) -> Type[LeadStatus] | Type[DealStatus]:
         model = _STATUS_MODELS.get(doctype) or _STATUS_MODELS.get(doctype.title())
         if not model:
-            raise BadRequestError(
-                f"Invalid doctype '{doctype}'. Must be one of: {list(_STATUS_MODELS.keys())}"
-            )
+            raise BadRequestError(f"Invalid doctype: '{doctype}'")
         return model
 
     @staticmethod
     def _get_lookup_model(lookup_type: str) -> Type[TenantBase]:
         model = _LOOKUP_MODELS.get(lookup_type)
         if not model:
-            raise BadRequestError(
-                f"Invalid lookup_type '{lookup_type}'. Must be one of: {list(_LOOKUP_MODELS.keys())}"
-            )
+            raise BadRequestError(f"Invalid lookup_type: '{lookup_type}'")
         return model
 
 

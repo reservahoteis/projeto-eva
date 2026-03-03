@@ -70,7 +70,9 @@ class UserService:
         base = _build_user_base_query(tenant_id)
 
         if search:
-            pattern = f"%{search}%"
+            # Escape ILIKE wildcards to prevent wildcard injection
+            escaped = search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            pattern = f"%{escaped}%"
             base = base.where(
                 or_(
                     User.name.ilike(pattern),

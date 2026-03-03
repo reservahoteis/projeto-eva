@@ -28,8 +28,11 @@ async def get_current_user(
     except ValueError:
         raise UnauthorizedError("Invalid token")
 
-    # Accept tokens without "type" claim (Express backend doesn't set it)
+    # Explicitly reject refresh tokens — they must only be used at /auth/refresh.
+    # Accept tokens without "type" claim (Express backend doesn't set it).
     token_type = payload.get("type")
+    if token_type == "refresh":
+        raise UnauthorizedError("Refresh tokens cannot be used for API access")
     if token_type and token_type != "access":
         raise UnauthorizedError("Invalid token type")
 
@@ -38,20 +41,30 @@ async def get_current_user(
     if not user_id:
         raise UnauthorizedError("Invalid token payload")
 
+    # Parse UUIDs safely — malformed values should not crash the server
+    try:
+        parsed_user_id = UUID(user_id)
+    except (ValueError, AttributeError):
+        raise UnauthorizedError("Invalid token payload")
+
     # Express uses "tenantId" (camelCase), CRM Core uses "tenant_id" — accept both
     token_tenant_id = payload.get("tenant_id") or payload.get("tenantId")
     if token_tenant_id:
+        try:
+            parsed_tenant_id = UUID(token_tenant_id)
+        except (ValueError, AttributeError):
+            raise UnauthorizedError("Invalid token payload")
         result = await db.execute(
             select(User).where(
-                User.id == UUID(user_id),
-                User.tenant_id == UUID(token_tenant_id),
+                User.id == parsed_user_id,
+                User.tenant_id == parsed_tenant_id,
             )
         )
     else:
         # Only SUPER_ADMIN users may have tenant_id=None
         result = await db.execute(
             select(User).where(
-                User.id == UUID(user_id),
+                User.id == parsed_user_id,
                 User.tenant_id.is_(None),
             )
         )

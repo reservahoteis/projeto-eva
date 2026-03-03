@@ -1,10 +1,13 @@
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
+import structlog
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
 from app.core.config import settings
+
+logger = structlog.get_logger()
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -55,4 +58,5 @@ def decode_token(token: str) -> dict:
 
         return payload
     except JWTError as e:
-        raise ValueError(f"Invalid token: {e}") from e
+        logger.debug("jwt_decode_failed", error=str(e))
+        raise ValueError("Invalid or expired token") from e

@@ -40,6 +40,36 @@ from app.schemas.lead import (
 
 logger = structlog.get_logger()
 
+# ---------------------------------------------------------------------------
+# Column whitelist — prevents attribute access injection through kanban/group_by
+# ---------------------------------------------------------------------------
+
+_DEAL_COLUMNS: frozenset[str] = frozenset(
+    {
+        "id", "tenant_id", "naming_series", "created_by_id",
+        "organization_id", "lead_id", "status_id", "deal_owner_id", "contact_id",
+        "probability", "deal_value", "currency", "exchange_rate", "expected_deal_value",
+        "expected_closure_date", "closed_date", "next_step",
+        "source_id", "territory_id", "industry_id",
+        "salutation", "first_name", "last_name", "lead_name",
+        "email", "mobile_no", "phone", "job_title", "gender",
+        "organization_name", "no_of_employees", "annual_revenue", "website",
+        "lost_reason_id", "lost_notes",
+        "created_at", "updated_at",
+    }
+)
+
+
+def _validate_deal_column(name: str) -> None:
+    """Raise BadRequestError if `name` is not a known Deal column."""
+    if name not in _DEAL_COLUMNS:
+        raise BadRequestError(f"Unknown filter / sort field: {name!r}")
+
+
+def _escape_ilike(value: str) -> str:
+    """Escape ILIKE wildcards to prevent wildcard injection."""
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
 
 # ---------------------------------------------------------------------------
 # Module-level helpers
@@ -184,7 +214,8 @@ class DealService:
         if params.organization_id:
             base_query = base_query.where(Deal.organization_id == params.organization_id)
         if params.search:
-            term = f"%{params.search}%"
+            escaped = _escape_ilike(params.search)
+            term = f"%{escaped}%"
             base_query = base_query.where(
                 Deal.lead_name.ilike(term)
                 | Deal.organization_name.ilike(term)
@@ -240,6 +271,7 @@ class DealService:
             raise BadRequestError(
                 "column_field is required when view_type is 'kanban'"
             )
+        _validate_deal_column(params.column_field)
 
         base_query = _build_deal_query(tenant_id).order_by(Deal.created_at.desc())
 
@@ -311,6 +343,7 @@ class DealService:
             raise BadRequestError(
                 "group_by_field is required when view_type is 'group_by'"
             )
+        _validate_deal_column(params.group_by_field)
 
         base_query = _build_deal_query(tenant_id).order_by(Deal.created_at.desc())
 

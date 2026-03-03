@@ -36,6 +36,14 @@ class Settings(BaseSettings):
     DEFAULT_PAGE_SIZE: int = 20
     MAX_PAGE_SIZE: int = 100
 
+    @field_validator("JWT_ALGORITHM")
+    @classmethod
+    def jwt_algorithm_must_be_safe(cls, v: str) -> str:
+        allowed = {"HS256", "HS384", "HS512"}
+        if v not in allowed:
+            raise ValueError(f"JWT_ALGORITHM must be one of {allowed}")
+        return v
+
     @field_validator("JWT_SECRET")
     @classmethod
     def jwt_secret_must_be_strong(cls, v: str) -> str:
