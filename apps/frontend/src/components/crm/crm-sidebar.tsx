@@ -52,6 +52,7 @@ const sidebarLinkDefs: Array<{
   exact?: boolean
 }> = [
   { key: 'dashboard', icon: LayoutDashboard, href: '/crm', exact: true },
+  { key: 'conversations', icon: MessageSquare, href: '/crm/conversations' },
   { key: 'leads', icon: Target, href: '/crm/leads' },
   { key: 'deals', icon: Handshake, href: '/crm/deals' },
   { key: 'contacts', icon: Users, href: '/crm/contacts' },
@@ -277,7 +278,7 @@ export function CrmSidebar() {
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href="/dashboard" className="cursor-pointer">
+                <Link href="/crm/conversations" className="cursor-pointer">
                   <MessageSquare className="mr-2 h-4 w-4" />
                   {tc('chat')}
                 </Link>
