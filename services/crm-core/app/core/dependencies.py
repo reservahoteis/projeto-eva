@@ -33,12 +33,13 @@ async def get_current_user(
     if token_type and token_type != "access":
         raise UnauthorizedError("Invalid token type")
 
-    user_id = payload.get("sub")
+    # Express uses "userId", CRM Core uses "sub" — accept both
+    user_id = payload.get("sub") or payload.get("userId")
     if not user_id:
         raise UnauthorizedError("Invalid token payload")
 
-    # Validate tenant_id from JWT matches the DB — prevents cross-tenant token abuse
-    token_tenant_id = payload.get("tenant_id")
+    # Express uses "tenantId" (camelCase), CRM Core uses "tenant_id" — accept both
+    token_tenant_id = payload.get("tenant_id") or payload.get("tenantId")
     if token_tenant_id:
         result = await db.execute(
             select(User).where(
