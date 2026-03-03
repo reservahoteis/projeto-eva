@@ -75,7 +75,8 @@ function getInitials(name: string): string {
   return ((parts[0]?.[0] ?? '') + (parts[parts.length - 1]?.[0] ?? '')).toUpperCase()
 }
 
-function stripHtml(html: string): string {
+function stripHtml(html: string | null | undefined): string {
+  if (!html) return ''
   return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
 }
 

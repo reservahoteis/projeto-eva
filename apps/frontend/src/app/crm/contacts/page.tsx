@@ -34,6 +34,13 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import {
   Plus,
   Search,
   MoreHorizontal,
@@ -47,7 +54,7 @@ import { toast } from 'sonner'
 import { formatDistanceToNow, format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
-import type { CrmContact, CrmListParams } from '@/types/crm'
+import type { CrmContact, CrmListParams, CreateContactData } from '@/types/crm'
 
 // ============================================
 // HELPERS
@@ -182,6 +189,144 @@ function EmptyState({ searching, query, onNew }: EmptyStateProps) {
 }
 
 // ============================================
+// CREATE CONTACT FORM
+// ============================================
+
+interface CreateContactFormProps {
+  onSubmit: (data: CreateContactData) => void
+  onCancel: () => void
+  isLoading: boolean
+}
+
+function CreateContactForm({ onSubmit, onCancel, isLoading }: CreateContactFormProps) {
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [email, setEmail] = useState('')
+  const [mobileNo, setMobileNo] = useState('')
+  const [companyName, setCompanyName] = useState('')
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!firstName.trim()) {
+      toast.error('O nome e obrigatorio.')
+      return
+    }
+    onSubmit({
+      first_name: firstName.trim(),
+      last_name: lastName.trim() || undefined,
+      email: email.trim() || undefined,
+      mobile_no: mobileNo.trim() || undefined,
+      company_name: companyName.trim() || undefined,
+    })
+  }
+
+  const inputStyle = {
+    borderColor: 'var(--outline-gray-2)',
+    backgroundColor: 'var(--surface-white)',
+    color: 'var(--ink-gray-8)',
+  }
+
+  const labelStyle = { color: 'var(--ink-gray-6)' }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-3">
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label className="text-xs font-medium" style={labelStyle}>
+            Nome *
+          </Label>
+          <Input
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            placeholder="Nome"
+            className="h-8 text-sm rounded border"
+            style={inputStyle}
+            autoFocus
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs font-medium" style={labelStyle}>
+            Sobrenome
+          </Label>
+          <Input
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            placeholder="Sobrenome"
+            className="h-8 text-sm rounded border"
+            style={inputStyle}
+          />
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label className="text-xs font-medium" style={labelStyle}>
+          Email
+        </Label>
+        <Input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="email@exemplo.com"
+          className="h-8 text-sm rounded border"
+          style={inputStyle}
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label className="text-xs font-medium" style={labelStyle}>
+          Telefone
+        </Label>
+        <Input
+          value={mobileNo}
+          onChange={(e) => setMobileNo(e.target.value)}
+          placeholder="+55 11 99999-9999"
+          className="h-8 text-sm rounded border"
+          style={inputStyle}
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label className="text-xs font-medium" style={labelStyle}>
+          Empresa
+        </Label>
+        <Input
+          value={companyName}
+          onChange={(e) => setCompanyName(e.target.value)}
+          placeholder="Nome da empresa"
+          className="h-8 text-sm rounded border"
+          style={inputStyle}
+        />
+      </div>
+
+      <div className="flex justify-end gap-2 pt-2">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={onCancel}
+          className="h-8 px-3 text-sm rounded border"
+          style={{
+            borderColor: 'var(--outline-gray-2)',
+            color: 'var(--ink-gray-7)',
+          }}
+        >
+          Cancelar
+        </Button>
+        <Button
+          type="submit"
+          size="sm"
+          disabled={isLoading}
+          className="h-8 px-3 text-sm rounded text-white hover:opacity-90"
+          style={{ backgroundColor: 'var(--surface-gray-7)' }}
+        >
+          {isLoading ? 'Criando...' : 'Criar Contato'}
+        </Button>
+      </div>
+    </form>
+  )
+}
+
+// ============================================
 // MAIN PAGE
 // ============================================
 
@@ -195,6 +340,7 @@ export default function ContactsPage() {
   const [sortField, setSortField] = useState('full_name')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
   const [deletingContact, setDeletingContact] = useState<CrmContact | null>(null)
+  const [isCreateOpen, setIsCreateOpen] = useState(false)
 
   const debouncedSearch = useDebounce(search, 350)
 
@@ -233,6 +379,16 @@ export default function ContactsPage() {
       toast.success('Contato removido.')
     },
     onError: () => toast.error('Erro ao remover contato.'),
+  })
+
+  const createMutation = useMutation({
+    mutationFn: (data: CreateContactData) => crmApi.contacts.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: crmKeys.contacts() })
+      setIsCreateOpen(false)
+      toast.success('Contato criado.')
+    },
+    onError: () => toast.error('Erro ao criar contato.'),
   })
 
   // ============================================
@@ -301,6 +457,7 @@ export default function ContactsPage() {
 
           <Button
             size="sm"
+            onClick={() => setIsCreateOpen(true)}
             style={{ backgroundColor: 'var(--surface-gray-7)', color: '#fff' }}
             className="h-7 text-xs hover:opacity-90 px-3"
           >
@@ -418,7 +575,7 @@ export default function ContactsPage() {
                   <EmptyState
                     searching={!!debouncedSearch}
                     query={debouncedSearch}
-                    onNew={() => {}}
+                    onNew={() => setIsCreateOpen(true)}
                   />
                 </TableCell>
               </TableRow>
@@ -666,6 +823,28 @@ export default function ContactsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* ---- Create Contact Dialog ---- */}
+      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <DialogContent
+          className="max-w-md rounded-xl border shadow-lg"
+          style={{
+            backgroundColor: 'var(--surface-white)',
+            borderColor: 'var(--outline-gray-2)',
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle className="text-sm font-semibold" style={{ color: 'var(--ink-gray-9)' }}>
+              Novo Contato
+            </DialogTitle>
+          </DialogHeader>
+          <CreateContactForm
+            onSubmit={(data) => createMutation.mutate(data)}
+            onCancel={() => setIsCreateOpen(false)}
+            isLoading={createMutation.isPending}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
