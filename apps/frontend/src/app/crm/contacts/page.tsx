@@ -4,8 +4,7 @@ import React, { useState, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { useDebounce } from '@/hooks/use-debounce'
-import { crmApi } from '@/services/crm/api'
-import { crmKeys } from '@/hooks/crm/use-crm-queries'
+import { contactService } from '@/services/contact.service'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -21,7 +20,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import {
@@ -55,11 +53,18 @@ import { toast } from 'sonner'
 import { formatDistanceToNow, format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
-import type { CrmContact, CrmListParams, CreateContactData } from '@/types/crm'
+import type { Contact } from '@/types'
 
 // ============================================
 // HELPERS
 // ============================================
+
+function getDisplayName(contact: Contact): string {
+  if (contact.firstName || contact.lastName) {
+    return `${contact.firstName ?? ''} ${contact.lastName ?? ''}`.trim()
+  }
+  return contact.name ?? contact.phoneNumber
+}
 
 function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/)
@@ -67,13 +72,12 @@ function getInitials(name: string): string {
   return ((parts[0]?.[0] ?? '') + (parts[parts.length - 1]?.[0] ?? '')).toUpperCase()
 }
 
-// Espresso-style deterministic avatar hue — maps id to one of the CRM palette colors
 const AVATAR_PALETTE = [
-  { bg: '#E6F4FF', text: '#007BE0' }, // blue
-  { bg: '#E4FAEB', text: '#278F5E' }, // green
-  { bg: '#FFF7D3', text: '#DB7706' }, // amber
-  { bg: '#FFE7E7', text: '#E03636' }, // red
-  { bg: '#F3F0FF', text: '#6846E3' }, // purple
+  { bg: '#E6F4FF', text: '#007BE0' },
+  { bg: '#E4FAEB', text: '#278F5E' },
+  { bg: '#FFF7D3', text: '#DB7706' },
+  { bg: '#FFE7E7', text: '#E03636' },
+  { bg: '#F3F0FF', text: '#6846E3' },
 ] as const
 
 function getAvatarPalette(id: string) {
@@ -82,6 +86,37 @@ function getAvatarPalette(id: string) {
     hash = id.charCodeAt(i) + ((hash << 5) - hash)
   }
   return AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length] ?? AVATAR_PALETTE[0]
+}
+
+// ============================================
+// CHANNEL BADGE
+// ============================================
+
+const CHANNEL_LABELS: Record<string, string> = {
+  WHATSAPP: 'WhatsApp',
+  MESSENGER: 'Messenger',
+  INSTAGRAM: 'Instagram',
+}
+
+const CHANNEL_COLORS: Record<string, { bg: string; text: string }> = {
+  WHATSAPP: { bg: '#E4FAEB', text: '#278F5E' },
+  MESSENGER: { bg: '#E6F4FF', text: '#007BE0' },
+  INSTAGRAM: { bg: '#FFE7E7', text: '#E03636' },
+}
+
+function ChannelBadge({ channel }: { channel?: string | null }) {
+  if (!channel) return <span style={{ color: 'var(--ink-gray-4)' }}>—</span>
+  const upper = channel.toUpperCase()
+  const label = CHANNEL_LABELS[upper] ?? channel
+  const colors = CHANNEL_COLORS[upper] ?? { bg: 'var(--surface-gray-2)', text: 'var(--ink-gray-6)' }
+  return (
+    <span
+      className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium"
+      style={{ backgroundColor: colors.bg, color: colors.text }}
+    >
+      {label}
+    </span>
+  )
 }
 
 // ============================================
@@ -95,7 +130,7 @@ interface AvatarProps {
   size?: 'sm' | 'md'
 }
 
-function Avatar({ imageUrl, name, id, size = 'sm' }: AvatarProps) {
+function ContactAvatar({ imageUrl, name, id, size = 'sm' }: AvatarProps) {
   const palette = getAvatarPalette(id)
   const dim = size === 'sm' ? 'w-6 h-6 text-[10px]' : 'w-8 h-8 text-xs'
   if (imageUrl) {
@@ -110,10 +145,7 @@ function Avatar({ imageUrl, name, id, size = 'sm' }: AvatarProps) {
   }
   return (
     <div
-      className={cn(
-        dim,
-        'rounded-full flex items-center justify-center font-semibold flex-shrink-0'
-      )}
+      className={cn(dim, 'rounded-full flex items-center justify-center font-semibold flex-shrink-0')}
       style={{ backgroundColor: palette.bg, color: palette.text }}
     >
       {getInitials(name)}
@@ -136,10 +168,12 @@ function TableSkeleton() {
               <Skeleton className="h-4 w-36" />
             </div>
           </TableCell>
-          <TableCell className="py-2.5"><Skeleton className="h-4 w-44" /></TableCell>
-          <TableCell className="py-2.5"><Skeleton className="h-4 w-28" /></TableCell>
           <TableCell className="py-2.5"><Skeleton className="h-4 w-32" /></TableCell>
-          <TableCell className="py-2.5"><Skeleton className="h-4 w-20" /></TableCell>
+          <TableCell className="py-2.5"><Skeleton className="h-4 w-44" /></TableCell>
+          <TableCell className="py-2.5 hidden md:table-cell"><Skeleton className="h-4 w-28" /></TableCell>
+          <TableCell className="py-2.5 hidden lg:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
+          <TableCell className="py-2.5 hidden lg:table-cell"><Skeleton className="h-4 w-10" /></TableCell>
+          <TableCell className="py-2.5 hidden xl:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
           <TableCell className="py-2.5 pr-4"><Skeleton className="h-6 w-6 rounded ml-auto" /></TableCell>
         </TableRow>
       ))}
@@ -193,31 +227,43 @@ function EmptyState({ searching, query, onNew }: EmptyStateProps) {
 // CREATE CONTACT FORM
 // ============================================
 
+interface CreateContactFormData {
+  phoneNumber: string
+  firstName?: string
+  lastName?: string
+  email?: string
+  companyName?: string
+  designation?: string
+}
+
 interface CreateContactFormProps {
-  onSubmit: (data: CreateContactData) => void
+  onSubmit: (data: CreateContactFormData) => void
   onCancel: () => void
   isLoading: boolean
 }
 
 function CreateContactForm({ onSubmit, onCancel, isLoading }: CreateContactFormProps) {
+  const [phoneNumber, setPhoneNumber] = useState('')
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
-  const [mobileNo, setMobileNo] = useState('')
   const [companyName, setCompanyName] = useState('')
+  const [designation, setDesignation] = useState('')
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!firstName.trim()) {
-      toast.error('O nome e obrigatorio.')
+    const cleaned = phoneNumber.replace(/\D/g, '')
+    if (!cleaned || cleaned.length < 10 || cleaned.length > 15) {
+      toast.error('Telefone invalido. Use entre 10 e 15 digitos.')
       return
     }
     onSubmit({
-      first_name: firstName.trim(),
-      last_name: lastName.trim() || undefined,
+      phoneNumber: cleaned,
+      firstName: firstName.trim() || undefined,
+      lastName: lastName.trim() || undefined,
       email: email.trim() || undefined,
-      mobile_no: mobileNo.trim() || undefined,
-      company_name: companyName.trim() || undefined,
+      companyName: companyName.trim() || undefined,
+      designation: designation.trim() || undefined,
     })
   }
 
@@ -226,15 +272,29 @@ function CreateContactForm({ onSubmit, onCancel, isLoading }: CreateContactFormP
     backgroundColor: 'var(--surface-white)',
     color: 'var(--ink-gray-8)',
   }
-
   const labelStyle = { color: 'var(--ink-gray-6)' }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
+      <div className="space-y-1.5">
+        <Label className="text-xs font-medium" style={labelStyle}>
+          Telefone *
+        </Label>
+        <Input
+          value={phoneNumber}
+          onChange={(e) => setPhoneNumber(e.target.value)}
+          placeholder="+55 11 99999-9999"
+          className="h-8 text-sm rounded border"
+          style={inputStyle}
+          autoFocus
+          required
+        />
+      </div>
+
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <Label className="text-xs font-medium" style={labelStyle}>
-            Nome *
+            Nome
           </Label>
           <Input
             value={firstName}
@@ -242,7 +302,6 @@ function CreateContactForm({ onSubmit, onCancel, isLoading }: CreateContactFormP
             placeholder="Nome"
             className="h-8 text-sm rounded border"
             style={inputStyle}
-            autoFocus
           />
         </div>
         <div className="space-y-1.5">
@@ -275,12 +334,12 @@ function CreateContactForm({ onSubmit, onCancel, isLoading }: CreateContactFormP
 
       <div className="space-y-1.5">
         <Label className="text-xs font-medium" style={labelStyle}>
-          Telefone
+          Empresa
         </Label>
         <Input
-          value={mobileNo}
-          onChange={(e) => setMobileNo(e.target.value)}
-          placeholder="+55 11 99999-9999"
+          value={companyName}
+          onChange={(e) => setCompanyName(e.target.value)}
+          placeholder="Nome da empresa"
           className="h-8 text-sm rounded border"
           style={inputStyle}
         />
@@ -288,12 +347,12 @@ function CreateContactForm({ onSubmit, onCancel, isLoading }: CreateContactFormP
 
       <div className="space-y-1.5">
         <Label className="text-xs font-medium" style={labelStyle}>
-          Empresa
+          Cargo
         </Label>
         <Input
-          value={companyName}
-          onChange={(e) => setCompanyName(e.target.value)}
-          placeholder="Nome da empresa"
+          value={designation}
+          onChange={(e) => setDesignation(e.target.value)}
+          placeholder="Ex: Gerente de Vendas"
           className="h-8 text-sm rounded border"
           style={inputStyle}
         />
@@ -306,10 +365,7 @@ function CreateContactForm({ onSubmit, onCancel, isLoading }: CreateContactFormP
           size="sm"
           onClick={onCancel}
           className="h-8 px-3 text-sm rounded border"
-          style={{
-            borderColor: 'var(--outline-gray-2)',
-            color: 'var(--ink-gray-7)',
-          }}
+          style={{ borderColor: 'var(--outline-gray-2)', color: 'var(--ink-gray-7)' }}
         >
           Cancelar
         </Button>
@@ -328,6 +384,15 @@ function CreateContactForm({ onSubmit, onCancel, isLoading }: CreateContactFormP
 }
 
 // ============================================
+// QUERY KEYS
+// ============================================
+
+const expressContactKeys = {
+  all: ['express-contacts'] as const,
+  list: (params?: object) => [...expressContactKeys.all, 'list', params] as const,
+}
+
+// ============================================
 // MAIN PAGE
 // ============================================
 
@@ -339,9 +404,9 @@ export default function ContactsPage() {
 
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
-  const [sortField, setSortField] = useState('full_name')
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
-  const [deletingContact, setDeletingContact] = useState<CrmContact | null>(null)
+  const [sortField, setSortField] = useState<'name' | 'createdAt' | 'updatedAt' | 'phoneNumber'>('updatedAt')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
+  const [deletingContact, setDeletingContact] = useState<Contact | null>(null)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
 
   const debouncedSearch = useDebounce(search, 350)
@@ -350,33 +415,32 @@ export default function ContactsPage() {
   // QUERY
   // ============================================
 
-  const params: CrmListParams = {
+  const listParams = {
     page,
-    page_size: PAGE_SIZE,
+    limit: PAGE_SIZE,
     search: debouncedSearch || undefined,
-    order_by: sortField,
-    order_direction: sortDir,
+    sortBy: sortField,
+    sortOrder: sortDir,
   }
 
   const listQuery = useQuery({
-    queryKey: crmKeys.contactList(params),
-    queryFn: () => crmApi.contacts.list(params),
+    queryKey: expressContactKeys.list(listParams),
+    queryFn: () => contactService.list(listParams),
     placeholderData: keepPreviousData,
-    select: (res) => res.data,
   })
 
   const contacts = listQuery.data?.data ?? []
-  const totalCount = listQuery.data?.total_count ?? 0
-  const totalPages = Math.ceil(totalCount / PAGE_SIZE)
+  const totalCount = listQuery.data?.pagination.total ?? 0
+  const totalPages = listQuery.data?.pagination.totalPages ?? 0
 
   // ============================================
   // MUTATIONS
   // ============================================
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => crmApi.contacts.delete(id),
+    mutationFn: (id: string) => contactService.delete(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: crmKeys.contacts() })
+      queryClient.invalidateQueries({ queryKey: expressContactKeys.all })
       setDeletingContact(null)
       toast.success('Contato removido.')
     },
@@ -384,9 +448,17 @@ export default function ContactsPage() {
   })
 
   const createMutation = useMutation({
-    mutationFn: (data: CreateContactData) => crmApi.contacts.create(data),
+    mutationFn: (data: CreateContactFormData) =>
+      contactService.create({
+        phoneNumber: data.phoneNumber,
+        firstName: data.firstName || undefined,
+        lastName: data.lastName || undefined,
+        email: data.email || undefined,
+        companyName: data.companyName || undefined,
+        designation: data.designation || undefined,
+      }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: crmKeys.contacts() })
+      queryClient.invalidateQueries({ queryKey: expressContactKeys.all })
       setIsCreateOpen(false)
       toast.success('Contato criado.')
     },
@@ -398,7 +470,7 @@ export default function ContactsPage() {
   // ============================================
 
   const handleSort = useCallback(
-    (field: string) => {
+    (field: typeof sortField) => {
       if (sortField === field) {
         setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
       } else {
@@ -414,7 +486,11 @@ export default function ContactsPage() {
     if (sortField !== field) {
       return <span className="opacity-30 ml-1">↕</span>
     }
-    return <span className="ml-1" style={{ color: 'var(--ink-blue-3)' }}>{sortDir === 'asc' ? '↑' : '↓'}</span>
+    return (
+      <span className="ml-1" style={{ color: 'var(--ink-blue-3)' }}>
+        {sortDir === 'asc' ? '↑' : '↓'}
+      </span>
+    )
   }
 
   // ============================================
@@ -423,7 +499,7 @@ export default function ContactsPage() {
 
   return (
     <div className="flex flex-col h-full">
-      {/* ---- Page Header (Frappe LayoutHeader style) ---- */}
+      {/* ---- Page Header ---- */}
       <div
         className="flex items-center justify-between px-5 py-3 border-b flex-shrink-0"
         style={{ borderColor: 'var(--outline-gray-1)' }}
@@ -447,7 +523,7 @@ export default function ContactsPage() {
             variant="ghost"
             size="icon"
             className="h-7 w-7"
-            onClick={() => queryClient.invalidateQueries({ queryKey: crmKeys.contacts() })}
+            onClick={() => queryClient.invalidateQueries({ queryKey: expressContactKeys.all })}
             disabled={listQuery.isFetching}
             aria-label="Atualizar"
           >
@@ -505,16 +581,22 @@ export default function ContactsPage() {
               className="border-b"
               style={{ borderColor: 'var(--outline-gray-1)', backgroundColor: 'var(--surface-gray-1)' }}
             >
-              {/* full_name */}
               <TableHead
                 className="py-2 pl-4 text-[11px] font-semibold uppercase tracking-wider cursor-pointer select-none whitespace-nowrap"
                 style={{ color: 'var(--ink-gray-5)' }}
-                onClick={() => handleSort('full_name')}
+                onClick={() => handleSort('name')}
               >
-                Nome <SortIcon field="full_name" />
+                Nome <SortIcon field="name" />
               </TableHead>
 
-              {/* email */}
+              <TableHead
+                className="py-2 text-[11px] font-semibold uppercase tracking-wider cursor-pointer select-none whitespace-nowrap"
+                style={{ color: 'var(--ink-gray-5)' }}
+                onClick={() => handleSort('phoneNumber')}
+              >
+                Telefone <SortIcon field="phoneNumber" />
+              </TableHead>
+
               <TableHead
                 className="py-2 text-[11px] font-semibold uppercase tracking-wider whitespace-nowrap"
                 style={{ color: 'var(--ink-gray-5)' }}
@@ -522,30 +604,33 @@ export default function ContactsPage() {
                 Email
               </TableHead>
 
-              {/* mobile_no */}
               <TableHead
                 className="py-2 text-[11px] font-semibold uppercase tracking-wider whitespace-nowrap hidden md:table-cell"
                 style={{ color: 'var(--ink-gray-5)' }}
               >
-                Telefone
+                Empresa
               </TableHead>
 
-              {/* company_name */}
               <TableHead
-                className="py-2 text-[11px] font-semibold uppercase tracking-wider cursor-pointer select-none whitespace-nowrap hidden lg:table-cell"
+                className="py-2 text-[11px] font-semibold uppercase tracking-wider whitespace-nowrap hidden lg:table-cell"
                 style={{ color: 'var(--ink-gray-5)' }}
-                onClick={() => handleSort('company_name')}
               >
-                Empresa <SortIcon field="company_name" />
+                Canal
               </TableHead>
 
-              {/* modified */}
+              <TableHead
+                className="py-2 text-[11px] font-semibold uppercase tracking-wider whitespace-nowrap hidden lg:table-cell text-right"
+                style={{ color: 'var(--ink-gray-5)' }}
+              >
+                Conversas
+              </TableHead>
+
               <TableHead
                 className="py-2 text-[11px] font-semibold uppercase tracking-wider cursor-pointer select-none whitespace-nowrap hidden xl:table-cell"
                 style={{ color: 'var(--ink-gray-5)' }}
-                onClick={() => handleSort('updated_at')}
+                onClick={() => handleSort('updatedAt')}
               >
-                Modificado <SortIcon field="updated_at" />
+                Ultima atividade <SortIcon field="updatedAt" />
               </TableHead>
 
               <TableHead className="py-2 pr-4 w-10" />
@@ -557,14 +642,16 @@ export default function ContactsPage() {
               <TableSkeleton />
             ) : listQuery.isError ? (
               <TableRow>
-                <TableCell colSpan={6} className="py-20 text-center">
+                <TableCell colSpan={8} className="py-20 text-center">
                   <p className="text-sm mb-2" style={{ color: 'var(--ink-gray-5)' }}>
                     Erro ao carregar contatos.
                   </p>
                   <Button
                     variant="link"
                     size="sm"
-                    onClick={() => queryClient.invalidateQueries({ queryKey: crmKeys.contacts() })}
+                    onClick={() =>
+                      queryClient.invalidateQueries({ queryKey: expressContactKeys.all })
+                    }
                     style={{ color: 'var(--ink-blue-3)' }}
                   >
                     Tentar novamente
@@ -573,7 +660,7 @@ export default function ContactsPage() {
               </TableRow>
             ) : contacts.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="p-0">
+                <TableCell colSpan={8} className="p-0">
                   <EmptyState
                     searching={!!debouncedSearch}
                     query={debouncedSearch}
@@ -583,14 +670,15 @@ export default function ContactsPage() {
               </TableRow>
             ) : (
               contacts.map((contact) => {
-                const companyName =
-                  contact.company_name ?? contact.organization?.organization_name ?? null
-                const orgLogoUrl = contact.organization?.logo_url ?? null
+                const displayName = getDisplayName(contact)
+                const companyName = contact.companyName ?? null
+                const conversationCount = contact._count?.conversations ?? 0
+                const channel = contact.channel
 
                 return (
                   <TableRow
                     key={contact.id}
-                    className="border-b cursor-pointer transition-colors"
+                    className="border-b cursor-pointer transition-colors group"
                     style={{ borderColor: 'var(--outline-gray-1)' }}
                     onClick={() => router.push(`/crm/contacts/${contact.id}`)}
                     onMouseEnter={(e) => {
@@ -600,12 +688,12 @@ export default function ContactsPage() {
                       e.currentTarget.style.backgroundColor = ''
                     }}
                   >
-                    {/* full_name — Avatar + label */}
+                    {/* Nome — Avatar + label */}
                     <TableCell className="py-2.5 pl-4">
                       <div className="flex items-center gap-2">
-                        <Avatar
-                          imageUrl={contact.image_url}
-                          name={contact.full_name}
+                        <ContactAvatar
+                          imageUrl={contact.profilePictureUrl}
+                          name={displayName}
                           id={contact.id}
                           size="sm"
                         />
@@ -613,12 +701,19 @@ export default function ContactsPage() {
                           className="text-sm font-medium truncate max-w-[180px]"
                           style={{ color: 'var(--ink-gray-8)' }}
                         >
-                          {contact.full_name}
+                          {displayName}
                         </span>
                       </div>
                     </TableCell>
 
-                    {/* email */}
+                    {/* Telefone */}
+                    <TableCell className="py-2.5">
+                      <span className="text-sm font-mono" style={{ color: 'var(--ink-gray-6)' }}>
+                        {contactService.formatPhoneNumber(contact.phoneNumber)}
+                      </span>
+                    </TableCell>
+
+                    {/* Email */}
                     <TableCell className="py-2.5">
                       {contact.email ? (
                         <a
@@ -636,38 +731,19 @@ export default function ContactsPage() {
                       )}
                     </TableCell>
 
-                    {/* mobile_no */}
+                    {/* Empresa */}
                     <TableCell className="py-2.5 hidden md:table-cell">
-                      <span className="text-sm" style={{ color: 'var(--ink-gray-6)' }}>
-                        {contact.mobile_no ?? contact.phone ?? (
-                          <span style={{ color: 'var(--ink-gray-4)' }}>—</span>
-                        )}
-                      </span>
-                    </TableCell>
-
-                    {/* company_name — shows org logo if available */}
-                    <TableCell className="py-2.5 hidden lg:table-cell">
                       {companyName ? (
                         <div className="flex items-center gap-2">
-                          {orgLogoUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={orgLogoUrl}
-                              alt={companyName}
-                              className="w-5 h-5 rounded object-contain flex-shrink-0"
-                              style={{ border: '1px solid var(--outline-gray-1)' }}
-                            />
-                          ) : (
-                            <div
-                              className="w-5 h-5 rounded flex items-center justify-center text-[9px] font-semibold flex-shrink-0"
-                              style={{
-                                backgroundColor: 'var(--surface-gray-2)',
-                                color: 'var(--ink-gray-5)',
-                              }}
-                            >
-                              {companyName.substring(0, 2).toUpperCase()}
-                            </div>
-                          )}
+                          <div
+                            className="w-5 h-5 rounded flex items-center justify-center text-[9px] font-semibold flex-shrink-0"
+                            style={{
+                              backgroundColor: 'var(--surface-gray-2)',
+                              color: 'var(--ink-gray-5)',
+                            }}
+                          >
+                            {companyName.substring(0, 2).toUpperCase()}
+                          </div>
                           <span
                             className="text-sm truncate max-w-[160px]"
                             style={{ color: 'var(--ink-gray-6)' }}
@@ -682,23 +758,37 @@ export default function ContactsPage() {
                       )}
                     </TableCell>
 
-                    {/* modified — timeAgo with full date tooltip */}
+                    {/* Canal */}
+                    <TableCell className="py-2.5 hidden lg:table-cell">
+                      <ChannelBadge channel={channel} />
+                    </TableCell>
+
+                    {/* Conversas */}
+                    <TableCell className="py-2.5 hidden lg:table-cell text-right">
+                      <span className="text-sm tabular-nums" style={{ color: 'var(--ink-gray-6)' }}>
+                        {conversationCount > 0 ? conversationCount : (
+                          <span style={{ color: 'var(--ink-gray-4)' }}>0</span>
+                        )}
+                      </span>
+                    </TableCell>
+
+                    {/* Ultima atividade */}
                     <TableCell className="py-2.5 hidden xl:table-cell">
                       <span
                         className="text-sm"
                         style={{ color: 'var(--ink-gray-5)' }}
-                        title={format(new Date(contact.updated_at), "dd/MM/yyyy 'as' HH:mm", {
+                        title={format(new Date(contact.updatedAt), "dd/MM/yyyy 'as' HH:mm", {
                           locale: ptBR,
                         })}
                       >
-                        {formatDistanceToNow(new Date(contact.updated_at), {
+                        {formatDistanceToNow(new Date(contact.updatedAt), {
                           addSuffix: true,
                           locale: ptBR,
                         })}
                       </span>
                     </TableCell>
 
-                    {/* actions */}
+                    {/* Acoes */}
                     <TableCell className="py-2.5 pr-4">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -723,13 +813,13 @@ export default function ContactsPage() {
                             borderColor: 'var(--outline-gray-2)',
                           }}
                         >
-                          <DropdownMenuSeparator
-                            style={{ backgroundColor: 'var(--outline-gray-1)' }}
-                          />
                           <DropdownMenuItem
                             className="text-sm cursor-pointer"
                             style={{ color: 'var(--ink-red-3)' }}
-                            onClick={() => setDeletingContact(contact)}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setDeletingContact(contact)
+                            }}
                           >
                             <Trash2 className="mr-2 h-3.5 w-3.5" />
                             Remover
@@ -795,13 +885,18 @@ export default function ContactsPage() {
           }}
         >
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-sm font-semibold" style={{ color: 'var(--ink-gray-9)' }}>
+            <AlertDialogTitle
+              className="text-sm font-semibold"
+              style={{ color: 'var(--ink-gray-9)' }}
+            >
               Remover contato
             </AlertDialogTitle>
             <AlertDialogDescription className="text-sm" style={{ color: 'var(--ink-gray-5)' }}>
               Tem certeza que deseja remover{' '}
-              <strong style={{ color: 'var(--ink-gray-8)' }}>{deletingContact?.full_name}</strong>?
-              Esta acao nao pode ser desfeita.
+              <strong style={{ color: 'var(--ink-gray-8)' }}>
+                {deletingContact ? getDisplayName(deletingContact) : ''}
+              </strong>
+              ? Esta acao nao pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

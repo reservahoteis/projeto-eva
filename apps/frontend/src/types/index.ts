@@ -86,11 +86,17 @@ export interface Tenant {
 export interface Contact {
   id: string;
   tenantId: string;
-  phoneNumber: string;       // Corrigido: era "phone"
-  name?: string;             // Corrigido: agora opcional
+  phoneNumber: string;
+  name?: string;
+  firstName?: string;
+  lastName?: string;
+  companyName?: string;
+  designation?: string;
   email?: string;
-  profilePictureUrl?: string; // Corrigido: era "avatar"
-  metadata?: ContactMetadata; // Type-safe metadata
+  // Canal de origem do contato (ex: WHATSAPP, INSTAGRAM, MESSENGER)
+  channel?: string;
+  profilePictureUrl?: string;
+  metadata?: ContactMetadata;
   createdAt: string;
   updatedAt: string;
   // Campos computados do backend:
@@ -152,6 +158,10 @@ export interface Conversation {
   metadata?: ConversationMetadata; // Type-safe metadata
   createdAt: string;
   updatedAt: string;
+  // Campos computados retornados em endpoints de contato
+  _count?: {
+    messages: number;
+  };
 }
 
 export enum ConversationPriority {
