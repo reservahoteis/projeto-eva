@@ -756,6 +756,10 @@ describe('MessageService', () => {
       profilePictureUrl: null,
       email: null,
       metadata: null,
+      firstName: null,
+      lastName: null,
+      companyName: null,
+      designation: null,
     };
 
     const mockConversation = {

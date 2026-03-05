@@ -180,6 +180,10 @@ model Contact {
   name              String?
   profilePictureUrl String?
   email             String?
+  firstName         String?
+  lastName          String?
+  companyName       String?
+  designation       String?
 
   // Metadata customizada
   metadata Json?

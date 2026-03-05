@@ -1,6 +1,7 @@
 import { prisma } from '@/config/database';
 import { NotFoundError } from '@/utils/errors';
 import ExcelJS from 'exceljs';
+import { Prisma } from '@prisma/client';
 
 export class ContactService {
   /**
@@ -16,14 +17,19 @@ export class ContactService {
     const page = params?.page || 1;
     const limit = Math.min(params?.limit || 20, 100);
     const skip = (page - 1) * limit;
-    const sortBy = params?.sortBy || 'createdAt';
+    const ALLOWED_SORT_FIELDS = ['name', 'createdAt', 'updatedAt', 'phoneNumber', 'firstName', 'lastName', 'companyName'] as const;
+    const rawSort = params?.sortBy || 'createdAt';
+    const sortBy = (ALLOWED_SORT_FIELDS as readonly string[]).includes(rawSort) ? rawSort : 'createdAt';
     const sortOrder = params?.sortOrder || 'desc';
 
-    const where: any = { tenantId };
+    const where: Prisma.ContactWhereInput = { tenantId };
 
     if (params?.search) {
       where.OR = [
         { name: { contains: params.search, mode: 'insensitive' } },
+        { firstName: { contains: params.search, mode: 'insensitive' } },
+        { lastName: { contains: params.search, mode: 'insensitive' } },
+        { companyName: { contains: params.search, mode: 'insensitive' } },
         { phoneNumber: { contains: params.search } },
         { email: { contains: params.search, mode: 'insensitive' } },
       ];
@@ -38,8 +44,15 @@ export class ContactService {
         orderBy: { [sortBy]: sortOrder },
         select: {
           id: true,
+          tenantId: true,
+          channel: true,
+          externalId: true,
           phoneNumber: true,
           name: true,
+          firstName: true,
+          lastName: true,
+          companyName: true,
+          designation: true,
           email: true,
           profilePictureUrl: true,
           metadata: true,
@@ -50,7 +63,7 @@ export class ContactService {
               conversations: true,
             },
           },
-          // Incluir última conversa diretamente (ordenada por lastMessageAt)
+          // Incluir ultima conversa diretamente (ordenada por lastMessageAt)
           conversations: {
             orderBy: { lastMessageAt: 'desc' },
             take: 1,
@@ -70,11 +83,18 @@ export class ContactService {
       id: contact.id,
       phoneNumber: contact.phoneNumber,
       name: contact.name,
+      firstName: contact.firstName,
+      lastName: contact.lastName,
+      companyName: contact.companyName,
+      designation: contact.designation,
       email: contact.email,
       profilePictureUrl: contact.profilePictureUrl,
       metadata: contact.metadata,
       createdAt: contact.createdAt,
       updatedAt: contact.updatedAt,
+      channel: contact.channel,
+      tenantId: contact.tenantId,
+      externalId: contact.externalId,
       conversationsCount: contact._count.conversations,
       lastConversationAt: contact.conversations[0]?.lastMessageAt || null,
     }));
@@ -99,19 +119,27 @@ export class ContactService {
         id: contactId,
         tenantId,
       },
-      include: {
-        _count: {
-          select: {
-            conversations: true,
-          },
-        },
+      select: {
+        id: true,
+        tenantId: true,
+        channel: true,
+        externalId: true,
+        phoneNumber: true,
+        name: true,
+        firstName: true,
+        lastName: true,
+        companyName: true,
+        designation: true,
+        email: true,
+        profilePictureUrl: true,
+        metadata: true,
+        createdAt: true,
+        updatedAt: true,
+        _count: { select: { conversations: true } },
         conversations: {
           orderBy: { lastMessageAt: 'desc' },
           take: 1,
-          select: {
-            id: true,
-            lastMessageAt: true,
-          },
+          select: { id: true, lastMessageAt: true },
         },
       },
     });
@@ -146,9 +174,13 @@ export class ContactService {
   async createContact(data: {
     phoneNumber: string;
     name?: string;
+    firstName?: string;
+    lastName?: string;
+    companyName?: string;
+    designation?: string;
     email?: string;
     profilePictureUrl?: string;
-    metadata?: any;
+    metadata?: Prisma.JsonValue;
     tenantId: string;
   }) {
     return prisma.contact.create({
@@ -157,17 +189,32 @@ export class ContactService {
         externalId: data.phoneNumber,
         phoneNumber: data.phoneNumber,
         name: data.name || null,
+        firstName: data.firstName || null,
+        lastName: data.lastName || null,
+        companyName: data.companyName || null,
+        designation: data.designation || null,
         email: data.email || null,
         profilePictureUrl: data.profilePictureUrl || null,
         metadata: data.metadata || {},
         tenantId: data.tenantId,
       },
-      include: {
-        _count: {
-          select: {
-            conversations: true,
-          },
-        },
+      select: {
+        id: true,
+        tenantId: true,
+        channel: true,
+        externalId: true,
+        phoneNumber: true,
+        name: true,
+        firstName: true,
+        lastName: true,
+        companyName: true,
+        designation: true,
+        email: true,
+        profilePictureUrl: true,
+        metadata: true,
+        createdAt: true,
+        updatedAt: true,
+        _count: { select: { conversations: true } },
       },
     });
   }
@@ -180,9 +227,13 @@ export class ContactService {
     tenantId: string,
     data: {
       name?: string;
+      firstName?: string | null;
+      lastName?: string | null;
+      companyName?: string | null;
+      designation?: string | null;
       email?: string;
       profilePictureUrl?: string | null;
-      metadata?: any | null;
+      metadata?: Prisma.InputJsonValue | null;
     }
   ) {
     const contact = await prisma.contact.findFirst({
@@ -196,18 +247,46 @@ export class ContactService {
       throw new NotFoundError('Contato não encontrado');
     }
 
-    return prisma.contact.update({
-      where: { id: contactId },
-      data: {
-        ...data,
-        updatedAt: new Date(),
-      },
-      include: {
-        _count: {
-          select: {
-            conversations: true,
-          },
-        },
+    // SECURITY: tenantId enforced at update time to prevent TOCTOU/IDOR.
+    // Using updateMany so we can scope by both id AND tenantId atomically.
+    // Prisma requires JsonNull sentinel for nullable JSON fields in updateMany
+    const { metadata, ...restData } = data;
+    const updateData: Prisma.ContactUpdateManyMutationInput = {
+      ...restData,
+      updatedAt: new Date(),
+    };
+    if ('metadata' in data) {
+      updateData.metadata = metadata === null ? Prisma.JsonNull : metadata;
+    }
+    const result = await prisma.contact.updateMany({
+      where: { id: contactId, tenantId },
+      data: updateData,
+    });
+
+    if (result.count === 0) {
+      throw new NotFoundError('Contato não encontrado');
+    }
+
+    // Return full record after the scoped update
+    return prisma.contact.findFirst({
+      where: { id: contactId, tenantId },
+      select: {
+        id: true,
+        tenantId: true,
+        channel: true,
+        externalId: true,
+        phoneNumber: true,
+        name: true,
+        firstName: true,
+        lastName: true,
+        companyName: true,
+        designation: true,
+        email: true,
+        profilePictureUrl: true,
+        metadata: true,
+        createdAt: true,
+        updatedAt: true,
+        _count: { select: { conversations: true } },
       },
     });
   }
@@ -227,9 +306,15 @@ export class ContactService {
       throw new NotFoundError('Contato não encontrado');
     }
 
-    await prisma.contact.delete({
-      where: { id: contactId },
+    // SECURITY: tenantId enforced at delete time to prevent TOCTOU/IDOR.
+    // Using deleteMany so we can scope by both id AND tenantId atomically.
+    const result = await prisma.contact.deleteMany({
+      where: { id: contactId, tenantId },
     });
+
+    if (result.count === 0) {
+      throw new NotFoundError('Contato não encontrado');
+    }
   }
 
   /**
@@ -251,6 +336,9 @@ export class ContactService {
       tenantId,
       OR: [
         { name: { contains: query, mode: 'insensitive' as const } },
+        { firstName: { contains: query, mode: 'insensitive' as const } },
+        { lastName: { contains: query, mode: 'insensitive' as const } },
+        { companyName: { contains: query, mode: 'insensitive' as const } },
         { phoneNumber: { contains: query } },
         { email: { contains: query, mode: 'insensitive' as const } },
       ],
@@ -269,6 +357,10 @@ export class ContactService {
           id: true,
           phoneNumber: true,
           name: true,
+          firstName: true,
+          lastName: true,
+          companyName: true,
+          designation: true,
           email: true,
           profilePictureUrl: true,
           metadata: true,
@@ -324,6 +416,10 @@ export class ContactService {
         id: true,
         phoneNumber: true,
         name: true,
+        firstName: true,
+        lastName: true,
+        companyName: true,
+        designation: true,
         email: true,
         profilePictureUrl: true,
         createdAt: true,
@@ -345,24 +441,33 @@ export class ContactService {
       search?: string;
     }
   ): Promise<Buffer> {
-    const where: any = { tenantId };
+    const where: Prisma.ContactWhereInput = { tenantId };
 
     if (params?.search) {
       where.OR = [
         { name: { contains: params.search, mode: 'insensitive' } },
+        { firstName: { contains: params.search, mode: 'insensitive' } },
+        { lastName: { contains: params.search, mode: 'insensitive' } },
+        { companyName: { contains: params.search, mode: 'insensitive' } },
         { phoneNumber: { contains: params.search } },
         { email: { contains: params.search, mode: 'insensitive' } },
       ];
     }
 
-    // Buscar todos os contatos (sem paginação para exportação)
+    // Buscar contatos com limite de seguranca para exportacao
+    const MAX_EXPORT_ROWS = 10_000;
     const contacts = await prisma.contact.findMany({
       where,
       orderBy: { createdAt: 'desc' },
+      take: MAX_EXPORT_ROWS,
       select: {
         id: true,
         phoneNumber: true,
         name: true,
+        firstName: true,
+        lastName: true,
+        companyName: true,
+        designation: true,
         email: true,
         createdAt: true,
         updatedAt: true,
@@ -396,6 +501,10 @@ export class ContactService {
     // Definir colunas
     worksheet.columns = [
       { header: 'Nome', key: 'name', width: 30 },
+      { header: 'Primeiro Nome', key: 'firstName', width: 20 },
+      { header: 'Sobrenome', key: 'lastName', width: 20 },
+      { header: 'Empresa', key: 'companyName', width: 25 },
+      { header: 'Cargo', key: 'designation', width: 20 },
       { header: 'Telefone', key: 'phoneNumber', width: 20 },
       { header: 'Email', key: 'email', width: 35 },
       { header: 'Conversas', key: 'conversationsCount', width: 12 },
@@ -420,6 +529,10 @@ export class ContactService {
     contacts.forEach((contact) => {
       worksheet.addRow({
         name: contact.name || 'Sem nome',
+        firstName: contact.firstName || '-',
+        lastName: contact.lastName || '-',
+        companyName: contact.companyName || '-',
+        designation: contact.designation || '-',
         phoneNumber: contact.phoneNumber,
         email: contact.email || '-',
         conversationsCount: contact._count.conversations,
@@ -472,24 +585,33 @@ export class ContactService {
       search?: string;
     }
   ): Promise<Buffer> {
-    const where: any = { tenantId };
+    const where: Prisma.ContactWhereInput = { tenantId };
 
     if (params?.search) {
       where.OR = [
         { name: { contains: params.search, mode: 'insensitive' } },
+        { firstName: { contains: params.search, mode: 'insensitive' } },
+        { lastName: { contains: params.search, mode: 'insensitive' } },
+        { companyName: { contains: params.search, mode: 'insensitive' } },
         { phoneNumber: { contains: params.search } },
         { email: { contains: params.search, mode: 'insensitive' } },
       ];
     }
 
-    // Buscar todos os contatos (sem paginação para exportação)
+    // Buscar contatos com limite de seguranca para exportacao
+    const MAX_EXPORT_ROWS = 10_000;
     const contacts = await prisma.contact.findMany({
       where,
       orderBy: { createdAt: 'desc' },
+      take: MAX_EXPORT_ROWS,
       select: {
         id: true,
         phoneNumber: true,
         name: true,
+        firstName: true,
+        lastName: true,
+        companyName: true,
+        designation: true,
         email: true,
         createdAt: true,
         updatedAt: true,
@@ -512,6 +634,10 @@ export class ContactService {
     // Cabeçalho CSV
     const headers = [
       'Nome',
+      'Primeiro Nome',
+      'Sobrenome',
+      'Empresa',
+      'Cargo',
       'Telefone',
       'Email',
       'Conversas',
@@ -532,6 +658,10 @@ export class ContactService {
     // Gerar linhas
     const rows = contacts.map((contact) => [
       escapeCsv(contact.name || 'Sem nome'),
+      escapeCsv(contact.firstName || '-'),
+      escapeCsv(contact.lastName || '-'),
+      escapeCsv(contact.companyName || '-'),
+      escapeCsv(contact.designation || '-'),
       escapeCsv(contact.phoneNumber || '-'),
       escapeCsv(contact.email || '-'),
       contact._count.conversations.toString(),
@@ -550,6 +680,66 @@ export class ContactService {
     const csv = bom + [headers.join(','), ...rows.map((row) => row.join(','))].join('\n');
 
     return Buffer.from(csv, 'utf-8');
+  }
+
+  /**
+   * Verificar se contato existe (query leve, apenas id)
+   */
+  async contactExists(contactId: string, tenantId: string): Promise<boolean> {
+    const contact = await prisma.contact.findFirst({
+      where: { id: contactId, tenantId },
+      select: { id: true },
+    });
+    return contact !== null;
+  }
+
+  /**
+   * Buscar conversas de um contato
+   */
+  async getContactConversations(
+    contactId: string,
+    tenantId: string,
+    params?: { page?: number; limit?: number }
+  ) {
+    const page = params?.page || 1;
+    const limit = Math.min(params?.limit || 20, 100);
+    const skip = (page - 1) * limit;
+
+    const [conversations, total] = await Promise.all([
+      prisma.conversation.findMany({
+        where: { contactId, tenantId },
+        select: {
+          id: true,
+          channel: true,
+          status: true,
+          isOpportunity: true,
+          lastMessageAt: true,
+          createdAt: true,
+          assignedTo: {
+            select: { id: true, name: true },
+          },
+          _count: {
+            select: { messages: true },
+          },
+        },
+        orderBy: { lastMessageAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      prisma.conversation.count({
+        where: { contactId, tenantId },
+      }),
+    ]);
+
+    return {
+      data: conversations,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
 }
 

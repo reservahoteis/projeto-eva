@@ -127,6 +127,9 @@ describe('ContactService', () => {
             tenantId: 'tenant-123',
             OR: [
               { name: { contains: 'João', mode: 'insensitive' } },
+              { firstName: { contains: 'João', mode: 'insensitive' } },
+              { lastName: { contains: 'João', mode: 'insensitive' } },
+              { companyName: { contains: 'João', mode: 'insensitive' } },
               { phoneNumber: { contains: 'João' } },
               { email: { contains: 'João', mode: 'insensitive' } },
             ],
@@ -199,19 +202,27 @@ describe('ContactService', () => {
           id: 'contact-123',
           tenantId: 'tenant-123',
         },
-        include: {
-          _count: {
-            select: {
-              conversations: true,
-            },
-          },
+        select: {
+          id: true,
+          tenantId: true,
+          channel: true,
+          externalId: true,
+          phoneNumber: true,
+          name: true,
+          firstName: true,
+          lastName: true,
+          companyName: true,
+          designation: true,
+          email: true,
+          profilePictureUrl: true,
+          metadata: true,
+          createdAt: true,
+          updatedAt: true,
+          _count: { select: { conversations: true } },
           conversations: {
             orderBy: { lastMessageAt: 'desc' },
             take: 1,
-            select: {
-              id: true,
-              lastMessageAt: true,
-            },
+            select: { id: true, lastMessageAt: true },
           },
         },
       });
@@ -335,6 +346,10 @@ describe('ContactService', () => {
         data: {
           phoneNumber: contactData.phoneNumber,
           name: contactData.name,
+          firstName: null,
+          lastName: null,
+          companyName: null,
+          designation: null,
           email: contactData.email,
           profilePictureUrl: null,
           metadata: {},
@@ -342,12 +357,23 @@ describe('ContactService', () => {
           channel: 'WHATSAPP',
           externalId: contactData.phoneNumber,
         },
-        include: {
-          _count: {
-            select: {
-              conversations: true,
-            },
-          },
+        select: {
+          id: true,
+          tenantId: true,
+          channel: true,
+          externalId: true,
+          phoneNumber: true,
+          name: true,
+          firstName: true,
+          lastName: true,
+          companyName: true,
+          designation: true,
+          email: true,
+          profilePictureUrl: true,
+          metadata: true,
+          createdAt: true,
+          updatedAt: true,
+          _count: { select: { conversations: true } },
         },
       });
 
@@ -385,6 +411,10 @@ describe('ContactService', () => {
         data: {
           phoneNumber: contactData.phoneNumber,
           name: null,
+          firstName: null,
+          lastName: null,
+          companyName: null,
+          designation: null,
           email: null,
           profilePictureUrl: null,
           metadata: {},
@@ -392,12 +422,23 @@ describe('ContactService', () => {
           channel: 'WHATSAPP',
           externalId: contactData.phoneNumber,
         },
-        include: {
-          _count: {
-            select: {
-              conversations: true,
-            },
-          },
+        select: {
+          id: true,
+          tenantId: true,
+          channel: true,
+          externalId: true,
+          phoneNumber: true,
+          name: true,
+          firstName: true,
+          lastName: true,
+          companyName: true,
+          designation: true,
+          email: true,
+          profilePictureUrl: true,
+          metadata: true,
+          createdAt: true,
+          updatedAt: true,
+          _count: { select: { conversations: true } },
         },
       });
 
@@ -421,13 +462,18 @@ describe('ContactService', () => {
         email: 'joao.pedro@email.com',
       };
 
-      prismaMock.contact.findFirst.mockResolvedValue(existingContact as never);
-      prismaMock.contact.update.mockResolvedValue({
+      const updatedContact = {
         ...existingContact,
         ...updateData,
         updatedAt: new Date(),
         _count: { conversations: 0 },
-      } as never);
+      };
+
+      // findFirst called twice: once to check existence, once to return updated record
+      prismaMock.contact.findFirst
+        .mockResolvedValueOnce(existingContact as never)
+        .mockResolvedValueOnce(updatedContact as never);
+      prismaMock.contact.updateMany.mockResolvedValue({ count: 1 } as never);
 
       // Act
       const result = await contactService.updateContact('contact-123', 'tenant-123', updateData);
@@ -440,22 +486,15 @@ describe('ContactService', () => {
         },
       });
 
-      expect(prismaMock.contact.update).toHaveBeenCalledWith({
-        where: { id: 'contact-123' },
+      expect(prismaMock.contact.updateMany).toHaveBeenCalledWith({
+        where: { id: 'contact-123', tenantId: 'tenant-123' },
         data: {
           ...updateData,
           updatedAt: expect.any(Date),
         },
-        include: {
-          _count: {
-            select: {
-              conversations: true,
-            },
-          },
-        },
       });
 
-      expect(result.name).toBe(updateData.name);
+      expect(result!.name).toBe(updateData.name);
     });
 
     it('deve atualizar apenas campos fornecidos', async () => {
@@ -472,28 +511,20 @@ describe('ContactService', () => {
         name: 'João Pedro',
       };
 
-      prismaMock.contact.findFirst.mockResolvedValue(existingContact as any);
-      prismaMock.contact.update.mockResolvedValue({
-        ...existingContact,
-        ...updateData,
-      } as any);
+      prismaMock.contact.findFirst
+        .mockResolvedValueOnce(existingContact as never)
+        .mockResolvedValueOnce({ ...existingContact, ...updateData } as never);
+      prismaMock.contact.updateMany.mockResolvedValue({ count: 1 } as never);
 
       // Act
       await contactService.updateContact('contact-123', 'tenant-123', updateData);
 
       // Assert
-      expect(prismaMock.contact.update).toHaveBeenCalledWith({
-        where: { id: 'contact-123' },
+      expect(prismaMock.contact.updateMany).toHaveBeenCalledWith({
+        where: { id: 'contact-123', tenantId: 'tenant-123' },
         data: {
           name: 'João Pedro',
           updatedAt: expect.any(Date),
-        },
-        include: {
-          _count: {
-            select: {
-              conversations: true,
-            },
-          },
         },
       });
     });
@@ -540,28 +571,20 @@ describe('ContactService', () => {
         metadata: { source: 'whatsapp', lastInteraction: '2024-01-01' },
       };
 
-      prismaMock.contact.findFirst.mockResolvedValue(existingContact as any);
-      prismaMock.contact.update.mockResolvedValue({
-        ...existingContact,
-        ...updateData,
-      } as any);
+      prismaMock.contact.findFirst
+        .mockResolvedValueOnce(existingContact as never)
+        .mockResolvedValueOnce({ ...existingContact, ...updateData } as never);
+      prismaMock.contact.updateMany.mockResolvedValue({ count: 1 } as never);
 
       // Act
       await contactService.updateContact('contact-123', 'tenant-123', updateData);
 
       // Assert
-      expect(prismaMock.contact.update).toHaveBeenCalledWith({
-        where: { id: 'contact-123' },
+      expect(prismaMock.contact.updateMany).toHaveBeenCalledWith({
+        where: { id: 'contact-123', tenantId: 'tenant-123' },
         data: {
           metadata: updateData.metadata,
           updatedAt: expect.any(Date),
-        },
-        include: {
-          _count: {
-            select: {
-              conversations: true,
-            },
-          },
         },
       });
     });

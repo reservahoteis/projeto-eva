@@ -37,6 +37,34 @@ export const createContactSchema = z.object({
     .url('URL da foto de perfil inválida')
     .optional(),
 
+  firstName: z
+    .string()
+    .min(1, 'Primeiro nome deve ter pelo menos 1 caractere')
+    .max(100, 'Primeiro nome deve ter no máximo 100 caracteres')
+    .trim()
+    .optional(),
+
+  lastName: z
+    .string()
+    .min(1, 'Sobrenome deve ter pelo menos 1 caractere')
+    .max(100, 'Sobrenome deve ter no máximo 100 caracteres')
+    .trim()
+    .optional(),
+
+  companyName: z
+    .string()
+    .min(1, 'Nome da empresa deve ter pelo menos 1 caractere')
+    .max(200, 'Nome da empresa deve ter no máximo 200 caracteres')
+    .trim()
+    .optional(),
+
+  designation: z
+    .string()
+    .min(1, 'Cargo deve ter pelo menos 1 caractere')
+    .max(100, 'Cargo deve ter no máximo 100 caracteres')
+    .trim()
+    .optional(),
+
   metadata: z
     .record(z.any())
     .optional()
@@ -72,6 +100,38 @@ export const updateContactSchema = z.object({
     .url('URL da foto de perfil inválida')
     .optional()
     .nullable(),
+
+  firstName: z
+    .string()
+    .min(1, 'Primeiro nome deve ter pelo menos 1 caractere')
+    .max(100, 'Primeiro nome deve ter no máximo 100 caracteres')
+    .trim()
+    .nullable()
+    .optional(),
+
+  lastName: z
+    .string()
+    .min(1, 'Sobrenome deve ter pelo menos 1 caractere')
+    .max(100, 'Sobrenome deve ter no máximo 100 caracteres')
+    .trim()
+    .nullable()
+    .optional(),
+
+  companyName: z
+    .string()
+    .min(1, 'Nome da empresa deve ter pelo menos 1 caractere')
+    .max(200, 'Nome da empresa deve ter no máximo 200 caracteres')
+    .trim()
+    .nullable()
+    .optional(),
+
+  designation: z
+    .string()
+    .min(1, 'Cargo deve ter pelo menos 1 caractere')
+    .max(100, 'Cargo deve ter no máximo 100 caracteres')
+    .trim()
+    .nullable()
+    .optional(),
 
   metadata: z
     .record(z.any())
@@ -113,10 +173,11 @@ export const listContactsSchema = z.object({
   search: z
     .string()
     .trim()
+    .max(200, 'Busca deve ter no maximo 200 caracteres')
     .optional(),
 
   sortBy: z
-    .enum(['name', 'createdAt', 'updatedAt', 'phoneNumber'])
+    .enum(['name', 'createdAt', 'updatedAt', 'phoneNumber', 'firstName', 'lastName', 'companyName'])
     .default('createdAt')
     .optional(),
 
@@ -168,6 +229,10 @@ export const bulkImportContactsSchema = z.object({
           .max(15)
           .regex(/^\d+$/),
         name: z.string().min(1).max(100).optional(),
+        firstName: z.string().min(1).max(100).trim().optional(),
+        lastName: z.string().min(1).max(100).trim().optional(),
+        companyName: z.string().min(1).max(200).trim().optional(),
+        designation: z.string().min(1).max(100).trim().optional(),
         email: z.string().email().optional(),
         metadata: z.record(z.any()).optional(),
       })
@@ -179,4 +244,7 @@ export const bulkImportContactsSchema = z.object({
 export type CreateContactInput = z.infer<typeof createContactSchema>;
 export type UpdateContactInput = z.infer<typeof updateContactSchema>;
 export type ListContactsQuery = z.infer<typeof listContactsSchema>;
+export type GetContactByIdInput = z.infer<typeof getContactByIdSchema>;
+export type DeleteContactInput = z.infer<typeof deleteContactSchema>;
+export type GetContactByPhoneInput = z.infer<typeof getContactByPhoneSchema>;
 export type BulkImportInput = z.infer<typeof bulkImportContactsSchema>;
