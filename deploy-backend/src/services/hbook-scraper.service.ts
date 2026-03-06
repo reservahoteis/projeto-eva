@@ -46,6 +46,7 @@ export interface AvailabilityResult {
   children?: number;
   childrenAges?: number[];
   rooms: AvailableRoom[];
+  unavailabilityReason?: string;
   scrapedAt: string;
   error?: string;
 }
@@ -138,6 +139,119 @@ class HBookScraperService {
       }
       this.browser = null;
       this.activePages = 0;
+    }
+  }
+
+  /**
+   * Extrai mensagem de indisponibilidade da pagina do HBook.
+   * Procura alertas, mensagens de restricao (ex: estadia minima) e textos de erro.
+   */
+  private async extractUnavailabilityReason(page: Page): Promise<string | undefined> {
+    try {
+      const reason = await page.evaluate(() => {
+        /* eslint-disable @typescript-eslint/no-explicit-any */
+        const messages: string[] = [];
+
+        // 1. Tentar via Knockout ViewModel (UnavailabilityMessage, ValidationMessage, etc.)
+        try {
+          // @ts-expect-error - window existe no contexto do browser (page.evaluate)
+          const ko = (window as any).ko;
+          if (ko) {
+            // @ts-expect-error - document existe no contexto do browser (page.evaluate)
+            const viewModel = ko.dataFor((document as any).body);
+            if (viewModel) {
+              const vmFields = [
+                'UnavailabilityMessage', 'ValidationMessage', 'ErrorMessage',
+                'NoAvailabilityMessage', 'Message', 'WarningMessage',
+                'MinimumStayMessage', 'RestrictionMessage',
+              ];
+              for (const field of vmFields) {
+                const val = typeof viewModel[field] === 'function'
+                  ? viewModel[field]()
+                  : viewModel[field];
+                if (val && typeof val === 'string' && val.trim().length > 0) {
+                  messages.push(val.trim());
+                }
+              }
+
+              // Verificar MinimumStay / MinNights no ViewModel
+              if (typeof viewModel.MinimumStay === 'function') {
+                const minStay = viewModel.MinimumStay();
+                if (minStay && Number(minStay) > 0) {
+                  messages.push(`Estadia mínima de ${minStay} diária(s)`);
+                }
+              }
+            }
+          }
+        } catch {
+          // Knockout nao disponivel
+        }
+
+        // 2. Extrair do DOM - alertas, mensagens de erro, restricoes
+        const selectors = [
+          '.alert', '.alert-warning', '.alert-danger', '.alert-info',
+          '.no-availability', '.no-rooms', '.unavailable-message',
+          '.validation-message', '.error-message', '.warning-message',
+          '.restriction-message', '.minimum-stay',
+          '[data-bind*="Message"]', '[data-bind*="message"]',
+          '[data-bind*="Unavailab"]', '[data-bind*="Warning"]',
+          '[data-bind*="Validation"]', '[data-bind*="MinimumStay"]',
+          '.booking-message', '.availability-message',
+        ];
+
+        for (const selector of selectors) {
+          // @ts-expect-error - document existe no contexto do browser (page.evaluate)
+          const elements = (document as any).querySelectorAll(selector);
+          elements.forEach((el: any) => {
+            const text = el.textContent?.trim();
+            if (text && text.length > 5 && text.length < 500) {
+              // Evitar duplicatas
+              if (!messages.includes(text)) {
+                messages.push(text);
+              }
+            }
+          });
+        }
+
+        // 3. Procurar texto visivel que mencione restricoes comuns
+        if (messages.length === 0) {
+          // @ts-expect-error - document existe no contexto do browser (page.evaluate)
+          const body = (document as any).body?.innerText || '';
+          const patterns = [
+            /estadia\s+m[ií]nima\s+de\s+\d+\s+di[aá]ria/i,
+            /m[ií]nimo\s+de\s+\d+\s+noite/i,
+            /n[aã]o\s+h[aá]\s+disponibilidade/i,
+            /indispon[ií]vel\s+para\s+as?\s+data/i,
+            /per[ií]odo\s+m[ií]nimo/i,
+            /check-?in\s+n[aã]o\s+dispon[ií]vel/i,
+            /sem\s+disponibilidade/i,
+            /closed|fechado/i,
+          ];
+          for (const pattern of patterns) {
+            const match = body.match(pattern);
+            if (match) {
+              // Pegar contexto ao redor do match (ate 150 chars)
+              const idx = body.indexOf(match[0]);
+              const start = Math.max(0, idx - 20);
+              const end = Math.min(body.length, idx + match[0].length + 80);
+              const context = body.substring(start, end).trim();
+              messages.push(context);
+              break;
+            }
+          }
+        }
+        /* eslint-enable @typescript-eslint/no-explicit-any */
+
+        return messages.length > 0 ? messages.join(' | ') : null;
+      });
+
+      return reason || undefined;
+    } catch (err) {
+      logger.warn(
+        { err: err instanceof Error ? err.message : 'Unknown' },
+        'HBook Scraper: Failed to extract unavailability reason'
+      );
+      return undefined;
     }
   }
 
@@ -316,10 +430,20 @@ class HBookScraperService {
         return extractedRooms;
       });
 
+      // Se nao encontrou quartos, fazer rescraping para capturar motivo de indisponibilidade
+      let unavailabilityReason: string | undefined;
+      if (rooms.length === 0 && page) {
+        unavailabilityReason = await this.extractUnavailabilityReason(page);
+        if (unavailabilityReason) {
+          logger.info({ unidade, unavailabilityReason }, 'HBook Scraper: Unavailability reason found');
+        }
+      }
+
       logger.info({
         unidade,
         companyId,
         roomsFound: rooms.length,
+        unavailabilityReason,
       }, 'HBook Scraper: Availability check completed');
 
       return {
@@ -332,6 +456,7 @@ class HBookScraperService {
         children,
         childrenAges,
         rooms,
+        unavailabilityReason,
         scrapedAt: new Date().toISOString(),
       };
     } catch (error: any) {
