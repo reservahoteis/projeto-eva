@@ -267,7 +267,10 @@ async function handleCheckAvailability(args: Record<string, unknown>): Promise<s
   if (disponiveis.length === 0) {
     return JSON.stringify({
       disponivel: false,
-      message: 'Infelizmente nao ha quartos disponiveis para as datas selecionadas.',
+      motivo: result.unavailabilityReason || null,
+      message: result.unavailabilityReason
+        ? `Nao ha quartos disponiveis: ${result.unavailabilityReason}`
+        : 'Infelizmente nao ha quartos disponiveis para as datas selecionadas.',
     });
   }
 
