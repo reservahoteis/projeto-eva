@@ -28,9 +28,9 @@ router.use(requireTenant);
 router.get('/', validate(listQuickRepliesQuerySchema, 'query'), listQuickReplies);
 router.get('/:id', validate(getQuickReplyByIdParamsSchema, 'params'), getQuickReplyById);
 
-// WRITE: Apenas admins
-router.post('/', authorize(['SUPER_ADMIN', 'TENANT_ADMIN']), validate(createQuickReplySchema), createQuickReply);
-router.patch('/:id', authorize(['SUPER_ADMIN', 'TENANT_ADMIN']), validate(updateQuickReplyParamsSchema, 'params'), validate(updateQuickReplyBodySchema), updateQuickReply);
-router.delete('/:id', authorize(['SUPER_ADMIN', 'TENANT_ADMIN']), validate(deleteQuickReplyParamsSchema, 'params'), deleteQuickReply);
+// WRITE: Admins, Head e Sales
+router.post('/', authorize(['SUPER_ADMIN', 'TENANT_ADMIN', 'HEAD', 'SALES']), validate(createQuickReplySchema), createQuickReply);
+router.patch('/:id', authorize(['SUPER_ADMIN', 'TENANT_ADMIN', 'HEAD', 'SALES']), validate(updateQuickReplyParamsSchema, 'params'), validate(updateQuickReplyBodySchema), updateQuickReply);
+router.delete('/:id', authorize(['SUPER_ADMIN', 'TENANT_ADMIN', 'HEAD', 'SALES']), validate(deleteQuickReplyParamsSchema, 'params'), deleteQuickReply);
 
 export default router;

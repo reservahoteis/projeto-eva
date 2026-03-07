@@ -265,11 +265,17 @@ async function handleCheckAvailability(args: Record<string, unknown>): Promise<s
   const disponiveis = result.rooms.filter((r) => r.available && (r.price ?? 0) > 0);
 
   if (disponiveis.length === 0) {
+    // Sanitizar reason antes de enviar pro OpenAI (previne prompt injection indireto)
+    const rawReason = result.unavailabilityReason;
+    const safeReason = rawReason
+      ? rawReason.replace(/[<>\[\]{}|#`]/g, '').substring(0, 200).trim()
+      : null;
+
     return JSON.stringify({
       disponivel: false,
-      motivo: result.unavailabilityReason || null,
-      message: result.unavailabilityReason
-        ? `Nao ha quartos disponiveis: ${result.unavailabilityReason}`
+      motivo: safeReason,
+      message: safeReason
+        ? `Nao ha quartos disponiveis: ${safeReason}`
         : 'Infelizmente nao ha quartos disponiveis para as datas selecionadas.',
     });
   }

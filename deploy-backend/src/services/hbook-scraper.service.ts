@@ -400,8 +400,8 @@ class HBookScraperService {
               }
             }
           }
-        } catch (e) {
-          console.error('Error accessing Knockout ViewModel:', e);
+        } catch {
+          // ViewModel not available, fallback to DOM extraction
         }
 
         // Fallback: tentar extrair do DOM se não conseguiu pelo ViewModel
@@ -459,11 +459,12 @@ class HBookScraperService {
         unavailabilityReason,
         scrapedAt: new Date().toISOString(),
       };
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       logger.error({
         unidade,
         companyId,
-        error: error.message,
+        error: errorMessage,
       }, 'HBook Scraper: Failed to check availability');
 
       return {
@@ -477,7 +478,7 @@ class HBookScraperService {
         childrenAges,
         rooms: [],
         scrapedAt: new Date().toISOString(),
-        error: error.message,
+        error: errorMessage,
       };
     } finally {
       if (page) {
