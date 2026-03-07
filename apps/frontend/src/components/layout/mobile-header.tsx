@@ -48,7 +48,7 @@ const tenantNavigation: NavigationItem[] = [
   { name: 'Contatos', href: '/dashboard/contacts', icon: Phone, adminOnly: true }, // HEAD não pode ver
   { name: 'Usuários', href: '/dashboard/users', icon: Users, adminOnly: true },
   { name: 'Tags', href: '/dashboard/tags', icon: Tag, adminOnly: true },
-  { name: 'Respostas Rapidas', href: '/dashboard/quick-replies', icon: Zap, adminOnly: true },
+  { name: 'Respostas Rapidas', href: '/dashboard/quick-replies', icon: Zap, adminOnly: false },
   { name: 'Relatórios', href: '/dashboard/reports', icon: BarChart3, adminOnly: true },
   { name: 'Logs', href: '/dashboard/logs', icon: ScrollText, adminOnly: true },
   { name: 'Configurações', href: '/dashboard/settings', icon: Settings, adminOnly: true },

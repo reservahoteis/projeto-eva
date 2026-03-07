@@ -732,7 +732,7 @@ function QuickRepliesPageContent() {
 
 export default function QuickRepliesPage() {
   return (
-    <ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.TENANT_ADMIN]}>
+    <ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.TENANT_ADMIN, UserRole.HEAD, UserRole.SALES]}>
       <QuickRepliesPageContent />
     </ProtectedRoute>
   );

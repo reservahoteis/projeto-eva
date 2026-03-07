@@ -81,7 +81,7 @@ const navigation = [
     name: 'Respostas Rapidas',
     href: '/dashboard/quick-replies',
     icon: Zap,
-    adminOnly: true,
+    adminOnly: false,
   },
   {
     name: 'Relatórios',
