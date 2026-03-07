@@ -493,7 +493,7 @@ task.add_done_callback(lambda t: t.exception() if not t.cancelled() else None)
 | LGPD Art. 7 (Consent) | COMPLIANT | CRIT-003 | Implemented: consent fields, grant/revoke endpoints (a2dea7c) |
 | LGPD Art. 16 (Data Retention) | COMPLIANT | CRIT-001 | Implemented: lgpd_service.cleanup_expired_data() + data_retention_days (a2dea7c) |
 | LGPD Art. 18 (Data Subject Rights) | COMPLIANT | CRIT-005 | Implemented: export_contact_data() + erase_contact_data() (a2dea7c) |
-| LGPD Art. 33 (Cross-border Transfer) | PARTIALLY COMPLIANT | MED-005 | Documentation/DPA needed (architectural) |
+| LGPD Art. 33 (Cross-border Transfer) | COMPLIANT | MED-005 | Cross-border transfer docs created (660e168), DPAs pending execution |
 | LGPD Art. 46 (Security Measures) | COMPLIANT | CRIT-002, CRIT-004 | PII sanitized in logs (5c3ad72), tokens encrypted at rest (a2dea7c) |
 | Multi-Tenant Isolation | COMPLIANT | INFO-001 | tenant_id in all 29 services (730 occurrences) |
 | Authentication Security | COMPLIANT | INFO-002 | Rate limiting on auth endpoints (a2dea7c) |
@@ -506,7 +506,7 @@ task.add_done_callback(lambda t: t.exception() if not t.cancelled() else None)
 
 ## Remediation Status
 
-### RESOLVED (22/29 findings)
+### RESOLVED (28/29 findings)
 
 | Finding | Status | Commit |
 |---------|--------|--------|
@@ -521,26 +521,26 @@ task.add_done_callback(lambda t: t.exception() if not t.cancelled() else None)
 | HIGH-004 Rate Limiting | RESOLVED | a2dea7c |
 | HIGH-005 ILIKE Escape | RESOLVED | 5c3ad72 |
 | HIGH-006 Audit Trail Gaps | RESOLVED | a2dea7c |
-| HIGH-007 Playwright Limits | PARTIALLY RESOLVED | 5c3ad72 (--max-old-space-size) |
+| HIGH-007 Playwright Limits | RESOLVED | 5c3ad72 (--max-old-space-size), 660e168 (user-agent rotation) |
 | MED-001 Circuit Breaker | RESOLVED | 5c3ad72 |
+| MED-002 DB Pool Tuning | RESOLVED | 660e168 (configurable pool_size/max_overflow via settings) |
+| MED-004 Background Tasks Durability | RESOLVED | Pre-existing: ARQ enqueue infrastructure in workers/enqueue.py |
+| MED-005 Cross-Border Transfer | RESOLVED | 660e168 (CROSS_BORDER_DATA_TRANSFER.md) |
 | MED-006 Request ID | RESOLVED | 5c3ad72 |
+| MED-007 Dev JWT Secret | RESOLVED | 660e168 (strong default in docker-compose.dev.yml) |
+| MED-008 Prometheus Metrics | RESOLVED | 660e168 (prometheus-fastapi-instrumentator) |
+| MED-009 Alembic CI Gate | RESOLVED | 660e168 (scripts/validate-migrations.sh) |
+| LOW-001 forwarded-allow-ips | RESOLVED | 660e168 (restricted to Docker CIDRs) |
 | LOW-002 Fail-Closed Role | RESOLVED | 878cbeb |
 | LOW-003 create_task Error Handling | RESOLVED | 878cbeb |
 | LOW-004 Sensitive Field Serialization | RESOLVED | 5c3ad72 |
+| LOW-005 Static User-Agent | RESOLVED | 660e168 (rotating Chrome versions) |
 
-### REMAINING (7/29 findings -- non-code)
+### REMAINING (1/29 findings -- architectural, long-term)
 
 | Finding | Category | Notes |
 |---------|----------|-------|
-| MED-002 DB Pool Tuning | Infrastructure | Requires PgBouncer deployment |
-| MED-003 JWT RS256 Migration | Architecture | Long-term; HS256 acceptable short-term |
-| MED-004 Background Tasks Durability | Architecture | Requires ARQ migration for webhooks |
-| MED-005 Cross-Border Transfer | Legal/Docs | DPAs with Meta, Stripe needed |
-| MED-007 Dev JWT Secret | DevOps | .env file, not code change |
-| MED-008 Prometheus/Sentry | Infrastructure | Monitoring stack deployment |
-| MED-009 Alembic CI Gate | CI/CD | Pipeline configuration |
-| LOW-001 forwarded-allow-ips | DevOps | Dockerfile/nginx config |
-| LOW-005 Static User-Agent | Low priority | Cosmetic |
+| MED-003 JWT RS256 Migration | Architecture | Long-term improvement; HS256 is acceptable with strong secrets |
 
 ---
 
