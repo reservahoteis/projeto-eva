@@ -28,6 +28,19 @@ from app.models.pivot_tables import DealContact, LeadProduct, DealProduct
 from app.models.tag import Tag
 from app.models.quick_reply import QuickReply
 
+# Messaging pipeline models — import order matters: pivot table first so
+# Conversation can reference ConversationTag.__table__ without forward-ref issues.
+from app.models.conversation_tag import ConversationTag
+from app.models.conversation import Conversation
+from app.models.message import Message
+from app.models.escalation import Escalation
+from app.models.media_file import MediaFile
+
+# Operational / observability models
+from app.models.webhook_event import WebhookEvent
+from app.models.usage_tracking import UsageTracking
+from app.models.audit_log import AuditLog
+
 __all__ = [
     "TenantBase",
     "Tenant",
@@ -62,4 +75,14 @@ __all__ = [
     "DealProduct",
     "Tag",
     "QuickReply",
+    # Messaging pipeline
+    "ConversationTag",
+    "Conversation",
+    "Message",
+    "Escalation",
+    "MediaFile",
+    # Operational / observability
+    "WebhookEvent",
+    "UsageTracking",
+    "AuditLog",
 ]

@@ -22,6 +22,14 @@ class Settings(BaseSettings):
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
+    # Webhook verification tokens (set per environment)
+    # WhatsApp: each tenant stores its own verify token in the DB.
+    # Messenger / Instagram use a single shared token configured here.
+    MESSENGER_WEBHOOK_VERIFY_TOKEN: str | None = None
+    MESSENGER_PAGE_ID: str | None = None          # fallback for single-tenant dev
+    INSTAGRAM_WEBHOOK_VERIFY_TOKEN: str | None = None
+    INSTAGRAM_ACCOUNT_ID: str | None = None       # fallback for single-tenant dev
+
     # CORS
     CORS_ORIGINS: list[str] = [
         "http://localhost:3000",
