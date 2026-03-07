@@ -86,4 +86,4 @@ CMD ["uvicorn", "app.main:app", \
      "--host", "0.0.0.0", \
      "--port", "8001", \
      "--workers", "1", \
-     "--forwarded-allow-ips", "*"]
+     "--forwarded-allow-ips", "172.16.0.0/12,10.0.0.0/8,192.168.0.0/16"]

@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/crm_dev"
     DATABASE_ECHO: bool = False
+    DATABASE_POOL_SIZE: int = 20
+    DATABASE_MAX_OVERFLOW: int = 10
 
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"

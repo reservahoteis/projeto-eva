@@ -12,8 +12,8 @@ _engine_kwargs: dict = {
 # SQLite (used in tests) does not support pool_size / max_overflow / pool_pre_ping
 if not settings.DATABASE_URL.startswith("sqlite"):
     _engine_kwargs.update(
-        pool_size=20,
-        max_overflow=10,
+        pool_size=settings.DATABASE_POOL_SIZE,
+        max_overflow=settings.DATABASE_MAX_OVERFLOW,
         pool_pre_ping=True,
     )
 

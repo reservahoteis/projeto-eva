@@ -97,6 +97,20 @@ async def security_headers_middleware(request: Request, call_next):
 app.mount("/ws", socket_app)
 
 
+# ---------------------------------------------------------------------------
+# Prometheus metrics (MED-008) — /metrics endpoint for scraping
+# ---------------------------------------------------------------------------
+try:
+    from prometheus_fastapi_instrumentator import Instrumentator
+    Instrumentator(
+        should_group_status_codes=True,
+        should_ignore_untemplated=True,
+        excluded_handlers=["/health", "/health/ready", "/metrics"],
+    ).instrument(app).expose(app, include_in_schema=False)
+except ImportError:
+    pass  # prometheus-fastapi-instrumentator not installed (dev/test)
+
+
 @app.get("/health")
 async def health():
     """Liveness probe — always returns 200 if the process is running."""

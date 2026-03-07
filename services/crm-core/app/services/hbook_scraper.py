@@ -328,11 +328,13 @@ class HBookScraperService:
             browser = await self._get_browser()
             page = await browser.new_page()
 
+            import random as _random
+            _chrome_version = _random.choice(["124.0.6367.91", "125.0.6422.60", "126.0.6478.55", "127.0.6533.73"])
             await page.set_extra_http_headers({
                 "User-Agent": (
                     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                     "AppleWebKit/537.36 (KHTML, like Gecko) "
-                    "Chrome/120.0.0.0 Safari/537.36"
+                    f"Chrome/{_chrome_version} Safari/537.36"
                 ),
             })
             await page.set_viewport_size({"width": 1920, "height": 1080})
