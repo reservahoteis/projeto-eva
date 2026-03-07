@@ -16,7 +16,7 @@ import uuid
 from typing import Annotated
 
 import structlog
-from fastapi import APIRouter, Depends, Query, Request, status
+from fastapi import APIRouter, Depends, Query, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -158,7 +158,7 @@ async def report_client_error(
     db: DB,
     current_user: CurrentUser,
     tenant_id: TenantId,
-) -> None:
+) -> Response:
     # Resolve client IP for the audit trail
     forwarded_for = request.headers.get("X-Forwarded-For")
     ip_address = forwarded_for.split(",")[0].strip() if forwarded_for else (
@@ -179,3 +179,4 @@ async def report_client_error(
         },
         ip_address=ip_address,
     )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

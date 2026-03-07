@@ -341,7 +341,7 @@ class SetHotelUnitRequest(BaseModel):
     def resolved_phone(self) -> str:
         return self.phone or self.phone_number or ""
 
-    @field_validator("hotel_unit", alias="hotelUnit", mode="before")
+    @field_validator("hotel_unit", mode="before")
     @classmethod
     def validate_hotel_unit(cls, v: str) -> str:
         if v not in VALID_HOTEL_UNITS:

@@ -60,7 +60,11 @@ def _generate_temp_password() -> str:
 
 
 def _tenant_to_dict(tenant: Tenant) -> dict[str, Any]:
-    """Serialise a Tenant ORM object to a plain dict for response building."""
+    """Serialise a Tenant ORM object to a plain dict for response building.
+
+    Sensitive token fields are replaced with boolean presence flags (LOW-004)
+    to prevent accidental exposure in API responses or error messages.
+    """
     return {
         "id": tenant.id,
         "name": tenant.name,
@@ -69,8 +73,11 @@ def _tenant_to_dict(tenant: Tenant) -> dict[str, Any]:
         "status": tenant.status,
         "logo_url": tenant.logo_url,
         "whatsapp_phone_number_id": tenant.whatsapp_phone_number_id,
+        "whatsapp_access_token_configured": bool(tenant.whatsapp_access_token),
         "instagram_page_id": tenant.instagram_page_id,
+        "instagram_access_token_configured": bool(tenant.instagram_access_token),
         "messenger_page_id": tenant.messenger_page_id,
+        "messenger_access_token_configured": bool(tenant.messenger_access_token),
         "stripe_customer_id": tenant.stripe_customer_id,
         "stripe_subscription_id": tenant.stripe_subscription_id,
         "currency": tenant.currency,

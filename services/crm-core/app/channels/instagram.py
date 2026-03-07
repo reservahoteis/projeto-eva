@@ -100,16 +100,12 @@ class InstagramAdapter(ChannelAdapter):
             external_id = self._extract_message_id(data)
             self._log.info(
                 "[INSTAGRAM SEND] send_text OK",
-                to=recipient_id,
-                text_preview=text[:80],
                 external_message_id=external_id,
             )
             return SendResult(external_message_id=external_id, success=True)
         except Exception as exc:
             self._log.error(
                 "[INSTAGRAM SEND] send_text FAILED",
-                to=recipient_id,
-                text_preview=text[:80],
                 error=str(exc),
             )
             raise InternalServerError(f"Falha ao enviar mensagem Instagram: {exc}") from exc
@@ -130,7 +126,7 @@ class InstagramAdapter(ChannelAdapter):
         if media_type != "image":
             self._log.info(
                 "[INSTAGRAM SEND] send_media degrading to text (unsupported type)",
-                to=recipient_id,
+                recipient_masked=recipient_id[:6] + "***" if len(recipient_id) > 6 else "***",
                 media_type=media_type,
                 degraded_to="text+url",
             )
@@ -158,7 +154,7 @@ class InstagramAdapter(ChannelAdapter):
 
             self._log.info(
                 "[INSTAGRAM SEND] send_media OK",
-                to=recipient_id,
+                recipient_masked=recipient_id[:6] + "***" if len(recipient_id) > 6 else "***",
                 media_type="image",
                 has_caption=bool(caption),
                 external_message_id=external_id,
@@ -167,7 +163,7 @@ class InstagramAdapter(ChannelAdapter):
         except Exception as exc:
             self._log.error(
                 "[INSTAGRAM SEND] send_media FAILED",
-                to=recipient_id,
+                recipient_masked=recipient_id[:6] + "***" if len(recipient_id) > 6 else "***",
                 media_type=media_type,
                 error=str(exc),
             )
@@ -205,7 +201,7 @@ class InstagramAdapter(ChannelAdapter):
             external_id = self._extract_message_id(data)
             self._log.info(
                 "[INSTAGRAM SEND] send_buttons OK (Button Template)",
-                to=recipient_id,
+                recipient_masked=recipient_id[:6] + "***" if len(recipient_id) > 6 else "***",
                 button_count=len(buttons),
                 external_message_id=external_id,
             )
@@ -214,7 +210,7 @@ class InstagramAdapter(ChannelAdapter):
             # Fallback: numbered text when Button Template is rejected
             self._log.warning(
                 "[INSTAGRAM SEND] send_buttons Button Template failed — degrading to text",
-                to=recipient_id,
+                recipient_masked=recipient_id[:6] + "***" if len(recipient_id) > 6 else "***",
                 button_count=len(buttons),
                 error=str(exc),
             )
@@ -268,7 +264,7 @@ class InstagramAdapter(ChannelAdapter):
             external_id = self._extract_message_id(data)
             self._log.info(
                 "[INSTAGRAM SEND] send_generic_template OK",
-                to=recipient_id,
+                recipient_masked=recipient_id[:6] + "***" if len(recipient_id) > 6 else "***",
                 element_count=len(elements),
                 external_message_id=external_id,
             )
@@ -276,7 +272,7 @@ class InstagramAdapter(ChannelAdapter):
         except Exception as exc:
             self._log.error(
                 "[INSTAGRAM SEND] send_generic_template FAILED",
-                to=recipient_id,
+                recipient_masked=recipient_id[:6] + "***" if len(recipient_id) > 6 else "***",
                 element_count=len(elements),
                 error=str(exc),
             )
@@ -309,7 +305,7 @@ class InstagramAdapter(ChannelAdapter):
             external_id = self._extract_message_id(data)
             self._log.info(
                 "[INSTAGRAM SEND] send_quick_replies OK",
-                to=recipient_id,
+                recipient_masked=recipient_id[:6] + "***" if len(recipient_id) > 6 else "***",
                 quick_reply_count=len(quick_replies),
                 external_message_id=external_id,
             )
@@ -317,7 +313,7 @@ class InstagramAdapter(ChannelAdapter):
         except Exception as exc:
             self._log.error(
                 "[INSTAGRAM SEND] send_quick_replies FAILED",
-                to=recipient_id,
+                recipient_masked=recipient_id[:6] + "***" if len(recipient_id) > 6 else "***",
                 quick_reply_count=len(quick_replies),
                 error=str(exc),
             )
@@ -346,7 +342,7 @@ class InstagramAdapter(ChannelAdapter):
         text = f"[Template: {template_name}]{param_text}"
         self._log.info(
             "[INSTAGRAM SEND] send_template degraded to text",
-            to=recipient_id,
+            recipient_masked=recipient_id[:6] + "***" if len(recipient_id) > 6 else "***",
             template_name=template_name,
         )
         return await self.send_text(recipient_id, text)

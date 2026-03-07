@@ -84,7 +84,4 @@ class Contact(TenantBase):
     )
 
     def __repr__(self) -> str:
-        return (
-            f"<Contact id={self.id} full_name={self.full_name!r} "
-            f"email={self.email!r} tenant_id={self.tenant_id}>"
-        )
+        return f"<Contact id={self.id} tenant_id={self.tenant_id}>"

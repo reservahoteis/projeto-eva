@@ -96,6 +96,7 @@ class HBookScraperService:
                         "--disable-accelerated-2d-canvas",
                         "--disable-gpu",
                         "--single-process",
+                        "--js-flags=--max-old-space-size=256",
                     ],
                 )
                 self._browser.on(

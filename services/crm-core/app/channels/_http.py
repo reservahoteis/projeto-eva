@@ -19,6 +19,8 @@ from typing import Any
 import httpx
 import structlog
 
+from app.core.circuit_breaker import CircuitBreaker, CircuitOpenError
+
 logger = structlog.get_logger()
 
 _MAX_RETRIES = 3
@@ -26,6 +28,20 @@ _BASE_DELAY = 1.0   # seconds
 _MAX_DELAY = 15.0   # seconds
 
 _RETRYABLE_STATUS = {429, 502, 503, 504}
+
+# Per-service circuit breakers — shared across all adapter instances
+_circuit_breakers: dict[str, CircuitBreaker] = {}
+
+
+def get_circuit_breaker(name: str) -> CircuitBreaker:
+    """Return (or create) a named circuit breaker."""
+    if name not in _circuit_breakers:
+        _circuit_breakers[name] = CircuitBreaker(
+            name,
+            failure_threshold=5,
+            recovery_timeout=30.0,
+        )
+    return _circuit_breakers[name]
 
 
 def mask_token(token: str) -> str:
@@ -52,30 +68,35 @@ async def retry_request(
     log_prefix: str = "HTTP",
     **kwargs: Any,
 ) -> httpx.Response:
-    """Execute an HTTP request with exponential backoff retry.
+    """Execute an HTTP request with exponential backoff retry and circuit breaker.
 
     Raises httpx.HTTPStatusError for non-retryable 4xx/5xx on final attempt.
     Raises httpx.RequestError for network-level failures on final attempt.
+    Raises CircuitOpenError if the circuit breaker is open.
     """
+    cb = get_circuit_breaker(log_prefix)
     last_exc: Exception | None = None
 
     for attempt in range(_MAX_RETRIES + 1):
         try:
-            response = await client.request(method, url, **kwargs)
+            async with cb:
+                response = await client.request(method, url, **kwargs)
 
-            if response.status_code in _RETRYABLE_STATUS and attempt < _MAX_RETRIES:
-                delay = _jitter_delay(attempt)
-                logger.warning(
-                    f"[{log_prefix}] HTTP {response.status_code} — retrying in {delay:.1f}s",
-                    attempt=attempt + 1,
-                    max_retries=_MAX_RETRIES,
-                    url=url,
-                )
-                await asyncio.sleep(delay)
-                continue
+                if response.status_code in _RETRYABLE_STATUS and attempt < _MAX_RETRIES:
+                    delay = _jitter_delay(attempt)
+                    logger.warning(
+                        f"[{log_prefix}] HTTP {response.status_code} — retrying in {delay:.1f}s",
+                        attempt=attempt + 1,
+                        max_retries=_MAX_RETRIES,
+                    )
+                    await asyncio.sleep(delay)
+                    continue
 
-            response.raise_for_status()
-            return response
+                response.raise_for_status()
+                return response
+
+        except CircuitOpenError:
+            raise
 
         except httpx.RequestError as exc:
             last_exc = exc
@@ -85,7 +106,6 @@ async def retry_request(
                     f"[{log_prefix}] Network error ({exc.__class__.__name__}) — retrying in {delay:.1f}s",
                     attempt=attempt + 1,
                     max_retries=_MAX_RETRIES,
-                    url=url,
                 )
                 await asyncio.sleep(delay)
                 continue

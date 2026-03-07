@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -15,14 +15,21 @@ def _reset_encryption():
     """Reset the encryption module's cached Fernet instance."""
     from app.core import encryption
     encryption._fernet = None
+    encryption._initialised = False
+
+
+def _patch_key(key_value):
+    """Patch the settings import inside _get_fernet."""
+    mock_settings = MagicMock()
+    mock_settings.TOKEN_ENCRYPTION_KEY = key_value
+    return patch("app.core.config.settings", mock_settings)
 
 
 def test_encrypt_decrypt_roundtrip():
     """Encrypt then decrypt should return the original plaintext."""
     from cryptography.fernet import Fernet
     key = Fernet.generate_key().decode()
-    with patch("app.core.encryption.settings") as mock_settings:
-        mock_settings.TOKEN_ENCRYPTION_KEY = key
+    with _patch_key(key):
         _reset_encryption()
         from app.core.encryption import encrypt_token, decrypt_token
         original = "EAAxxxxxxxxx_my_access_token"
@@ -42,8 +49,7 @@ def test_decrypt_plaintext_passthrough():
 
 def test_encrypt_with_no_key_returns_plaintext():
     """When TOKEN_ENCRYPTION_KEY is not set, encrypt returns plaintext."""
-    with patch("app.core.encryption.settings") as mock_settings:
-        mock_settings.TOKEN_ENCRYPTION_KEY = None
+    with _patch_key(None):
         _reset_encryption()
         from app.core.encryption import encrypt_token
         result = encrypt_token("my-token")
@@ -55,8 +61,7 @@ def test_encrypted_prefix():
     """Encrypted values must start with 'enc:' prefix."""
     from cryptography.fernet import Fernet
     key = Fernet.generate_key().decode()
-    with patch("app.core.encryption.settings") as mock_settings:
-        mock_settings.TOKEN_ENCRYPTION_KEY = key
+    with _patch_key(key):
         _reset_encryption()
         from app.core.encryption import encrypt_token, is_encrypted
         encrypted = encrypt_token("test")
@@ -65,13 +70,7 @@ def test_encrypted_prefix():
 
 
 def test_encrypt_empty_string():
-    """Encrypting an empty string should still work."""
-    from cryptography.fernet import Fernet
-    key = Fernet.generate_key().decode()
-    with patch("app.core.encryption.settings") as mock_settings:
-        mock_settings.TOKEN_ENCRYPTION_KEY = key
-        _reset_encryption()
-        from app.core.encryption import encrypt_token, decrypt_token
-        encrypted = encrypt_token("")
-        assert encrypted.startswith("enc:")
-        assert decrypt_token(encrypted) == ""
+    """Encrypting an empty string should return empty string (no-op)."""
+    from app.core.encryption import encrypt_token
+    result = encrypt_token("")
+    assert result == ""

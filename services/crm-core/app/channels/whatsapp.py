@@ -102,18 +102,18 @@ class WhatsAppAdapter(ChannelAdapter):
         try:
             data = await self._post(payload)
             external_id = self._extract_message_id(data)
+            from app.core.log_sanitizer import mask_phone
             self._log.info(
                 "[WHATSAPP SEND] send_text OK",
-                to=recipient_id,
-                text_preview=text[:80],
+                to_masked=mask_phone(recipient_id),
                 external_message_id=external_id,
             )
             return SendResult(external_message_id=external_id, success=True)
         except Exception as exc:
+            from app.core.log_sanitizer import mask_phone
             self._log.error(
                 "[WHATSAPP SEND] send_text FAILED",
-                to=recipient_id,
-                text_preview=text[:80],
+                to_masked=mask_phone(recipient_id),
                 error=str(exc),
             )
             raise InternalServerError(f"Falha ao enviar mensagem WhatsApp: {exc}") from exc
@@ -150,7 +150,7 @@ class WhatsAppAdapter(ChannelAdapter):
             external_id = self._extract_message_id(data)
             self._log.info(
                 "[WHATSAPP SEND] send_media OK",
-                to=recipient_id,
+                recipient_masked=recipient_id[:6] + "***" if len(recipient_id) > 6 else "***",
                 media_type=media_type,
                 has_caption=bool(caption),
                 external_message_id=external_id,
@@ -159,7 +159,7 @@ class WhatsAppAdapter(ChannelAdapter):
         except Exception as exc:
             self._log.error(
                 "[WHATSAPP SEND] send_media FAILED",
-                to=recipient_id,
+                recipient_masked=recipient_id[:6] + "***" if len(recipient_id) > 6 else "***",
                 media_type=media_type,
                 error=str(exc),
             )
@@ -211,7 +211,7 @@ class WhatsAppAdapter(ChannelAdapter):
             external_id = self._extract_message_id(data)
             self._log.info(
                 "[WHATSAPP SEND] send_buttons OK",
-                to=recipient_id,
+                recipient_masked=recipient_id[:6] + "***" if len(recipient_id) > 6 else "***",
                 button_count=len(buttons),
                 external_message_id=external_id,
             )
@@ -219,7 +219,7 @@ class WhatsAppAdapter(ChannelAdapter):
         except Exception as exc:
             self._log.error(
                 "[WHATSAPP SEND] send_buttons FAILED",
-                to=recipient_id,
+                recipient_masked=recipient_id[:6] + "***" if len(recipient_id) > 6 else "***",
                 button_count=len(buttons),
                 error=str(exc),
             )
@@ -275,7 +275,7 @@ class WhatsAppAdapter(ChannelAdapter):
             total_rows = sum(len(s.rows) for s in sections)
             self._log.info(
                 "[WHATSAPP SEND] send_list OK",
-                to=recipient_id,
+                recipient_masked=recipient_id[:6] + "***" if len(recipient_id) > 6 else "***",
                 total_rows=total_rows,
                 external_message_id=external_id,
             )
@@ -283,7 +283,7 @@ class WhatsAppAdapter(ChannelAdapter):
         except Exception as exc:
             self._log.error(
                 "[WHATSAPP SEND] send_list FAILED",
-                to=recipient_id,
+                recipient_masked=recipient_id[:6] + "***" if len(recipient_id) > 6 else "***",
                 error=str(exc),
             )
             raise InternalServerError(f"Falha ao enviar lista WhatsApp: {exc}") from exc
@@ -315,7 +315,7 @@ class WhatsAppAdapter(ChannelAdapter):
             external_id = self._extract_message_id(data)
             self._log.info(
                 "[WHATSAPP SEND] send_template OK",
-                to=recipient_id,
+                recipient_masked=recipient_id[:6] + "***" if len(recipient_id) > 6 else "***",
                 template_name=template_name,
                 language=language,
                 external_message_id=external_id,
@@ -324,7 +324,7 @@ class WhatsAppAdapter(ChannelAdapter):
         except Exception as exc:
             self._log.error(
                 "[WHATSAPP SEND] send_template FAILED",
-                to=recipient_id,
+                recipient_masked=recipient_id[:6] + "***" if len(recipient_id) > 6 else "***",
                 template_name=template_name,
                 error=str(exc),
             )
@@ -388,7 +388,7 @@ class WhatsAppAdapter(ChannelAdapter):
                 external_id = self._extract_message_id(data)
                 self._log.info(
                     "[WHATSAPP SEND] send_carousel card OK",
-                    to=recipient_id,
+                    recipient_masked=recipient_id[:6] + "***" if len(recipient_id) > 6 else "***",
                     has_image=bool(image_url),
                     external_message_id=external_id,
                 )
@@ -396,7 +396,7 @@ class WhatsAppAdapter(ChannelAdapter):
             except Exception as exc:
                 self._log.error(
                     "[WHATSAPP SEND] send_carousel card FAILED",
-                    to=recipient_id,
+                    recipient_masked=recipient_id[:6] + "***" if len(recipient_id) > 6 else "***",
                     error=str(exc),
                 )
                 results.append(SendResult(external_message_id="", success=False))

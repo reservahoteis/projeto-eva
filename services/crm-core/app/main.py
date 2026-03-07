@@ -23,7 +23,20 @@ logger = structlog.get_logger()
 async def lifespan(app: FastAPI):
     logger.info("CRM Core starting", version=settings.APP_VERSION)
     yield
-    logger.info("CRM Core shutting down")
+    # --- Graceful shutdown (HIGH-001) ---
+    logger.info("CRM Core shutting down — cleaning up resources")
+    try:
+        from app.services.hbook_scraper import hbook_scraper_service
+        await hbook_scraper_service.close_browser()
+    except Exception:
+        pass
+    try:
+        from app.core.database import engine
+        await engine.dispose()
+        logger.info("Database engine disposed")
+    except Exception:
+        pass
+    logger.info("CRM Core shutdown complete")
 
 
 app = FastAPI(
@@ -39,8 +52,16 @@ app.add_middleware(
     allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "Accept", "X-Requested-With", "X-API-Key"],
+    allow_headers=["Authorization", "Content-Type", "Accept", "X-Requested-With", "X-API-Key", "X-Request-ID"],
 )
+
+# ---------------------------------------------------------------------------
+# Request ID middleware (MED-006) — must be added before rate limiting so
+# that the request_id is available in structlog context for all downstream
+# middleware and route handlers.
+# ---------------------------------------------------------------------------
+from app.core.request_id import RequestIDMiddleware  # noqa: E402
+app.add_middleware(RequestIDMiddleware)
 
 # ---------------------------------------------------------------------------
 # Rate limiting middleware (after CORS so preflight requests are not limited)

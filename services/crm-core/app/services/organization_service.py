@@ -102,11 +102,16 @@ def _apply_filters(query, filters: dict[str, Any] | None):
     return query
 
 
+def _escape_ilike(value: str) -> str:
+    """Escape SQL ILIKE wildcard characters to prevent pattern injection."""
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 def _apply_search(query, search: str | None):
     """Append ILIKE search across organization_name and website."""
     if not search:
         return query
-    pattern = f"%{search}%"
+    pattern = f"%{_escape_ilike(search)}%"
     query = query.where(
         or_(
             Organization.organization_name.ilike(pattern),

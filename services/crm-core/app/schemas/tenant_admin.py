@@ -134,8 +134,8 @@ class TenantUpdate(BaseModel):
 class TenantResponse(BaseModel):
     """Complete Tenant representation returned from SUPER_ADMIN endpoints.
 
-    Includes sensitive WhatsApp configuration fields that must never be exposed
-    in tenant-scoped (non-admin) API responses.
+    Sensitive token fields are replaced with boolean presence flags so
+    they are never serialized in API responses (LOW-004).
     """
 
     model_config = ConfigDict(from_attributes=True)
@@ -149,8 +149,12 @@ class TenantResponse(BaseModel):
 
     # WhatsApp Cloud API integration — SUPER_ADMIN only
     whatsapp_phone_number_id: str | None = None
-    whatsapp_access_token: str | None = None
+    whatsapp_access_token_configured: bool = False
     whatsapp_business_account_id: str | None = None
+
+    # Channel token presence flags (never expose raw tokens)
+    instagram_access_token_configured: bool = False
+    messenger_access_token_configured: bool = False
 
     # Timestamps
     created_at: datetime

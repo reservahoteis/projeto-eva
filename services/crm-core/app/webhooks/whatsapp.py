@@ -292,13 +292,14 @@ async def _process_entry(
                             and value.contacts[0].profile
                             else None
                         )
+                        from app.core.log_sanitizer import mask_phone, mask_name
                         logger.info(
                             "whatsapp_webhook.message_received",
                             tenant_id=str(tenant_id),
                             message_id=msg.id,
-                            from_=msg.from_,
+                            from_masked=mask_phone(msg.from_),
                             type=msg.type,
-                            contact_name=contact_name,
+                            contact_name_masked=mask_name(contact_name),
                         )
                         await _persist_webhook_event(
                             tenant_id,
