@@ -27,11 +27,12 @@ import uuid
 from typing import Annotated, Any
 
 import structlog
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.audit import emit_audit_log
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, get_tenant_id, require_roles
 from app.core.exceptions import BadRequestError
@@ -152,13 +153,25 @@ async def create_contact(
     db: DB,
     current_user: CurrentUser,
     tenant_id: TenantId,
+    request: Request,
 ) -> ContactResponse:
     contact = await contact_service.create_contact(
         db=db,
         tenant_id=tenant_id,
         data=payload,
     )
-    return ContactResponse.model_validate(contact)
+    result = ContactResponse.model_validate(contact)
+    await emit_audit_log(
+        db=db,
+        tenant_id=tenant_id,
+        action="CONTACT_CREATED",
+        entity="Contact",
+        entity_id=str(contact.id),
+        user_id=current_user.id,
+        request=request,
+        new_data=result.model_dump(mode="json"),
+    )
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -200,14 +213,29 @@ async def update_contact(
     db: DB,
     current_user: CurrentUser,
     tenant_id: TenantId,
+    request: Request,
 ) -> ContactResponse:
+    old = await contact_service.get_contact(db, tenant_id, contact_id)
+    old_snapshot = ContactResponse.model_validate(old).model_dump(mode="json")
     contact = await contact_service.update_contact(
         db=db,
         tenant_id=tenant_id,
         contact_id=contact_id,
         data=payload,
     )
-    return ContactResponse.model_validate(contact)
+    result = ContactResponse.model_validate(contact)
+    await emit_audit_log(
+        db=db,
+        tenant_id=tenant_id,
+        action="CONTACT_UPDATED",
+        entity="Contact",
+        entity_id=str(contact_id),
+        user_id=current_user.id,
+        request=request,
+        old_data=old_snapshot,
+        new_data=result.model_dump(mode="json"),
+    )
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -224,9 +252,19 @@ async def delete_contact(
     contact_id: uuid.UUID,
     db: DB,
     tenant_id: TenantId,
+    request: Request,
     current_user: User = Depends(require_roles("SUPER_ADMIN", "TENANT_ADMIN", "HEAD", "SALES_MANAGER")),
 ):
     await contact_service.delete_contact(db, tenant_id, contact_id)
+    await emit_audit_log(
+        db=db,
+        tenant_id=tenant_id,
+        action="CONTACT_DELETED",
+        entity="Contact",
+        entity_id=str(contact_id),
+        user_id=current_user.id,
+        request=request,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -314,11 +352,21 @@ async def bulk_delete_contacts(
     body: BulkDeleteRequest,
     db: DB,
     tenant_id: TenantId,
+    request: Request,
     current_user: User = Depends(require_roles("SUPER_ADMIN", "TENANT_ADMIN", "HEAD", "SALES_MANAGER")),
 ) -> BulkDeleteResponse:
     deleted_count = await contact_service.bulk_delete(
         db=db,
         tenant_id=tenant_id,
         contact_ids=body.ids,
+    )
+    await emit_audit_log(
+        db=db,
+        tenant_id=tenant_id,
+        action="CONTACT_BULK_DELETED",
+        entity="Contact",
+        user_id=current_user.id,
+        request=request,
+        new_data={"ids": [str(i) for i in body.ids], "deleted_count": deleted_count},
     )
     return BulkDeleteResponse(deleted_count=deleted_count)

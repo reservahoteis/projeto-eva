@@ -21,6 +21,7 @@ from fastapi import APIRouter, Depends, Query, status
 from fastapi.responses import Response as FastAPIResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.audit import emit_audit_log
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, get_tenant_id, require_roles
 from app.models.user import User
@@ -87,11 +88,16 @@ async def create_user(
     current_user: AdminUser,
     tenant_id: TenantId,
 ) -> UserResponse:
-    return await user_service.create_user(
+    result = await user_service.create_user(
         db=db,
         tenant_id=tenant_id,
         data=body,
     )
+    await emit_audit_log(
+        db=db, tenant_id=tenant_id, action="USER_CREATED",
+        entity="User", entity_id=str(result.id), user_id=current_user.id,
+    )
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -141,13 +147,18 @@ async def update_user(
     current_user: AdminUser,
     tenant_id: TenantId,
 ) -> UserResponse:
-    return await user_service.update_user(
+    result = await user_service.update_user(
         db=db,
         tenant_id=tenant_id,
         user_id=user_id,
         data=body,
         current_user_id=current_user.id,
     )
+    await emit_audit_log(
+        db=db, tenant_id=tenant_id, action="USER_UPDATED",
+        entity="User", entity_id=str(user_id), user_id=current_user.id,
+    )
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -176,5 +187,9 @@ async def deactivate_user(
         tenant_id=tenant_id,
         user_id=user_id,
         current_user_id=current_user.id,
+    )
+    await emit_audit_log(
+        db=db, tenant_id=tenant_id, action="USER_DEACTIVATED",
+        entity="User", entity_id=str(user_id), user_id=current_user.id,
     )
     return FastAPIResponse(status_code=status.HTTP_204_NO_CONTENT)

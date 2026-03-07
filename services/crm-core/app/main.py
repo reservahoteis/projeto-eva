@@ -4,9 +4,13 @@ import structlog
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from app.core.config import settings
 from app.core.exceptions import AppException
+from app.core.rate_limit import limiter
 
 # Socket.io server must be imported before the FastAPI app is built so that
 # the sio instance is created and event handlers are registered at startup.
@@ -37,6 +41,13 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "Accept", "X-Requested-With", "X-API-Key"],
 )
+
+# ---------------------------------------------------------------------------
+# Rate limiting middleware (after CORS so preflight requests are not limited)
+# ---------------------------------------------------------------------------
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 
 
 # ---------------------------------------------------------------------------
@@ -120,6 +131,7 @@ from app.api.v1 import (  # noqa: E402
     audit_logs,
     usage_tracking,
     webhook_events,
+    lgpd,
 )
 from app.webhooks import whatsapp as wa_webhook  # noqa: E402
 from app.webhooks import messenger as msg_webhook  # noqa: E402
@@ -205,6 +217,9 @@ app.include_router(
 )
 app.include_router(
     webhook_events.router, prefix=f"{settings.API_PREFIX}/webhook-events", tags=["Webhook Events"]
+)
+app.include_router(
+    lgpd.router, prefix=f"{settings.API_PREFIX}/lgpd", tags=["LGPD"]
 )
 
 # ---------------------------------------------------------------------------

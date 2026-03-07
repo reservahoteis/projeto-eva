@@ -33,6 +33,7 @@ import structlog
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.audit import emit_audit_log
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, get_tenant_id, require_roles
 from app.core.exceptions import BadRequestError
@@ -228,6 +229,10 @@ async def create_conversation(
         tenant_id=tenant_id,
         data=payload,
     )
+    await emit_audit_log(
+        db=db, tenant_id=tenant_id, action="CONVERSATION_CREATED",
+        entity="Conversation", entity_id=str(conversation.id), user_id=current_user.id,
+    )
     return ConversationResponse.model_validate(conversation)
 
 
@@ -291,6 +296,10 @@ async def update_conversation(
         conversation_id=conversation_id,
         data=payload,
     )
+    await emit_audit_log(
+        db=db, tenant_id=tenant_id, action="CONVERSATION_UPDATED",
+        entity="Conversation", entity_id=str(conversation_id), user_id=current_user.id,
+    )
     return ConversationResponse.model_validate(conversation)
 
 
@@ -322,6 +331,11 @@ async def assign_conversation(
         conversation_id=conversation_id,
         user_id=payload.assigned_to_id,
     )
+    await emit_audit_log(
+        db=db, tenant_id=tenant_id, action="CONVERSATION_ASSIGNED",
+        entity="Conversation", entity_id=str(conversation_id), user_id=current_user.id,
+        new_data={"assigned_to_id": str(payload.assigned_to_id)},
+    )
     return ConversationResponse.model_validate(conversation)
 
 
@@ -347,6 +361,10 @@ async def close_conversation(
         db=db,
         tenant_id=tenant_id,
         conversation_id=conversation_id,
+    )
+    await emit_audit_log(
+        db=db, tenant_id=tenant_id, action="CONVERSATION_CLOSED",
+        entity="Conversation", entity_id=str(conversation_id), user_id=current_user.id,
     )
     return ConversationResponse.model_validate(conversation)
 

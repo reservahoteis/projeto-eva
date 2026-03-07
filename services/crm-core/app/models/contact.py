@@ -1,7 +1,8 @@
 import uuid
+from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, Index, String, Text
+from sqlalchemy import DateTime, ForeignKey, Index, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -53,6 +54,20 @@ class Contact(TenantBase):
         ForeignKey("territories.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
+    )
+
+    # LGPD consent tracking
+    consent_status: Mapped[str | None] = mapped_column(
+        String(20), nullable=True, server_default="PENDING"
+    )
+    consent_granted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    consent_revoked_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    consent_ip_address: Mapped[str | None] = mapped_column(
+        String(45), nullable=True
     )
 
     # --- Relationships ---

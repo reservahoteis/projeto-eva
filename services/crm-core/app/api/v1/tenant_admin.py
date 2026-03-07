@@ -22,6 +22,7 @@ import structlog
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.audit import emit_audit_log
 from app.core.database import get_db
 from app.core.dependencies import require_roles
 from app.models.user import User
@@ -66,10 +67,17 @@ async def create_tenant(
     db: DB,
     current_user: SuperAdmin,
 ) -> dict[str, Any]:
-    return await tenant_admin_service.create_tenant(
+    result = await tenant_admin_service.create_tenant(
         db=db,
         data=payload,
     )
+    await emit_audit_log(
+        db=db, tenant_id=result.get("tenant", {}).get("id", current_user.id),
+        action="TENANT_CREATED", entity="Tenant",
+        entity_id=str(result.get("tenant", {}).get("id", "")),
+        user_id=current_user.id,
+    )
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -147,11 +155,16 @@ async def update_tenant(
     db: DB,
     current_user: SuperAdmin,
 ) -> dict[str, Any]:
-    return await tenant_admin_service.update_tenant(
+    result = await tenant_admin_service.update_tenant(
         db=db,
         tenant_id=tenant_id,
         data=payload,
     )
+    await emit_audit_log(
+        db=db, tenant_id=tenant_id, action="TENANT_UPDATED",
+        entity="Tenant", entity_id=str(tenant_id), user_id=current_user.id,
+    )
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -194,7 +207,7 @@ async def configure_whatsapp(
     db: DB,
     current_user: SuperAdmin,
 ) -> dict[str, Any]:
-    return await tenant_admin_service.configure_whatsapp(
+    result = await tenant_admin_service.configure_whatsapp(
         db=db,
         tenant_id=tenant_id,
         phone_number_id=payload.phone_number_id,
@@ -203,6 +216,11 @@ async def configure_whatsapp(
         webhook_verify_token=payload.webhook_verify_token,
         app_secret=payload.app_secret,
     )
+    await emit_audit_log(
+        db=db, tenant_id=tenant_id, action="WHATSAPP_CONFIG_UPDATED",
+        entity="Tenant", entity_id=str(tenant_id), user_id=current_user.id,
+    )
+    return result
 
 
 # ---------------------------------------------------------------------------

@@ -15,9 +15,12 @@ from __future__ import annotations
 from typing import Annotated
 
 import structlog
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, Request, Response, status
 from fastapi.responses import Response as FastAPIResponse
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.audit import emit_audit_log
+from app.core.rate_limit import AUTH_RATE_LIMIT, get_client_ip, limiter
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
@@ -53,16 +56,23 @@ CurrentUser = Annotated[User, Depends(get_current_user)]
     response_model=LoginResponse,
     status_code=status.HTTP_200_OK,
 )
+@limiter.limit(AUTH_RATE_LIMIT, key_func=get_client_ip)
 async def login(
+    request: Request,
     body: LoginRequest,
     db: DB,
 ) -> LoginResponse:
-    return await auth_service.login(
+    result = await auth_service.login(
         db=db,
         tenant_slug=body.tenant_slug,
         email=body.email,
         password=body.password,
     )
+    await emit_audit_log(
+        db=db, tenant_id=result.user.tenant_id, action="LOGIN_SUCCESS",
+        entity="User", entity_id=str(result.user.id), request=request,
+    )
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -80,7 +90,9 @@ async def login(
     response_model=RefreshResponse,
     status_code=status.HTTP_200_OK,
 )
+@limiter.limit(AUTH_RATE_LIMIT, key_func=get_client_ip)
 async def refresh(
+    request: Request,
     body: RefreshRequest,
     db: DB,
 ) -> RefreshResponse:
@@ -131,5 +143,9 @@ async def change_password(
         user_id=current_user.id,
         data=body,
         tenant_id=current_user.tenant_id,
+    )
+    await emit_audit_log(
+        db=db, tenant_id=current_user.tenant_id, action="PASSWORD_CHANGED",
+        entity="User", entity_id=str(current_user.id), user_id=current_user.id,
     )
     return FastAPIResponse(status_code=status.HTTP_204_NO_CONTENT)

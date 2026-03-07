@@ -18,9 +18,10 @@ from __future__ import annotations
 import uuid
 
 import structlog
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.audit import emit_audit_log
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, get_tenant_id, require_roles
 from app.models.assignment import Assignment
@@ -95,6 +96,7 @@ async def list_deals(
 )
 async def create_deal(
     body: DealCreate,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
     tenant_id: uuid.UUID = Depends(get_tenant_id),
@@ -105,7 +107,18 @@ async def create_deal(
     validates that the requested status_id belongs to this tenant.
     """
     deal = await DealService.create_deal(db, tenant_id, body, current_user.id)
-    return DealResponse.model_validate(deal)
+    result = DealResponse.model_validate(deal)
+    await emit_audit_log(
+        db=db,
+        tenant_id=tenant_id,
+        action="DEAL_CREATED",
+        entity="Deal",
+        entity_id=str(deal.id),
+        user_id=current_user.id,
+        request=request,
+        new_data=result.model_dump(mode="json"),
+    )
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -120,6 +133,7 @@ async def create_deal(
 )
 async def bulk_delete_deals(
     body: BulkDeleteRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_roles("SUPER_ADMIN", "TENANT_ADMIN", "HEAD", "SALES_MANAGER")),
     tenant_id: uuid.UUID = Depends(get_tenant_id),
@@ -130,6 +144,15 @@ async def bulk_delete_deals(
     this tenant are silently skipped (no error raised).
     """
     deleted = await DealService.bulk_delete(db, tenant_id, body)
+    await emit_audit_log(
+        db=db,
+        tenant_id=tenant_id,
+        action="DEAL_BULK_DELETED",
+        entity="Deal",
+        user_id=current_user.id,
+        request=request,
+        new_data={"ids": [str(i) for i in body.ids], "deleted_count": deleted},
+    )
     return {"deleted": deleted, "requested": len(body.ids)}
 
 
@@ -159,6 +182,7 @@ async def get_deal(
 async def update_deal(
     deal_id: uuid.UUID,
     body: DealUpdate,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
     tenant_id: uuid.UUID = Depends(get_tenant_id),
@@ -168,8 +192,22 @@ async def update_deal(
     Only fields included in the request body are written — unset fields
     retain their current database values.
     """
+    old = await DealService.get_deal(db, tenant_id, deal_id)
+    old_snapshot = DealResponse.model_validate(old).model_dump(mode="json")
     deal = await DealService.update_deal(db, tenant_id, deal_id, body)
-    return DealResponse.model_validate(deal)
+    result = DealResponse.model_validate(deal)
+    await emit_audit_log(
+        db=db,
+        tenant_id=tenant_id,
+        action="DEAL_UPDATED",
+        entity="Deal",
+        entity_id=str(deal_id),
+        user_id=current_user.id,
+        request=request,
+        old_data=old_snapshot,
+        new_data=result.model_dump(mode="json"),
+    )
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -184,12 +222,22 @@ async def update_deal(
 )
 async def delete_deal(
     deal_id: uuid.UUID,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_roles("SUPER_ADMIN", "TENANT_ADMIN", "HEAD", "SALES_MANAGER")),
     tenant_id: uuid.UUID = Depends(get_tenant_id),
 ):
     """Permanently delete a single deal."""
     await DealService.delete_deal(db, tenant_id, deal_id)
+    await emit_audit_log(
+        db=db,
+        tenant_id=tenant_id,
+        action="DEAL_DELETED",
+        entity="Deal",
+        entity_id=str(deal_id),
+        user_id=current_user.id,
+        request=request,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -200,6 +248,7 @@ async def delete_deal(
 @router.post("/{deal_id}/won", response_model=DealResponse, summary="Mark deal as won")
 async def mark_deal_won(
     deal_id: uuid.UUID,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
     tenant_id: uuid.UUID = Depends(get_tenant_id),
@@ -210,7 +259,18 @@ async def mark_deal_won(
     ``status_type='Won'`` configured for this tenant.
     """
     deal = await DealService.mark_won(db, tenant_id, deal_id)
-    return DealResponse.model_validate(deal)
+    result = DealResponse.model_validate(deal)
+    await emit_audit_log(
+        db=db,
+        tenant_id=tenant_id,
+        action="DEAL_MARKED_WON",
+        entity="Deal",
+        entity_id=str(deal_id),
+        user_id=current_user.id,
+        request=request,
+        new_data=result.model_dump(mode="json"),
+    )
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -222,6 +282,7 @@ async def mark_deal_won(
 async def mark_deal_lost(
     deal_id: uuid.UUID,
     body: MarkLostRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
     tenant_id: uuid.UUID = Depends(get_tenant_id),
@@ -233,7 +294,18 @@ async def mark_deal_lost(
     tenant.
     """
     deal = await DealService.mark_lost(db, tenant_id, deal_id, body)
-    return DealResponse.model_validate(deal)
+    result = DealResponse.model_validate(deal)
+    await emit_audit_log(
+        db=db,
+        tenant_id=tenant_id,
+        action="DEAL_MARKED_LOST",
+        entity="Deal",
+        entity_id=str(deal_id),
+        user_id=current_user.id,
+        request=request,
+        new_data=result.model_dump(mode="json"),
+    )
+    return result
 
 
 # ---------------------------------------------------------------------------

@@ -144,6 +144,12 @@ class ContactResponse(BaseModel):
     industry: IndustryEmbed | None = None
     territory: TerritoryEmbed | None = None
 
+    # LGPD consent
+    consent_status: str | None = None
+    consent_granted_at: datetime | None = None
+    consent_revoked_at: datetime | None = None
+    consent_ip_address: str | None = None
+
     # Timestamps
     created_at: datetime
     updated_at: datetime

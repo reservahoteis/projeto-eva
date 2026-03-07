@@ -32,9 +32,10 @@ import uuid
 from typing import Annotated, Any
 
 import structlog
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.audit import emit_audit_log
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, get_tenant_id, require_roles
 from app.core.exceptions import BadRequestError
@@ -164,6 +165,7 @@ async def create_lead(
     db: DB,
     current_user: CurrentUser,
     tenant_id: TenantId,
+    request: Request,
 ) -> LeadResponse:
     lead = await lead_service.create_lead(
         db=db,
@@ -171,7 +173,18 @@ async def create_lead(
         data=payload,
         user_id=current_user.id,
     )
-    return LeadResponse.model_validate(lead)
+    result = LeadResponse.model_validate(lead)
+    await emit_audit_log(
+        db=db,
+        tenant_id=tenant_id,
+        action="LEAD_CREATED",
+        entity="Lead",
+        entity_id=str(lead.id),
+        user_id=current_user.id,
+        request=request,
+        new_data=result.model_dump(mode="json"),
+    )
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -213,7 +226,10 @@ async def update_lead(
     db: DB,
     current_user: CurrentUser,
     tenant_id: TenantId,
+    request: Request,
 ) -> LeadResponse:
+    old = await lead_service.get_lead(db, tenant_id, lead_id)
+    old_snapshot = LeadResponse.model_validate(old).model_dump(mode="json")
     lead = await lead_service.update_lead(
         db=db,
         tenant_id=tenant_id,
@@ -221,7 +237,19 @@ async def update_lead(
         data=payload,
         user_id=current_user.id,
     )
-    return LeadResponse.model_validate(lead)
+    result = LeadResponse.model_validate(lead)
+    await emit_audit_log(
+        db=db,
+        tenant_id=tenant_id,
+        action="LEAD_UPDATED",
+        entity="Lead",
+        entity_id=str(lead_id),
+        user_id=current_user.id,
+        request=request,
+        old_data=old_snapshot,
+        new_data=result.model_dump(mode="json"),
+    )
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -238,9 +266,19 @@ async def delete_lead(
     lead_id: uuid.UUID,
     db: DB,
     tenant_id: TenantId,
+    request: Request,
     current_user: User = Depends(require_roles("SUPER_ADMIN", "TENANT_ADMIN", "HEAD", "SALES_MANAGER")),
 ):
     await lead_service.delete_lead(db, tenant_id, lead_id)
+    await emit_audit_log(
+        db=db,
+        tenant_id=tenant_id,
+        action="LEAD_DELETED",
+        entity="Lead",
+        entity_id=str(lead_id),
+        user_id=current_user.id,
+        request=request,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -264,6 +302,7 @@ async def convert_to_deal(
     db: DB,
     current_user: CurrentUser,
     tenant_id: TenantId,
+    request: Request,
 ) -> ConvertToDealResponse:
     deal = await lead_service.convert_to_deal(
         db=db,
@@ -271,7 +310,18 @@ async def convert_to_deal(
         lead_id=lead_id,
         user_id=current_user.id,
     )
-    return ConvertToDealResponse.model_validate(deal)
+    result = ConvertToDealResponse.model_validate(deal)
+    await emit_audit_log(
+        db=db,
+        tenant_id=tenant_id,
+        action="LEAD_CONVERTED",
+        entity="Lead",
+        entity_id=str(lead_id),
+        user_id=current_user.id,
+        request=request,
+        new_data=result.model_dump(mode="json"),
+    )
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -353,11 +403,21 @@ async def bulk_delete_leads(
     body: BulkDeleteRequest,
     db: DB,
     tenant_id: TenantId,
+    request: Request,
     current_user: User = Depends(require_roles("SUPER_ADMIN", "TENANT_ADMIN", "HEAD", "SALES_MANAGER")),
 ) -> BulkDeleteResponse:
     deleted_count = await lead_service.bulk_delete(
         db=db,
         tenant_id=tenant_id,
         lead_ids=body.ids,
+    )
+    await emit_audit_log(
+        db=db,
+        tenant_id=tenant_id,
+        action="LEAD_BULK_DELETED",
+        entity="Lead",
+        user_id=current_user.id,
+        request=request,
+        new_data={"ids": [str(i) for i in body.ids], "deleted_count": deleted_count},
     )
     return BulkDeleteResponse(deleted_count=deleted_count)

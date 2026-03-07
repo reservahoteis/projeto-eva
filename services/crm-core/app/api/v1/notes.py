@@ -30,6 +30,7 @@ import structlog
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.audit import emit_audit_log
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, get_tenant_id
 from app.models.user import User
@@ -141,6 +142,10 @@ async def create_note(
         data=payload,
         user_id=current_user.id,
     )
+    await emit_audit_log(
+        db=db, tenant_id=tenant_id, action="NOTE_CREATED",
+        entity="Note", entity_id=str(note.id), user_id=current_user.id,
+    )
     return NoteResponse.model_validate(note)
 
 
@@ -194,6 +199,10 @@ async def update_note(
         data=payload,
         user_id=current_user.id,
     )
+    await emit_audit_log(
+        db=db, tenant_id=tenant_id, action="NOTE_UPDATED",
+        entity="Note", entity_id=str(note_id), user_id=current_user.id,
+    )
     return NoteResponse.model_validate(note)
 
 
@@ -214,6 +223,10 @@ async def delete_note(
     tenant_id: TenantId,
 ):
     await note_service.delete_note(db, tenant_id, note_id)
+    await emit_audit_log(
+        db=db, tenant_id=tenant_id, action="NOTE_DELETED",
+        entity="Note", entity_id=str(note_id), user_id=current_user.id,
+    )
 
 
 # ---------------------------------------------------------------------------

@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     INSTAGRAM_WEBHOOK_VERIFY_TOKEN: str | None = None
     INSTAGRAM_ACCOUNT_ID: str | None = None       # fallback for single-tenant dev
 
+    # Token encryption (Fernet) — generate with:
+    #   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+    TOKEN_ENCRYPTION_KEY: str | None = None
+
     # CORS
     CORS_ORIGINS: list[str] = [
         "http://localhost:3000",

@@ -23,6 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi.responses import Response as FastAPIResponse
 
+from app.core.audit import emit_audit_log
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, get_tenant_id, require_roles
 from app.models.user import User
@@ -122,6 +123,10 @@ async def create_tag(
         tenant_id=tenant_id,
         data=payload,
     )
+    await emit_audit_log(
+        db=db, tenant_id=tenant_id, action="TAG_CREATED",
+        entity="Tag", entity_id=str(tag.id), user_id=current_user.id,
+    )
     return TagResponse.model_validate(tag)
 
 
@@ -175,6 +180,10 @@ async def update_tag(
         tag_id=tag_id,
         data=payload,
     )
+    await emit_audit_log(
+        db=db, tenant_id=tenant_id, action="TAG_UPDATED",
+        entity="Tag", entity_id=str(tag_id), user_id=current_user.id,
+    )
     return TagResponse.model_validate(tag)
 
 
@@ -196,4 +205,8 @@ async def delete_tag(
     tenant_id: TenantId,
 ):
     await tag_service.delete_tag(db, tenant_id, tag_id)
+    await emit_audit_log(
+        db=db, tenant_id=tenant_id, action="TAG_DELETED",
+        entity="Tag", entity_id=str(tag_id), user_id=current_user.id,
+    )
     return FastAPIResponse(status_code=status.HTTP_204_NO_CONTENT)

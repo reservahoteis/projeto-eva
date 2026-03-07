@@ -35,6 +35,7 @@ import structlog
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.audit import emit_audit_log
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, get_tenant_id
 from app.core.exceptions import BadRequestError
@@ -174,6 +175,10 @@ async def create_task(
         data=payload,
         user_id=current_user.id,
     )
+    await emit_audit_log(
+        db=db, tenant_id=tenant_id, action="TASK_CREATED",
+        entity="Task", entity_id=str(task.id), user_id=current_user.id,
+    )
     return TaskResponse.model_validate(task)
 
 
@@ -224,6 +229,10 @@ async def update_task(
         data=payload,
         user_id=current_user.id,
     )
+    await emit_audit_log(
+        db=db, tenant_id=tenant_id, action="TASK_UPDATED",
+        entity="Task", entity_id=str(task_id), user_id=current_user.id,
+    )
     return TaskResponse.model_validate(task)
 
 
@@ -244,6 +253,10 @@ async def delete_task(
     tenant_id: TenantId,
 ):
     await task_service.delete_task(db, tenant_id, task_id)
+    await emit_audit_log(
+        db=db, tenant_id=tenant_id, action="TASK_DELETED",
+        entity="Task", entity_id=str(task_id), user_id=current_user.id,
+    )
 
 
 # ---------------------------------------------------------------------------

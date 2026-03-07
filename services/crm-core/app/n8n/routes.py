@@ -19,8 +19,8 @@ a DB round-trip on every N8N call.
 Rate limiting
 -------------
 N8N endpoints allow 5 000 requests per minute (higher than the 100 req/min
-cap on the regular API).  This is enforced at the nginx / gateway layer, not
-inside FastAPI — no in-process rate-limiter is applied here.
+cap on the regular API).  This is enforced both at the application layer via
+slowapi (keyed on X-API-Key) and at the nginx / gateway layer.
 """
 
 from __future__ import annotations
@@ -32,7 +32,9 @@ from datetime import datetime, timezone
 from typing import Annotated, Any
 
 import structlog
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
+
+from app.core.rate_limit import N8N_RATE_LIMIT, get_api_key, limiter
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -346,7 +348,9 @@ async def _find_active_conversation(
     summary="Send text message",
     status_code=status.HTTP_200_OK,
 )
+@limiter.limit(N8N_RATE_LIMIT, key_func=get_api_key)
 async def send_text(
+    request: Request,
     body: SendTextRequest,
     tenant: N8NTenant,
     db: DB,
@@ -393,7 +397,9 @@ async def send_text(
     summary="Send interactive buttons (max 3)",
     status_code=status.HTTP_200_OK,
 )
+@limiter.limit(N8N_RATE_LIMIT, key_func=get_api_key)
 async def send_buttons(
+    request: Request,
     body: SendButtonsRequest,
     tenant: N8NTenant,
     db: DB,
@@ -446,7 +452,9 @@ async def send_buttons(
     summary="Send interactive list (max 10 sections)",
     status_code=status.HTTP_200_OK,
 )
+@limiter.limit(N8N_RATE_LIMIT, key_func=get_api_key)
 async def send_list(
+    request: Request,
     body: SendListRequest,
     tenant: N8NTenant,
     db: DB,
@@ -521,7 +529,9 @@ async def send_list(
     summary="Send media message (image/video/audio/document)",
     status_code=status.HTTP_200_OK,
 )
+@limiter.limit(N8N_RATE_LIMIT, key_func=get_api_key)
 async def send_media(
+    request: Request,
     body: SendMediaRequest,
     tenant: N8NTenant,
     db: DB,
@@ -603,7 +613,9 @@ async def send_media(
     summary="Send approved template message",
     status_code=status.HTTP_200_OK,
 )
+@limiter.limit(N8N_RATE_LIMIT, key_func=get_api_key)
 async def send_template(
+    request: Request,
     body: SendTemplateRequest,
     tenant: N8NTenant,
     db: DB,
@@ -656,7 +668,9 @@ async def send_template(
     summary="Send carousel template or interactive carousel",
     status_code=status.HTTP_200_OK,
 )
+@limiter.limit(N8N_RATE_LIMIT, key_func=get_api_key)
 async def send_carousel(
+    request: Request,
     body: SendCarouselRequest,
     tenant: N8NTenant,
     db: DB,
@@ -857,7 +871,9 @@ async def send_carousel(
     summary="Send quick reply buttons (max 13)",
     status_code=status.HTTP_200_OK,
 )
+@limiter.limit(N8N_RATE_LIMIT, key_func=get_api_key)
 async def send_quick_replies(
+    request: Request,
     body: SendQuickRepliesRequest,
     tenant: N8NTenant,
     db: DB,
@@ -906,7 +922,9 @@ async def send_quick_replies(
     status_code=status.HTTP_200_OK,
     response_model=IaLockResponse,
 )
+@limiter.limit(N8N_RATE_LIMIT, key_func=get_api_key)
 async def check_ia_lock(
+    request: Request,
     body: CheckIaLockRequest,
     tenant: N8NTenant,
     db: DB,
@@ -947,7 +965,9 @@ async def check_ia_lock(
     summary="Escalate conversation to human attendant",
     status_code=status.HTTP_201_CREATED,
 )
+@limiter.limit(N8N_RATE_LIMIT, key_func=get_api_key)
 async def escalate(
+    request: Request,
     body: EscalateRequest,
     tenant: N8NTenant,
     db: DB,
@@ -1036,7 +1056,9 @@ async def escalate(
     summary="Set hotel unit for an active conversation",
     status_code=status.HTTP_200_OK,
 )
+@limiter.limit(N8N_RATE_LIMIT, key_func=get_api_key)
 async def set_hotel_unit(
+    request: Request,
     body: SetHotelUnitRequest,
     tenant: N8NTenant,
     db: DB,
@@ -1075,7 +1097,9 @@ async def set_hotel_unit(
     summary="Mark follow-up as sent and flag conversation as opportunity",
     status_code=status.HTTP_200_OK,
 )
+@limiter.limit(N8N_RATE_LIMIT, key_func=get_api_key)
 async def mark_followup_sent(
+    request: Request,
     body: MarkFollowupRequest,
     tenant: N8NTenant,
     db: DB,
@@ -1131,7 +1155,9 @@ async def mark_followup_sent(
     summary="Mark conversation as sales opportunity",
     status_code=status.HTTP_200_OK,
 )
+@limiter.limit(N8N_RATE_LIMIT, key_func=get_api_key)
 async def mark_opportunity(
+    request: Request,
     body: MarkOpportunityRequest,
     tenant: N8NTenant,
     db: DB,
@@ -1195,7 +1221,9 @@ async def mark_opportunity(
     summary="Mark messages as read for a contact",
     status_code=status.HTTP_200_OK,
 )
+@limiter.limit(N8N_RATE_LIMIT, key_func=get_api_key)
 async def mark_read(
+    request: Request,
     body: MarkReadRequest,
     tenant: N8NTenant,
     db: DB,
@@ -1258,7 +1286,9 @@ async def mark_read(
     summary="Check room availability via HBook scraper",
     status_code=status.HTTP_200_OK,
 )
+@limiter.limit(N8N_RATE_LIMIT, key_func=get_api_key)
 async def check_availability(
+    request: Request,
     body: CheckAvailabilityRequest,
     tenant: N8NTenant,  # noqa: ARG001 — auth required even for read-only endpoint
 ) -> dict:

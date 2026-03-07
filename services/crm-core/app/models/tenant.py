@@ -1,7 +1,9 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, String, Text, func
+from sqlalchemy import DateTime, String, Text, func  # noqa: F401 — Text kept for non-encrypted columns
+
+from app.core.encrypted_column import EncryptedText
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -25,23 +27,26 @@ class Tenant(Base):
     status: Mapped[str] = mapped_column(
         String(20), nullable=False, server_default="ACTIVE"
     )
+    data_retention_days: Mapped[int | None] = mapped_column(
+        nullable=True, server_default="365"
+    )
 
     # Branding
     logo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     # WhatsApp Cloud API
     whatsapp_phone_number_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    whatsapp_access_token: Mapped[str | None] = mapped_column(Text, nullable=True)
+    whatsapp_access_token: Mapped[str | None] = mapped_column(EncryptedText, nullable=True)
     whatsapp_verify_token: Mapped[str | None] = mapped_column(String(255), nullable=True)
     whatsapp_webhook_secret: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     # Instagram
     instagram_page_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    instagram_access_token: Mapped[str | None] = mapped_column(Text, nullable=True)
+    instagram_access_token: Mapped[str | None] = mapped_column(EncryptedText, nullable=True)
 
     # Messenger
     messenger_page_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    messenger_access_token: Mapped[str | None] = mapped_column(Text, nullable=True)
+    messenger_access_token: Mapped[str | None] = mapped_column(EncryptedText, nullable=True)
 
     # Billing (Stripe)
     stripe_customer_id: Mapped[str | None] = mapped_column(String(100), nullable=True)

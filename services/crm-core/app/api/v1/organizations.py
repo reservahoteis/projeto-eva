@@ -25,11 +25,12 @@ import uuid
 from typing import Annotated, Any
 
 import structlog
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.audit import emit_audit_log
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, get_tenant_id, require_roles
 from app.core.exceptions import BadRequestError
@@ -154,13 +155,25 @@ async def create_organization(
     db: DB,
     current_user: CurrentUser,
     tenant_id: TenantId,
+    request: Request,
 ) -> OrganizationResponse:
     org = await organization_service.create_organization(
         db=db,
         tenant_id=tenant_id,
         data=payload,
     )
-    return OrganizationResponse.model_validate(org)
+    result = OrganizationResponse.model_validate(org)
+    await emit_audit_log(
+        db=db,
+        tenant_id=tenant_id,
+        action="ORGANIZATION_CREATED",
+        entity="Organization",
+        entity_id=str(org.id),
+        user_id=current_user.id,
+        request=request,
+        new_data=result.model_dump(mode="json"),
+    )
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -205,14 +218,29 @@ async def update_organization(
     db: DB,
     current_user: CurrentUser,
     tenant_id: TenantId,
+    request: Request,
 ) -> OrganizationResponse:
+    old = await organization_service.get_organization(db, tenant_id, organization_id)
+    old_snapshot = OrganizationResponse.model_validate(old).model_dump(mode="json")
     org = await organization_service.update_organization(
         db=db,
         tenant_id=tenant_id,
         organization_id=organization_id,
         data=payload,
     )
-    return OrganizationResponse.model_validate(org)
+    result = OrganizationResponse.model_validate(org)
+    await emit_audit_log(
+        db=db,
+        tenant_id=tenant_id,
+        action="ORGANIZATION_UPDATED",
+        entity="Organization",
+        entity_id=str(organization_id),
+        user_id=current_user.id,
+        request=request,
+        old_data=old_snapshot,
+        new_data=result.model_dump(mode="json"),
+    )
+    return result
 
 
 # ---------------------------------------------------------------------------

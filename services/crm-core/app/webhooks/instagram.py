@@ -31,6 +31,8 @@ import hmac
 import structlog
 from fastapi import APIRouter, BackgroundTasks, Query, Request, Response
 from fastapi.responses import PlainTextResponse
+
+from app.core.rate_limit import WEBHOOK_RATE_LIMIT, get_client_ip, limiter
 from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -162,6 +164,7 @@ async def verify_instagram(
     summary="Instagram webhook events (Meta)",
     include_in_schema=False,
 )
+@limiter.limit(WEBHOOK_RATE_LIMIT, key_func=get_client_ip)
 async def handle_instagram(
     request: Request,
     background_tasks: BackgroundTasks,
