@@ -15,7 +15,7 @@ email-validator==2.2.0
 
 # Auth — PyJWT replaces abandoned python-jose (CVE-2024-33664)
 #       — bcrypt directly replaces abandoned passlib
-PyJWT[crypto]==2.11.0
+PyJWT[crypto]>=2.9.0,<3.0.0
 bcrypt==4.3.0
 
 # Cache & Queues
