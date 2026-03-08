@@ -17,10 +17,35 @@ from pydantic import BaseModel, ConfigDict
 from app.schemas.lead import PaginatedResponse as PaginatedResponse  # noqa: F401
 
 __all__ = [
+    "CamelModel",
     "UserBasic",
     "TagResponse",
     "PaginatedResponse",
 ]
+
+
+# ---------------------------------------------------------------------------
+# CamelModel — base class for schemas that use camelCase field aliases
+# ---------------------------------------------------------------------------
+
+
+def to_camel(string: str) -> str:
+    """Convert snake_case to camelCase."""
+    components = string.split("_")
+    return components[0] + "".join(x.title() for x in components[1:])
+
+
+class CamelModel(BaseModel):
+    """Base model that accepts and returns camelCase field names.
+
+    Also accepts snake_case via populate_by_name=True so both conventions work.
+    """
+
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True,
+    )
 
 
 # ---------------------------------------------------------------------------

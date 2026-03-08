@@ -17,11 +17,16 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
+def _to_camel(name: str) -> str:
+    parts = name.split("_")
+    return parts[0] + "".join(w.capitalize() for w in parts[1:])
+
+
 # ---------------------------------------------------------------------------
 # Role / status literals
 # ---------------------------------------------------------------------------
 
-UserRole = Literal["ADMIN", "MANAGER", "ATTENDANT", "SALES"]
+UserRole = Literal["SUPER_ADMIN", "TENANT_ADMIN", "ADMIN", "HEAD", "MANAGER", "ATTENDANT", "SALES"]
 UserStatus = Literal["ACTIVE", "INACTIVE"]
 
 
@@ -73,7 +78,7 @@ class UserUpdate(BaseModel):
 class UserResponse(BaseModel):
     """Full user representation returned from GET /users/{id} and /auth/me."""
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, alias_generator=_to_camel, populate_by_name=True)
 
     id: uuid.UUID
     tenant_id: uuid.UUID | None
@@ -81,10 +86,13 @@ class UserResponse(BaseModel):
     email: str
     role: str
     status: str
-    avatar_url: str | None = None
+    # Exposed as "avatar" (not "avatarUrl") to match frontend expectations.
+    # The explicit alias takes precedence over alias_generator.
+    avatar_url: str | None = Field(None, alias="avatar")
     phone: str | None = None
     last_login_at: datetime | None = None
     created_at: datetime
+    updated_at: datetime | None = None
 
 
 # ---------------------------------------------------------------------------

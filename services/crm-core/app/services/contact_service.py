@@ -223,6 +223,50 @@ class ContactService:
         return contact
 
     # ------------------------------------------------------------------
+    # get_by_phone
+    # ------------------------------------------------------------------
+
+    async def get_by_phone(
+        self,
+        db: AsyncSession,
+        tenant_id: uuid.UUID,
+        phone_number: str,
+    ) -> Contact | None:
+        """Fetch a Contact by mobile_no, scoped to tenant_id.
+
+        Returns None when no match is found (caller decides whether to 404).
+        Phone numbers may be stored with or without a leading '+', so we
+        attempt an exact match first then fall back to a suffix match.
+        """
+        # Normalise: strip whitespace
+        normalised = phone_number.strip()
+
+        result = await db.execute(
+            _build_contact_query(tenant_id).where(Contact.mobile_no == normalised)
+        )
+        contact = result.scalar_one_or_none()
+        if contact:
+            return contact
+
+        # Fallback: try stripping the leading '+' in case storage differs
+        if normalised.startswith("+"):
+            stripped = normalised[1:]
+            result = await db.execute(
+                _build_contact_query(tenant_id).where(Contact.mobile_no == stripped)
+            )
+            contact = result.scalar_one_or_none()
+        elif not normalised.startswith("+"):
+            # Try prepending '+'
+            result = await db.execute(
+                _build_contact_query(tenant_id).where(
+                    Contact.mobile_no == f"+{normalised}"
+                )
+            )
+            contact = result.scalar_one_or_none()
+
+        return contact
+
+    # ------------------------------------------------------------------
     # create_contact
     # ------------------------------------------------------------------
 
@@ -232,9 +276,17 @@ class ContactService:
         tenant_id: uuid.UUID,
         data: ContactCreate,
     ) -> Contact:
-        """Create a new Contact.  Computes full_name from name components."""
+        """Create a new Contact.  Computes full_name from name components.
+
+        first_name is optional in the schema (frontend may send only a phone
+        number).  When absent we fall back to the mobile_no so the contact is
+        still identifiable in list views.
+        """
+        # Derive a usable first_name when the payload omits it
+        effective_first_name: str = data.first_name or data.mobile_no or "Unknown"
+
         full_name = _compute_full_name(
-            data.salutation, data.first_name, data.last_name
+            data.salutation, effective_first_name, data.last_name
         )
 
         contact = Contact(
@@ -242,7 +294,7 @@ class ContactService:
             full_name=full_name,
             # Identity
             salutation=data.salutation,
-            first_name=data.first_name,
+            first_name=effective_first_name,
             last_name=data.last_name,
             gender=data.gender,
             # Channels

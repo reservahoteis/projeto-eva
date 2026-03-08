@@ -87,18 +87,25 @@ class MessageService:
         if not conv_result.scalar_one_or_none():
             raise NotFoundError(f"Conversation {conversation_id} not found")
 
+        # Base filter predicate — re-used for both the count and the page query.
+        base_filters = [
+            Message.tenant_id == tenant_id,
+            Message.conversation_id == conversation_id,
+        ]
+        if params.direction:
+            base_filters.append(Message.direction == params.direction)
+
+        # Total count for the pagination compat layer (runs once, cheap index scan)
+        count_result = await db.execute(
+            select(func.count()).select_from(Message).where(*base_filters)
+        )
+        total: int = count_result.scalar_one()
+
         query = (
             select(Message)
-            .where(
-                Message.tenant_id == tenant_id,
-                Message.conversation_id == conversation_id,
-            )
+            .where(*base_filters)
             .order_by(Message.timestamp.desc(), Message.id.desc())
         )
-
-        # Direction filter
-        if params.direction:
-            query = query.where(Message.direction == params.direction)
 
         # Cursor: fetch messages older than the cursor message
         if params.cursor:
@@ -145,6 +152,7 @@ class MessageService:
             data=[MessageResponse.model_validate(m) for m in messages],
             next_cursor=next_cursor,
             has_more=has_more,
+            total=total,
         )
 
     # ------------------------------------------------------------------

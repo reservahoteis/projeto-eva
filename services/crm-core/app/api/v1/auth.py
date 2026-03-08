@@ -10,8 +10,6 @@ login and refresh are intentionally public — no Bearer token is required.
 /me and /me/password require a valid access token via get_current_user.
 """
 
-from __future__ import annotations
-
 from typing import Annotated
 
 import structlog
@@ -20,6 +18,7 @@ from fastapi.responses import Response as FastAPIResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import emit_audit_log
+from app.core.exceptions import BadRequestError
 from app.core.rate_limit import AUTH_RATE_LIMIT, get_client_ip, limiter
 
 from app.core.database import get_db
@@ -62,16 +61,24 @@ async def login(
     body: LoginRequest,
     db: DB,
 ) -> LoginResponse:
+    # tenant_slug: body takes precedence, then x-tenant-slug header
+    tenant_slug = body.tenant_slug or request.headers.get("x-tenant-slug")
+    if not tenant_slug:
+        raise BadRequestError("tenant_slug is required (body or x-tenant-slug header)")
+
     result = await auth_service.login(
         db=db,
-        tenant_slug=body.tenant_slug,
+        tenant_slug=tenant_slug,
         email=body.email,
         password=body.password,
     )
-    await emit_audit_log(
-        db=db, tenant_id=result.user.tenant_id, action="LOGIN_SUCCESS",
-        entity="User", entity_id=str(result.user.id), request=request,
-    )
+    try:
+        await emit_audit_log(
+            db=db, tenant_id=result.user.tenant_id, action="LOGIN_SUCCESS",
+            entity="User", entity_id=str(result.user.id), request=request,
+        )
+    except Exception:
+        logger.warning("audit_log_failed_on_login", user_id=str(result.user.id))
     return result
 
 

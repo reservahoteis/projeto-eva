@@ -425,7 +425,7 @@ class LGPDService:
         if not tenant:
             raise NotFoundError(f"Tenant {tenant_id} not found")
 
-        retention_days = tenant.data_retention_days or 365
+        retention_days = getattr(tenant, "data_retention_days", None) or 365
         cutoff = datetime.now(UTC) - timedelta(days=retention_days)
 
         # Find contacts with no activity since the cutoff.

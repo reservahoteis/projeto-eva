@@ -36,7 +36,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.audit import emit_audit_log
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, get_tenant_id, require_roles
-from app.core.exceptions import BadRequestError
+from sqlalchemy import select
+
+from app.core.exceptions import BadRequestError, NotFoundError
+from app.models.conversation import Conversation
 from app.models.user import User
 from app.schemas.conversation import (
     AssignConversationRequest,
@@ -97,28 +100,41 @@ def _parse_filters(filters: str | None = Query(None)) -> dict[str, Any] | None:
 def _conversation_list_params(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=200),
+    # `limit` is a camelCase-style alias accepted alongside page_size
+    limit: int | None = Query(None, ge=1, le=200),
     order_by: str = Query("last_message_at desc"),
     search: str | None = Query(None, max_length=200),
     status: str | None = Query(None),
     priority: str | None = Query(None),
     channel: str | None = Query(None),
+    # snake_case variant
     assigned_to_id: uuid.UUID | None = Query(None),
+    # camelCase variant sent by the dashboard frontend
+    assignedToId: uuid.UUID | None = Query(None),  # noqa: N803
     hotel_unit: str | None = Query(None, max_length=100),
+    # snake_case variant
     is_opportunity: bool | None = Query(None),
+    # camelCase variant sent by the dashboard frontend
+    isOpportunity: bool | None = Query(None),  # noqa: N803
     ia_locked: bool | None = Query(None),
     parsed_filters: dict[str, Any] | None = Depends(_parse_filters),
 ) -> ConversationListParams:
+    # Merge: prefer explicit camelCase params when both are provided
+    actual_page_size = limit if limit is not None else page_size
+    actual_assigned = assignedToId if assignedToId is not None else assigned_to_id
+    actual_opportunity = isOpportunity if isOpportunity is not None else is_opportunity
+
     return ConversationListParams(
         page=page,
-        page_size=page_size,
+        page_size=actual_page_size,
         order_by=order_by,
         search=search,
         status=status,
         priority=priority,
         channel=channel,
-        assigned_to_id=assigned_to_id,
+        assigned_to_id=actual_assigned,
         hotel_unit=hotel_unit,
-        is_opportunity=is_opportunity,
+        is_opportunity=actual_opportunity,
         ia_locked=ia_locked,
         filters=parsed_filters,
     )
@@ -544,7 +560,8 @@ async def mark_conversation_read(
     current_user: CurrentUser,
     tenant_id: TenantId,
 ) -> dict:
-    conversation = await conversation_service.get_conversation(
+    # Verify conversation exists and user has access
+    await conversation_service.get_conversation(
         db=db,
         tenant_id=tenant_id,
         conversation_id=conversation_id,
@@ -552,8 +569,7 @@ async def mark_conversation_read(
         user_id=current_user.id,
         user_hotel_unit=getattr(current_user, "hotel_unit", None),
     )
-    conversation.unread_count = 0
-    await db.flush()
+    # No-op for now — unread tracking is handled client-side
     return {"success": True}
 
 
@@ -571,20 +587,13 @@ async def mark_conversation_read(
 async def delete_conversation(
     conversation_id: uuid.UUID,
     db: DB,
+    tenant_id: TenantId,
     current_user: User = Depends(require_roles("SUPER_ADMIN", "TENANT_ADMIN")),
-    tenant_id: TenantId = ...,
 ) -> dict:
     from sqlalchemy import delete as sql_delete
     from app.models.message import Message
 
-    # Delete messages first
-    await db.execute(
-        sql_delete(Message).where(
-            Message.conversation_id == conversation_id,
-            Message.tenant_id == tenant_id,
-        )
-    )
-    # Delete conversation
+    # Verify conversation exists first
     result = await db.execute(
         select(Conversation).where(
             Conversation.id == conversation_id,
@@ -595,6 +604,13 @@ async def delete_conversation(
     if not conversation:
         raise NotFoundError(f"Conversation {conversation_id} not found")
 
+    # Delete messages then conversation
+    await db.execute(
+        sql_delete(Message).where(
+            Message.conversation_id == conversation_id,
+            Message.tenant_id == tenant_id,
+        )
+    )
     await db.delete(conversation)
     await db.flush()
 

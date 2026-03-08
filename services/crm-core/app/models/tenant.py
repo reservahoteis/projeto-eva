@@ -27,10 +27,6 @@ class Tenant(Base):
     status: Mapped[str] = mapped_column(
         String(20), nullable=False, server_default="ACTIVE"
     )
-    data_retention_days: Mapped[int | None] = mapped_column(
-        nullable=True, server_default="365"
-    )
-
     # Branding
     logo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
 

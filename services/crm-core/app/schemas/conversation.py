@@ -16,7 +16,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 
 from app.schemas.common import TagResponse, UserBasic
 from app.schemas.contact import ContactListItem
@@ -37,7 +37,7 @@ __all__ = [
 # Allowed enum-like sets — used in field validators to prevent invalid values
 # ---------------------------------------------------------------------------
 
-_VALID_STATUSES = {"OPEN", "IN_PROGRESS", "WAITING", "RESOLVED", "CLOSED"}
+_VALID_STATUSES = {"OPEN", "BOT_HANDLING", "IN_PROGRESS", "WAITING", "RESOLVED", "CLOSED", "ARCHIVED"}
 _VALID_PRIORITIES = {"LOW", "NORMAL", "HIGH", "URGENT"}
 _VALID_CHANNELS = {"WHATSAPP", "INSTAGRAM", "MESSENGER", "WEBCHAT", "EMAIL", "PHONE"}
 
@@ -84,14 +84,20 @@ class ConversationCreate(BaseModel):
 
 
 class ConversationUpdate(BaseModel):
-    """All conversation fields made optional for partial updates via PUT /conversations/{id}."""
+    """All conversation fields made optional for partial updates via PATCH /conversations/{id}.
+
+    Accepts both snake_case and camelCase field names so that the legacy
+    dashboard frontend can send camelCase bodies without transformation.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
 
     status: str | None = None
     priority: str | None = None
-    assigned_to_id: uuid.UUID | None = None
-    hotel_unit: str | None = Field(None, max_length=100)
-    ia_locked: bool | None = None
-    is_opportunity: bool | None = None
+    assigned_to_id: uuid.UUID | None = Field(None, alias="assignedToId")
+    hotel_unit: str | None = Field(None, max_length=100, alias="hotelUnit")
+    ia_locked: bool | None = Field(None, alias="iaLocked")
+    is_opportunity: bool | None = Field(None, alias="isOpportunity")
     metadata: dict[str, Any] | None = None
 
     @field_validator("status")
@@ -125,7 +131,10 @@ class ConversationUpdate(BaseModel):
 
 
 class ConversationResponse(BaseModel):
-    """Complete Conversation representation returned from GET /conversations/{id}."""
+    """Complete Conversation representation returned from GET /conversations/{id}.
+
+    Includes camelCase computed fields for legacy dashboard frontend compatibility.
+    """
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -159,6 +168,64 @@ class ConversationResponse(BaseModel):
     assigned_to: UserBasic | None = None
     tags: list[TagResponse] = Field(default_factory=list)
 
+    # Legacy camelCase fields for dashboard frontend
+    @computed_field  # type: ignore[misc]
+    @property
+    def tenantId(self) -> str:
+        return str(self.tenant_id)
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def contactId(self) -> str | None:
+        return str(self.contact_id) if self.contact_id else None
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def assignedToId(self) -> str | None:
+        return str(self.assigned_to_id) if self.assigned_to_id else None
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def iaLocked(self) -> bool:
+        return self.ia_locked
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def isOpportunity(self) -> bool:
+        return self.is_opportunity
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def lastMessageAt(self) -> str | None:
+        return self.last_message_at.isoformat() if self.last_message_at else None
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def hotelUnit(self) -> str | None:
+        return self.hotel_unit
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def createdAt(self) -> str:
+        return self.created_at.isoformat()
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def updatedAt(self) -> str:
+        return self.updated_at.isoformat()
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def unreadCount(self) -> int:
+        """Unread message count. Defaults to 0 — tracking is handled client-side."""
+        return getattr(self, "unread_count", 0) or 0
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def lastMessage(self) -> str | None:
+        """Short preview of the most recent message for list cards."""
+        return getattr(self, "last_message_preview", None)
+
 
 # ---------------------------------------------------------------------------
 # ConversationListItem — lightweight projection for list views
@@ -168,8 +235,7 @@ class ConversationResponse(BaseModel):
 class ConversationListItem(BaseModel):
     """Lean Conversation projection for paginated list views.
 
-    Includes a short content snippet from the last message so the list UI
-    can render a preview row without a separate message query.
+    Includes camelCase computed fields for legacy dashboard frontend compatibility.
     """
 
     model_config = ConfigDict(from_attributes=True)
@@ -200,6 +266,64 @@ class ConversationListItem(BaseModel):
     contact: ContactListItem | None = None
     assigned_to: UserBasic | None = None
     tags: list[TagResponse] = Field(default_factory=list)
+
+    # Legacy camelCase fields for dashboard frontend
+    @computed_field  # type: ignore[misc]
+    @property
+    def tenantId(self) -> str:
+        return str(self.tenant_id)
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def contactId(self) -> str | None:
+        return str(self.contact_id) if self.contact_id else None
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def assignedToId(self) -> str | None:
+        return str(self.assigned_to_id) if self.assigned_to_id else None
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def iaLocked(self) -> bool:
+        return self.ia_locked
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def isOpportunity(self) -> bool:
+        return self.is_opportunity
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def lastMessageAt(self) -> str | None:
+        return self.last_message_at.isoformat() if self.last_message_at else None
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def hotelUnit(self) -> str | None:
+        return self.hotel_unit
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def createdAt(self) -> str:
+        return self.created_at.isoformat()
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def updatedAt(self) -> str:
+        return self.updated_at.isoformat()
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def unreadCount(self) -> int:
+        """Unread message count. Defaults to 0 — tracking is handled client-side."""
+        return getattr(self, "unread_count", 0) or 0
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def lastMessage(self) -> str | None:
+        """Short preview of the most recent message, sourced from last_message_preview."""
+        return self.last_message_preview
 
 
 # ---------------------------------------------------------------------------
@@ -268,13 +392,25 @@ class ConversationListParams(BaseModel):
 
 
 class ConversationStats(BaseModel):
-    """Aggregated conversation counts for dashboard widgets."""
+    """Aggregated conversation counts for dashboard widgets.
+
+    Includes both structured groupings (by_status, by_channel, by_priority)
+    and flat top-level fields (open, pending, inProgress, etc.) that the
+    legacy dashboard frontend reads directly.
+    """
 
     total: int
-    by_status: dict[str, int]
-    by_channel: dict[str, int]
-    by_priority: dict[str, int]
-    unassigned: int
+    by_status: dict[str, int] = Field(default_factory=dict)
+    by_channel: dict[str, int] = Field(default_factory=dict)
+    by_priority: dict[str, int] = Field(default_factory=dict)
+    unassigned: int = 0
+
+    # Flat fields expected by the legacy dashboard frontend
+    open: int = 0
+    pending: int = 0
+    inProgress: int = 0
+    resolved: int = 0
+    closed: int = 0
 
 
 # ---------------------------------------------------------------------------
@@ -283,6 +419,18 @@ class ConversationStats(BaseModel):
 
 
 class AssignConversationRequest(BaseModel):
-    """Body for POST /conversations/{id}/assign."""
+    """Body for POST /conversations/{id}/assign.
 
-    assigned_to_id: uuid.UUID = Field(..., description="UUID of the user to assign the conversation to")
+    Accepts both the legacy snake_case ``assigned_to_id`` and the camelCase
+    ``userId`` that the dashboard frontend sends.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    # ``userId`` is the camelCase key sent by the frontend.
+    # ``assigned_to_id`` is retained for backward-compat with any internal callers.
+    assigned_to_id: uuid.UUID = Field(
+        ...,
+        alias="userId",
+        description="UUID of the user to assign the conversation to",
+    )

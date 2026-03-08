@@ -18,7 +18,7 @@ import uuid
 from datetime import datetime
 from typing import Any, Generic, Literal, TypeVar
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, computed_field, field_validator
 
 # ---------------------------------------------------------------------------
 # Generic type variable for PaginatedResponse
@@ -495,13 +495,38 @@ class LeadListParams(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+class PaginationInfo(BaseModel):
+    """Pagination metadata in the format expected by the legacy frontend."""
+
+    page: int
+    limit: int
+    total: int
+    totalPages: int
+
+
 class PaginatedResponse(BaseModel, Generic[DataT]):
-    """Generic paginated envelope used by all list endpoints."""
+    """Generic paginated envelope used by all list endpoints.
+
+    Returns both flat fields (total_count, page, page_size) for CRM endpoints
+    and a nested `pagination` object for legacy dashboard endpoints.
+    """
 
     data: list[DataT]
     total_count: int
     page: int
     page_size: int
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def pagination(self) -> PaginationInfo:
+        import math
+        total_pages = math.ceil(self.total_count / self.page_size) if self.page_size > 0 else 0
+        return PaginationInfo(
+            page=self.page,
+            limit=self.page_size,
+            total=self.total_count,
+            totalPages=total_pages,
+        )
 
     @property
     def total_pages(self) -> int:

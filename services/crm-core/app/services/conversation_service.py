@@ -429,17 +429,18 @@ class ConversationService:
         db: AsyncSession,
         tenant_id: uuid.UUID,
         conversation_id: uuid.UUID,
-        user_id: uuid.UUID,
+        user_id: uuid.UUID | None,
     ) -> Conversation:
-        """Assign a conversation to a user.
+        """Assign (or unassign) a conversation to a user.
 
         Sets assigned_to_id and transitions status OPEN → IN_PROGRESS if the
         conversation is currently OPEN or BOT_HANDLING.
+        Pass user_id=None to unassign.
         """
         conversation = await self.get_conversation(db, tenant_id, conversation_id)
 
         conversation.assigned_to_id = user_id
-        if conversation.status in ("OPEN", "BOT_HANDLING"):
+        if user_id and conversation.status in ("OPEN", "BOT_HANDLING"):
             conversation.status = "IN_PROGRESS"
 
         await db.flush()
@@ -449,7 +450,7 @@ class ConversationService:
             "conversation_assigned",
             conversation_id=str(conversation_id),
             tenant_id=str(tenant_id),
-            assigned_to_id=str(user_id),
+            assigned_to_id=str(user_id) if user_id else None,
         )
         return conversation
 
@@ -589,6 +590,12 @@ class ConversationService:
             by_priority=by_priority,
             by_channel=by_channel,
             unassigned=unassigned,
+            # Flat fields for legacy dashboard frontend
+            open=by_status.get("OPEN", 0) + by_status.get("BOT_HANDLING", 0),
+            pending=by_status.get("WAITING", 0),
+            inProgress=by_status.get("IN_PROGRESS", 0),
+            resolved=by_status.get("RESOLVED", 0),
+            closed=by_status.get("CLOSED", 0) + by_status.get("ARCHIVED", 0),
         )
 
     # ------------------------------------------------------------------

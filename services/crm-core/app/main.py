@@ -43,6 +43,7 @@ app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
     lifespan=lifespan,
+    redirect_slashes=False,
     docs_url="/docs" if settings.DEBUG else None,
     redoc_url="/redoc" if settings.DEBUG else None,
 )
@@ -52,7 +53,7 @@ app.add_middleware(
     allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "Accept", "X-Requested-With", "X-API-Key", "X-Request-ID"],
+    allow_headers=["Authorization", "Content-Type", "Accept", "X-Requested-With", "X-API-Key", "X-Request-ID", "X-Tenant-Slug"],
 )
 
 # ---------------------------------------------------------------------------

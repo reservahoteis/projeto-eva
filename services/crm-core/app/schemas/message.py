@@ -17,7 +17,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 
 __all__ = [
     "MessageCreate",
@@ -63,11 +63,28 @@ class MessageCreate(BaseModel):
 
     For inbound messages created by the webhook worker the service layer
     constructs the record directly without going through this schema.
+
+    Accepts both snake_case and camelCase field names so the frontend can
+    POST in its native camelCase format (populate_by_name=True keeps
+    snake_case working for internal callers).
     """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    # conversation_id is optional here because it is usually supplied via the
+    # URL path parameter in /conversations/{id}/messages, but accepting it in
+    # the body as well (camelCase alias) improves compatibility with clients
+    # that send a flat payload.
+    conversation_id: uuid.UUID | None = Field(None, alias="conversationId")
 
     content: str | None = Field(None, max_length=4096, description="Text body of the message")
     type: str = Field("TEXT", max_length=50, description="Message type enum")
     metadata: dict[str, Any] | None = Field(None, description="Channel-specific metadata payload")
+
+    # Media fields — stored in metadata_json on the DB model; surfaced here so
+    # clients can POST media messages without building the metadata envelope.
+    media_url: str | None = Field(None, alias="mediaUrl", description="Public URL of the media file")
+    media_type: str | None = Field(None, alias="mediaType", description="MIME type of the media file")
 
     @field_validator("type")
     @classmethod
@@ -86,7 +103,13 @@ class MessageCreate(BaseModel):
 
 
 class MessageResponse(BaseModel):
-    """Complete Message representation returned by read endpoints."""
+    """Complete Message representation returned by read endpoints.
+
+    Exposes both snake_case fields (for internal / server-to-server consumers)
+    and camelCase computed_fields (for the Next.js frontend).  The computed
+    fields are derived from their snake_case counterparts so there is no
+    duplication of data.
+    """
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -105,6 +128,11 @@ class MessageResponse(BaseModel):
     # Channel-specific data stored as JSONB in the DB
     metadata_json: dict[str, Any] | None = None
 
+    # Media fields — not DB columns; populated from metadata_json by the
+    # service layer or set directly when constructing the schema from a dict.
+    media_url: str | None = None
+    media_type: str | None = None
+
     # Delivery state
     status: str
     error_info: str | None = None
@@ -115,6 +143,47 @@ class MessageResponse(BaseModel):
     # Timestamps
     timestamp: datetime
     created_at: datetime
+
+    # ------------------------------------------------------------------
+    # camelCase computed fields — consumed by the Next.js frontend
+    # ------------------------------------------------------------------
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def conversationId(self) -> str:
+        return str(self.conversation_id)
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def tenantId(self) -> str:
+        return str(self.tenant_id)
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def externalMessageId(self) -> str | None:
+        return self.external_message_id
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def createdAt(self) -> str | None:
+        return self.created_at.isoformat() if self.created_at else None
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def updatedAt(self) -> str | None:
+        # Message model has no separate updated_at column; mirror created_at
+        # so the frontend contract is satisfied.
+        return self.created_at.isoformat() if self.created_at else None
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def mediaUrl(self) -> str | None:
+        return self.media_url
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def mediaType(self) -> str | None:
+        return self.media_type
 
 
 # ---------------------------------------------------------------------------
@@ -158,7 +227,12 @@ class MessageListParams(BaseModel):
 
 
 class MessageCursorResponse(BaseModel):
-    """Envelope for cursor-paginated message list responses."""
+    """Envelope for cursor-paginated message list responses.
+
+    Internally uses cursor-based pagination for stable ordering, but also
+    exposes a `pagination` computed_field in the format expected by the
+    legacy frontend (`{ page, limit, total, totalPages }`).
+    """
 
     data: list[MessageResponse]
     next_cursor: str | None = Field(
@@ -166,6 +240,28 @@ class MessageCursorResponse(BaseModel):
         description="Pass this value as `cursor` in the next request to load the previous page",
     )
     has_more: bool
+    total: int = Field(
+        0,
+        description="Total number of messages in the conversation (used for pagination compat)",
+    )
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def pagination(self) -> dict[str, int]:
+        """Compatibility shim for the frontend's PaginatedResponse format.
+
+        The frontend expects { page, limit, total, totalPages }.  Because this
+        endpoint uses cursor-based pagination rather than offset pages, `page`
+        is always 1 and `totalPages` is always 1 — the frontend should use
+        `has_more` / `next_cursor` for actual navigation.
+        """
+        limit = len(self.data)
+        return {
+            "page": 1,
+            "limit": limit,
+            "total": self.total,
+            "totalPages": 1,
+        }
 
 
 # ---------------------------------------------------------------------------
