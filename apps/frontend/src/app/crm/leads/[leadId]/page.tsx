@@ -1,13 +1,13 @@
 'use client'
 
 // Usage: /crm/leads/[leadId]
-// Full-page Lead detail view with Frappe-style header, tabbed content (including channels),
-// and info side panel.
+// Contact detail view with tabs (activity, data, notes, channels).
+// Loads contact from Express backend via contactService.
 
 import { useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { crmApi } from '@/services/crm/api'
+import { contactService } from '@/services/contact.service'
 import { getInitials } from '@/lib/utils'
 import { toast } from 'sonner'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -23,24 +23,20 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { DetailHeader } from '@/components/crm/detail-header'
-import { DetailTabs, CONTENT_TABS, CHANNEL_TABS, useDetailTabs } from '@/components/crm/detail-tabs'
+import { DetailTabs, CHANNEL_TABS, useDetailTabs } from '@/components/crm/detail-tabs'
 import { ActivityTimeline } from '@/components/crm/activity-timeline'
 import { SidePanelInfo } from '@/components/crm/side-panel-info'
 import type { FieldDefinition } from '@/components/crm/side-panel-info'
 import {
   NotesTab,
-  TasksTab,
-  CommentsTab,
   DataTab,
-  EmailsTab,
-  AttachmentsTab,
   ChannelTab,
 } from '@/components/crm/tabs'
 import type { DataField } from '@/components/crm/tabs'
+import type { TabConfig } from '@/components/crm/detail-tabs'
 import {
   RefreshCw,
   Target,
-  Handshake,
   ArrowLeft,
   AlertTriangle,
   Trash2,
@@ -48,75 +44,22 @@ import {
   Mail,
   Phone,
   Building2,
-  Globe,
+  Activity,
+  Database,
+  FileText,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/auth-context'
-import type { Lead } from '@/types/crm'
+import type { Contact } from '@/types'
 
 // ============================================
 // HELPERS
 // ============================================
 
-function getFullName(lead: Lead): string {
-  return [lead.first_name, lead.middle_name, lead.last_name].filter(Boolean).join(' ')
-}
-
-// ============================================
-// CONVERT DIALOG
-// ============================================
-
-interface ConvertDialogProps {
-  open: boolean
-  onClose: () => void
-  onConfirm: () => void
-  isPending: boolean
-  leadName: string
-}
-
-function ConvertDialog({ open, onClose, onConfirm, isPending, leadName }: ConvertDialogProps) {
-  return (
-    <AlertDialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <AlertDialogContent className="max-w-md">
-        <AlertDialogHeader>
-          <AlertDialogTitle style={{ color: 'var(--ink-gray-9)' }}>Converter em Negociacao</AlertDialogTitle>
-          <AlertDialogDescription style={{ color: 'var(--ink-gray-5)' }}>
-            Isso convertera o lead <span style={{ fontWeight: 500, color: 'var(--ink-gray-8)' }}>{leadName}</span> em uma
-            negociacao. Um contato tambem sera criado automaticamente. Esta acao nao pode ser desfeita.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel
-            onClick={onClose}
-            style={{
-              border: '1px solid var(--outline-gray-2)',
-              color: 'var(--ink-gray-8)',
-              backgroundColor: 'transparent',
-              borderRadius: '8px',
-            }}
-          >
-            Cancelar
-          </AlertDialogCancel>
-          <AlertDialogAction
-            onClick={onConfirm}
-            disabled={isPending}
-            style={{
-              backgroundColor: 'var(--surface-gray-7)',
-              color: '#fff',
-              borderRadius: '8px',
-              border: 'none',
-            }}
-          >
-            {isPending ? (
-              <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-            ) : (
-              <Handshake className="w-4 h-4 mr-2" />
-            )}
-            Converter
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  )
+function getDisplayName(contact: Contact): string {
+  if (contact.firstName || contact.lastName) {
+    return `${contact.firstName ?? ''} ${contact.lastName ?? ''}`.trim()
+  }
+  return contact.name ?? contact.phoneNumber
 }
 
 // ============================================
@@ -124,16 +67,28 @@ function ConvertDialog({ open, onClose, onConfirm, isPending, leadName }: Conver
 // ============================================
 
 const DATA_FIELDS: DataField[] = [
-  { key: 'first_name', label: 'Primeiro nome', type: 'text' },
-  { key: 'last_name', label: 'Sobrenome', type: 'text' },
+  { key: 'firstName', label: 'Nome', type: 'text' },
+  { key: 'lastName', label: 'Sobrenome', type: 'text' },
   { key: 'email', label: 'Email', type: 'email' },
-  { key: 'mobile_no', label: 'Celular', type: 'phone' },
-  { key: 'phone', label: 'Telefone', type: 'phone' },
-  { key: 'job_title', label: 'Cargo', type: 'text' },
-  { key: 'organization_name', label: 'Organizacao', type: 'text' },
-  { key: 'website', label: 'Website', type: 'url' },
-  { key: 'no_of_employees', label: 'Funcionarios', type: 'number' },
-  { key: 'annual_revenue', label: 'Receita anual', type: 'currency' },
+  { key: 'phoneNumber', label: 'Telefone', type: 'phone' },
+  { key: 'companyName', label: 'Empresa', type: 'text' },
+  { key: 'designation', label: 'Cargo', type: 'text' },
+  { key: 'channel', label: 'Canal', type: 'text' },
+]
+
+// ============================================
+// TABS CONFIG
+// ============================================
+
+const CONTACT_CONTENT_TABS: TabConfig[] = [
+  { value: 'activity', label: 'Atividade', icon: Activity },
+  { value: 'data', label: 'Dados', icon: Database },
+  { value: 'notes', label: 'Notas', icon: FileText },
+]
+
+const ALL_TABS: TabConfig[] = [
+  ...CONTACT_CONTENT_TABS,
+  ...CHANNEL_TABS,
 ]
 
 // ============================================
@@ -146,143 +101,80 @@ export default function LeadDetailPage() {
   const queryClient = useQueryClient()
   const { user } = useAuth()
 
-  // RBAC: only SUPER_ADMIN and TENANT_ADMIN can delete/convert
   const canDelete = user?.role === 'SUPER_ADMIN' || user?.role === 'TENANT_ADMIN'
-  const canConvert = user?.role !== 'SALES' && user?.role !== 'ATTENDANT'
 
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
-  const [showConvertDialog, setShowConvertDialog] = useState(false)
   const { activeTab, setActiveTab } = useDetailTabs('activity')
 
-  // Fetch lead
+  // Fetch contact from Express backend
   const {
-    data: leadResponse,
+    data: contact,
     isLoading,
     isError,
     refetch,
   } = useQuery({
-    queryKey: ['crm-lead', leadId],
-    queryFn: () => crmApi.leads.get(leadId),
-    select: (res) => res.data,
+    queryKey: ['contact', leadId],
+    queryFn: () => contactService.getById(leadId),
   })
 
-  const lead = leadResponse
-
-  // Fetch statuses for inline status edit
-  const { data: statusOptions } = useQuery({
-    queryKey: ['crm-lead-statuses'],
-    queryFn: () => crmApi.settings.statuses.listLead(),
-    select: (res) =>
-      res.data.map((s) => ({ value: s.id, label: s.label, color: s.color })),
-  })
-
-  // Update lead mutation
+  // Update contact mutation
   const updateMutation = useMutation({
-    mutationFn: (data: Parameters<typeof crmApi.leads.update>[1]) =>
-      crmApi.leads.update(leadId, data),
+    mutationFn: (data: Parameters<typeof contactService.update>[1]) =>
+      contactService.update(leadId, data),
     onSuccess: () => {
-      toast.success('Lead atualizado')
-      queryClient.invalidateQueries({ queryKey: ['crm-lead', leadId] })
+      toast.success('Contato atualizado')
+      queryClient.invalidateQueries({ queryKey: ['contact', leadId] })
     },
-    onError: () => toast.error('Erro ao atualizar lead'),
+    onError: () => toast.error('Erro ao atualizar contato'),
   })
 
   // Delete mutation
   const deleteMutation = useMutation({
-    mutationFn: () => crmApi.leads.delete(leadId),
+    mutationFn: () => contactService.delete(leadId),
     onSuccess: () => {
-      toast.success('Lead excluido')
+      toast.success('Contato excluido')
+      queryClient.invalidateQueries({ queryKey: ['contacts-list'] })
       router.push('/crm/leads')
     },
-    onError: () => toast.error('Erro ao excluir lead'),
-  })
-
-  // Convert mutation
-  const convertMutation = useMutation({
-    mutationFn: () => crmApi.leads.convert(leadId),
-    onSuccess: (res) => {
-      toast.success('Lead convertido em negociacao!')
-      router.push(`/crm/deals/${res.data.deal_id}`)
-    },
-    onError: () => toast.error('Erro ao converter lead'),
+    onError: () => toast.error('Erro ao excluir contato'),
   })
 
   // Inline name save
   const handleNameEdit = (newName: string) => {
     const parts = newName.trim().split(/\s+/)
-    const first = parts[0] ?? ''
-    const last = parts.length > 1 ? parts.slice(1).join(' ') : undefined
-    updateMutation.mutate({ first_name: first, last_name: last })
+    const firstName = parts[0] ?? ''
+    const lastName = parts.length > 1 ? parts.slice(1).join(' ') : undefined
+    updateMutation.mutate({ firstName, lastName })
   }
 
   // Side panel field update handler
   const handleFieldUpdate = (field: string, value: unknown) => {
-    if (field === 'status') {
-      const statusVal = value as { id?: string } | null
-      if (statusVal?.id) updateMutation.mutate({ status_id: statusVal.id })
-      return
-    }
-    if (field === 'source') {
-      const val = value as { id?: string } | null
-      if (val?.id) updateMutation.mutate({ source_id: val.id })
-      return
-    }
-    if (field === 'industry') {
-      const val = value as { id?: string } | null
-      if (val?.id) updateMutation.mutate({ industry_id: val.id })
-      return
-    }
     updateMutation.mutate({ [field]: value })
   }
 
   // Side panel field definitions
   const sidePanelFields: FieldDefinition[] = [
-    { key: 'first_name', label: 'Primeiro nome', type: 'text', editable: true, group: 'Contato', icon: User },
-    { key: 'last_name', label: 'Sobrenome', type: 'text', editable: true, group: 'Contato', icon: User },
+    { key: 'firstName', label: 'Nome', type: 'text', editable: true, group: 'Contato', icon: User },
+    { key: 'lastName', label: 'Sobrenome', type: 'text', editable: true, group: 'Contato', icon: User },
     { key: 'email', label: 'Email', type: 'email', editable: true, group: 'Contato', icon: Mail },
-    { key: 'mobile_no', label: 'Celular', type: 'phone', editable: true, group: 'Contato', icon: Phone },
-    { key: 'phone', label: 'Telefone', type: 'phone', editable: true, group: 'Contato', icon: Phone },
-    { key: 'job_title', label: 'Cargo', type: 'text', editable: true, group: 'Contato' },
-    { key: 'organization_name', label: 'Organizacao', type: 'text', editable: true, group: 'Organizacao', icon: Building2 },
-    { key: 'website', label: 'Website', type: 'url', editable: true, group: 'Organizacao', icon: Globe },
-    { key: 'no_of_employees', label: 'Funcionarios', type: 'number', editable: true, group: 'Organizacao' },
-    { key: 'annual_revenue', label: 'Receita anual', type: 'currency', editable: true, group: 'Organizacao' },
-    {
-      key: 'status',
-      label: 'Status',
-      type: 'badge',
-      editable: true,
-      options: statusOptions ?? [],
-      group: 'Pipeline',
-    },
-    { key: 'lead_owner', label: 'Responsavel', type: 'user', editable: false, group: 'Pipeline' },
-    { key: 'sla_status', label: 'SLA', type: 'text', editable: false, group: 'SLA' },
+    { key: 'phoneNumber', label: 'Telefone', type: 'phone', editable: false, group: 'Contato', icon: Phone },
+    { key: 'companyName', label: 'Empresa', type: 'text', editable: true, group: 'Organizacao', icon: Building2 },
+    { key: 'designation', label: 'Cargo', type: 'text', editable: true, group: 'Organizacao' },
+    { key: 'channel', label: 'Canal', type: 'text', editable: false, group: 'Info' },
   ]
 
   // Build side panel data
-  const sidePanelData: Record<string, unknown> = lead
+  const sidePanelData: Record<string, unknown> = contact
     ? {
-        first_name: lead.first_name,
-        last_name: lead.last_name,
-        email: lead.email,
-        mobile_no: lead.mobile_no,
-        phone: lead.phone,
-        job_title: lead.job_title,
-        organization_name: lead.organization_name,
-        website: lead.website,
-        no_of_employees: lead.no_of_employees,
-        annual_revenue: lead.annual_revenue,
-        status: lead.status,
-        lead_owner: lead.lead_owner,
-        sla_status: lead.sla_status,
+        firstName: contact.firstName,
+        lastName: contact.lastName,
+        email: contact.email,
+        phoneNumber: contact.phoneNumber,
+        companyName: contact.companyName,
+        designation: contact.designation,
+        channel: contact.channel,
       }
     : {}
-
-  // All tabs config
-  const allTabs = [
-    ...CONTENT_TABS,
-    ...CHANNEL_TABS,
-  ]
 
   // ---- LOADING STATE ----
   if (isLoading) {
@@ -319,11 +211,11 @@ export default function LeadDetailPage() {
   }
 
   // ---- ERROR STATE ----
-  if (isError || !lead) {
+  if (isError || !contact) {
     return (
       <div className="h-full flex flex-col items-center justify-center gap-4 p-8" style={{ backgroundColor: 'var(--surface-white)' }}>
         <AlertTriangle className="w-10 h-10" style={{ color: 'var(--ink-amber-3)' }} />
-        <p style={{ color: 'var(--ink-gray-8)', fontWeight: 500 }}>Nao foi possivel carregar o lead</p>
+        <p style={{ color: 'var(--ink-gray-8)', fontWeight: 500 }}>Nao foi possivel carregar o contato</p>
         <button
           onClick={() => refetch()}
           className="inline-flex items-center gap-2"
@@ -356,8 +248,7 @@ export default function LeadDetailPage() {
     )
   }
 
-  const fullName = getFullName(lead)
-  const statusColor = lead.status?.color ?? '#7C7C7C'
+  const fullName = getDisplayName(contact)
 
   return (
     <div className="h-full flex flex-col overflow-hidden" style={{ backgroundColor: 'var(--surface-white)' }}>
@@ -366,49 +257,10 @@ export default function LeadDetailPage() {
         breadcrumbLabel="Leads"
         breadcrumbHref="/crm/leads"
         entityName={fullName}
-        namingSeries={lead.naming_series}
         icon={Target}
         iconColor="var(--ink-blue-3)"
         iconBg="var(--surface-blue-2)"
-        statusBadge={lead.status ? { label: lead.status.label, color: statusColor } : undefined}
         onNameEdit={handleNameEdit}
-        extraBadges={
-          lead.converted ? (
-            <span
-              style={{
-                backgroundColor: 'var(--surface-green-2)',
-                color: 'var(--ink-green-3)',
-                borderRadius: '999px',
-                padding: '2px 10px',
-                fontSize: '12px',
-                fontWeight: 500,
-              }}
-            >
-              Convertido
-            </span>
-          ) : undefined
-        }
-        actions={
-          !lead.converted && canConvert ? (
-            <button
-              onClick={() => setShowConvertDialog(true)}
-              className="hidden sm:inline-flex items-center gap-1.5 h-8"
-              style={{
-                backgroundColor: 'var(--surface-gray-7)',
-                color: '#fff',
-                borderRadius: '8px',
-                padding: '5px 12px',
-                fontSize: '12px',
-                fontWeight: 500,
-                border: 'none',
-                cursor: 'pointer',
-              }}
-            >
-              <Handshake className="w-3.5 h-3.5" />
-              Converter
-            </button>
-          ) : undefined
-        }
         onDelete={canDelete ? () => setShowDeleteDialog(true) : undefined}
       />
 
@@ -419,46 +271,38 @@ export default function LeadDetailPage() {
           <DetailTabs
             activeTab={activeTab}
             onTabChange={setActiveTab}
-            tabs={allTabs}
+            tabs={ALL_TABS}
           >
             <div className="p-4 lg:p-6">
               {/* Content tabs */}
               {activeTab === 'activity' && (
-                <ActivityTimeline doctype="Lead" docname={leadId} />
-              )}
-              {activeTab === 'emails' && <EmailsTab />}
-              {activeTab === 'comments' && (
-                <CommentsTab doctype="Lead" docname={leadId} />
+                <ActivityTimeline doctype="Contact" docname={leadId} />
               )}
               {activeTab === 'data' && (
                 <DataTab fields={DATA_FIELDS} data={sidePanelData} />
               )}
-              {activeTab === 'tasks' && (
-                <TasksTab doctype="Lead" docname={leadId} />
-              )}
               {activeTab === 'notes' && (
-                <NotesTab doctype="Lead" docname={leadId} />
+                <NotesTab doctype="Contact" docname={leadId} />
               )}
-              {activeTab === 'attachments' && <AttachmentsTab />}
 
               {/* Channel tabs */}
               {activeTab === 'whatsapp' && (
-                <ChannelTab channel="whatsapp" phoneNumber={lead.mobile_no ?? lead.phone} entityName={fullName} />
+                <ChannelTab channel="whatsapp" phoneNumber={contact.phoneNumber} entityName={fullName} />
               )}
               {activeTab === 'messenger' && (
-                <ChannelTab channel="messenger" phoneNumber={lead.mobile_no ?? lead.phone} entityName={fullName} />
+                <ChannelTab channel="messenger" phoneNumber={contact.phoneNumber} entityName={fullName} />
               )}
               {activeTab === 'instagram' && (
-                <ChannelTab channel="instagram" phoneNumber={lead.mobile_no ?? lead.phone} entityName={fullName} />
+                <ChannelTab channel="instagram" phoneNumber={contact.phoneNumber} entityName={fullName} />
               )}
               {activeTab === 'imessage' && (
-                <ChannelTab channel="imessage" phoneNumber={lead.mobile_no ?? lead.phone} entityName={fullName} />
+                <ChannelTab channel="imessage" phoneNumber={contact.phoneNumber} entityName={fullName} />
               )}
               {activeTab === 'booking' && (
-                <ChannelTab channel="booking" phoneNumber={lead.mobile_no ?? lead.phone} entityName={fullName} />
+                <ChannelTab channel="booking" phoneNumber={contact.phoneNumber} entityName={fullName} />
               )}
               {activeTab === 'airbnb' && (
-                <ChannelTab channel="airbnb" phoneNumber={lead.mobile_no ?? lead.phone} entityName={fullName} />
+                <ChannelTab channel="airbnb" phoneNumber={contact.phoneNumber} entityName={fullName} />
               )}
             </div>
           </DetailTabs>
@@ -478,7 +322,7 @@ export default function LeadDetailPage() {
             style={{ borderBottom: '1px solid var(--outline-gray-1)' }}
           >
             <Avatar className="w-10 h-10 flex-shrink-0">
-              <AvatarImage src={lead.image_url ?? undefined} alt={fullName} />
+              <AvatarImage src={contact.profilePictureUrl ?? undefined} alt={fullName} />
               <AvatarFallback
                 style={{
                   backgroundColor: 'var(--surface-blue-2)',
@@ -497,9 +341,9 @@ export default function LeadDetailPage() {
               >
                 {fullName}
               </p>
-              {lead.organization_name && (
+              {contact.companyName && (
                 <p className="truncate" style={{ fontSize: '12px', color: 'var(--ink-gray-5)' }}>
-                  {lead.organization_name}
+                  {contact.companyName}
                 </p>
               )}
             </div>
@@ -515,23 +359,15 @@ export default function LeadDetailPage() {
         </aside>
       </div>
 
-      {/* ---- DIALOGS ---- */}
-      <ConvertDialog
-        open={showConvertDialog}
-        onClose={() => setShowConvertDialog(false)}
-        onConfirm={() => convertMutation.mutate()}
-        isPending={convertMutation.isPending}
-        leadName={fullName}
-      />
-
+      {/* ---- DELETE DIALOG ---- */}
       <AlertDialog open={showDeleteDialog} onOpenChange={(o) => !o && setShowDeleteDialog(false)}>
         <AlertDialogContent className="max-w-md">
           <AlertDialogHeader>
-            <AlertDialogTitle style={{ color: 'var(--ink-gray-9)' }}>Excluir lead</AlertDialogTitle>
+            <AlertDialogTitle style={{ color: 'var(--ink-gray-9)' }}>Excluir contato</AlertDialogTitle>
             <AlertDialogDescription style={{ color: 'var(--ink-gray-5)' }}>
               Tem certeza que deseja excluir{' '}
               <span style={{ fontWeight: 500, color: 'var(--ink-gray-8)' }}>{fullName}</span>?
-              Todas as atividades, notas e tarefas associadas tambem serao removidas.
+              Todas as conversas e mensagens associadas tambem serao removidas.
               Esta acao nao pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>

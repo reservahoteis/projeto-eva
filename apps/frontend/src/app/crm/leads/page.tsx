@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tansta
 import { useRouter } from 'next/navigation'
 import { useDebounce } from '@/hooks/use-debounce'
 import { crmApi } from '@/services/crm/api'
+import { contactService } from '@/services/contact.service'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -20,7 +21,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
@@ -58,16 +58,17 @@ import {
   ArrowUpDown,
   Mail,
   Phone,
-  Building2,
   UserCheck,
   Filter,
   X,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { formatDistanceToNow } from 'date-fns'
+import { formatDistanceToNow, format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
+import { Label } from '@/components/ui/label'
 import type { LeadListItem, ViewType } from '@/types/crm'
+import type { Contact } from '@/types'
 
 // ============================================
 // HELPERS
@@ -98,6 +99,173 @@ function getAvatarPalette(id: string) {
     hash = id.charCodeAt(i) + ((hash << 5) - hash)
   }
   return AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length] ?? AVATAR_PALETTE[0]
+}
+
+function getDisplayName(contact: Contact): string {
+  if (contact.firstName || contact.lastName) {
+    return `${contact.firstName ?? ''} ${contact.lastName ?? ''}`.trim()
+  }
+  return contact.name ?? contact.phoneNumber
+}
+
+// ============================================
+// CHANNEL BADGE
+// ============================================
+
+const CHANNEL_LABELS: Record<string, string> = {
+  WHATSAPP: 'WhatsApp',
+  MESSENGER: 'Messenger',
+  INSTAGRAM: 'Instagram',
+}
+
+const CHANNEL_COLORS: Record<string, { bg: string; text: string }> = {
+  WHATSAPP: { bg: '#E4FAEB', text: '#278F5E' },
+  MESSENGER: { bg: '#E6F4FF', text: '#007BE0' },
+  INSTAGRAM: { bg: '#FFE7E7', text: '#E03636' },
+}
+
+function ChannelBadge({ channel }: { channel?: string | null }) {
+  if (!channel) return <span style={{ color: 'var(--ink-gray-4)' }}>—</span>
+  const upper = channel.toUpperCase()
+  const label = CHANNEL_LABELS[upper] ?? channel
+  const colors = CHANNEL_COLORS[upper] ?? { bg: 'var(--surface-gray-2)', text: 'var(--ink-gray-6)' }
+  return (
+    <span
+      className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium"
+      style={{ backgroundColor: colors.bg, color: colors.text }}
+    >
+      {label}
+    </span>
+  )
+}
+
+// ============================================
+// CONTACT AVATAR
+// ============================================
+
+function ContactAvatar({ imageUrl, name, id, size = 'sm' }: {
+  imageUrl?: string | null
+  name: string
+  id: string
+  size?: 'sm' | 'md'
+}) {
+  const palette = getAvatarPalette(id)
+  const dim = size === 'sm' ? 'w-6 h-6 text-[10px]' : 'w-8 h-8 text-xs'
+  if (imageUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={imageUrl}
+        alt={name}
+        className={cn(dim, 'rounded-full object-cover flex-shrink-0')}
+      />
+    )
+  }
+  return (
+    <div
+      className={cn(dim, 'rounded-full flex items-center justify-center font-semibold flex-shrink-0')}
+      style={{ backgroundColor: palette.bg, color: palette.text }}
+    >
+      {getInitials(name)}
+    </div>
+  )
+}
+
+// ============================================
+// CREATE CONTACT FORM
+// ============================================
+
+interface CreateContactFormData {
+  phoneNumber: string
+  firstName?: string
+  lastName?: string
+  email?: string
+  companyName?: string
+  designation?: string
+}
+
+function CreateContactForm({ onSubmit, onCancel, isLoading }: {
+  onSubmit: (data: CreateContactFormData) => void
+  onCancel: () => void
+  isLoading: boolean
+}) {
+  const [phoneNumber, setPhoneNumber] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [email, setEmail] = useState('')
+  const [companyName, setCompanyName] = useState('')
+  const [designation, setDesignation] = useState('')
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    const cleaned = phoneNumber.replace(/\D/g, '')
+    if (!cleaned || cleaned.length < 10 || cleaned.length > 15) {
+      toast.error('Telefone invalido. Use entre 10 e 15 digitos.')
+      return
+    }
+    onSubmit({
+      phoneNumber: cleaned,
+      firstName: firstName.trim() || undefined,
+      lastName: lastName.trim() || undefined,
+      email: email.trim() || undefined,
+      companyName: companyName.trim() || undefined,
+      designation: designation.trim() || undefined,
+    })
+  }
+
+  const inputStyle = {
+    borderColor: 'var(--outline-gray-2)',
+    backgroundColor: 'var(--surface-white)',
+    color: 'var(--ink-gray-8)',
+  }
+  const labelStyle = { color: 'var(--ink-gray-6)' }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-3">
+      <div className="space-y-1.5">
+        <Label className="text-xs font-medium" style={labelStyle}>Telefone *</Label>
+        <Input
+          value={phoneNumber}
+          onChange={(e) => setPhoneNumber(e.target.value)}
+          placeholder="+55 11 99999-9999"
+          className="h-8 text-sm rounded border"
+          style={inputStyle}
+          autoFocus
+          required
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label className="text-xs font-medium" style={labelStyle}>Nome</Label>
+          <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Nome" className="h-8 text-sm rounded border" style={inputStyle} />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs font-medium" style={labelStyle}>Sobrenome</Label>
+          <Input value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Sobrenome" className="h-8 text-sm rounded border" style={inputStyle} />
+        </div>
+      </div>
+      <div className="space-y-1.5">
+        <Label className="text-xs font-medium" style={labelStyle}>Email</Label>
+        <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@exemplo.com" className="h-8 text-sm rounded border" style={inputStyle} />
+      </div>
+      <div className="space-y-1.5">
+        <Label className="text-xs font-medium" style={labelStyle}>Empresa</Label>
+        <Input value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Nome da empresa" className="h-8 text-sm rounded border" style={inputStyle} />
+      </div>
+      <div className="space-y-1.5">
+        <Label className="text-xs font-medium" style={labelStyle}>Cargo</Label>
+        <Input value={designation} onChange={(e) => setDesignation(e.target.value)} placeholder="Ex: Gerente de Vendas" className="h-8 text-sm rounded border" style={inputStyle} />
+      </div>
+      <div className="flex justify-end gap-2 pt-2">
+        <Button type="button" variant="ghost" size="sm" onClick={onCancel} className="h-8 px-3 text-sm rounded border" style={{ borderColor: 'var(--outline-gray-2)', color: 'var(--ink-gray-7)' }}>
+          Cancelar
+        </Button>
+        <Button type="submit" size="sm" disabled={isLoading} className="h-8 px-3 text-sm rounded text-white hover:opacity-90" style={{ backgroundColor: 'var(--surface-gray-7)' }}>
+          {isLoading ? 'Criando...' : 'Criar Contato'}
+        </Button>
+      </div>
+    </form>
+  )
 }
 
 // ============================================
@@ -465,6 +633,26 @@ export default function LeadsPage() {
     select: (res: Awaited<ReturnType<typeof crmApi.leads.groupBy>>) => res.data,
   })
 
+  // Contacts query for list view
+  const contactsListParams = {
+    page,
+    limit: PAGE_SIZE,
+    search: debouncedSearch || undefined,
+    sortBy: (sortField === 'lead_name' ? 'name' : sortField === 'created_at' ? 'createdAt' : 'updatedAt') as 'name' | 'createdAt' | 'updatedAt' | 'phoneNumber',
+    sortOrder: sortDir,
+  }
+
+  const contactsQuery = useQuery({
+    queryKey: ['contacts-list', contactsListParams],
+    queryFn: () => contactService.list(contactsListParams),
+    placeholderData: keepPreviousData,
+    enabled: view === 'list',
+  })
+
+  const contacts = contactsQuery.data?.data ?? []
+  const contactsTotalCount = contactsQuery.data?.pagination.total ?? 0
+  const contactsTotalPages = contactsQuery.data?.pagination.totalPages ?? 0
+
   // ============================================
   // MUTATIONS
   // ============================================
@@ -480,6 +668,33 @@ export default function LeadsPage() {
     onError: (err: { response?: { data?: { message?: string } } }) => {
       toast.error(err.response?.data?.message ?? 'Erro ao remover lead.')
     },
+  })
+
+  const deleteContactMutation = useMutation({
+    mutationFn: (id: string) => contactService.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contacts-list'] })
+      toast.success('Contato removido com sucesso.')
+    },
+    onError: () => toast.error('Erro ao remover contato.'),
+  })
+
+  const createContactMutation = useMutation({
+    mutationFn: (data: CreateContactFormData) =>
+      contactService.create({
+        phoneNumber: data.phoneNumber,
+        firstName: data.firstName || undefined,
+        lastName: data.lastName || undefined,
+        email: data.email || undefined,
+        companyName: data.companyName || undefined,
+        designation: data.designation || undefined,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contacts-list'] })
+      setIsCreateOpen(false)
+      toast.success('Contato criado com sucesso.')
+    },
+    onError: () => toast.error('Erro ao criar contato.'),
   })
 
   // ============================================
@@ -516,14 +731,14 @@ export default function LeadsPage() {
   // STATS
   // ============================================
 
-  const totalLeads = listQuery.data?.total_count ?? 0
+  const totalLeads = view === 'list' ? contactsTotalCount : (listQuery.data?.total_count ?? 0)
   const isLoading =
-    (view === 'list' && listQuery.isLoading) ||
+    (view === 'list' && contactsQuery.isLoading) ||
     (view === 'kanban' && kanbanQuery.isLoading) ||
     (view === 'group_by' && groupByQuery.isLoading)
 
   const refetch = () => {
-    queryClient.invalidateQueries({ queryKey: ['crm-leads-list'] })
+    queryClient.invalidateQueries({ queryKey: ['contacts-list'] })
     queryClient.invalidateQueries({ queryKey: ['crm-leads-kanban'] })
     queryClient.invalidateQueries({ queryKey: ['crm-leads-groupby'] })
   }
@@ -690,7 +905,7 @@ export default function LeadsPage() {
       {/* ---- Main Content ---- */}
       <div className="flex-1 overflow-auto">
 
-        {/* ====== LIST VIEW ====== */}
+        {/* ====== LIST VIEW (Contatos) ====== */}
         {view === 'list' && (
           <>
             {isLoading ? (
@@ -700,12 +915,13 @@ export default function LeadsPage() {
                     className="border-b"
                     style={{ borderColor: 'var(--outline-gray-1)', backgroundColor: 'var(--surface-gray-1)' }}
                   >
-                    <TableHead className="py-2 pl-4 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--ink-gray-5)' }}>Lead</TableHead>
-                    <TableHead className="py-2 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--ink-gray-5)' }}>Contato</TableHead>
-                    <TableHead className="py-2 text-[11px] font-semibold uppercase tracking-wider hidden lg:table-cell" style={{ color: 'var(--ink-gray-5)' }}>Empresa</TableHead>
-                    <TableHead className="py-2 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--ink-gray-5)' }}>Status</TableHead>
-                    <TableHead className="py-2 text-[11px] font-semibold uppercase tracking-wider hidden xl:table-cell" style={{ color: 'var(--ink-gray-5)' }}>Responsavel</TableHead>
-                    <TableHead className="py-2 text-[11px] font-semibold uppercase tracking-wider hidden lg:table-cell" style={{ color: 'var(--ink-gray-5)' }}>Criado</TableHead>
+                    <TableHead className="py-2 pl-4 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--ink-gray-5)' }}>Nome</TableHead>
+                    <TableHead className="py-2 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--ink-gray-5)' }}>Telefone</TableHead>
+                    <TableHead className="py-2 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--ink-gray-5)' }}>Email</TableHead>
+                    <TableHead className="py-2 text-[11px] font-semibold uppercase tracking-wider hidden md:table-cell" style={{ color: 'var(--ink-gray-5)' }}>Empresa</TableHead>
+                    <TableHead className="py-2 text-[11px] font-semibold uppercase tracking-wider hidden lg:table-cell" style={{ color: 'var(--ink-gray-5)' }}>Canal</TableHead>
+                    <TableHead className="py-2 text-[11px] font-semibold uppercase tracking-wider hidden lg:table-cell text-right" style={{ color: 'var(--ink-gray-5)' }}>Conversas</TableHead>
+                    <TableHead className="py-2 text-[11px] font-semibold uppercase tracking-wider hidden xl:table-cell" style={{ color: 'var(--ink-gray-5)' }}>Ultima atividade</TableHead>
                     <TableHead className="py-2 pr-4 w-10" />
                   </TableRow>
                 </TableHeader>
@@ -713,10 +929,10 @@ export default function LeadsPage() {
                   <TableSkeleton />
                 </TableBody>
               </Table>
-            ) : listQuery.isError ? (
+            ) : contactsQuery.isError ? (
               <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
                 <p className="text-sm mb-2" style={{ color: 'var(--ink-gray-5)' }}>
-                  Erro ao carregar leads.
+                  Erro ao carregar contatos.
                 </p>
                 <Button
                   variant="link"
@@ -727,21 +943,21 @@ export default function LeadsPage() {
                   Tentar novamente
                 </Button>
               </div>
-            ) : !listQuery.data?.data?.length ? (
+            ) : contacts.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
                 <div
                   className="w-12 h-12 rounded-xl flex items-center justify-center mb-4"
                   style={{ backgroundColor: 'var(--surface-gray-2)' }}
                 >
-                  <Target className="w-6 h-6" style={{ color: 'var(--ink-gray-4)' }} />
+                  <Users className="w-6 h-6" style={{ color: 'var(--ink-gray-4)' }} />
                 </div>
                 <p className="text-sm font-medium mb-1" style={{ color: 'var(--ink-gray-8)' }}>
-                  {debouncedSearch ? 'Nenhum lead encontrado' : 'Nenhum lead cadastrado'}
+                  {debouncedSearch ? 'Nenhum contato encontrado' : 'Sem contatos'}
                 </p>
                 <p className="text-xs mb-5" style={{ color: 'var(--ink-gray-5)' }}>
                   {debouncedSearch
-                    ? `Sem resultados para "${debouncedSearch}"`
-                    : 'Comece criando o primeiro lead'}
+                    ? `Nenhum resultado para "${debouncedSearch}"`
+                    : 'Adicione o primeiro contato para comecar'}
                 </p>
                 {!debouncedSearch && (
                   <Button
@@ -751,7 +967,7 @@ export default function LeadsPage() {
                     className="hover:opacity-90"
                   >
                     <Plus className="w-3.5 h-3.5 mr-1.5" />
-                    Novo Lead
+                    Novo Contato
                   </Button>
                 )}
               </div>
@@ -769,54 +985,62 @@ export default function LeadsPage() {
                         onClick={() => handleSort('lead_name')}
                       >
                         <span className="flex items-center">
-                          Lead <SortIcon field="lead_name" />
+                          Nome <SortIcon field="lead_name" />
                         </span>
                       </TableHead>
                       <TableHead
                         className="py-2 text-[11px] font-semibold uppercase tracking-wider whitespace-nowrap"
                         style={{ color: 'var(--ink-gray-5)', letterSpacing: '0.04em' }}
                       >
-                        Contato
-                      </TableHead>
-                      <TableHead
-                        className="py-2 text-[11px] font-semibold uppercase tracking-wider whitespace-nowrap hidden lg:table-cell"
-                        style={{ color: 'var(--ink-gray-5)', letterSpacing: '0.04em' }}
-                      >
-                        Empresa
+                        Telefone
                       </TableHead>
                       <TableHead
                         className="py-2 text-[11px] font-semibold uppercase tracking-wider whitespace-nowrap"
                         style={{ color: 'var(--ink-gray-5)', letterSpacing: '0.04em' }}
                       >
-                        Status
+                        Email
                       </TableHead>
                       <TableHead
-                        className="py-2 text-[11px] font-semibold uppercase tracking-wider whitespace-nowrap hidden xl:table-cell"
+                        className="py-2 text-[11px] font-semibold uppercase tracking-wider whitespace-nowrap hidden md:table-cell"
                         style={{ color: 'var(--ink-gray-5)', letterSpacing: '0.04em' }}
                       >
-                        Responsavel
+                        Empresa
                       </TableHead>
                       <TableHead
-                        className="py-2 text-[11px] font-semibold uppercase tracking-wider cursor-pointer select-none whitespace-nowrap hidden lg:table-cell"
+                        className="py-2 text-[11px] font-semibold uppercase tracking-wider whitespace-nowrap hidden lg:table-cell"
+                        style={{ color: 'var(--ink-gray-5)', letterSpacing: '0.04em' }}
+                      >
+                        Canal
+                      </TableHead>
+                      <TableHead
+                        className="py-2 text-[11px] font-semibold uppercase tracking-wider whitespace-nowrap hidden lg:table-cell text-right"
+                        style={{ color: 'var(--ink-gray-5)', letterSpacing: '0.04em' }}
+                      >
+                        Conversas
+                      </TableHead>
+                      <TableHead
+                        className="py-2 text-[11px] font-semibold uppercase tracking-wider cursor-pointer select-none whitespace-nowrap hidden xl:table-cell"
                         style={{ color: 'var(--ink-gray-5)', letterSpacing: '0.04em' }}
                         onClick={() => handleSort('created_at')}
                       >
                         <span className="flex items-center">
-                          Criado <SortIcon field="created_at" />
+                          Ultima atividade <SortIcon field="created_at" />
                         </span>
                       </TableHead>
                       <TableHead className="py-2 pr-4 w-10" />
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {listQuery.data?.data?.map((lead) => {
-                      const palette = getAvatarPalette(lead.id)
+                    {contacts.map((contact) => {
+                      const displayName = getDisplayName(contact)
+                      const conversationCount = contact._count?.conversations ?? 0
+
                       return (
                         <TableRow
-                          key={lead.id}
-                          className="border-b cursor-pointer transition-colors"
+                          key={contact.id}
+                          className="border-b cursor-pointer transition-colors group"
                           style={{ borderColor: 'var(--outline-gray-1)' }}
-                          onClick={() => router.push(`/crm/leads/${lead.id}`)}
+                          onClick={() => router.push(`/crm/leads/${contact.id}`)}
                           onMouseEnter={(e) => {
                             e.currentTarget.style.backgroundColor = 'var(--surface-gray-1)'
                           }}
@@ -824,66 +1048,65 @@ export default function LeadsPage() {
                             e.currentTarget.style.backgroundColor = ''
                           }}
                         >
-                          {/* Lead — Avatar + name */}
+                          {/* Nome — Avatar + name */}
                           <TableCell className="py-2.5 pl-4">
-                            <div className="flex items-center gap-3">
-                              <div
-                                className="w-8 h-8 rounded-lg flex items-center justify-center font-semibold text-xs flex-shrink-0"
-                                style={{ backgroundColor: palette.bg, color: palette.text }}
+                            <div className="flex items-center gap-2">
+                              <ContactAvatar
+                                imageUrl={contact.profilePictureUrl}
+                                name={displayName}
+                                id={contact.id}
+                                size="md"
+                              />
+                              <span
+                                className="text-sm font-medium truncate max-w-[180px]"
+                                style={{ color: 'var(--ink-gray-8)' }}
                               >
-                                {getInitials(lead.lead_name)}
-                              </div>
-                              <div>
-                                <p
-                                  className="text-sm font-medium"
-                                  style={{ color: 'var(--ink-gray-8)' }}
-                                >
-                                  {lead.lead_name}
-                                </p>
-                                {lead.naming_series && (
-                                  <p className="text-xs" style={{ color: 'var(--ink-gray-4)' }}>
-                                    {lead.naming_series}
-                                  </p>
-                                )}
-                              </div>
+                                {displayName}
+                              </span>
                             </div>
                           </TableCell>
 
-                          {/* Contato */}
+                          {/* Telefone */}
                           <TableCell className="py-2.5">
-                            <div className="space-y-0.5">
-                              {lead.email && (
-                                <div className="flex items-center gap-1">
-                                  <Mail className="w-3 h-3 flex-shrink-0" style={{ color: 'var(--ink-gray-4)' }} />
-                                  <span
-                                    className="text-xs truncate max-w-[160px]"
-                                    style={{ color: 'var(--ink-gray-6)' }}
-                                  >
-                                    {lead.email}
-                                  </span>
-                                </div>
-                              )}
-                              {lead.mobile_no && (
-                                <div className="flex items-center gap-1">
-                                  <Phone className="w-3 h-3 flex-shrink-0" style={{ color: 'var(--ink-gray-4)' }} />
-                                  <span className="text-xs" style={{ color: 'var(--ink-gray-5)' }}>
-                                    {lead.mobile_no}
-                                  </span>
-                                </div>
-                              )}
-                              {!lead.email && !lead.mobile_no && (
-                                <span className="text-sm" style={{ color: 'var(--ink-gray-4)' }}>—</span>
-                              )}
-                            </div>
+                            <span className="text-sm font-mono" style={{ color: 'var(--ink-gray-6)' }}>
+                              {contactService.formatPhoneNumber(contact.phoneNumber)}
+                            </span>
+                          </TableCell>
+
+                          {/* Email */}
+                          <TableCell className="py-2.5">
+                            {contact.email ? (
+                              <a
+                                href={`mailto:${contact.email}`}
+                                className="text-sm hover:underline truncate max-w-[200px] block"
+                                style={{ color: 'var(--ink-gray-6)' }}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {contact.email}
+                              </a>
+                            ) : (
+                              <span className="text-sm" style={{ color: 'var(--ink-gray-4)' }}>—</span>
+                            )}
                           </TableCell>
 
                           {/* Empresa */}
-                          <TableCell className="py-2.5 hidden lg:table-cell">
-                            {lead.organization_name ? (
-                              <div className="flex items-center gap-1.5">
-                                <Building2 className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'var(--ink-gray-4)' }} />
-                                <span className="text-sm" style={{ color: 'var(--ink-gray-6)' }}>
-                                  {lead.organization_name}
+                          <TableCell className="py-2.5 hidden md:table-cell">
+                            {contact.companyName ? (
+                              <div className="flex items-center gap-2">
+                                <div
+                                  className="w-5 h-5 rounded flex items-center justify-center text-[9px] font-semibold flex-shrink-0"
+                                  style={{
+                                    backgroundColor: 'var(--surface-gray-2)',
+                                    color: 'var(--ink-gray-5)',
+                                  }}
+                                >
+                                  {contact.companyName.substring(0, 2).toUpperCase()}
+                                </div>
+                                <span
+                                  className="text-sm truncate max-w-[160px]"
+                                  style={{ color: 'var(--ink-gray-6)' }}
+                                >
+                                  {contact.companyName}
                                 </span>
                               </div>
                             ) : (
@@ -891,56 +1114,37 @@ export default function LeadsPage() {
                             )}
                           </TableCell>
 
-                          {/* Status */}
-                          <TableCell className="py-2.5">
-                            <span
-                              className="inline-flex items-center text-xs font-medium px-2 py-0.5"
-                              style={{
-                                backgroundColor: `${getStatusColor(lead.status.color)}18`,
-                                color: getStatusColor(lead.status.color),
-                                borderRadius: '999px',
-                                border: `1px solid ${getStatusColor(lead.status.color)}30`,
-                              }}
-                            >
-                              {lead.status.label}
-                            </span>
-                          </TableCell>
-
-                          {/* Responsavel */}
-                          <TableCell className="py-2.5 hidden xl:table-cell">
-                            {lead.lead_owner ? (
-                              <div className="flex items-center gap-2">
-                                <div
-                                  className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-semibold flex-shrink-0"
-                                  style={{ backgroundColor: palette.bg, color: palette.text }}
-                                >
-                                  {getInitials(lead.lead_owner.name)}
-                                </div>
-                                <span
-                                  className="text-sm truncate max-w-[100px]"
-                                  style={{ color: 'var(--ink-gray-6)' }}
-                                >
-                                  {lead.lead_owner.name}
-                                </span>
-                              </div>
-                            ) : (
-                              <span className="text-sm" style={{ color: 'var(--ink-gray-4)' }}>
-                                Nao atribuido
-                              </span>
-                            )}
-                          </TableCell>
-
-                          {/* Criado */}
+                          {/* Canal */}
                           <TableCell className="py-2.5 hidden lg:table-cell">
-                            <span className="text-sm" style={{ color: 'var(--ink-gray-5)' }}>
-                              {formatDistanceToNow(new Date(lead.created_at), {
-                                addSuffix: true,
-                                locale: ptBR,
-                              })}
+                            <ChannelBadge channel={contact.channel} />
+                          </TableCell>
+
+                          {/* Conversas */}
+                          <TableCell className="py-2.5 hidden lg:table-cell text-right">
+                            <span className="text-sm tabular-nums" style={{ color: 'var(--ink-gray-6)' }}>
+                              {conversationCount > 0 ? conversationCount : (
+                                <span style={{ color: 'var(--ink-gray-4)' }}>0</span>
+                              )}
                             </span>
                           </TableCell>
 
-                          {/* Actions */}
+                          {/* Ultima atividade */}
+                          <TableCell className="py-2.5 hidden xl:table-cell">
+                            <span
+                              className="text-sm"
+                              style={{ color: 'var(--ink-gray-5)' }}
+                              title={contact.updatedAt ? format(new Date(contact.updatedAt), "dd/MM/yyyy 'as' HH:mm", { locale: ptBR }) : ''}
+                            >
+                              {contact.updatedAt
+                                ? formatDistanceToNow(new Date(contact.updatedAt), {
+                                    addSuffix: true,
+                                    locale: ptBR,
+                                  })
+                                : '—'}
+                            </span>
+                          </TableCell>
+
+                          {/* Acoes */}
                           <TableCell className="py-2.5 pr-4">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
@@ -959,32 +1163,19 @@ export default function LeadsPage() {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent
                                 align="end"
-                                className="w-44 rounded-lg border shadow-md"
+                                className="w-40 rounded-lg border shadow-md"
                                 style={{
                                   backgroundColor: 'var(--surface-white)',
                                   borderColor: 'var(--outline-gray-2)',
                                 }}
                               >
-                                <DropdownMenuLabel
-                                  className="text-xs font-semibold px-2 py-1.5"
-                                  style={{ color: 'var(--ink-gray-5)' }}
-                                >
-                                  Acoes
-                                </DropdownMenuLabel>
-                                <DropdownMenuSeparator style={{ backgroundColor: 'var(--outline-gray-1)' }} />
-                                <DropdownMenuItem
-                                  className="text-sm cursor-pointer"
-                                  style={{ color: 'var(--ink-gray-8)' }}
-                                  onClick={() => setEditingLead(lead)}
-                                >
-                                  <Edit className="mr-2 h-3.5 w-3.5" />
-                                  Editar
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator style={{ backgroundColor: 'var(--outline-gray-1)' }} />
                                 <DropdownMenuItem
                                   className="text-sm cursor-pointer"
                                   style={{ color: 'var(--ink-red-3)' }}
-                                  onClick={() => setDeletingLead(lead)}
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    deleteContactMutation.mutate(contact.id)
+                                  }}
                                 >
                                   <Trash2 className="mr-2 h-3.5 w-3.5" />
                                   Remover
@@ -998,105 +1189,8 @@ export default function LeadsPage() {
                   </TableBody>
                 </Table>
 
-                {/* Mobile Cards */}
-                <div
-                  className="md:hidden divide-y"
-                  style={{ borderColor: 'var(--outline-gray-1)' }}
-                >
-                  {listQuery.data?.data?.map((lead) => {
-                    const palette = getAvatarPalette(lead.id)
-                    return (
-                      <div
-                        key={lead.id}
-                        className="p-4 cursor-pointer"
-                        style={{ backgroundColor: 'var(--surface-white)' }}
-                        onClick={() => router.push(`/crm/leads/${lead.id}`)}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex items-center gap-3 flex-1 min-w-0">
-                            <div
-                              className="w-9 h-9 rounded-lg flex items-center justify-center font-semibold text-sm flex-shrink-0"
-                              style={{ backgroundColor: palette.bg, color: palette.text }}
-                            >
-                              {getInitials(lead.lead_name)}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p
-                                className="font-medium text-sm truncate"
-                                style={{ color: 'var(--ink-gray-8)' }}
-                              >
-                                {lead.lead_name}
-                              </p>
-                              {lead.organization_name && (
-                                <p className="text-xs truncate" style={{ color: 'var(--ink-gray-5)' }}>
-                                  {lead.organization_name}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="flex-shrink-0 h-7 w-7" onClick={(e) => e.stopPropagation()}>
-                                <MoreHorizontal className="h-4 w-4" style={{ color: 'var(--ink-gray-5)' }} />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent
-                              align="end"
-                              className="w-40 rounded-lg border shadow-md"
-                              style={{
-                                backgroundColor: 'var(--surface-white)',
-                                borderColor: 'var(--outline-gray-2)',
-                              }}
-                            >
-                              <DropdownMenuItem
-                                className="text-sm cursor-pointer"
-                                style={{ color: 'var(--ink-gray-8)' }}
-                                onClick={() => setEditingLead(lead)}
-                              >
-                                <Edit className="mr-2 h-3.5 w-3.5" />
-                                Editar
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator style={{ backgroundColor: 'var(--outline-gray-1)' }} />
-                              <DropdownMenuItem
-                                className="text-sm cursor-pointer"
-                                style={{ color: 'var(--ink-red-3)' }}
-                                onClick={() => setDeletingLead(lead)}
-                              >
-                                <Trash2 className="mr-2 h-3.5 w-3.5" />
-                                Remover
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                        <div
-                          className="flex items-center justify-between mt-3 pt-3 border-t"
-                          style={{ borderColor: 'var(--outline-gray-1)' }}
-                        >
-                          <span
-                            className="inline-flex items-center text-xs font-medium px-2 py-0.5"
-                            style={{
-                              backgroundColor: `${getStatusColor(lead.status.color)}18`,
-                              color: getStatusColor(lead.status.color),
-                              borderRadius: '999px',
-                              border: `1px solid ${getStatusColor(lead.status.color)}30`,
-                            }}
-                          >
-                            {lead.status.label}
-                          </span>
-                          <span className="text-xs" style={{ color: 'var(--ink-gray-5)' }}>
-                            {formatDistanceToNow(new Date(lead.created_at), {
-                              addSuffix: true,
-                              locale: ptBR,
-                            })}
-                          </span>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-
                 {/* Pagination */}
-                {(listQuery.data?.total_count ?? 0) > PAGE_SIZE && (
+                {contactsTotalPages > 1 && (
                   <div
                     className="flex items-center justify-between px-5 py-2.5 border-t flex-shrink-0"
                     style={{
@@ -1105,7 +1199,7 @@ export default function LeadsPage() {
                     }}
                   >
                     <span className="text-xs" style={{ color: 'var(--ink-gray-5)' }}>
-                      Mostrando {listQuery.data?.data?.length ?? 0} de {listQuery.data?.total_count ?? 0} leads
+                      {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, contactsTotalCount)} de {contactsTotalCount}
                     </span>
                     <div className="flex items-center gap-2">
                       <Button
@@ -1119,13 +1213,13 @@ export default function LeadsPage() {
                         Anterior
                       </Button>
                       <span className="text-xs px-2" style={{ color: 'var(--ink-gray-5)' }}>
-                        {page} / {Math.ceil((listQuery.data?.total_count ?? 0) / PAGE_SIZE)}
+                        {page} / {contactsTotalPages}
                       </span>
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setPage((p: number) => p + 1)}
-                        disabled={page >= Math.ceil((listQuery.data?.total_count ?? 0) / PAGE_SIZE)}
+                        onClick={() => setPage((p: number) => Math.min(contactsTotalPages, p + 1))}
+                        disabled={page >= contactsTotalPages}
                         className="h-7 text-xs px-2.5"
                         style={{ borderColor: 'var(--outline-gray-2)', color: 'var(--ink-gray-7)' }}
                       >
@@ -1312,10 +1406,10 @@ export default function LeadsPage() {
         )}
       </div>
 
-      {/* ====== CREATE DIALOG ====== */}
+      {/* ====== CREATE CONTACT DIALOG ====== */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
         <DialogContent
-          className="max-w-lg rounded-xl border shadow-lg"
+          className="max-w-md rounded-xl border shadow-lg"
           style={{
             backgroundColor: 'var(--surface-white)',
             borderColor: 'var(--outline-gray-2)',
@@ -1326,41 +1420,14 @@ export default function LeadsPage() {
               className="text-sm font-semibold"
               style={{ color: 'var(--ink-gray-9)' }}
             >
-              Novo Lead
+              Novo Contato
             </DialogTitle>
-            <DialogDescription className="text-sm" style={{ color: 'var(--ink-gray-5)' }}>
-              Preencha os dados para criar um novo lead.
-            </DialogDescription>
           </DialogHeader>
-          <div className="py-8 text-center">
-            <div
-              className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3"
-              style={{ backgroundColor: 'var(--surface-gray-2)' }}
-            >
-              <Users className="w-6 h-6" style={{ color: 'var(--ink-gray-4)' }} />
-            </div>
-            <p className="text-sm" style={{ color: 'var(--ink-gray-5)' }}>
-              Formulario de criacao em construcao.
-            </p>
-            <p className="text-xs mt-1" style={{ color: 'var(--ink-gray-4)' }}>
-              O componente LeadForm sera implementado na proxima sprint.
-            </p>
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 text-sm px-3 rounded"
-              style={{
-                borderColor: 'var(--outline-gray-2)',
-                color: 'var(--ink-gray-7)',
-                backgroundColor: 'var(--surface-white)',
-              }}
-              onClick={() => setIsCreateOpen(false)}
-            >
-              Cancelar
-            </Button>
-          </div>
+          <CreateContactForm
+            onSubmit={(data) => createContactMutation.mutate(data)}
+            onCancel={() => setIsCreateOpen(false)}
+            isLoading={createContactMutation.isPending}
+          />
         </DialogContent>
       </Dialog>
 

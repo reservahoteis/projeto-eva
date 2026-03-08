@@ -260,12 +260,14 @@ function ConversationsTab({ contactId }: { contactId: string }) {
                 <span
                   className="text-sm"
                   style={{ color: 'var(--ink-gray-5)' }}
-                  title={format(new Date(conv.lastMessageAt), "dd/MM/yyyy 'as' HH:mm", { locale: ptBR })}
+                  title={conv.lastMessageAt ? format(new Date(conv.lastMessageAt), "dd/MM/yyyy 'as' HH:mm", { locale: ptBR }) : ''}
                 >
-                  {formatDistanceToNow(new Date(conv.lastMessageAt), {
-                    addSuffix: true,
-                    locale: ptBR,
-                  })}
+                  {conv.lastMessageAt
+                    ? formatDistanceToNow(new Date(conv.lastMessageAt), {
+                        addSuffix: true,
+                        locale: ptBR,
+                      })
+                    : '—'}
                 </span>
               </TableCell>
               <TableCell className="py-2.5 pr-4">

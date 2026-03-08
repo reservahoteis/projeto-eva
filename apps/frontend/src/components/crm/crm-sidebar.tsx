@@ -40,6 +40,12 @@ import {
   Settings,
   MessageSquare,
   HelpCircle,
+  Tag,
+  Zap,
+  BarChart3,
+  ScrollText,
+  AlertTriangle,
+  Briefcase,
 } from 'lucide-react'
 import { crmApi } from '@/services/crm/api'
 import { LanguageSwitcher } from './language-switcher'
@@ -55,12 +61,18 @@ const sidebarLinkDefs: Array<{
   { key: 'conversations', icon: MessageSquare, href: '/crm/conversations' },
   { key: 'leads', icon: Target, href: '/crm/leads' },
   { key: 'deals', icon: Handshake, href: '/crm/deals' },
-  { key: 'contacts', icon: Users, href: '/crm/contacts' },
   { key: 'organizations', icon: Building2, href: '/crm/organizations' },
   { key: 'notes', icon: FileText, href: '/crm/notes' },
   { key: 'tasks', icon: ListTodo, href: '/crm/tasks' },
   { key: 'calendar', icon: Calendar, href: '/crm/calendar' },
   { key: 'callLogs', icon: PhoneCall, href: '/crm/call-logs' },
+  { key: 'opportunities', icon: Briefcase, href: '/crm/opportunities' },
+  { key: 'tags', icon: Tag, href: '/crm/tags' },
+  { key: 'quickReplies', icon: Zap, href: '/crm/quick-replies' },
+  { key: 'reports', icon: BarChart3, href: '/crm/reports' },
+  { key: 'logs', icon: ScrollText, href: '/crm/logs' },
+  { key: 'users', icon: Users, href: '/crm/users' },
+  { key: 'escalations', icon: AlertTriangle, href: '/crm/escalations' },
 ]
 
 // Hook for localStorage-backed collapse state (matches Frappe's useStorage)
