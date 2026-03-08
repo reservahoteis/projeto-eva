@@ -76,6 +76,22 @@ app.add_middleware(SlowAPIMiddleware)
 # Security headers middleware
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Trailing-slash normalization middleware
+# Nginx may forward requests with trailing slash (e.g. /api/v1/auth/login/).
+# Routes are registered without trailing slash. This middleware strips it
+# so both /path and /path/ resolve to the same handler.
+# ---------------------------------------------------------------------------
+
+@app.middleware("http")
+async def strip_trailing_slash_middleware(request: Request, call_next):
+    path = request.scope["path"]
+    if path != "/" and path.endswith("/"):
+        request.scope["path"] = path.rstrip("/")
+    response = await call_next(request)
+    return response
+
+
 @app.middleware("http")
 async def security_headers_middleware(request: Request, call_next):
     response = await call_next(request)
