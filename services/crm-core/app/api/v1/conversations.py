@@ -462,3 +462,144 @@ async def create_message(
         sender_name=getattr(current_user, "name", None),
     )
     return MessageResponse.model_validate(message)
+
+
+# ---------------------------------------------------------------------------
+# POST /{conversation_id}/unassign  — unassign conversation
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/{conversation_id}/unassign",
+    summary="Unassign conversation",
+    description="Remove the assigned user from a conversation.",
+    response_model=ConversationResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def unassign_conversation(
+    conversation_id: uuid.UUID,
+    db: DB,
+    current_user: CurrentUser,
+    tenant_id: TenantId,
+) -> ConversationResponse:
+    conversation = await conversation_service.assign_conversation(
+        db=db,
+        tenant_id=tenant_id,
+        conversation_id=conversation_id,
+        user_id=None,
+    )
+    await emit_audit_log(
+        db=db, tenant_id=tenant_id, action="CONVERSATION_UNASSIGNED",
+        entity="Conversation", entity_id=str(conversation_id), user_id=current_user.id,
+    )
+    return ConversationResponse.model_validate(conversation)
+
+
+# ---------------------------------------------------------------------------
+# POST /{conversation_id}/archive  — archive conversation
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/{conversation_id}/archive",
+    summary="Archive a conversation",
+    description="Mark the conversation as ARCHIVED.",
+    response_model=ConversationResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def archive_conversation(
+    conversation_id: uuid.UUID,
+    db: DB,
+    current_user: CurrentUser,
+    tenant_id: TenantId,
+) -> ConversationResponse:
+    from app.schemas.conversation import ConversationUpdate as ConvUpdate
+    conversation = await conversation_service.update_conversation(
+        db=db,
+        tenant_id=tenant_id,
+        conversation_id=conversation_id,
+        data=ConvUpdate(status="ARCHIVED"),
+    )
+    await emit_audit_log(
+        db=db, tenant_id=tenant_id, action="CONVERSATION_ARCHIVED",
+        entity="Conversation", entity_id=str(conversation_id), user_id=current_user.id,
+    )
+    return ConversationResponse.model_validate(conversation)
+
+
+# ---------------------------------------------------------------------------
+# POST /{conversation_id}/read  — mark conversation as read
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/{conversation_id}/read",
+    summary="Mark conversation as read",
+    description="Mark the conversation as read by the current user (resets unread count).",
+    status_code=status.HTTP_200_OK,
+)
+async def mark_conversation_read(
+    conversation_id: uuid.UUID,
+    db: DB,
+    current_user: CurrentUser,
+    tenant_id: TenantId,
+) -> dict:
+    conversation = await conversation_service.get_conversation(
+        db=db,
+        tenant_id=tenant_id,
+        conversation_id=conversation_id,
+        user_role=current_user.role,
+        user_id=current_user.id,
+        user_hotel_unit=getattr(current_user, "hotel_unit", None),
+    )
+    conversation.unread_count = 0
+    await db.flush()
+    return {"success": True}
+
+
+# ---------------------------------------------------------------------------
+# DELETE /{conversation_id}  — delete conversation
+# ---------------------------------------------------------------------------
+
+
+@router.delete(
+    "/{conversation_id}",
+    summary="Delete a conversation",
+    description="Permanently delete a conversation and its messages.",
+    status_code=status.HTTP_200_OK,
+)
+async def delete_conversation(
+    conversation_id: uuid.UUID,
+    db: DB,
+    current_user: User = Depends(require_roles("SUPER_ADMIN", "TENANT_ADMIN")),
+    tenant_id: TenantId = ...,
+) -> dict:
+    from sqlalchemy import delete as sql_delete
+    from app.models.message import Message
+
+    # Delete messages first
+    await db.execute(
+        sql_delete(Message).where(
+            Message.conversation_id == conversation_id,
+            Message.tenant_id == tenant_id,
+        )
+    )
+    # Delete conversation
+    result = await db.execute(
+        select(Conversation).where(
+            Conversation.id == conversation_id,
+            Conversation.tenant_id == tenant_id,
+        )
+    )
+    conversation = result.scalar_one_or_none()
+    if not conversation:
+        raise NotFoundError(f"Conversation {conversation_id} not found")
+
+    await db.delete(conversation)
+    await db.flush()
+
+    await emit_audit_log(
+        db=db, tenant_id=tenant_id, action="CONVERSATION_DELETED",
+        entity="Conversation", entity_id=str(conversation_id), user_id=current_user.id,
+    )
+    return {"success": True, "id": str(conversation_id)}

@@ -167,6 +167,7 @@ from app.api.v1 import (  # noqa: E402
     usage_tracking,
     webhook_events,
     lgpd,
+    media,
 )
 from app.webhooks import whatsapp as wa_webhook  # noqa: E402
 from app.webhooks import messenger as msg_webhook  # noqa: E402
@@ -255,6 +256,9 @@ app.include_router(
 )
 app.include_router(
     lgpd.router, prefix=f"{settings.API_PREFIX}/lgpd", tags=["LGPD"]
+)
+app.include_router(
+    media.router, prefix=f"{settings.API_PREFIX}/media", tags=["Media"]
 )
 
 # ---------------------------------------------------------------------------
