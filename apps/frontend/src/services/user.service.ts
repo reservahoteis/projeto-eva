@@ -38,7 +38,7 @@ interface UpdateUserStatusData {
   status: UserStatus;
 }
 
-const USER_API_BASE_URL = '/api/users' as const;
+const USER_API_BASE_URL = '/api/v1/users' as const;
 
 class UserService {
   /**

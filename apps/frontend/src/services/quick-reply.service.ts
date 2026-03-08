@@ -29,7 +29,7 @@ interface UpdateQuickReplyData {
   isActive?: boolean;
 }
 
-const BASE_URL = '/api/quick-replies' as const;
+const BASE_URL = '/api/v1/quick-replies' as const;
 
 class QuickReplyService {
   async list(params?: ListQuickRepliesParams): Promise<QuickReplyListResponse> {

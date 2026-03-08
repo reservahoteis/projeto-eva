@@ -1,7 +1,7 @@
 import api from '@/lib/axios';
 import { ConversationStatus } from '@/types';
 
-const REPORT_API_BASE_URL = '/api/reports' as const;
+const REPORT_API_BASE_URL = '/api/v1/reports' as const;
 
 export interface ReportPeriod {
   period?: '7d' | '30d' | '90d' | '1y';

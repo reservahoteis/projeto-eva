@@ -22,7 +22,7 @@ export const messageService = {
    */
   async list(conversationId: string, params?: ListMessagesParams): Promise<PaginatedResponse<Message>> {
     const { data } = await api.get<PaginatedResponse<Message>>(
-      `/api/conversations/${conversationId}/messages`,
+      `/api/v1/conversations/${conversationId}/messages`,
       {
         params,
       }
@@ -36,7 +36,7 @@ export const messageService = {
   async send(payload: SendMessageRequest): Promise<Message> {
     const { conversationId, ...messageData } = payload;
     const { data } = await api.post<Message>(
-      `/api/conversations/${conversationId}/messages`,
+      `/api/v1/conversations/${conversationId}/messages`,
       messageData
     );
     return data;
@@ -46,7 +46,7 @@ export const messageService = {
    * Mark message as read
    */
   async markAsRead(id: string): Promise<void> {
-    await api.post(`/api/messages/${id}/read`);
+    await api.post(`/api/v1/messages/${id}/read`);
   },
 
   /**
@@ -56,7 +56,7 @@ export const messageService = {
     const formData = new FormData();
     formData.append('file', file);
 
-    const { data } = await api.post('/api/media/upload', formData, {
+    const { data } = await api.post('/api/v1/media/upload', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },

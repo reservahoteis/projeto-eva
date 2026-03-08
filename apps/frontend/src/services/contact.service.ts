@@ -41,7 +41,7 @@ interface ContactStats {
 }
 
 // Constante fora da classe para evitar minificação
-const CONTACT_API_BASE_URL = '/api/contacts' as const;
+const CONTACT_API_BASE_URL = '/api/v1/contacts' as const;
 
 class ContactService {
   /**

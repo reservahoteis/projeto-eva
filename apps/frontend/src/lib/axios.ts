@@ -95,7 +95,7 @@ api.interceptors.response.use(
         if (refreshToken) {
           try {
             // Tenta refresh
-            const { data } = await axios.post(`${API_URL}/auth/refresh`, {
+            const { data } = await axios.post(`${API_URL}/api/v1/auth/refresh`, {
               refreshToken,
             });
 

@@ -66,7 +66,7 @@ export interface UpdateEscalationPayload {
 // ============================================
 
 class EscalationService {
-  private readonly baseUrl = '/api/escalations';
+  private readonly baseUrl = '/api/v1/escalations';
 
   /**
    * Lista escalacoes com filtros e paginacao
