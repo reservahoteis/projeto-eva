@@ -777,14 +777,16 @@ export default function ContactsPage() {
                       <span
                         className="text-sm"
                         style={{ color: 'var(--ink-gray-5)' }}
-                        title={format(new Date(contact.updatedAt), "dd/MM/yyyy 'as' HH:mm", {
+                        title={contact.updatedAt ? format(new Date(contact.updatedAt), "dd/MM/yyyy 'as' HH:mm", {
                           locale: ptBR,
-                        })}
+                        }) : ''}
                       >
-                        {formatDistanceToNow(new Date(contact.updatedAt), {
-                          addSuffix: true,
-                          locale: ptBR,
-                        })}
+                        {contact.updatedAt
+                          ? formatDistanceToNow(new Date(contact.updatedAt), {
+                              addSuffix: true,
+                              locale: ptBR,
+                            })
+                          : '—'}
                       </span>
                     </TableCell>
 
