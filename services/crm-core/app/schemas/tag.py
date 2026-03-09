@@ -18,6 +18,12 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
+
+def _to_camel(string: str) -> str:
+    """Convert snake_case to camelCase."""
+    components = string.split("_")
+    return components[0] + "".join(x.title() for x in components[1:])
+
 from app.schemas.lead import PaginatedResponse
 
 __all__ = [
@@ -72,7 +78,7 @@ class TagUpdate(BaseModel):
 class TagResponse(BaseModel):
     """Complete Tag representation returned from GET /tags/{id}."""
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, alias_generator=_to_camel, populate_by_name=True)
 
     id: uuid.UUID
     name: str

@@ -502,6 +502,7 @@ class PaginationInfo(BaseModel):
     limit: int
     total: int
     totalPages: int
+    pages: int = 0
 
 
 class PaginatedResponse(BaseModel, Generic[DataT]):
@@ -526,6 +527,7 @@ class PaginatedResponse(BaseModel, Generic[DataT]):
             limit=self.page_size,
             total=self.total_count,
             totalPages=total_pages,
+            pages=total_pages,
         )
 
     @property

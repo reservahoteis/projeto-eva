@@ -351,6 +351,9 @@ class EscalationService:
 
         return EscalationStats(
             total=total,
+            pending=by_status.get("PENDING", 0),
+            in_progress=by_status.get("IN_PROGRESS", 0),
+            resolved=by_status.get("RESOLVED", 0),
             by_status=by_status,
             by_reason=by_reason,
             avg_resolution_time_minutes=avg_minutes,

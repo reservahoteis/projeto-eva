@@ -16,7 +16,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.schemas.common import UserBasic
+from app.schemas.common import CamelModel, UserBasic
 from app.schemas.lead import PaginatedResponse as PaginatedResponse  # noqa: F401
 
 __all__ = [
@@ -92,10 +92,8 @@ class EscalationUpdate(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class EscalationResponse(BaseModel):
+class EscalationResponse(CamelModel):
     """Complete Escalation representation returned from GET /escalations/{id}."""
-
-    model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
     tenant_id: uuid.UUID
@@ -172,10 +170,13 @@ class EscalationListParams(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class EscalationStats(BaseModel):
+class EscalationStats(CamelModel):
     """Aggregated escalation counts for dashboard widgets."""
 
     total: int
+    pending: int = 0
+    in_progress: int = 0
+    resolved: int = 0
     by_status: dict[str, int]
     by_reason: dict[str, int]
     avg_resolution_time_minutes: float | None = None

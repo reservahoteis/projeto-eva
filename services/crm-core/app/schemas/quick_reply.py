@@ -18,6 +18,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.schemas.common import CamelModel
+
 from app.schemas.lead import PaginatedResponse
 from app.schemas.task import UserEmbed  # reuse the same minimal User embed
 
@@ -93,10 +95,8 @@ class QuickReplyUpdate(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class QuickReplyResponse(BaseModel):
+class QuickReplyResponse(CamelModel):
     """Complete QuickReply representation returned from GET /quick-replies/{id}."""
-
-    model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
 
