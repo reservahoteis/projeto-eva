@@ -314,6 +314,8 @@ export async function processIncomingMessage(job: Job<ProcessMessageJobData>): P
 
     // 7. EMITIR EVENTO WEBSOCKET (TEMPO REAL)
     // CORREÇÃO: Passar conversation completo como 4º parâmetro
+    // Usar messageData.metadata (atualizado após download) em vez de savedMessage.metadata (stale)
+    const currentMetadata = messageData.metadata ?? savedMessage.metadata;
     emitNewMessage(
       tenantId,
       conversation.id,
@@ -324,11 +326,11 @@ export async function processIncomingMessage(job: Job<ProcessMessageJobData>): P
         direction: savedMessage.direction,
         type: savedMessage.type,
         content: savedMessage.content,
-        metadata: savedMessage.metadata,
+        metadata: currentMetadata,
         status: savedMessage.status,
         timestamp: savedMessage.timestamp instanceof Date ? savedMessage.timestamp.toISOString() : savedMessage.timestamp,
         createdAt: savedMessage.createdAt instanceof Date ? savedMessage.createdAt.toISOString() : savedMessage.createdAt,
-        mediaUrl: (savedMessage.metadata as any)?.mediaUrl,
+        mediaUrl: (currentMetadata as any)?.mediaUrl,
         contactId: contact.id,
       },
       {
