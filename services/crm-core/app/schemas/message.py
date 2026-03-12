@@ -17,7 +17,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator
 
 __all__ = [
     "MessageCreate",
@@ -128,8 +128,8 @@ class MessageResponse(BaseModel):
     # Channel-specific data stored as JSONB in the DB
     metadata_json: dict[str, Any] | None = None
 
-    # Media fields — not DB columns; populated from metadata_json by the
-    # service layer or set directly when constructing the schema from a dict.
+    # Media fields — not DB columns; extracted from metadata_json automatically
+    # via model_validator below.
     media_url: str | None = None
     media_type: str | None = None
 
@@ -143,6 +143,23 @@ class MessageResponse(BaseModel):
     # Timestamps
     timestamp: datetime
     created_at: datetime
+
+    @model_validator(mode="after")
+    def _extract_media_from_metadata(self) -> "MessageResponse":
+        """Auto-populate media_url and media_type from metadata_json.
+
+        The Express backend stores media info inside metadata_json (JSONB)
+        rather than in dedicated columns.  This validator ensures the
+        computed camelCase fields (mediaUrl, mediaType) always reflect
+        what is in the DB.
+        """
+        meta = self.metadata_json
+        if meta and isinstance(meta, dict):
+            if not self.media_url:
+                self.media_url = meta.get("mediaUrl")
+            if not self.media_type:
+                self.media_type = meta.get("mimeType")
+        return self
 
     # ------------------------------------------------------------------
     # camelCase computed fields — consumed by the Next.js frontend
@@ -184,6 +201,12 @@ class MessageResponse(BaseModel):
     @property
     def mediaType(self) -> str | None:
         return self.media_type
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def metadata(self) -> dict[str, Any] | None:
+        """Expose metadata_json as 'metadata' for frontend compatibility."""
+        return self.metadata_json
 
 
 # ---------------------------------------------------------------------------
