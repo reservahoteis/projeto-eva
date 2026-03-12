@@ -6,6 +6,8 @@ import logger from '@/config/logger';
 // Usamos 4.5MB para ter margem de segurança
 const MAX_IMAGE_SIZE = 4.5 * 1024 * 1024;
 const MAX_DIMENSION = 1600; // Dimensão máxima recomendada
+const CAROUSEL_DIMENSION = 800; // Dimensão para carousels (otimização de velocidade)
+const CAROUSEL_QUALITY = 75; // Qualidade JPEG para carousels
 
 // Formatos HEIC/HEIF que precisam de conversão especial
 const HEIC_EXTENSIONS = ['.heic', '.heif'];
@@ -52,9 +54,9 @@ async function convertHeicToJpeg(buffer: Buffer): Promise<Buffer> {
  * @param imageUrl URL da imagem
  * @returns Buffer da imagem processada ou null se falhar
  */
-export async function processImageForWhatsApp(imageUrl: string): Promise<ProcessedImage | null> {
+export async function processImageForWhatsApp(imageUrl: string, forCarousel = false): Promise<ProcessedImage | null> {
   try {
-    logger.debug({ imageUrl }, 'Downloading image for processing');
+    logger.debug({ imageUrl, forCarousel }, 'Downloading image for processing');
 
     // Baixar a imagem
     const response = await axios.get(imageUrl, {
@@ -75,9 +77,12 @@ export async function processImageForWhatsApp(imageUrl: string): Promise<Process
       logger.info({ imageUrl, convertedSize: originalBuffer.length }, 'HEIC converted to JPEG');
     }
 
-    // Se já está dentro do limite, retornar como está
-    if (originalBuffer.length <= MAX_IMAGE_SIZE) {
-      // Detectar tipo e converter para JPEG se necessário para melhor compressão
+    // Definir dimensão e qualidade baseado no contexto
+    const targetDimension = forCarousel ? CAROUSEL_DIMENSION : MAX_DIMENSION;
+    const targetQuality = forCarousel ? CAROUSEL_QUALITY : 85;
+
+    // Se NÃO é carousel e já está dentro do limite, retornar como está
+    if (!forCarousel && originalBuffer.length <= MAX_IMAGE_SIZE) {
       const metadata = await sharp(originalBuffer).metadata();
 
       if (metadata.format === 'jpeg' || metadata.format === 'jpg') {
@@ -91,14 +96,14 @@ export async function processImageForWhatsApp(imageUrl: string): Promise<Process
       }
     }
 
-    // Processar a imagem com sharp
+    // Processar a imagem com sharp (SEMPRE para carousel)
     let processedBuffer = await sharp(originalBuffer)
-      .resize(MAX_DIMENSION, MAX_DIMENSION, {
+      .resize(targetDimension, targetDimension, {
         fit: 'inside',
         withoutEnlargement: true,
       })
       .jpeg({
-        quality: 85,
+        quality: targetQuality,
         mozjpeg: true,
       })
       .toBuffer();

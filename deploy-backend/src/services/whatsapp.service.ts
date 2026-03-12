@@ -891,8 +891,8 @@ export class WhatsAppService {
           }
 
           try {
-            // Processar imagem (redimensionar se necessário)
-            const processedImage = await processImageForWhatsApp(card.imageUrl);
+            // Processar imagem (SEMPRE comprimir para carousel - velocidade)
+            const processedImage = await processImageForWhatsApp(card.imageUrl, true);
 
             if (!processedImage) {
               logger.warn({ imageUrl: card.imageUrl, cardIndex: index }, 'Failed to process image, using original URL');
