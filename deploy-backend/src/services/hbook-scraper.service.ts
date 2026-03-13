@@ -152,7 +152,7 @@ class HBookScraperService {
         /* eslint-disable @typescript-eslint/no-explicit-any */
         const messages: string[] = [];
 
-        // 1. Tentar via Knockout ViewModel (UnavailabilityMessage, ValidationMessage, etc.)
+        // 1. Knockout ViewModel — arrays e campos de mensagem
         try {
           // @ts-expect-error - window existe no contexto do browser (page.evaluate)
           const ko = (window as any).ko;
@@ -160,21 +160,54 @@ class HBookScraperService {
             // @ts-expect-error - document existe no contexto do browser (page.evaluate)
             const viewModel = ko.dataFor((document as any).body);
             if (viewModel) {
-              const vmFields = [
+              // 1a. Arrays de mensagens (HBook usa foreach nesses campos)
+              const arrayFields = [
+                'UnavailabilityMessages', 'ValidationErrors', 'Errors',
+                'Messages', 'Warnings', 'Restrictions',
+              ];
+              for (const field of arrayFields) {
+                const raw = typeof viewModel[field] === 'function'
+                  ? viewModel[field]()
+                  : viewModel[field];
+                if (Array.isArray(raw)) {
+                  for (const item of raw) {
+                    const txt = typeof item === 'string' ? item.trim()
+                      : typeof item === 'object' && item?.Message ? String(item.Message).trim()
+                      : '';
+                    if (txt.length > 0) messages.push(txt);
+                  }
+                }
+              }
+
+              // 1b. Campos string singulares
+              const stringFields = [
                 'UnavailabilityMessage', 'ValidationMessage', 'ErrorMessage',
                 'NoAvailabilityMessage', 'Message', 'WarningMessage',
                 'MinimumStayMessage', 'RestrictionMessage',
               ];
-              for (const field of vmFields) {
+              for (const field of stringFields) {
                 const val = typeof viewModel[field] === 'function'
                   ? viewModel[field]()
                   : viewModel[field];
                 if (val && typeof val === 'string' && val.trim().length > 0) {
-                  messages.push(val.trim());
+                  if (!messages.includes(val.trim())) {
+                    messages.push(val.trim());
+                  }
                 }
               }
 
-              // Verificar MinimumStay / MinNights no ViewModel
+              // 1c. CurrentView — indica qual tela o HBook mostra
+              if (typeof viewModel.CurrentView === 'function') {
+                const view = viewModel.CurrentView();
+                if (view === 'room-unavailable' && messages.length === 0) {
+                  messages.push('Nenhuma disponibilidade no período pesquisado');
+                }
+                if (view === 'validation-errors' && messages.length === 0) {
+                  messages.push('Erro de validação nas datas selecionadas');
+                }
+              }
+
+              // 1d. MinimumStay / MinNights
               if (typeof viewModel.MinimumStay === 'function') {
                 const minStay = viewModel.MinimumStay();
                 if (minStay && Number(minStay) > 0) {
@@ -187,25 +220,32 @@ class HBookScraperService {
           // Knockout nao disponivel
         }
 
-        // 2. Extrair do DOM - alertas, mensagens de erro, restricoes
+        // 2. DOM — containers especificos do HBook + seletores genericos
         const selectors = [
+          // Containers especificos do HBook
+          '.smart-calendar-message-container',
+          '.room-unavailable',
+          '.validation-errors.menssageFront',
+          // Seletores genericos
           '.alert', '.alert-warning', '.alert-danger', '.alert-info',
           '.no-availability', '.no-rooms', '.unavailable-message',
-          '.validation-message', '.error-message', '.warning-message',
-          '.restriction-message', '.minimum-stay',
-          '[data-bind*="Message"]', '[data-bind*="message"]',
-          '[data-bind*="Unavailab"]', '[data-bind*="Warning"]',
-          '[data-bind*="Validation"]', '[data-bind*="MinimumStay"]',
-          '.booking-message', '.availability-message',
+          '.error-message', '.warning-message', '.restriction-message',
+          // data-bind com mensagens (pega spans dentro dos foreach)
+          '[data-bind*="UnavailabilityMessages"]',
+          '[data-bind*="ValidationErrors"]',
         ];
 
         for (const selector of selectors) {
           // @ts-expect-error - document existe no contexto do browser (page.evaluate)
           const elements = (document as any).querySelectorAll(selector);
           elements.forEach((el: any) => {
+            // So extrair de elementos visiveis (display !== none)
+            // @ts-expect-error - window existe no contexto do browser (page.evaluate)
+            const style = (window as any).getComputedStyle(el);
+            if (style.display === 'none' || style.visibility === 'hidden') return;
+
             const text = el.textContent?.trim();
-            if (text && text.length > 5 && text.length < 500) {
-              // Evitar duplicatas
+            if (text && text.length > 3 && text.length < 500) {
               if (!messages.includes(text)) {
                 messages.push(text);
               }
@@ -213,24 +253,25 @@ class HBookScraperService {
           });
         }
 
-        // 3. Procurar texto visivel que mencione restricoes comuns
+        // 3. Regex no texto visivel da pagina
         if (messages.length === 0) {
           // @ts-expect-error - document existe no contexto do browser (page.evaluate)
           const body = (document as any).body?.innerText || '';
           const patterns = [
-            /estadia\s+m[ií]nima\s+de\s+\d+\s+di[aá]ria/i,
+            /nenhuma\s+disponibilidade/i,
+            /estadia\s+m[ií]nima\s+de\s+\d+\s+(?:di[aá]ria|noite)/i,
             /m[ií]nimo\s+de\s+\d+\s+noite/i,
             /n[aã]o\s+h[aá]\s+disponibilidade/i,
             /indispon[ií]vel\s+para\s+as?\s+data/i,
             /per[ií]odo\s+m[ií]nimo/i,
             /check-?in\s+n[aã]o\s+dispon[ií]vel/i,
             /sem\s+disponibilidade/i,
+            /per[ií]odo\s+n[aã]o\s+dispon[ií]vel/i,
             /closed|fechado/i,
           ];
           for (const pattern of patterns) {
             const match = body.match(pattern);
             if (match) {
-              // Pegar contexto ao redor do match (ate 150 chars)
               const idx = body.indexOf(match[0]);
               const start = Math.max(0, idx - 20);
               const end = Math.min(body.length, idx + match[0].length + 80);
@@ -242,7 +283,12 @@ class HBookScraperService {
         }
         /* eslint-enable @typescript-eslint/no-explicit-any */
 
-        return messages.length > 0 ? messages.join(' | ') : null;
+        // Limpar tags HTML que possam ter vindo via data-bind="html:"
+        const cleaned = messages
+          .map(m => m.replace(/<[^>]+>/g, '').trim())
+          .filter(m => m.length > 0);
+
+        return cleaned.length > 0 ? cleaned.join(' | ') : null;
       });
 
       return reason || undefined;
