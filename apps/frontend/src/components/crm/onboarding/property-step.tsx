@@ -6,6 +6,9 @@ import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
 import type { OnboardingQuestion } from '@/data/onboarding-questions'
 
+// Values that represent "none / not applicable" — mutually exclusive with other options
+const NEGATIVE_VALUES = new Set(['nao', 'nenhum', 'nenhuma'])
+
 interface PropertyStepProps {
   questions: OnboardingQuestion[]
   answers: Record<number, string>
@@ -29,20 +32,35 @@ export function PropertyStep({
 
   const handleMultiToggle = (questionId: number, value: string) => {
     const current = multiAnswers[questionId] ?? []
-    const next = current.includes(value)
-      ? current.filter((v) => v !== value)
-      : [...current, value]
+    const isNegative = NEGATIVE_VALUES.has(value)
+
+    let next: string[]
+
+    if (isNegative) {
+      // Selecting a negative → clear all others, keep only the negative
+      next = current.includes(value) ? [] : [value]
+    } else {
+      // Selecting a positive → remove any negative options first
+      const withoutNegatives = current.filter((v) => !NEGATIVE_VALUES.has(v))
+      next = withoutNegatives.includes(value)
+        ? withoutNegatives.filter((v) => v !== value)
+        : [...withoutNegatives, value]
+    }
+
     onMultiChange?.(questionId, next)
-    // Mirror to answers as comma-separated for simplicity
     onChange(questionId, next.join(','))
   }
 
   return (
     <div className="space-y-8">
       {questions.map((question) => {
+        const selectedList = multiAnswers[question.id] ?? []
+        const negativeSelected =
+          question.type === 'multiple' && selectedList.some((v) => NEGATIVE_VALUES.has(v))
+
         const singleOutroSelected = question.type === 'single' && answers[question.id] === 'outro'
         const multiOutroSelected =
-          question.type === 'multiple' && (multiAnswers[question.id] ?? []).includes('outro')
+          question.type === 'multiple' && selectedList.includes('outro')
         const showOutroInput = singleOutroSelected || multiOutroSelected
 
         return (
@@ -112,16 +130,23 @@ export function PropertyStep({
             {question.type === 'multiple' && (
               <div className="flex flex-wrap gap-2">
                 {question.options.map((option) => {
-                  const selectedList = multiAnswers[question.id] ?? []
                   const selected = selectedList.includes(option.value)
+                  const isNegativeOption = NEGATIVE_VALUES.has(option.value)
+                  // Disable positive options when a negative is selected
+                  const disabled = negativeSelected && !isNegativeOption
+
                   return (
                     <button
                       key={option.value}
                       type="button"
                       onClick={() => handleMultiToggle(question.id, option.value)}
+                      disabled={disabled}
                       className={cn(
                         'px-3 py-1.5 rounded-full border text-xs font-medium transition-all duration-150',
-                        'hover:border-current focus:outline-none focus-visible:ring-2',
+                        'focus:outline-none focus-visible:ring-2',
+                        disabled
+                          ? 'cursor-not-allowed opacity-40'
+                          : 'hover:border-current',
                       )}
                       style={{
                         borderColor: selected ? 'var(--ink-gray-9)' : 'var(--outline-gray-2)',
