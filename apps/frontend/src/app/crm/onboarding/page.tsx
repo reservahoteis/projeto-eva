@@ -182,6 +182,9 @@ function OnboardingWizardContent() {
   // Tips answers: questionId → {fieldValue → text}
   const [tipsAnswers, setTipsAnswers] = useState<Record<number, Record<string, string>>>({})
 
+  // "Outro" custom text: questionId → free-text entered by user
+  const [propertyOutro, setPropertyOutro] = useState<Record<number, string>>({})
+
   // Calculated archetype
   const [archetypeKey, setArchetypeKey] = useState<ArchetypeKey | null>(null)
 
@@ -213,7 +216,14 @@ function OnboardingWizardContent() {
     if (existing.propertyAnswers) {
       const parsed: Record<number, string> = {}
       const parsedMulti: Record<number, string[]> = {}
+      const parsedOutro: Record<number, string> = {}
       Object.entries(existing.propertyAnswers).forEach(([k, v]) => {
+        // Keys ending in "_outro" are free-text from the "Outro" option
+        if (k.endsWith('_outro')) {
+          const id = Number(k.replace('_outro', ''))
+          parsedOutro[id] = v as string
+          return
+        }
         const id = Number(k)
         const val = v as string
         parsed[id] = val
@@ -223,6 +233,7 @@ function OnboardingWizardContent() {
       })
       setPropertyAnswers(parsed)
       setPropertyMultiAnswers(parsedMulti)
+      if (Object.keys(parsedOutro).length > 0) setPropertyOutro(parsedOutro)
     }
 
     if (existing.tipsAnswers) {
@@ -308,7 +319,13 @@ function OnboardingWizardContent() {
         if (isPersonalityStep) {
           personalityMutation.mutate({ answers: personalityAnswers, currentStep: step })
         } else if (isPropertyStep) {
-          propertyMutation.mutate({ answers: propertyAnswers, currentStep: step })
+          // Merge "outro" free-text into answers using key "${id}_outro"
+          const outroEntries = Object.fromEntries(
+            Object.entries(propertyOutro)
+              .filter(([, v]) => v.trim())
+              .map(([id, v]) => [`${id}_outro`, v]),
+          )
+          propertyMutation.mutate({ answers: { ...propertyAnswers, ...outroEntries }, currentStep: step })
         } else if (isTipsStep) {
           tipsMutation.mutate({ answers: tipsAnswers, currentStep: step })
         } else {
@@ -316,7 +333,7 @@ function OnboardingWizardContent() {
         }
       }, 1000)
     },
-    [personalityAnswers, propertyAnswers, tipsAnswers, personalityMutation, propertyMutation, tipsMutation],
+    [personalityAnswers, propertyAnswers, propertyOutro, tipsAnswers, personalityMutation, propertyMutation, tipsMutation],
   )
 
   // ============================================
@@ -335,6 +352,11 @@ function OnboardingWizardContent() {
 
   const handlePropertyMultiChange = (questionId: number, values: string[]) => {
     setPropertyMultiAnswers((prev) => ({ ...prev, [questionId]: values }))
+  }
+
+  const handlePropertyOutroChange = (questionId: number, text: string) => {
+    setPropertyOutro((prev) => ({ ...prev, [questionId]: text }))
+    triggerAutoSave(currentStep)
   }
 
   const handleTipsChange = (questionId: number, field: string, value: string) => {
@@ -410,8 +432,10 @@ function OnboardingWizardContent() {
           questions={slice}
           answers={propertyAnswers}
           multiAnswers={propertyMultiAnswers}
+          outroText={propertyOutro}
           onChange={handlePropertyChange}
           onMultiChange={handlePropertyMultiChange}
+          onOutroChange={handlePropertyOutroChange}
         />
       )
     }

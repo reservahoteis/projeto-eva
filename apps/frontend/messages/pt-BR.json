@@ -284,7 +284,8 @@
     },
     "helpers": {
       "selectAllThatApply": "Selecione todas as opções que se aplicam",
-      "listFavorites": "Liste seus favoritos — pode deixar em branco os que não souber"
+      "listFavorites": "Liste seus favoritos — pode deixar em branco os que não souber",
+      "outroPlaceholder": "Descreva sua opção..."
     },
     "archetype": {
       "yourArchetypeIs": "Seu arquétipo é",
