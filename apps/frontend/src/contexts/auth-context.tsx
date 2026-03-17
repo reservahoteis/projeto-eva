@@ -10,7 +10,7 @@ interface AuthContextData {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, tenantSlug?: string) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
 }
@@ -53,9 +53,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string, tenantSlug?: string) => {
     try {
-      const response: AuthResponse = await authService.login(email, password);
+      const response: AuthResponse = await authService.login(email, password, tenantSlug);
 
       // Save tokens
       localStorage.setItem('accessToken', response.accessToken);

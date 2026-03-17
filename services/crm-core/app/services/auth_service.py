@@ -49,41 +49,54 @@ class AuthService:
     async def login(
         self,
         db: AsyncSession,
-        tenant_slug: str,
         email: str,
         password: str,
+        tenant_slug: str | None = None,
     ) -> LoginResponse:
         """Authenticate a user and return access + refresh tokens.
 
         Steps:
-        1. Resolve tenant_slug -> Tenant row.
-        2. Fetch User WHERE email = :email AND tenant_id = :tenant_id.
+        1. If tenant_slug provided, resolve to Tenant and scope query.
+           If not provided, try SUPER_ADMIN lookup (tenant_id IS NULL).
+        2. Fetch User with proper scoping.
         3. Verify password hash.
         4. Check ACTIVE status.
         5. Update last_login_at and commit.
         6. Return tokens + UserResponse.
         """
         email_hash = hashlib.sha256(email.lower().encode()).hexdigest()[:12]
-        log = logger.bind(tenant_slug=tenant_slug, email_hash=email_hash)
+        log = logger.bind(tenant_slug=tenant_slug or "(super_admin)", email_hash=email_hash)
 
-        # --- 1. Resolve tenant ---
-        tenant_result = await db.execute(
-            select(Tenant).where(Tenant.slug == tenant_slug)
-        )
-        tenant = tenant_result.scalar_one_or_none()
-        if not tenant:
-            # Return generic error to avoid tenant enumeration
-            log.warning("login_failed_unknown_tenant")
-            raise UnauthorizedError("Invalid credentials")
+        tenant: Tenant | None = None
+        user: User | None = None
 
-        # --- 2. Fetch user WITH tenant_id in WHERE (multi-tenant security) ---
-        user_result = await db.execute(
-            select(User).where(
-                User.email == email,
-                User.tenant_id == tenant.id,
+        if tenant_slug:
+            # --- Normal tenant login ---
+            tenant_result = await db.execute(
+                select(Tenant).where(Tenant.slug == tenant_slug)
             )
-        )
-        user = user_result.scalar_one_or_none()
+            tenant = tenant_result.scalar_one_or_none()
+            if not tenant:
+                log.warning("login_failed_unknown_tenant")
+                raise UnauthorizedError("Invalid credentials")
+
+            user_result = await db.execute(
+                select(User).where(
+                    User.email == email,
+                    User.tenant_id == tenant.id,
+                )
+            )
+            user = user_result.scalar_one_or_none()
+        else:
+            # --- SUPER_ADMIN login (no tenant_slug) ---
+            user_result = await db.execute(
+                select(User).where(
+                    User.email == email,
+                    User.tenant_id.is_(None),
+                    User.role == "SUPER_ADMIN",
+                )
+            )
+            user = user_result.scalar_one_or_none()
 
         # --- 3. Verify password (constant-time even when user is None) ---
         if not user or not verify_password(password, user.password_hash):
@@ -96,21 +109,21 @@ class AuthService:
             raise ForbiddenError("Account is inactive")
 
         # --- 5. Update last_login_at ---
-        await db.execute(
-            update(User)
-            .where(User.id == user.id, User.tenant_id == tenant.id)
-            .values(last_login_at=datetime.now(UTC))
-        )
+        update_q = update(User).where(User.id == user.id)
+        if user.tenant_id:
+            update_q = update_q.where(User.tenant_id == user.tenant_id)
+        else:
+            update_q = update_q.where(User.tenant_id.is_(None))
+        await db.execute(update_q.values(last_login_at=datetime.now(UTC)))
         await db.commit()
 
-        # Refresh the user object so last_login_at reflects the update
         await db.refresh(user)
 
         # --- 6. Issue tokens ---
         access_token = create_access_token(user.id, user.tenant_id)
         refresh_token = create_refresh_token(user.id, user.tenant_id)
 
-        log.info("login_success", user_id=str(user.id))
+        log.info("login_success", user_id=str(user.id), role=user.role)
         return LoginResponse(
             access_token=access_token,
             refresh_token=refresh_token,

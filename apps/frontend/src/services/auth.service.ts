@@ -19,10 +19,11 @@ export const authService = {
   /**
    * Login
    */
-  async login(email: string, password: string): Promise<AuthResponse> {
+  async login(email: string, password: string, tenantSlug?: string): Promise<AuthResponse> {
     const { data } = await api.post<AuthResponse>('/api/v1/auth/login', {
       email,
       password,
+      tenant_slug: tenantSlug || undefined,
     });
     return data;
   },

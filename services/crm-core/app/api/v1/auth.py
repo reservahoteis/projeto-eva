@@ -61,16 +61,15 @@ async def login(
     body: LoginRequest,
     db: DB,
 ) -> LoginResponse:
-    # tenant_slug: body takes precedence, then x-tenant-slug header
-    tenant_slug = body.tenant_slug or request.headers.get("x-tenant-slug")
-    if not tenant_slug:
-        raise BadRequestError("tenant_slug is required (body or x-tenant-slug header)")
+    # tenant_slug: body takes precedence, then x-tenant-slug header.
+    # When absent, login() attempts SUPER_ADMIN lookup (tenant_id IS NULL).
+    tenant_slug = body.tenant_slug or request.headers.get("x-tenant-slug") or None
 
     result = await auth_service.login(
         db=db,
-        tenant_slug=tenant_slug,
         email=body.email,
         password=body.password,
+        tenant_slug=tenant_slug,
     )
     try:
         await emit_audit_log(
