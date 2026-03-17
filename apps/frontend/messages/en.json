@@ -241,5 +241,58 @@
     "unauthorized": "Session expired. Please sign in again.",
     "forbidden": "You do not have permission for this action.",
     "notFound": "Resource not found."
+  },
+  "onboarding": {
+    "stepLabels": {
+      "1": "Welcome",
+      "2": "Voice Identity",
+      "3": "Communication",
+      "4": "User Relationship",
+      "5": "Intelligence & Personality",
+      "6": "Humor, Posture & Proactivity",
+      "7": "Experience & Behavior",
+      "8": "Archetype Result",
+      "9": "Address",
+      "10": "Type & Location",
+      "11": "Profile & Structure",
+      "12": "Gastronomy",
+      "13": "Experience & Services",
+      "14": "Tips & Suggestions",
+      "15": "Conclusion"
+    },
+    "intro": {
+      "title": "Configure your EVA Assistant",
+      "description": "In just a few minutes we'll personalize EVA for your hotel. The questionnaire has 3 sections and will take about <strong>15 to 20 minutes</strong>.",
+      "section1Label": "Section 1",
+      "section1Desc": "Bot Personality — 50 questions",
+      "section2Label": "Section 2",
+      "section2Desc": "About the Property — 90 questions",
+      "section3Label": "Section 3",
+      "section3Desc": "Tips & Suggestions — 20 questions",
+      "autoSaveNote": "Your answers are saved automatically. You can pause and continue later."
+    },
+    "conclusion": {
+      "title": "All set!",
+      "description": "EVA has been configured with your hotel's information. Now it can serve your guests with personalized character and context.",
+      "activateButton": "Activate EVA",
+      "activating": "Finalizing..."
+    },
+    "nav": {
+      "previous": "Previous",
+      "next": "Next",
+      "goToConclusion": "Go to conclusion"
+    },
+    "helpers": {
+      "selectAllThatApply": "Select all options that apply",
+      "listFavorites": "List your favorites — you can leave blank the ones you don't know"
+    },
+    "archetype": {
+      "yourArchetypeIs": "Your archetype is",
+      "allArchetypes": "The 6 EVA archetypes"
+    },
+    "toast": {
+      "activated": "EVA activated successfully!",
+      "error": "Error finalizing configuration."
+    }
   }
 }

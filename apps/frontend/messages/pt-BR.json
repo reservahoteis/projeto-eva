@@ -241,5 +241,58 @@
     "unauthorized": "Sessão expirada. Faça login novamente.",
     "forbidden": "Você não tem permissão para esta ação.",
     "notFound": "Recurso não encontrado."
+  },
+  "onboarding": {
+    "stepLabels": {
+      "1": "Boas-vindas",
+      "2": "Identidade da Voz",
+      "3": "Comunicação",
+      "4": "Relação com Usuário",
+      "5": "Inteligência & Personalidade",
+      "6": "Humor, Postura & Proatividade",
+      "7": "Experiência & Comportamento",
+      "8": "Resultado do Arquétipo",
+      "9": "Endereço",
+      "10": "Tipo & Localização",
+      "11": "Perfil & Estrutura",
+      "12": "Gastronomia",
+      "13": "Experiência & Serviços",
+      "14": "Dicas & Sugestões",
+      "15": "Conclusão"
+    },
+    "intro": {
+      "title": "Configuração do seu Assistente EVA",
+      "description": "Em poucos minutos vamos personalizar o EVA para o seu hotel. O questionário tem 3 seções e levará em torno de <strong>15 a 20 minutos</strong>.",
+      "section1Label": "Seção 1",
+      "section1Desc": "Personalidade do Bot — 50 perguntas",
+      "section2Label": "Seção 2",
+      "section2Desc": "Sobre a Propriedade — 90 perguntas",
+      "section3Label": "Seção 3",
+      "section3Desc": "Dicas e Sugestões — 20 perguntas",
+      "autoSaveNote": "Suas respostas são salvas automaticamente. Pode pausar e continuar depois."
+    },
+    "conclusion": {
+      "title": "Tudo pronto!",
+      "description": "O EVA foi configurado com as informações do seu hotel. Agora ele pode atender seus hóspedes com personalidade e contexto personalizados.",
+      "activateButton": "Ativar EVA",
+      "activating": "Finalizando..."
+    },
+    "nav": {
+      "previous": "Anterior",
+      "next": "Próximo",
+      "goToConclusion": "Ir para conclusão"
+    },
+    "helpers": {
+      "selectAllThatApply": "Selecione todas as opções que se aplicam",
+      "listFavorites": "Liste seus favoritos — pode deixar em branco os que não souber"
+    },
+    "archetype": {
+      "yourArchetypeIs": "Seu arquétipo é",
+      "allArchetypes": "Os 6 arquétipos do EVA"
+    },
+    "toast": {
+      "activated": "EVA ativado com sucesso!",
+      "error": "Erro ao finalizar configuração."
+    }
   }
 }
