@@ -19,10 +19,21 @@ const router = Router();
 router.use(authenticate);
 
 /**
- * Apenas TENANT_ADMIN e SUPER_ADMIN podem acessar contatos
- * HEAD não tem acesso a esta seção
+ * Roles com acesso de leitura (GET)
  */
-router.use(authorize(['TENANT_ADMIN', 'SUPER_ADMIN']));
+const READ_ROLES = ['TENANT_ADMIN', 'SUPER_ADMIN', 'SALES', 'HEAD', 'ATTENDANT'] as const;
+
+/**
+ * Roles com acesso de escrita (POST, PATCH, DELETE)
+ */
+const WRITE_ROLES = ['TENANT_ADMIN', 'SUPER_ADMIN'] as const;
+
+/**
+ * Roles com acesso de exportacao (dados sensíveis em massa)
+ */
+const EXPORT_ROLES = ['TENANT_ADMIN', 'SUPER_ADMIN', 'HEAD'] as const;
+
+// ===================== ROTAS DE LEITURA =====================
 
 /**
  * GET /api/contacts
@@ -30,6 +41,7 @@ router.use(authorize(['TENANT_ADMIN', 'SUPER_ADMIN']));
  */
 router.get(
   '/',
+  authorize([...READ_ROLES]),
   validate(listContactsSchema, 'query'),
   contactController.list
 );
@@ -41,6 +53,7 @@ router.get(
  */
 router.get(
   '/stats',
+  authorize([...READ_ROLES]),
   contactController.getStats
 );
 
@@ -51,6 +64,7 @@ router.get(
  */
 router.get(
   '/export',
+  authorize([...EXPORT_ROLES]),
   contactController.exportExcel
 );
 
@@ -60,8 +74,21 @@ router.get(
  */
 router.get(
   '/phone/:phoneNumber',
+  authorize([...READ_ROLES]),
   validate(getContactByPhoneSchema, 'params'),
   contactController.getByPhone
+);
+
+/**
+ * GET /api/contacts/:id/conversations
+ * Buscar conversas de um contato
+ * Nota: Esta rota deve vir antes de /:id para evitar conflito
+ */
+router.get(
+  '/:id/conversations',
+  authorize([...READ_ROLES]),
+  validate(getContactByIdSchema, 'params'),
+  contactController.getConversations.bind(contactController)
 );
 
 /**
@@ -70,9 +97,12 @@ router.get(
  */
 router.get(
   '/:id',
+  authorize([...READ_ROLES]),
   validate(getContactByIdSchema, 'params'),
   contactController.getById
 );
+
+// ===================== ROTAS DE ESCRITA =====================
 
 /**
  * POST /api/contacts
@@ -80,6 +110,7 @@ router.get(
  */
 router.post(
   '/',
+  authorize([...WRITE_ROLES]),
   validate(createContactSchema),
   contactController.create
 );
@@ -90,6 +121,7 @@ router.post(
  */
 router.patch(
   '/:id',
+  authorize([...WRITE_ROLES]),
   validate(updateContactSchema),
   contactController.update
 );
@@ -100,6 +132,7 @@ router.patch(
  */
 router.delete(
   '/:id',
+  authorize([...WRITE_ROLES]),
   validate(deleteContactSchema, 'params'),
   contactController.delete
 );

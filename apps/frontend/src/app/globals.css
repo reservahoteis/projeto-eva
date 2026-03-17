@@ -3,6 +3,49 @@
 @tailwind utilities;
 
 /* ============================================
+   ESPRESSO DESIGN SYSTEM - Frappe CRM
+   Light theme tokens for /crm/* pages
+   ============================================ */
+
+:root {
+  /* Surface */
+  --surface-white: #FFFFFF;
+  --surface-gray-1: #F8F8F8;
+  --surface-gray-2: #F3F3F3;
+  --surface-gray-3: #EDEDED;
+  --surface-gray-4: #E2E2E2;
+  --surface-gray-5: #CCCCCC;
+  --surface-gray-6: #ABABAB;
+  --surface-gray-7: #383838;
+
+  /* Ink (text) */
+  --ink-gray-9: #171717;
+  --ink-gray-8: #383838;
+  --ink-gray-7: #525252;
+  --ink-gray-6: #636363;
+  --ink-gray-5: #7C7C7C;
+  --ink-gray-4: #999999;
+  --ink-gray-3: #C7C7C7;
+  --ink-gray-2: #E2E2E2;
+  --ink-gray-1: #F0F0F0;
+
+  /* Outline */
+  --outline-gray-1: #EDEDED;
+  --outline-gray-2: #E2E2E2;
+  --outline-gray-3: #D1D1D1;
+  --outline-gray-4: #BCBCBC;
+
+  /* Status accent */
+  --ink-blue: #5B68FF;
+  --ink-green: #10B981;
+  --ink-orange: #F97316;
+  --ink-red: #EF4444;
+  --ink-yellow: #F59E0B;
+  --ink-purple: #8B5CF6;
+  --ink-cyan: #06B6D4;
+}
+
+/* ============================================
    LIQUID GLASS - iOS 26 Inspired Design
    (Based on ERP Angelus POC)
    ============================================ */

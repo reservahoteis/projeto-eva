@@ -1,0 +1,69 @@
+/*
+ * Frappe CRM / Espresso Design System — Exact tokens from frappe-ui
+ * Source: https://github.com/frappe/frappe-ui/tailwind/colors.json
+ */
+
+:root {
+  /* Surface */
+  --surface-white: #FFFFFF;
+  --surface-gray-1: #F8F8F8;
+  --surface-gray-2: #F3F3F3;
+  --surface-gray-3: #EDEDED;
+  --surface-gray-4: #E2E2E2;
+  --surface-gray-5: #525252;
+  --surface-gray-6: #383838;
+  --surface-gray-7: #171717;
+  --surface-menu-bar: #F8F8F8;
+  --surface-selected: #FFFFFF;
+
+  /* Ink (text) */
+  --ink-gray-1: #EDEDED;
+  --ink-gray-2: #E2E2E2;
+  --ink-gray-3: #C7C7C7;
+  --ink-gray-4: #999999;
+  --ink-gray-5: #7C7C7C;
+  --ink-gray-6: #525252;
+  --ink-gray-7: #525252;
+  --ink-gray-8: #383838;
+  --ink-gray-9: #171717;
+
+  /* Outline (borders) */
+  --outline-gray-1: #EDEDED;
+  --outline-gray-2: #E2E2E2;
+  --outline-gray-3: #C7C7C7;
+  --outline-gray-4: #999999;
+
+  /* Semantic colors */
+  --ink-red-3: #E03636;
+  --ink-green-3: #278F5E;
+  --ink-amber-3: #DB7706;
+  --ink-blue-3: #007BE0;
+  --surface-red-2: #FFE7E7;
+  --surface-green-2: #E4FAEB;
+  --surface-amber-2: #FFF7D3;
+  --surface-blue-2: #E6F4FF;
+}
+
+/* ========= Global Espresso typography ========= */
+.crm-app {
+  font-family: InterVar, Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-optical-sizing: auto;
+  color: var(--ink-gray-8);
+  font-size: 14px;
+  line-height: 1.15;
+  letter-spacing: 0.02em;
+  font-weight: 420;
+}
+
+/* ========= Indicator icons (status dots) ========= */
+.indicator-gray { color: var(--ink-gray-4); }
+.indicator-blue { color: var(--ink-blue-3); }
+.indicator-green { color: var(--ink-green-3); }
+.indicator-red { color: var(--ink-red-3); }
+.indicator-orange { color: var(--ink-amber-3); }
+.indicator-yellow { color: #E79913; }
+.indicator-purple { color: #6846E3; }
+.indicator-pink { color: #E34AA6; }
+.indicator-cyan { color: #3BBDE5; }

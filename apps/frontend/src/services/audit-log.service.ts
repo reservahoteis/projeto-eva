@@ -1,6 +1,6 @@
 import api from '@/lib/axios';
 
-const AUDIT_LOG_API_BASE_URL = '/api/audit-logs' as const;
+const AUDIT_LOG_API_BASE_URL = '/api/v1/audit-logs' as const;
 
 export interface AuditLogSummary {
   id: string;

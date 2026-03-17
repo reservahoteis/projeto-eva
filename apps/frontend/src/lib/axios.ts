@@ -66,12 +66,6 @@ api.interceptors.request.use(
         config.headers['x-tenant-slug'] = tenantSlug;
       }
 
-      // Debug log para verificar headers sendo enviados
-      console.log('Request headers:', {
-        url: config.url,
-        'x-tenant-slug': config.headers['x-tenant-slug'],
-        Authorization: config.headers.Authorization ? 'Bearer [TOKEN]' : 'None'
-      });
     }
 
     return config;
@@ -91,11 +85,6 @@ api.interceptors.response.use(
       _retry?: boolean;
     };
 
-    // Log de erro para debug
-    if (error.response?.status === 404 && error.response?.data) {
-      console.error('API Error 404:', error.response.data);
-    }
-
     // Token expirado - tenta refresh
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
@@ -106,7 +95,7 @@ api.interceptors.response.use(
         if (refreshToken) {
           try {
             // Tenta refresh
-            const { data } = await axios.post(`${API_URL}/auth/refresh`, {
+            const { data } = await axios.post(`${API_URL}/api/v1/auth/refresh`, {
               refreshToken,
             });
 

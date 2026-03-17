@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { z } from 'zod';
 import { contactService } from '@/services/contact.service';
 import { logger } from '@/config/logger';
 import {
@@ -11,6 +12,11 @@ import type {
   UpdateContactInput,
   ListContactsQuery,
 } from '@/validators/contact.validator';
+
+const paginationSchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+});
 
 /**
  * Helper para extrair e validar tenantId
@@ -169,6 +175,10 @@ class ContactController {
       const contact = await contactService.createContact({
         phoneNumber: contactData.phoneNumber,
         name: contactData.name,
+        firstName: contactData.firstName,
+        lastName: contactData.lastName,
+        companyName: contactData.companyName,
+        designation: contactData.designation,
         email: contactData.email,
         profilePictureUrl: contactData.profilePictureUrl,
         metadata: contactData.metadata,
@@ -426,6 +436,57 @@ class ContactController {
         error,
         tenantId: req.user?.tenantId,
       }, 'Erro ao buscar estatísticas de contatos');
+      next(error);
+    }
+  }
+
+  /**
+   * Buscar conversas de um contato
+   */
+  async getConversations(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      if (!id) {
+        res.status(400).json({ error: 'ID do contato nao fornecido' });
+        return;
+      }
+
+      const tenantId = requireTenantId(req, res);
+      if (!tenantId) return;
+
+      const { page, limit } = paginationSchema.parse(req.query);
+
+      logger.info({
+        tenantId,
+        userId: req.user?.id,
+        contactId: id,
+        params: { page, limit },
+      }, 'Buscando conversas do contato');
+
+      const exists = await contactService.contactExists(id, tenantId);
+      if (!exists) {
+        res.status(404).json({
+          error: 'Contato nao encontrado',
+          message: 'O contato nao existe ou nao pertence ao seu tenant',
+        });
+        return;
+      }
+
+      const result = await contactService.getContactConversations(id, tenantId, { page, limit });
+
+      logger.debug({
+        tenantId,
+        contactId: id,
+        totalConversations: result.pagination.total,
+      }, 'Conversas do contato obtidas');
+
+      res.json(result);
+    } catch (error) {
+      logger.error({
+        error,
+        tenantId: req.user?.tenantId,
+        contactId: req.params.id,
+      }, 'Erro ao buscar conversas do contato');
       next(error);
     }
   }

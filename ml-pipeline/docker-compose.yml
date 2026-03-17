@@ -1,0 +1,55 @@
+version: "3.8"
+
+# ML Pipeline - runs alongside the existing deploy-backend stack
+# Uses the same postgres and redis networks/services
+#
+# Usage:
+#   docker compose -f docker-compose.yml up ml-train     # Train model
+#   docker compose -f docker-compose.yml up ml-consumer   # Start real-time consumer
+#   docker compose -f docker-compose.yml run ml-train stats  # Quick DB stats
+
+services:
+  ml-train:
+    build: .
+    container_name: crm-ml-train
+    command: ["python", "main.py", "train", "--save"]
+    environment:
+      - DATABASE_URL=postgresql://crm_user:CrmSecurePass2024!@postgres:5432/crm_whatsapp_saas
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=RedisSecurePass2024!
+      - MODEL_DIR=/app/models
+      - LOG_LEVEL=INFO
+    volumes:
+      - ml-models:/app/models
+    networks:
+      - crm-network
+    restart: "no"
+
+  ml-consumer:
+    build: .
+    container_name: crm-ml-consumer
+    command: ["python", "main.py", "consume"]
+    environment:
+      - DATABASE_URL=postgresql://crm_user:CrmSecurePass2024!@postgres:5432/crm_whatsapp_saas
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=RedisSecurePass2024!
+      - MODEL_DIR=/app/models
+      - LOG_LEVEL=INFO
+    volumes:
+      - ml-models:/app/models
+    networks:
+      - crm-network
+    restart: unless-stopped
+    depends_on:
+      - ml-train
+
+volumes:
+  ml-models:
+    name: crm-ml-models
+
+networks:
+  crm-network:
+    external: true
+    name: deploy-backend_default

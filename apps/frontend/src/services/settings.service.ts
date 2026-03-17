@@ -1,6 +1,6 @@
 import api from '@/lib/axios';
 
-const SETTINGS_API_BASE_URL = '/api/tenants' as const;
+const SETTINGS_API_BASE_URL = '/api/v1/tenants' as const;
 
 export interface WhatsAppConfig {
   whatsappPhoneNumberId?: string;

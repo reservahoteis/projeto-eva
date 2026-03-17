@@ -19,10 +19,11 @@ export const authService = {
   /**
    * Login
    */
-  async login(email: string, password: string): Promise<AuthResponse> {
-    const { data } = await api.post<AuthResponse>('/auth/login', {
+  async login(email: string, password: string, tenantSlug?: string): Promise<AuthResponse> {
+    const { data } = await api.post<AuthResponse>('/api/v1/auth/login', {
       email,
       password,
+      tenant_slug: tenantSlug || undefined,
     });
     return data;
   },
@@ -31,7 +32,7 @@ export const authService = {
    * Register (usado apenas para criar novos usuários dentro de um tenant)
    */
   async register(payload: RegisterRequest): Promise<AuthResponse> {
-    const { data } = await api.post<AuthResponse>('/auth/register', payload);
+    const { data } = await api.post<AuthResponse>('/api/v1/auth/register', payload);
     return data;
   },
 
@@ -39,7 +40,7 @@ export const authService = {
    * Get current user (me)
    */
   async me(): Promise<User> {
-    const { data } = await api.get<User>('/auth/me');
+    const { data } = await api.get<User>('/api/v1/auth/me');
     return data;
   },
 
@@ -47,7 +48,7 @@ export const authService = {
    * Refresh token
    */
   async refresh(refreshToken: string): Promise<AuthResponse> {
-    const { data } = await api.post<AuthResponse>('/auth/refresh', {
+    const { data } = await api.post<AuthResponse>('/api/v1/auth/refresh', {
       refreshToken,
     });
     return data;
@@ -57,7 +58,7 @@ export const authService = {
    * Change password
    */
   async changePassword(payload: ChangePasswordRequest): Promise<void> {
-    await api.post('/auth/change-password', payload);
+    await api.post('/api/v1/auth/change-password', payload);
   },
 
   /**

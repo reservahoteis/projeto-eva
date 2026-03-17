@@ -7,6 +7,6 @@ import { redirect } from 'next/navigation';
  * - www.* ou root -> Landing page (futuro)
  */
 export default function HomePage() {
-  // 🚀 MODO DEMO - Redireciona direto para o dashboard
-  redirect('/dashboard');
+  // CRM Frappe Clone - Redireciona para o CRM
+  redirect('/crm/leads');
 }

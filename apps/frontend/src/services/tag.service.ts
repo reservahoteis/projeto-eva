@@ -23,7 +23,7 @@ interface UpdateTagData {
 }
 
 // Constante fora da classe para evitar minificação
-const TAG_API_BASE_URL = '/api/tags' as const;
+const TAG_API_BASE_URL = '/api/v1/tags' as const;
 
 class TagService {
   /**

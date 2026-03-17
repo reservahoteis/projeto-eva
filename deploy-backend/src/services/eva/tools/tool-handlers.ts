@@ -231,14 +231,11 @@ async function handleCheckAvailability(args: Record<string, unknown>): Promise<s
   const unidade = String(args.unidade || '');
   const checkin = String(args.checkin || '');
   const checkout = String(args.checkout || '');
-  const adultsRaw = Number(args.adults);
-  const adults = Number.isInteger(adultsRaw) && adultsRaw >= 1 && adultsRaw <= 10 ? adultsRaw : 2;
+  const adults = Number(args.adults) || 2;
   const children = args.children ? Number(args.children) : undefined;
-  const childrenAges = Array.isArray(args.childrenAges)
-    ? (args.childrenAges as unknown[]).map(Number).filter((n) => !isNaN(n))
-    : args.childrenAges
-      ? String(args.childrenAges).split(',').map((a) => parseInt(a.trim(), 10)).filter((a) => !isNaN(a))
-      : undefined;
+  const childrenAges = args.childrenAges
+    ? String(args.childrenAges).split(',').map((a) => parseInt(a.trim(), 10)).filter((a) => !isNaN(a))
+    : undefined;
 
   if (!unidade || !checkin || !checkout) {
     return JSON.stringify({ error: 'Informe unidade, checkin e checkout' });
@@ -247,35 +244,6 @@ async function handleCheckAvailability(args: Record<string, unknown>): Promise<s
   // Validar formato de data DD/MM/YYYY
   if (!DATE_FORMAT_REGEX.test(checkin) || !DATE_FORMAT_REGEX.test(checkout)) {
     return JSON.stringify({ error: 'Datas devem estar no formato DD/MM/YYYY' });
-  }
-
-  // Validar datas semanticamente
-  const ciParts = checkin.split('/').map(Number);
-  const coParts = checkout.split('/').map(Number);
-  const ciDay = ciParts[0] ?? 0, ciMonth = ciParts[1] ?? 0, ciYear = ciParts[2] ?? 0;
-  const coDay = coParts[0] ?? 0, coMonth = coParts[1] ?? 0, coYear = coParts[2] ?? 0;
-  const checkinDate = new Date(ciYear, ciMonth - 1, ciDay);
-  const checkoutDate = new Date(coYear, coMonth - 1, coDay);
-
-  if (isNaN(checkinDate.getTime()) || isNaN(checkoutDate.getTime())) {
-    return JSON.stringify({ error: 'Datas invalidas' });
-  }
-
-  // Verificar se a data construida corresponde aos valores originais (ex: 31/02 vira 03/03)
-  if (checkinDate.getDate() !== ciDay || checkinDate.getMonth() !== ciMonth - 1 ||
-      checkoutDate.getDate() !== coDay || checkoutDate.getMonth() !== coMonth - 1) {
-    return JSON.stringify({ error: 'Datas invalidas (dia/mes nao existe)' });
-  }
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  if (checkinDate < today) {
-    return JSON.stringify({ error: 'Check-in nao pode ser no passado' });
-  }
-
-  if (checkoutDate <= checkinDate) {
-    return JSON.stringify({ error: 'Checkout deve ser posterior ao checkin' });
   }
 
   const result = await hbookScraperService.checkAvailability(
@@ -297,17 +265,11 @@ async function handleCheckAvailability(args: Record<string, unknown>): Promise<s
   const disponiveis = result.rooms.filter((r) => r.available && (r.price ?? 0) > 0);
 
   if (disponiveis.length === 0) {
-    // Sanitizar reason antes de enviar pro OpenAI (previne prompt injection indireto)
-    const rawReason = result.unavailabilityReason;
-    const safeReason = rawReason
-      ? rawReason.replace(/[<>\[\]{}|#`]/g, '').substring(0, 200).trim()
-      : null;
-
     return JSON.stringify({
       disponivel: false,
-      motivo: safeReason,
-      message: safeReason
-        ? `Nao ha quartos disponiveis: ${safeReason}`
+      motivo: result.unavailabilityReason || null,
+      message: result.unavailabilityReason
+        ? `Nao ha quartos disponiveis: ${result.unavailabilityReason}`
         : 'Infelizmente nao ha quartos disponiveis para as datas selecionadas.',
     });
   }

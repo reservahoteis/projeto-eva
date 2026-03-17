@@ -32,7 +32,7 @@ export const tenantService = {
    * List all tenants (Super Admin)
    */
   async list(params?: ListTenantsParams): Promise<PaginatedResponse<Tenant>> {
-    const { data } = await api.get<PaginatedResponse<Tenant>>('/api/tenants', {
+    const { data } = await api.get<PaginatedResponse<Tenant>>('/api/v1/tenants', {
       params,
     });
     return data;
@@ -42,7 +42,7 @@ export const tenantService = {
    * Get tenant by ID
    */
   async getById(id: string): Promise<Tenant> {
-    const { data } = await api.get<Tenant>(`/api/tenants/${id}`);
+    const { data } = await api.get<Tenant>(`/api/v1/tenants/${id}`);
     return data;
   },
 
@@ -54,19 +54,34 @@ export const tenantService = {
     adminUser: {
       id: string;
       email: string;
+      name: string;
+      role: string;
       temporaryPassword: string;
     };
+    tempPassword: string;
     loginUrl: string;
+    emailSent: boolean;
   }> {
-    const { data } = await api.post('/api/tenants', payload);
-    return data;
+    const { data } = await api.post('/api/v1/tenants', payload);
+    // O backend retorna snake_case: temp_password, email_sent, admin_user
+    // Normaliza para camelCase para consumo pelo frontend
+    return {
+      tenant: data.tenant,
+      adminUser: {
+        ...(data.admin_user ?? data.adminUser ?? {}),
+        temporaryPassword: data.temp_password ?? data.tempPassword ?? '',
+      },
+      tempPassword: data.temp_password ?? data.tempPassword ?? '',
+      loginUrl: data.login_url ?? data.loginUrl ?? `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://hoteisreserva.com.br'}/login`,
+      emailSent: data.email_sent ?? data.emailSent ?? false,
+    };
   },
 
   /**
    * Update tenant
    */
   async update(id: string, payload: UpdateTenantRequest): Promise<Tenant> {
-    const { data } = await api.patch<Tenant>(`/api/tenants/${id}`, payload);
+    const { data } = await api.patch<Tenant>(`/api/v1/tenants/${id}`, payload);
     return data;
   },
 
@@ -74,7 +89,7 @@ export const tenantService = {
    * Delete tenant
    */
   async delete(id: string): Promise<void> {
-    await api.delete(`/api/tenants/${id}`);
+    await api.delete(`/api/v1/tenants/${id}`);
   },
 
   /**
@@ -86,7 +101,7 @@ export const tenantService = {
     conversations: number;
     messages: number;
   }> {
-    const { data } = await api.get(`/api/tenants/${id}/stats`);
+    const { data } = await api.get(`/api/v1/tenants/${id}/stats`);
     return data;
   },
 };
