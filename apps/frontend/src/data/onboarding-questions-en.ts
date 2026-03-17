@@ -900,6 +900,7 @@ export const propertyTranslations: Record<number, QuestionTranslation> = {
       bangalo: 'Bungalow',
       apartamento: 'Full apartment',
       dormitorio: 'Shared dormitory',
+      outro: 'Other',
     },
   },
   32: {

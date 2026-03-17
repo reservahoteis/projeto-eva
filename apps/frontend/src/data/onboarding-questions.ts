@@ -1056,6 +1056,7 @@ export const propertyQuestions: OnboardingQuestion[] = [
       { label: 'Bangalô', value: 'bangalo' },
       { label: 'Apartamento completo', value: 'apartamento' },
       { label: 'Dormitório compartilhado', value: 'dormitorio' },
+      { label: 'Outro', value: 'outro' },
     ],
   },
   {
