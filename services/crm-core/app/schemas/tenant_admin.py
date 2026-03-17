@@ -236,6 +236,10 @@ class TenantCreateResponse(BaseModel):
     The temp_password field is returned exactly once — the caller must
     communicate it to the customer securely and immediately.  It is
     not stored in plain text anywhere after this response.
+
+    email_sent indicates whether the welcome email with credentials was
+    successfully delivered to the admin's email address.  If False, the
+    SUPER_ADMIN must communicate the credentials manually.
     """
 
     tenant: TenantResponse
@@ -243,6 +247,10 @@ class TenantCreateResponse(BaseModel):
     temp_password: str = Field(
         ...,
         description="One-time temporary password for the new TENANT_ADMIN user",
+    )
+    email_sent: bool = Field(
+        False,
+        description="True se o email de boas-vindas foi enviado com sucesso ao administrador",
     )
 
 

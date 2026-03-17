@@ -44,6 +44,7 @@ export function CreateTenantDialog({ open, onOpenChange, onSuccess }: CreateTena
     loginUrl: string;
     adminEmail: string;
     temporaryPassword: string;
+    emailSent: boolean;
   } | null>(null);
 
   const {
@@ -84,7 +85,8 @@ export function CreateTenantDialog({ open, onOpenChange, onSuccess }: CreateTena
       setCreatedTenant({
         loginUrl: result.loginUrl,
         adminEmail: result.adminUser.email,
-        temporaryPassword: result.adminUser.temporaryPassword,
+        temporaryPassword: result.tempPassword,
+        emailSent: result.emailSent,
       });
 
       toast.success('Tenant criado com sucesso!');
@@ -181,10 +183,34 @@ export function CreateTenantDialog({ open, onOpenChange, onSuccess }: CreateTena
         ) : (
           <>
             <DialogHeader>
-              <DialogTitle>Tenant Criado com Sucesso! ✅</DialogTitle>
-              <DialogDescription>Anote as credenciais abaixo antes de fechar</DialogDescription>
+              <DialogTitle>Tenant Criado com Sucesso!</DialogTitle>
+              <DialogDescription>
+                {createdTenant.emailSent
+                  ? 'Email de boas-vindas enviado. Confira as credenciais abaixo.'
+                  : 'Anote as credenciais abaixo antes de fechar.'}
+              </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
+              {/* Status do envio do email */}
+              {createdTenant.emailSent ? (
+                <div className="flex items-start gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3">
+                  <span className="mt-0.5 text-green-600 text-base leading-none">&#10003;</span>
+                  <p className="text-sm text-green-800">
+                    <strong>Email de boas-vindas enviado</strong> para{' '}
+                    <span className="font-mono">{createdTenant.adminEmail}</span> com as credenciais de acesso.
+                  </p>
+                </div>
+              ) : (
+                <div className="flex items-start gap-3 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3">
+                  <span className="mt-0.5 text-yellow-600 text-base leading-none">&#9888;</span>
+                  <p className="text-sm text-yellow-800">
+                    <strong>Email não enviado.</strong> O servidor SMTP não está configurado ou ocorreu um erro.
+                    Copie as credenciais abaixo e envie manualmente para o administrador.
+                  </p>
+                </div>
+              )}
+
+              {/* Credenciais */}
               <div className="rounded-lg bg-muted p-4 space-y-3">
                 <div>
                   <p className="text-sm font-medium">URL de Login:</p>
@@ -199,9 +225,9 @@ export function CreateTenantDialog({ open, onOpenChange, onSuccess }: CreateTena
                   <code className="text-sm text-destructive">{createdTenant.temporaryPassword}</code>
                 </div>
               </div>
+
               <p className="text-sm text-muted-foreground">
-                ⚠️ <strong>IMPORTANTE:</strong> Copie essas credenciais e envie para o administrador do tenant. Ele
-                deverá trocar a senha no primeiro acesso.
+                <strong>IMPORTANTE:</strong> O administrador deverá trocar a senha no primeiro acesso.
               </p>
             </div>
             <DialogFooter className="gap-2">

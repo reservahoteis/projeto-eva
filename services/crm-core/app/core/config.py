@@ -36,6 +36,18 @@ class Settings(BaseSettings):
     #   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
     TOKEN_ENCRYPTION_KEY: str | None = None
 
+    # SMTP — email transacional
+    # Se SMTP_HOST estiver vazio, o EmailService fica desabilitado (sem erro).
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM_EMAIL: str = "noreply@botreserva.com.br"
+    SMTP_FROM_NAME: str = "Smart Hotéis"
+
+    # URL pública do frontend (usada em links de email e onboarding)
+    FRONTEND_URL: str = "https://hoteisreserva.com.br"
+
     # CORS
     CORS_ORIGINS: list[str] = [
         "http://localhost:3000",

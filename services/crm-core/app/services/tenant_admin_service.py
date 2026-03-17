@@ -27,6 +27,7 @@ import structlog
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.exceptions import BadRequestError, ConflictError, NotFoundError
 from app.core.security import hash_password
 from app.models.tenant import Tenant
@@ -174,6 +175,31 @@ class TenantAdminService:
             admin_user_id=str(admin_user.id),
         )
 
+        # ------------------------------------------------------------------
+        # 5. Enviar email de boas-vindas com credenciais (não-bloqueante)
+        # ------------------------------------------------------------------
+        # Importação tardia para evitar circular import no nível de módulo.
+        # Se o envio falhar, logamos o erro mas NÃO revertemos a criação do
+        # tenant — o banco já foi flushado e a resposta contém a senha.
+        email_sent = False
+        try:
+            from app.services.email_service import email_service  # noqa: PLC0415
+
+            email_sent = await email_service.send_welcome_email(
+                to_email=admin_user.email,
+                tenant_name=tenant.name,
+                admin_name=admin_user.name or tenant.name,
+                login_url=f"{settings.FRONTEND_URL}/login",
+                temp_password=temp_password,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.error(
+                "tenant_welcome_email_error",
+                tenant_id=str(tenant.id),
+                admin_email=admin_user.email,
+                error=str(exc),
+            )
+
         return {
             "tenant": _tenant_to_dict(tenant),
             "admin_user": {
@@ -183,6 +209,7 @@ class TenantAdminService:
                 "role": admin_user.role,
             },
             "temp_password": temp_password,
+            "email_sent": email_sent,
         }
 
     # ------------------------------------------------------------------

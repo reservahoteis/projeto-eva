@@ -54,12 +54,27 @@ export const tenantService = {
     adminUser: {
       id: string;
       email: string;
+      name: string;
+      role: string;
       temporaryPassword: string;
     };
+    tempPassword: string;
     loginUrl: string;
+    emailSent: boolean;
   }> {
     const { data } = await api.post('/api/v1/tenants', payload);
-    return data;
+    // O backend retorna snake_case: temp_password, email_sent, admin_user
+    // Normaliza para camelCase para consumo pelo frontend
+    return {
+      tenant: data.tenant,
+      adminUser: {
+        ...(data.admin_user ?? data.adminUser ?? {}),
+        temporaryPassword: data.temp_password ?? data.tempPassword ?? '',
+      },
+      tempPassword: data.temp_password ?? data.tempPassword ?? '',
+      loginUrl: data.login_url ?? data.loginUrl ?? `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://hoteisreserva.com.br'}/login`,
+      emailSent: data.email_sent ?? data.emailSent ?? false,
+    };
   },
 
   /**
