@@ -4,7 +4,7 @@
 # ============================================
 
 # Stage 1: Builder
-FROM node:20-alpine AS builder
+FROM node:25-alpine AS builder
 WORKDIR /app
 
 # Install build dependencies for native modules (bcrypt, Prisma, etc)
@@ -26,7 +26,7 @@ RUN npx prisma generate
 RUN npm run build
 
 # Stage 2: Production
-FROM node:20-alpine AS production
+FROM node:25-alpine AS production
 WORKDIR /app
 
 # Install runtime dependencies including Chromium for Puppeteer
