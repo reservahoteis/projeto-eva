@@ -29,6 +29,11 @@ export interface BotPromptVersionDetail extends BotPromptVersion {
   templateText: string;
 }
 
+export interface RenderedSegment {
+  text: string;
+  fromVar: string | null;
+}
+
 export interface RenderedPrompt {
   prompt: string;
   versionNumber: number;
@@ -36,6 +41,7 @@ export interface RenderedPrompt {
   renderedAt: string;
   tenantId: string;
   webCheckinId: string | null;
+  segments?: RenderedSegment[];
 }
 
 export interface PromptDiff {

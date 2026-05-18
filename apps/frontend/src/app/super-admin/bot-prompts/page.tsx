@@ -1427,9 +1427,39 @@ function LivePreview({
           lineHeight: 1.55,
         }}
       >
-        {q.isLoading
-          ? 'Renderizando...'
-          : q.data?.prompt ?? 'Sem dados.'}
+        {q.isLoading ? (
+          'Renderizando...'
+        ) : q.data ? (
+          // Quando o backend devolve segments, renderizamos com destaque
+          // verde nos pedacos que vieram de substituicao de variavel
+          // (tooltip mostra o nome da variavel original). Caso o backend
+          // nao devolva segments (back-compat), cai no string puro.
+          q.data.segments && q.data.segments.length > 0 ? (
+            q.data.segments.map((seg, i) =>
+              seg.fromVar ? (
+                <span
+                  key={i}
+                  title={`{{${seg.fromVar}}}`}
+                  style={{
+                    backgroundColor: 'var(--bp-var-bg, rgba(16, 185, 129, 0.18))',
+                    color: 'var(--bp-var-fg, #047857)',
+                    borderRadius: 3,
+                    padding: '0 2px',
+                    fontWeight: 600,
+                  }}
+                >
+                  {seg.text}
+                </span>
+              ) : (
+                <span key={i}>{seg.text}</span>
+              ),
+            )
+          ) : (
+            q.data.prompt
+          )
+        ) : (
+          'Sem dados.'
+        )}
       </pre>
     </div>
   );
