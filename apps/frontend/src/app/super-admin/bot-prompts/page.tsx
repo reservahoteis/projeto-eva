@@ -17,10 +17,11 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AlertTriangle,
+  Building2,
   Check,
+  ChevronDown,
   Clock,
   Copy,
-  Eye,
   GitCompare,
   History,
   RotateCcw,
@@ -39,7 +40,9 @@ import type {
 import { formatDate } from '@/lib/utils';
 import { CustomVariablesDialog } from './custom-variables-dialog';
 
-type TabKey = 'history' | 'preview' | 'diff';
+// Tabs auxiliares: preview agora vive ao lado do editor; restam Historico
+// e Diff vs padrao.
+type TabKey = 'history' | 'diff';
 
 export default function BotPromptsPage() {
   const queryClient = useQueryClient();
@@ -201,71 +204,72 @@ export default function BotPromptsPage() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', height: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', height: '100%' }}>
       <PageHeader />
 
       <FlashBar errorMsg={errorMsg} successMsg={successMsg} />
 
-      <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr 280px', gap: '16px', flex: 1, minHeight: 0 }}>
-        {/* Coluna 1 — Lista de tenants */}
-        <TenantPicker
-          tenants={filteredTenants}
-          selectedId={selectedTenantId}
-          onSelect={setSelectedTenantId}
-          search={tenantSearch}
-          onSearchChange={setTenantSearch}
-          isLoading={tenantsQ.isLoading}
-        />
+      {/* Top bar: tenant + variaveis + status + acoes */}
+      <TopBar
+        tenants={filteredTenants}
+        tenantSearch={tenantSearch}
+        onTenantSearchChange={setTenantSearch}
+        selectedTenantId={selectedTenantId}
+        onSelectTenant={setSelectedTenantId}
+        tenantsLoading={tenantsQ.isLoading}
+        activeVersion={activeQ.data}
+        selectedSummary={selectedSummary}
+        isDirty={isDirty}
+        isSaving={saveMut.isPending}
+        onSave={() => saveMut.mutate()}
+        onResetClick={() => setShowResetConfirm(true)}
+        systemVars={catalogQ.data?.systemVariables ?? []}
+        customVars={catalogQ.data?.customVariables ?? []}
+        onInsertVariable={insertAtCursor}
+        onManageCustomVars={() => setShowCustomVarsDialog(true)}
+      />
 
-        {/* Coluna 2 — Editor + Tabs */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', minWidth: 0 }}>
-          {selectedTenantId === null ? (
-            <EmptySelectionPlaceholder />
-          ) : (
-            <>
-              <ActiveBar
-                summary={selectedSummary?.tenantName}
-                slug={selectedSummary?.tenantSlug}
-                activeVersion={activeQ.data}
-                isDirty={isDirty}
-                isSaving={saveMut.isPending}
-                onSave={() => saveMut.mutate()}
-                onResetClick={() => setShowResetConfirm(true)}
-              />
+      {selectedTenantId === null ? (
+        <EmptySelectionPlaceholder />
+      ) : (
+        <>
+          {/* Editor + Preview lado a lado */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: 14,
+              flex: 1,
+              minHeight: 0,
+            }}
+          >
+            <Editor
+              value={editorText}
+              onChange={setEditorText}
+              changeNote={changeNote}
+              onChangeNote={setChangeNote}
+              isDirty={isDirty}
+              textareaRef={editorRef}
+            />
+            <LivePreview
+              tenantId={selectedTenantId}
+              editorText={editorText}
+              isDirty={isDirty}
+            />
+          </div>
 
-              <Editor
-                value={editorText}
-                onChange={setEditorText}
-                changeNote={changeNote}
-                onChangeNote={setChangeNote}
-                isDirty={isDirty}
-                textareaRef={editorRef}
-              />
-
-              <BottomTabs
-                activeTab={activeTab}
-                onTabChange={setActiveTab}
-                tenantId={selectedTenantId}
-                editorText={editorText}
-                isDirty={isDirty}
-                versions={versionsQ.data ?? []}
-                onActivateVersion={(vid) => activateMut.mutate(vid)}
-                activatingId={activateMut.variables ?? null}
-                activeVersionId={activeQ.data?.id ?? null}
-              />
-            </>
-          )}
-        </div>
-
-        {/* Coluna 3 — Painel de variaveis */}
-        <VariablesPanel
-          systemVars={catalogQ.data?.systemVariables ?? []}
-          customVars={catalogQ.data?.customVariables ?? []}
-          onInsert={insertAtCursor}
-          onManageCustom={() => setShowCustomVarsDialog(true)}
-          disabled={selectedTenantId === null}
-        />
-      </div>
+          {/* Tabs auxiliares (Historico + Diff) — bem mais compactas */}
+          <SideTabs
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            tenantId={selectedTenantId}
+            versions={versionsQ.data ?? []}
+            onActivateVersion={(vid) => activateMut.mutate(vid)}
+            activatingId={activateMut.variables ?? null}
+            activeVersionId={activeQ.data?.id ?? null}
+          />
+        </>
+      )}
 
       {showResetConfirm && (
         <ResetConfirmDialog
@@ -325,207 +329,610 @@ function FlashBar({ errorMsg, successMsg }: { errorMsg: string | null; successMs
   );
 }
 
-function TenantPicker({
+// ----------------------------------------------------------------------------
+// TopBar — barra unica com tenant dropdown + variaveis popover + acoes
+// ----------------------------------------------------------------------------
+
+interface TopBarTenant {
+  tenantId: string;
+  tenantName: string;
+  tenantSlug: string;
+  activeVersionNumber: number | null;
+  totalVersions: number;
+}
+
+function TopBar({
+  tenants,
+  tenantSearch,
+  onTenantSearchChange,
+  selectedTenantId,
+  onSelectTenant,
+  tenantsLoading,
+  activeVersion,
+  selectedSummary,
+  isDirty,
+  isSaving,
+  onSave,
+  onResetClick,
+  systemVars,
+  customVars,
+  onInsertVariable,
+  onManageCustomVars,
+}: {
+  tenants: TopBarTenant[];
+  tenantSearch: string;
+  onTenantSearchChange: (v: string) => void;
+  selectedTenantId: string | null;
+  onSelectTenant: (id: string) => void;
+  tenantsLoading: boolean;
+  activeVersion: BotPromptVersionDetail | undefined;
+  selectedSummary: TopBarTenant | undefined;
+  isDirty: boolean;
+  isSaving: boolean;
+  onSave: () => void;
+  onResetClick: () => void;
+  systemVars: SystemVariable[];
+  customVars: CustomVariable[];
+  onInsertVariable: (s: string) => void;
+  onManageCustomVars: () => void;
+}) {
+  const [tenantOpen, setTenantOpen] = useState(false);
+  const [varsOpen, setVarsOpen] = useState(false);
+
+  return (
+    <div
+      style={{
+        backgroundColor: 'var(--surface-white)',
+        border: '1px solid var(--outline-gray-1)',
+        borderRadius: 8,
+        padding: '10px 14px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        flexWrap: 'wrap',
+        position: 'relative',
+        zIndex: 5,
+      }}
+    >
+      {/* Tenant selector */}
+      <TenantDropdown
+        tenants={tenants}
+        selectedId={selectedTenantId}
+        onSelect={(id) => {
+          onSelectTenant(id);
+          setTenantOpen(false);
+        }}
+        search={tenantSearch}
+        onSearchChange={onTenantSearchChange}
+        isLoading={tenantsLoading}
+        isOpen={tenantOpen}
+        onToggle={() => setTenantOpen((v) => !v)}
+        selectedSummary={selectedSummary}
+      />
+
+      {/* Variaveis */}
+      <VariablesPopover
+        systemVars={systemVars}
+        customVars={customVars}
+        onInsert={(s) => {
+          onInsertVariable(s);
+          // Mantem aberto pra inserir multiplas em sequencia
+        }}
+        onManageCustom={() => {
+          setVarsOpen(false);
+          onManageCustomVars();
+        }}
+        disabled={selectedTenantId === null}
+        isOpen={varsOpen}
+        onToggle={() => setVarsOpen((v) => !v)}
+      />
+
+      {/* Status da versao ativa (toma todo espaco que sobra) */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {selectedTenantId === null ? (
+          <p style={{ margin: 0, fontSize: 12, color: 'var(--ink-gray-5)' }}>
+            Escolha uma unidade pra editar
+          </p>
+        ) : (
+          <p style={{ margin: 0, fontSize: 12, color: 'var(--ink-gray-6)' }}>
+            {activeVersion?.isSystemDefault
+              ? 'Usando prompt padrão (sem versão própria)'
+              : `Versão ativa: v${activeVersion?.versionNumber ?? '—'} · ${
+                  activeVersion?.createdAt ? formatDate(activeVersion.createdAt) : '—'
+                }`}
+            {isDirty && (
+              <span
+                style={{
+                  marginLeft: 8,
+                  color: 'var(--ink-amber-3)',
+                  fontWeight: 600,
+                }}
+              >
+                · alterações não salvas
+              </span>
+            )}
+          </p>
+        )}
+      </div>
+
+      {/* Acoes */}
+      {selectedTenantId !== null && (
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            type="button"
+            onClick={onResetClick}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '6px 12px',
+              fontSize: 13,
+              border: '1px solid var(--outline-gray-2)',
+              borderRadius: 6,
+              backgroundColor: 'transparent',
+              color: 'var(--ink-gray-8)',
+              cursor: 'pointer',
+            }}
+          >
+            <RotateCcw style={{ width: 14, height: 14 }} /> Resetar padrão
+          </button>
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={!isDirty || isSaving}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '6px 12px',
+              fontSize: 13,
+              border: 'none',
+              borderRadius: 6,
+              backgroundColor: isDirty ? 'var(--ink-blue-3)' : 'var(--surface-gray-2)',
+              color: isDirty ? 'white' : 'var(--ink-gray-5)',
+              cursor: isDirty && !isSaving ? 'pointer' : 'not-allowed',
+              fontWeight: 600,
+              opacity: isSaving ? 0.7 : 1,
+            }}
+          >
+            <Save style={{ width: 14, height: 14 }} />{' '}
+            {isSaving ? 'Salvando...' : 'Salvar versão'}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TenantDropdown({
   tenants,
   selectedId,
   onSelect,
   search,
   onSearchChange,
   isLoading,
+  isOpen,
+  onToggle,
+  selectedSummary,
 }: {
-  tenants: ReturnType<typeof useQuery<unknown>>['data'] extends infer _D ? Array<{
-    tenantId: string;
-    tenantName: string;
-    tenantSlug: string;
-    activeVersionNumber: number | null;
-    totalVersions: number;
-  }> : never;
+  tenants: TopBarTenant[];
   selectedId: string | null;
   onSelect: (id: string) => void;
   search: string;
   onSearchChange: (v: string) => void;
   isLoading: boolean;
+  isOpen: boolean;
+  onToggle: () => void;
+  selectedSummary: TopBarTenant | undefined;
 }) {
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '8px',
-        backgroundColor: 'var(--surface-white)',
-        border: '1px solid var(--outline-gray-1)',
-        borderRadius: '8px',
-        padding: '12px',
-        minHeight: 0,
-      }}
-    >
-      <div style={{ position: 'relative' }}>
-        <Search
+    <div style={{ position: 'relative', minWidth: 240 }}>
+      <button
+        type="button"
+        onClick={onToggle}
+        style={{
+          width: '100%',
+          padding: '7px 12px',
+          fontSize: 13,
+          fontWeight: 500,
+          border: '1px solid var(--outline-gray-2)',
+          borderRadius: 6,
+          backgroundColor: 'var(--surface-white)',
+          color: 'var(--ink-gray-9)',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 8,
+          textAlign: 'left',
+        }}
+      >
+        <span
+          style={{
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          <Building2
+            style={{
+              width: 14,
+              height: 14,
+              display: 'inline',
+              marginRight: 6,
+              verticalAlign: -2,
+              color: 'var(--ink-gray-6)',
+            }}
+          />
+          {selectedSummary?.tenantName ?? 'Selecionar unidade'}
+        </span>
+        <ChevronDown style={{ width: 14, height: 14, color: 'var(--ink-gray-6)', flexShrink: 0 }} />
+      </button>
+
+      {isOpen && (
+        <div
           style={{
             position: 'absolute',
-            left: 8,
-            top: '50%',
-            transform: 'translateY(-50%)',
-            width: 14,
-            height: 14,
-            color: 'var(--ink-gray-5)',
+            top: 'calc(100% + 4px)',
+            left: 0,
+            width: 320,
+            maxHeight: 380,
+            backgroundColor: 'var(--surface-white)',
+            border: '1px solid var(--outline-gray-2)',
+            borderRadius: 8,
+            boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+            display: 'flex',
+            flexDirection: 'column',
+            zIndex: 10,
           }}
-        />
-        <input
-          type="text"
-          placeholder="Buscar unidade..."
-          value={search}
-          onChange={(e) => onSearchChange(e.target.value)}
-          style={{
-            width: '100%',
-            padding: '6px 8px 6px 28px',
-            fontSize: '13px',
-            border: '1px solid var(--outline-gray-1)',
-            borderRadius: '6px',
-            outline: 'none',
-            backgroundColor: 'var(--surface-gray-1)',
-          }}
-        />
-      </div>
-
-      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-        {isLoading ? (
-          <p style={{ fontSize: 12, color: 'var(--ink-gray-5)', textAlign: 'center', marginTop: 16 }}>
-            Carregando...
-          </p>
-        ) : (
-          tenants?.map((t) => {
-            const isSelected = t.tenantId === selectedId;
-            return (
-              <button
-                key={t.tenantId}
-                onClick={() => onSelect(t.tenantId)}
-                style={{
-                  textAlign: 'left',
-                  padding: '8px 10px',
-                  border: '1px solid',
-                  borderColor: isSelected ? 'var(--outline-blue-2)' : 'transparent',
-                  borderRadius: '6px',
-                  backgroundColor: isSelected ? 'var(--surface-blue-2)' : 'transparent',
-                  cursor: 'pointer',
-                  transition: 'background-color 0.15s ease',
-                }}
-                onMouseEnter={(e) => {
-                  if (!isSelected) e.currentTarget.style.backgroundColor = 'var(--surface-gray-2)';
-                }}
-                onMouseLeave={(e) => {
-                  if (!isSelected) e.currentTarget.style.backgroundColor = 'transparent';
-                }}
-              >
-                <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--ink-gray-9)' }}>
-                  {t.tenantName}
-                </p>
-                <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--ink-gray-5)' }}>
-                  @{t.tenantSlug}
-                </p>
-                <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--ink-gray-5)' }}>
-                  {t.activeVersionNumber === null
-                    ? 'usando padrão'
-                    : `v${t.activeVersionNumber} · ${t.totalVersions} versões`}
-                </p>
-              </button>
-            );
-          })
-        )}
-      </div>
+        >
+          <div style={{ position: 'relative', padding: 8 }}>
+            <Search
+              style={{
+                position: 'absolute',
+                left: 16,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                width: 14,
+                height: 14,
+                color: 'var(--ink-gray-5)',
+              }}
+            />
+            <input
+              type="text"
+              autoFocus
+              placeholder="Buscar unidade..."
+              value={search}
+              onChange={(e) => onSearchChange(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '7px 10px 7px 28px',
+                fontSize: 13,
+                border: '1px solid var(--outline-gray-1)',
+                borderRadius: 6,
+                outline: 'none',
+                backgroundColor: 'var(--surface-gray-1)',
+              }}
+            />
+          </div>
+          <div style={{ flex: 1, overflowY: 'auto', padding: '0 8px 8px' }}>
+            {isLoading ? (
+              <p style={{ fontSize: 12, color: 'var(--ink-gray-5)', textAlign: 'center', margin: 12 }}>
+                Carregando...
+              </p>
+            ) : (
+              tenants.map((t) => {
+                const isSelected = t.tenantId === selectedId;
+                return (
+                  <button
+                    key={t.tenantId}
+                    onClick={() => onSelect(t.tenantId)}
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '8px 10px',
+                      border: '1px solid',
+                      borderColor: isSelected ? 'var(--outline-blue-2)' : 'transparent',
+                      borderRadius: 6,
+                      backgroundColor: isSelected ? 'var(--surface-blue-2)' : 'transparent',
+                      cursor: 'pointer',
+                      marginBottom: 2,
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isSelected) e.currentTarget.style.backgroundColor = 'var(--surface-gray-2)';
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isSelected) e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
+                  >
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--ink-gray-9)' }}>
+                      {t.tenantName}
+                    </p>
+                    <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--ink-gray-5)' }}>
+                      @{t.tenantSlug} ·{' '}
+                      {t.activeVersionNumber === null
+                        ? 'padrão'
+                        : `v${t.activeVersionNumber} (${t.totalVersions} versões)`}
+                    </p>
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function ActiveBar({
-  summary,
-  slug,
-  activeVersion,
-  isDirty,
-  isSaving,
-  onSave,
-  onResetClick,
+// ----------------------------------------------------------------------------
+// VariablesPopover — botao + popover com as 3 categorias.  Cada item e
+// CLICAVEL (insere no cursor) E DRAGGABLE (drop em qualquer textarea).
+// ----------------------------------------------------------------------------
+
+function VariablesPopover({
+  systemVars,
+  customVars,
+  onInsert,
+  onManageCustom,
+  disabled,
+  isOpen,
+  onToggle,
 }: {
-  summary: string | undefined;
-  slug: string | undefined;
-  activeVersion: BotPromptVersionDetail | undefined;
-  isDirty: boolean;
-  isSaving: boolean;
-  onSave: () => void;
-  onResetClick: () => void;
+  systemVars: SystemVariable[];
+  customVars: CustomVariable[];
+  onInsert: (s: string) => void;
+  onManageCustom: () => void;
+  disabled: boolean;
+  isOpen: boolean;
+  onToggle: () => void;
+}) {
+  const [filter, setFilter] = useState('');
+  const fq = filter.toLowerCase();
+  const sysReal = systemVars.filter((v) => !v.isRuntime);
+  const sysRuntime = systemVars.filter((v) => v.isRuntime);
+
+  const matchSys = (v: SystemVariable) =>
+    !fq ||
+    v.name.toLowerCase().includes(fq) ||
+    v.description.toLowerCase().includes(fq) ||
+    v.placeholder.toLowerCase().includes(fq);
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <button
+        type="button"
+        onClick={onToggle}
+        disabled={disabled}
+        style={{
+          padding: '7px 12px',
+          fontSize: 13,
+          fontWeight: 500,
+          border: '1px solid var(--outline-gray-2)',
+          borderRadius: 6,
+          backgroundColor: isOpen ? 'var(--surface-gray-2)' : 'var(--surface-white)',
+          color: disabled ? 'var(--ink-gray-5)' : 'var(--ink-gray-9)',
+          cursor: disabled ? 'not-allowed' : 'pointer',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 6,
+        }}
+        title="Variáveis disponíveis (clique ou arraste para o editor)"
+      >
+        <Variable style={{ width: 14, height: 14 }} />
+        Variáveis
+        <ChevronDown style={{ width: 14, height: 14, color: 'var(--ink-gray-6)' }} />
+      </button>
+
+      {isOpen && !disabled && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 4px)',
+            left: 0,
+            width: 420,
+            maxHeight: 480,
+            backgroundColor: 'var(--surface-white)',
+            border: '1px solid var(--outline-gray-2)',
+            borderRadius: 8,
+            boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+            display: 'flex',
+            flexDirection: 'column',
+            zIndex: 10,
+          }}
+        >
+          <div
+            style={{
+              padding: 10,
+              borderBottom: '1px solid var(--outline-gray-1)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+            }}
+          >
+            <input
+              type="text"
+              autoFocus
+              placeholder="Filtrar variáveis..."
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              style={{
+                flex: 1,
+                padding: '6px 10px',
+                fontSize: 12,
+                border: '1px solid var(--outline-gray-1)',
+                borderRadius: 4,
+                outline: 'none',
+                backgroundColor: 'var(--surface-gray-1)',
+              }}
+            />
+            <button
+              type="button"
+              onClick={onManageCustom}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                padding: '5px 10px',
+                fontSize: 12,
+                fontWeight: 600,
+                border: '1px solid var(--ink-green-3)',
+                borderRadius: 6,
+                backgroundColor: 'var(--ink-green-3)',
+                color: 'white',
+                cursor: 'pointer',
+              }}
+              title="Gerenciar variáveis customizadas (criar, editar, deletar)"
+            >
+              <Settings2 style={{ width: 12, height: 12 }} />
+              Gerenciar
+            </button>
+          </div>
+
+          <div
+            style={{
+              flex: 1,
+              overflowY: 'auto',
+              padding: 10,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 14,
+            }}
+          >
+            <PopoverGroup
+              title="Sistema (dados)"
+              color="var(--ink-blue-3)"
+              hint="Arraste ou clique pra inserir no cursor"
+              items={sysReal.filter(matchSys).map((v) => ({
+                key: v.placeholder,
+                label: v.name,
+                title: v.description,
+                insertText: v.placeholder,
+              }))}
+              onInsert={onInsert}
+            />
+            <PopoverGroup
+              title="Runtime N8N (literal)"
+              color="var(--ink-amber-3)"
+              hint="Estes placeholders ficam literais — N8N substitui na execução"
+              items={sysRuntime.filter(matchSys).map((v) => ({
+                key: v.placeholder,
+                label: v.name,
+                title: v.description,
+                insertText: v.placeholder,
+              }))}
+              onInsert={onInsert}
+            />
+            <PopoverGroup
+              title="Customizadas"
+              color="var(--ink-green-3)"
+              hint='Use "Gerenciar" pra criar/editar/deletar'
+              items={customVars
+                .filter(
+                  (v) =>
+                    !fq ||
+                    v.varKey.toLowerCase().includes(fq) ||
+                    (v.description ?? '').toLowerCase().includes(fq),
+                )
+                .map((v) => ({
+                  key: v.id,
+                  label: v.varKey,
+                  title: v.description ?? v.varType,
+                  insertText: `{{${v.varKey}}}`,
+                }))}
+              onInsert={onInsert}
+              emptyHint='Nenhuma ainda — clique "Gerenciar" pra criar.'
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PopoverGroup({
+  title,
+  color,
+  hint,
+  items,
+  onInsert,
+  emptyHint,
+}: {
+  title: string;
+  color: string;
+  hint?: string;
+  items: { key: string; label: string; title: string; insertText: string }[];
+  onInsert: (s: string) => void;
+  emptyHint?: string;
 }) {
   return (
-    <div
-      style={{
-        backgroundColor: 'var(--surface-white)',
-        border: '1px solid var(--outline-gray-1)',
-        borderRadius: '8px',
-        padding: '10px 14px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: '12px',
-      }}
-    >
-      <div>
-        <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink-gray-9)', margin: 0 }}>
-          {summary ?? '—'} <span style={{ color: 'var(--ink-gray-5)', fontWeight: 400 }}>@{slug}</span>
-        </p>
-        <p style={{ fontSize: 11, color: 'var(--ink-gray-5)', margin: '2px 0 0' }}>
-          {activeVersion?.isSystemDefault
-            ? 'Usando prompt padrão (sem versão própria)'
-            : `Versão ativa: v${activeVersion?.versionNumber ?? '—'} · ${
-                activeVersion?.createdAt ? formatDate(activeVersion.createdAt) : '—'
-              }`}
-          {isDirty && (
-            <span style={{ marginLeft: 8, color: 'var(--ink-amber-3)', fontWeight: 600 }}>
-              · alterações não salvas
-            </span>
-          )}
-        </p>
-      </div>
-
-      <div style={{ display: 'flex', gap: '8px' }}>
-        <button
-          type="button"
-          onClick={onResetClick}
+    <div>
+      <div style={{ marginBottom: 6 }}>
+        <p
           style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-            padding: '6px 12px',
-            fontSize: 13,
-            border: '1px solid var(--outline-gray-2)',
-            borderRadius: 6,
-            backgroundColor: 'transparent',
-            color: 'var(--ink-gray-8)',
-            cursor: 'pointer',
+            margin: 0,
+            fontSize: 11,
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+            color,
           }}
         >
-          <RotateCcw style={{ width: 14, height: 14 }} /> Resetar padrão
-        </button>
-        <button
-          type="button"
-          onClick={onSave}
-          disabled={!isDirty || isSaving}
+          {title} ({items.length})
+        </p>
+        {hint && (
+          <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--ink-gray-5)' }}>{hint}</p>
+        )}
+      </div>
+      {items.length === 0 ? (
+        <p style={{ margin: 0, fontSize: 12, color: 'var(--ink-gray-5)' }}>
+          {emptyHint ?? 'Nenhum resultado.'}
+        </p>
+      ) : (
+        <div
           style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-            padding: '6px 12px',
-            fontSize: 13,
-            border: 'none',
-            borderRadius: 6,
-            backgroundColor: isDirty ? 'var(--ink-blue-3)' : 'var(--surface-gray-2)',
-            color: isDirty ? 'white' : 'var(--ink-gray-5)',
-            cursor: isDirty && !isSaving ? 'pointer' : 'not-allowed',
-            fontWeight: 600,
-            opacity: isSaving ? 0.7 : 1,
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, 1fr)',
+            gap: 4,
           }}
         >
-          <Save style={{ width: 14, height: 14 }} /> {isSaving ? 'Salvando...' : 'Salvar versão'}
-        </button>
-      </div>
+          {items.map((it) => (
+            <button
+              key={it.key}
+              type="button"
+              draggable
+              onClick={() => onInsert(it.insertText)}
+              onDragStart={(e) => {
+                e.dataTransfer.setData('text/plain', it.insertText);
+                e.dataTransfer.effectAllowed = 'copy';
+              }}
+              title={`${it.title}\n\n(arraste para soltar onde quiser, ou clique pra inserir no cursor)`}
+              style={{
+                textAlign: 'left',
+                padding: '6px 9px',
+                fontSize: 12,
+                fontWeight: 500,
+                border: '1px solid var(--outline-gray-1)',
+                borderRadius: 4,
+                backgroundColor: 'var(--surface-white)',
+                color: 'var(--ink-gray-9)',
+                cursor: 'grab',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--surface-gray-2)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--surface-white)';
+              }}
+            >
+              {it.label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -545,32 +952,83 @@ function Editor({
   isDirty: boolean;
   textareaRef: React.MutableRefObject<HTMLTextAreaElement | null>;
 }) {
+  const [dragOver, setDragOver] = useState(false);
+
+  // Drop handler — insere o texto arrastado (placeholder) na posicao do
+  // CARET do textarea, nao na posicao do ponteiro. Por que: o user
+  // costuma estar olhando pra onde o cursor esta. Comportamento default
+  // do browser insere no ponto do drop (caractere mais proximo), que
+  // pode parecer aleatorio. Preferimos a previsibilidade do caret.
+  const handleDrop = (e: React.DragEvent<HTMLTextAreaElement>) => {
+    e.preventDefault();
+    setDragOver(false);
+    const dropped = e.dataTransfer.getData('text/plain');
+    if (!dropped) return;
+    const ta = textareaRef.current;
+    if (!ta) {
+      onChange(value + dropped);
+      return;
+    }
+    const start = ta.selectionStart ?? value.length;
+    const end = ta.selectionEnd ?? value.length;
+    const next = value.slice(0, start) + dropped + value.slice(end);
+    onChange(next);
+    requestAnimationFrame(() => {
+      ta.focus();
+      ta.selectionStart = ta.selectionEnd = start + dropped.length;
+    });
+  };
+
   return (
     <div
       style={{
-        flex: 1,
         display: 'flex',
         flexDirection: 'column',
         backgroundColor: 'var(--surface-white)',
-        border: '1px solid var(--outline-gray-1)',
+        border: dragOver ? '2px dashed var(--ink-blue-3)' : '1px solid var(--outline-gray-1)',
         borderRadius: '8px',
         overflow: 'hidden',
         minHeight: 0,
+        transition: 'border-color 0.15s ease',
       }}
     >
+      <div
+        style={{
+          padding: '8px 14px',
+          borderBottom: '1px solid var(--outline-gray-1)',
+          backgroundColor: 'var(--surface-gray-1)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 8,
+        }}
+      >
+        <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: 'var(--ink-gray-8)' }}>
+          Editor do prompt
+        </p>
+        <p style={{ margin: 0, fontSize: 11, color: 'var(--ink-gray-5)' }}>
+          Clique ou arraste variáveis do painel acima
+        </p>
+      </div>
       <textarea
         ref={textareaRef}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onDragOver={(e) => {
+          // Default do browser bloqueia drop em textarea — precisamos
+          // preventDefault aqui pra permitir o drop personalizado.
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'copy';
+          if (!dragOver) setDragOver(true);
+        }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={handleDrop}
         spellCheck={false}
         style={{
           flex: 1,
           width: '100%',
           padding: '14px',
           fontSize: 13,
-          // Stack que prioriza Consolas (Windows) e Menlo (Mac) ANTES do
-          // ui-monospace generico — sem isso, alguns browsers Windows caem
-          // pra Courier New (legibilidade pessima criticada na review).
           fontFamily: 'Consolas, Menlo, Monaco, "Cascadia Code", "Source Code Pro", monospace',
           lineHeight: 1.55,
           border: 'none',
@@ -611,235 +1069,18 @@ function Editor({
   );
 }
 
-function VariablesPanel({
-  systemVars,
-  customVars,
-  onInsert,
-  onManageCustom,
-  disabled,
-}: {
-  systemVars: SystemVariable[];
-  customVars: CustomVariable[];
-  onInsert: (s: string) => void;
-  onManageCustom: () => void;
-  disabled: boolean;
-}) {
-  const [filter, setFilter] = useState('');
-  const fq = filter.toLowerCase();
 
-  const sysReal = systemVars.filter((v) => !v.isRuntime);
-  const sysRuntime = systemVars.filter((v) => v.isRuntime);
+// ----------------------------------------------------------------------------
+// SideTabs — agora so Historico + Diff (preview ja vive ao lado do editor).
+// Renderiza apenas a aba ativa pra economizar espaco vertical.
+// ----------------------------------------------------------------------------
 
-  const matches = (v: SystemVariable) =>
-    !fq ||
-    v.name.toLowerCase().includes(fq) ||
-    v.description.toLowerCase().includes(fq) ||
-    v.placeholder.toLowerCase().includes(fq);
+type SideTabKey = 'history' | 'diff';
 
-  return (
-    <div
-      style={{
-        backgroundColor: 'var(--surface-white)',
-        border: '1px solid var(--outline-gray-1)',
-        borderRadius: '8px',
-        padding: '12px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '12px',
-        minHeight: 0,
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <Variable style={{ width: 14, height: 14, color: 'var(--ink-gray-6)' }} />
-        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink-gray-9)' }}>
-          Variáveis
-        </span>
-      </div>
-
-      <input
-        type="text"
-        placeholder="Filtrar variáveis..."
-        value={filter}
-        onChange={(e) => setFilter(e.target.value)}
-        style={{
-          padding: '6px 8px',
-          fontSize: 12,
-          border: '1px solid var(--outline-gray-1)',
-          borderRadius: 4,
-          outline: 'none',
-          backgroundColor: 'var(--surface-gray-1)',
-        }}
-      />
-
-      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <VarGroup
-          title="Sistema (dados)"
-          color="var(--ink-blue-3)"
-          items={sysReal.filter(matches).map((v) => ({
-            key: v.placeholder,
-            primary: v.name,
-            secondary: v.description,
-            insertText: v.placeholder,
-          }))}
-          onInsert={onInsert}
-          disabled={disabled}
-        />
-        <VarGroup
-          title="Runtime N8N (literal)"
-          color="var(--ink-amber-3)"
-          items={sysRuntime.filter(matches).map((v) => ({
-            key: v.placeholder,
-            primary: v.name,
-            secondary: v.description,
-            insertText: v.placeholder,
-          }))}
-          onInsert={onInsert}
-          disabled={disabled}
-        />
-        <VarGroup
-          title="Customizadas"
-          color="var(--ink-green-3)"
-          headerAction={
-            <button
-              type="button"
-              onClick={onManageCustom}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 5,
-                padding: '5px 11px',
-                fontSize: 12,
-                border: '1px solid var(--ink-green-3)',
-                borderRadius: 6,
-                backgroundColor: 'var(--ink-green-3)',
-                cursor: 'pointer',
-                color: 'white',
-                fontWeight: 600,
-                boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
-              }}
-              title="Criar, editar ou deletar variáveis customizadas"
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.filter = 'brightness(1.05)';
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.filter = '';
-              }}
-            >
-              <Settings2 style={{ width: 13, height: 13 }} />
-              Gerenciar
-            </button>
-          }
-          items={customVars
-            .filter(
-              (v) =>
-                !fq ||
-                v.varKey.toLowerCase().includes(fq) ||
-                (v.description ?? '').toLowerCase().includes(fq),
-            )
-            .map((v) => ({
-              key: v.id,
-              primary: v.varKey,
-              secondary: v.description ?? v.varType,
-              insertText: `{{${v.varKey}}}`,
-            }))}
-          onInsert={onInsert}
-          disabled={disabled}
-          emptyHint='Nenhuma ainda. Clique "Gerenciar" para criar.'
-        />
-      </div>
-    </div>
-  );
-}
-
-function VarGroup({
-  title,
-  color,
-  items,
-  onInsert,
-  disabled,
-  emptyHint,
-  headerAction,
-}: {
-  title: string;
-  color: string;
-  items: { key: string; primary: string; secondary: string; insertText: string }[];
-  onInsert: (s: string) => void;
-  disabled: boolean;
-  emptyHint?: string;
-  headerAction?: React.ReactNode;
-}) {
-  return (
-    <div>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          margin: '0 0 6px',
-        }}
-      >
-        <p
-          style={{
-            fontSize: 11,
-            fontWeight: 600,
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px',
-            color,
-            margin: 0,
-          }}
-        >
-          {title} ({items.length})
-        </p>
-        {headerAction}
-      </div>
-      {items.length === 0 ? (
-        <p style={{ fontSize: 11, color: 'var(--ink-gray-5)', margin: 0 }}>
-          {emptyHint ?? 'Nenhum resultado.'}
-        </p>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-          {items.map((it) => (
-            <button
-              key={it.key}
-              onClick={() => !disabled && onInsert(it.insertText)}
-              disabled={disabled}
-              title={it.secondary}
-              style={{
-                textAlign: 'left',
-                padding: '5px 7px',
-                fontSize: 12,
-                border: '1px solid var(--outline-gray-1)',
-                borderRadius: 4,
-                backgroundColor: 'var(--surface-white)',
-                cursor: disabled ? 'not-allowed' : 'pointer',
-                color: 'var(--ink-gray-9)',
-                fontWeight: 500,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-              onMouseEnter={(e) => {
-                if (!disabled) e.currentTarget.style.backgroundColor = 'var(--surface-gray-2)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'var(--surface-white)';
-              }}
-            >
-              {it.primary}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function BottomTabs({
+function SideTabs({
   activeTab,
   onTabChange,
   tenantId,
-  editorText,
-  isDirty,
   versions,
   onActivateVersion,
   activatingId,
@@ -848,16 +1089,15 @@ function BottomTabs({
   activeTab: TabKey;
   onTabChange: (t: TabKey) => void;
   tenantId: string;
-  editorText: string;
-  isDirty: boolean;
   versions: BotPromptVersion[];
   onActivateVersion: (id: string) => void;
   activatingId: string | null;
   activeVersionId: string | null;
 }) {
-  const tabs: { key: TabKey; label: string; icon: React.ComponentType<{ style?: React.CSSProperties }> }[] = [
+  // Normaliza: aceita 'preview' do estado legado (era uma tab), trata como historico.
+  const safeTab: SideTabKey = activeTab === 'diff' ? 'diff' : 'history';
+  const tabs: { key: SideTabKey; label: string; icon: React.ComponentType<{ style?: React.CSSProperties }> }[] = [
     { key: 'history', label: 'Histórico', icon: History },
-    { key: 'preview', label: 'Preview', icon: Eye },
     { key: 'diff', label: 'Diff vs padrão', icon: GitCompare },
   ];
 
@@ -870,12 +1110,12 @@ function BottomTabs({
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
-        maxHeight: '280px',
+        maxHeight: 240,
       }}
     >
       <div style={{ display: 'flex', borderBottom: '1px solid var(--outline-gray-1)' }}>
         {tabs.map((t) => {
-          const isActive = activeTab === t.key;
+          const isActive = safeTab === t.key;
           const Icon = t.icon;
           return (
             <button
@@ -903,7 +1143,7 @@ function BottomTabs({
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: 12 }}>
-        {activeTab === 'history' && (
+        {safeTab === 'history' && (
           <HistoryTab
             versions={versions}
             activeId={activeVersionId}
@@ -911,10 +1151,7 @@ function BottomTabs({
             activatingId={activatingId}
           />
         )}
-        {activeTab === 'preview' && (
-          <PreviewTab tenantId={tenantId} editorText={editorText} isDirty={isDirty} />
-        )}
-        {activeTab === 'diff' && <DiffTab tenantId={tenantId} />}
+        {safeTab === 'diff' && <DiffTab tenantId={tenantId} />}
       </div>
     </div>
   );
@@ -1007,7 +1244,14 @@ function HistoryTab({
   );
 }
 
-function PreviewTab({
+// ----------------------------------------------------------------------------
+// LivePreview — painel que vive ao lado do editor mostrando renderizacao
+// real-time. Quando o editor esta sujo (isDirty), chama POST /preview-draft
+// com o texto atual do editor; quando limpo, chama GET /preview da versao
+// ativa salva.
+// ----------------------------------------------------------------------------
+
+function LivePreview({
   tenantId,
   editorText,
   isDirty,
@@ -1016,27 +1260,23 @@ function PreviewTab({
   editorText: string;
   isDirty: boolean;
 }) {
-  // Quando o dev EDITOU o texto e ainda nao salvou (isDirty=true), o preview
-  // mostra o RASCUNHO renderizado (POST /preview-draft com o texto do editor).
-  // Quando nao ha edicoes pendentes, mostra a versao ativa persistida
-  // (GET /preview da versao salva). Em ambos os casos as variaveis sao
-  // resolvidas pelos valores reais do tenant — essa e a "moral do preview":
-  // ver os valores reais ANTES de salvar, nao depois.
   const q = useQuery({
-    queryKey: ['bot-prompts', isDirty ? 'preview-draft' : 'preview', tenantId, isDirty ? editorText : ''],
+    queryKey: [
+      'bot-prompts',
+      isDirty ? 'preview-draft' : 'preview',
+      tenantId,
+      isDirty ? editorText : '',
+    ],
     queryFn: () =>
       isDirty
         ? botPromptService.previewDraft(tenantId, editorText)
         : botPromptService.preview(tenantId),
-    // Pequeno staleTime evita refetch desnecessario enquanto a tab esta aberta.
-    staleTime: 1000,
+    staleTime: 800,
   });
 
   const [copied, setCopied] = useState(false);
-  if (q.isLoading) return <p style={{ fontSize: 12, color: 'var(--ink-gray-5)' }}>Renderizando...</p>;
-  if (!q.data) return <p style={{ fontSize: 12, color: 'var(--ink-gray-5)' }}>Sem dados.</p>;
-
   const handleCopy = async () => {
+    if (!q.data) return;
     try {
       await navigator.clipboard.writeText(q.data.prompt);
       setCopied(true);
@@ -1047,58 +1287,88 @@ function PreviewTab({
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <p style={{ fontSize: 11, color: 'var(--ink-gray-5)', margin: 0 }}>
-          {isDirty ? (
-            <>
-              <strong style={{ color: 'var(--ink-amber-3)' }}>Rascunho</strong> · texto do
-              editor renderizado em tempo real (não salvo ainda)
-            </>
-          ) : (
-            <>
-              v{q.data.versionNumber} · versão ativa renderizada (mesmo output que o N8N
-              receberia)
-            </>
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        backgroundColor: 'var(--surface-white)',
+        border: '1px solid var(--outline-gray-1)',
+        borderRadius: 8,
+        overflow: 'hidden',
+        minHeight: 0,
+      }}
+    >
+      <div
+        style={{
+          padding: '8px 14px',
+          borderBottom: '1px solid var(--outline-gray-1)',
+          backgroundColor: 'var(--surface-gray-1)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 8,
+        }}
+      >
+        <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: 'var(--ink-gray-8)' }}>
+          Preview renderizado
+          {q.data && (
+            <span
+              style={{
+                marginLeft: 8,
+                fontSize: 11,
+                fontWeight: 500,
+                color: isDirty ? 'var(--ink-amber-3)' : 'var(--ink-gray-5)',
+              }}
+            >
+              {isDirty
+                ? '· rascunho (não salvo)'
+                : `· v${q.data.versionNumber} ativa`}
+            </span>
           )}
         </p>
         <button
           type="button"
           onClick={handleCopy}
+          disabled={!q.data}
           style={{
             display: 'inline-flex',
             alignItems: 'center',
             gap: 4,
-            padding: '4px 8px',
+            padding: '4px 10px',
             fontSize: 11,
             border: '1px solid var(--outline-gray-2)',
             borderRadius: 4,
             backgroundColor: 'transparent',
-            cursor: 'pointer',
+            cursor: q.data ? 'pointer' : 'not-allowed',
             color: 'var(--ink-gray-8)',
           }}
         >
-          {copied ? <Check style={{ width: 12, height: 12 }} /> : <Copy style={{ width: 12, height: 12 }} />}
+          {copied ? (
+            <Check style={{ width: 12, height: 12 }} />
+          ) : (
+            <Copy style={{ width: 12, height: 12 }} />
+          )}
           {copied ? 'Copiado' : 'Copiar'}
         </button>
       </div>
       <pre
         style={{
-          fontSize: 11,
+          flex: 1,
+          fontSize: 12,
           fontFamily: 'Consolas, Menlo, Monaco, "Cascadia Code", monospace',
           margin: 0,
-          padding: 10,
-          backgroundColor: 'var(--surface-gray-1)',
-          border: '1px solid var(--outline-gray-1)',
-          borderRadius: 4,
+          padding: 14,
+          backgroundColor: 'var(--surface-white)',
           whiteSpace: 'pre-wrap',
           wordBreak: 'break-word',
           color: 'var(--ink-gray-9)',
-          maxHeight: 200,
           overflowY: 'auto',
+          lineHeight: 1.55,
         }}
       >
-        {q.data.prompt}
+        {q.isLoading
+          ? 'Renderizando...'
+          : q.data?.prompt ?? 'Sem dados.'}
       </pre>
     </div>
   );
