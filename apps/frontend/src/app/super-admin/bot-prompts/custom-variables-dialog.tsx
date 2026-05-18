@@ -12,7 +12,7 @@
 // por isso o dialog e acessivel independente de qual unidade esta selecionada
 // na pagina principal.
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AlertCircle,
@@ -20,7 +20,6 @@ import {
   ChevronRight,
   Database,
   Info,
-  Lightbulb,
   Lock,
   Pencil,
   Plus,
@@ -36,22 +35,6 @@ import {
 } from '@/components/ui/dialog';
 import { botPromptService } from '@/services/bot-prompt.service';
 import type { CustomVarType, CustomVariable } from '@/types/bot-prompt';
-
-// ============================================================================
-// Allowlist de fontes do tipo "tenant_field".
-// Espelha o _TENANT_FIELD_ALLOWLIST do backend
-// (app/services/bot_prompt_service.py). Qualquer valor fora desta lista e
-// rejeitado silenciosamente no backend (defense-in-depth contra SQL injection).
-// ============================================================================
-
-const ALLOWED_TENANT_FIELDS: { value: string; label: string; example: string }[] = [
-  { value: 'tenant.name', label: 'Nome do hotel', example: 'Hotel Santa' },
-  { value: 'tenant.email', label: 'E-mail principal do tenant', example: 'contato@hotel.com' },
-  { value: 'tenant.phone', label: 'Telefone do tenant', example: '+55 11 99999-9999' },
-  { value: 'tenant.city', label: 'Cidade', example: 'São Paulo' },
-  { value: 'tenant.state', label: 'Estado', example: 'SP' },
-  { value: 'tenant_onboardings.bot_name', label: 'Nome do bot (onboarding)', example: 'Eva' },
-];
 
 export function CustomVariablesDialog({
   open,
@@ -357,7 +340,7 @@ function HelpSection({ open, onToggle }: { open: boolean; onToggle: () => void }
             </div>
           </div>
 
-          {/* Lista de fontes permitidas */}
+          {/* Lista de categorias disponiveis */}
           <p
             style={{
               margin: '0 0 4px',
@@ -370,71 +353,46 @@ function HelpSection({ open, onToggle }: { open: boolean; onToggle: () => void }
             }}
           >
             <Lock style={{ width: 14, height: 14, color: 'var(--ink-gray-7)' }} />
-            Fontes permitidas para &quot;Campo do tenant&quot;
+            Categorias de fonte disponíveis
           </p>
           <p style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--ink-gray-6)' }}>
-            Por segurança, só estes valores são aceitos no campo &quot;origem&quot;:
+            No formulário, escolha primeiro a categoria e depois o campo específico — sem digitar
+            nada à mão:
           </p>
-          <div
+          <ul
             style={{
-              border: '1px solid var(--outline-gray-2)',
-              borderRadius: 6,
-              overflow: 'hidden',
-              marginBottom: 16,
-            }}
-          >
-            <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ backgroundColor: 'var(--surface-gray-2)' }}>
-                  <th style={tableHeadStyle}>Origem (cole exatamente)</th>
-                  <th style={tableHeadStyle}>O que é</th>
-                  <th style={tableHeadStyle}>Exemplo de valor</th>
-                </tr>
-              </thead>
-              <tbody>
-                {ALLOWED_TENANT_FIELDS.map((f, idx) => (
-                  <tr
-                    key={f.value}
-                    style={{
-                      backgroundColor:
-                        idx % 2 === 0 ? 'var(--surface-white)' : 'var(--surface-gray-1)',
-                    }}
-                  >
-                    <td style={tableCellStyle}>
-                      <code style={codeStyle}>{f.value}</code>
-                    </td>
-                    <td style={tableCellStyle}>{f.label}</td>
-                    <td style={{ ...tableCellStyle, color: 'var(--ink-gray-6)' }}>{f.example}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div
-            style={{
-              padding: 12,
-              borderRadius: 6,
-              backgroundColor: 'var(--surface-gray-1)',
-              border: '1px solid var(--outline-gray-2)',
+              margin: '0 0 16px',
+              paddingLeft: 22,
               fontSize: 13,
               color: 'var(--ink-gray-8)',
-              display: 'flex',
-              gap: 8,
-              alignItems: 'flex-start',
-              marginBottom: 20,
-              lineHeight: 1.55,
+              lineHeight: 1.7,
             }}
           >
-            <Lightbulb style={{ width: 16, height: 16, color: 'var(--ink-amber-3)', marginTop: 1, flexShrink: 0 }} />
-            <span>
-              <strong>Avançado:</strong> também aceita{' '}
-              <code style={codeStyle}>tenant_onboardings.property_answers-&gt;&gt;&apos;N&apos;</code>{' '}
-              onde N é o número de uma pergunta do wizard de onboarding (1..90). Ex.:{' '}
-              <code style={codeStyle}>-&gt;&gt;&apos;1&apos;</code> devolve a primeira resposta da seção
-              &quot;property&quot;.
-            </span>
-          </div>
+            <li>
+              <strong>Hotel</strong> — dados básicos do tenant (nome, e-mail, telefone, cidade, estado).
+            </li>
+            <li>
+              <strong>Onboarding</strong> — campos do <code style={codeStyle}>tenant_onboardings</code>{' '}
+              (ex: nome do bot configurado).
+            </li>
+            <li>
+              <strong>Listas</strong> — quartos, FAQ, serviços, destinos e orientações do hotel{' '}
+              <em>já formatados</em> em texto pronto pra colar no prompt (cada item vira uma linha
+              com nome + detalhes).
+            </li>
+            <li>
+              <strong>Wizard › Propriedade</strong> — 90 perguntas sobre o hotel (endereço, tipo, comodidades,
+              políticas etc.).
+            </li>
+            <li>
+              <strong>Wizard › Personalidade</strong> — 50 perguntas sobre o estilo do bot (gênero da voz,
+              formalidade, humor etc.).
+            </li>
+            <li>
+              <strong>Wizard › Dicas</strong> — 20 perguntas sobre indicações (top 5 restaurantes, bares,
+              passeios etc.).
+            </li>
+          </ul>
 
           <p style={{ margin: '0 0 8px', fontSize: 14, fontWeight: 700, color: 'var(--ink-gray-9)' }}>
             Regras importantes
@@ -752,42 +710,7 @@ function CustomVarForm({
           />
         </FormField>
       ) : (
-        <FormField
-          label="Origem (campo do banco)"
-          hint="Selecione um dos campos da lista. Não escreva à mão — qualquer outro valor é rejeitado pelo backend."
-        >
-          <select
-            value={fieldSource}
-            onChange={(e) => setFieldSource(e.target.value)}
-            style={inputStyle}
-          >
-            <option value="">— escolha um campo —</option>
-            {ALLOWED_TENANT_FIELDS.map((f) => (
-              <option key={f.value} value={f.value}>
-                {f.label} ({f.value})
-              </option>
-            ))}
-          </select>
-          <details style={{ marginTop: 6 }}>
-            <summary style={{ fontSize: 11, color: 'var(--ink-gray-6)', cursor: 'pointer' }}>
-              Quero usar uma resposta específica do wizard (avançado)
-            </summary>
-            <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <p style={{ margin: 0, fontSize: 11, color: 'var(--ink-gray-7)' }}>
-                Cole o caminho no formato <code style={codeStyle}>tenant_onboardings.property_answers-&gt;&gt;&apos;N&apos;</code>{' '}
-                onde N é o número da pergunta (1..90). Exemplo: <code style={codeStyle}>tenant_onboardings.property_answers-&gt;&gt;&apos;1&apos;</code>{' '}
-                = primeira resposta da seção &quot;property&quot;.
-              </p>
-              <input
-                type="text"
-                placeholder="tenant_onboardings.property_answers->>'1'"
-                value={fieldSource}
-                onChange={(e) => setFieldSource(e.target.value)}
-                style={inputStyle}
-              />
-            </div>
-          </details>
-        </FormField>
+        <FieldSourcePicker value={fieldSource} onChange={setFieldSource} />
       )}
 
       {/* Campo 4: descrição */}
@@ -863,6 +786,88 @@ function FormField({
 }
 
 // ============================================================================
+// FieldSourcePicker — 2 dropdowns (categoria + opcao) com dados do backend
+// ============================================================================
+
+function FieldSourcePicker({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const sourcesQ = useQuery({
+    queryKey: ['bot-prompts', 'field-sources'],
+    queryFn: () => botPromptService.getFieldSources(),
+  });
+
+  // Descobre a categoria do valor atual (pra hidratar o dropdown de
+  // categoria quando o dialog abre em modo edit).
+  const initialCategoryId = useMemo(() => {
+    if (!value || !sourcesQ.data) return '';
+    for (const cat of sourcesQ.data.categories) {
+      if (cat.options.some((o) => o.value === value)) return cat.id;
+    }
+    return '';
+  }, [value, sourcesQ.data]);
+
+  const [categoryId, setCategoryId] = useState<string>('');
+  const effectiveCategoryId = categoryId || initialCategoryId;
+
+  const currentCategory = sourcesQ.data?.categories.find(
+    (c) => c.id === effectiveCategoryId,
+  );
+
+  return (
+    <FormField
+      label="Origem (de onde vem o valor)"
+      hint="Escolha primeiro a categoria, depois o campo específico. Toda fonte é validada no backend — não tem como digitar errado."
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <select
+          value={effectiveCategoryId}
+          onChange={(e) => {
+            setCategoryId(e.target.value);
+            onChange(''); // limpa o valor ao trocar de categoria
+          }}
+          style={inputStyle}
+          disabled={sourcesQ.isLoading}
+        >
+          <option value="">
+            {sourcesQ.isLoading ? 'Carregando categorias...' : '— escolha a categoria —'}
+          </option>
+          {sourcesQ.data?.categories.map((cat) => (
+            <option key={cat.id} value={cat.id}>
+              {cat.label} ({cat.options.length})
+            </option>
+          ))}
+        </select>
+
+        {currentCategory && (
+          <>
+            <select
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              style={inputStyle}
+            >
+              <option value="">— escolha o campo específico —</option>
+              {currentCategory.options.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <p style={{ margin: 0, fontSize: 11, color: 'var(--ink-gray-6)' }}>
+              {currentCategory.description}
+            </p>
+          </>
+        )}
+      </div>
+    </FormField>
+  );
+}
+
+// ============================================================================
 // Helpers + Styles
 // ============================================================================
 
@@ -922,24 +927,6 @@ const exampleStyle: React.CSSProperties = {
   fontSize: 13,
   color: 'var(--ink-gray-8)',
   lineHeight: 1.7,
-};
-
-const tableHeadStyle: React.CSSProperties = {
-  textAlign: 'left',
-  padding: '5px 8px',
-  fontWeight: 600,
-  fontSize: 10,
-  textTransform: 'uppercase',
-  letterSpacing: '0.3px',
-  color: 'var(--ink-gray-7)',
-  borderBottom: '1px solid var(--outline-gray-2)',
-};
-
-const tableCellStyle: React.CSSProperties = {
-  padding: '5px 8px',
-  borderBottom: '1px solid var(--outline-gray-1)',
-  verticalAlign: 'top',
-  color: 'var(--ink-gray-8)',
 };
 
 function iconBtnStyle(color: string): React.CSSProperties {

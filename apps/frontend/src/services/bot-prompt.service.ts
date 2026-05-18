@@ -8,6 +8,7 @@ import type {
   CreateCustomVarPayload,
   CreateVersionPayload,
   CustomVariable,
+  FieldSourcesResponse,
   PatchCustomVarPayload,
   PromptDiff,
   RenderedPrompt,
@@ -103,6 +104,11 @@ export const botPromptService = {
   // --- Variaveis ---
   async getVariablesCatalog(): Promise<VariableCatalog> {
     const { data } = await api.get<VariableCatalog>(`${BASE}/variables/catalog`);
+    return data;
+  },
+
+  async getFieldSources(): Promise<FieldSourcesResponse> {
+    const { data } = await api.get<FieldSourcesResponse>(`${BASE}/variables/sources`);
     return data;
   },
 

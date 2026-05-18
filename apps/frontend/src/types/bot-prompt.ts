@@ -60,6 +60,23 @@ export interface CustomVariable {
   updatedAt: string;
 }
 
+export interface FieldSourceOption {
+  value: string; // string literal gravada em field_source
+  label: string; // texto exibido no dropdown
+  hint: string | null;
+}
+
+export interface FieldSourceCategory {
+  id: string;
+  label: string;
+  description: string;
+  options: FieldSourceOption[];
+}
+
+export interface FieldSourcesResponse {
+  categories: FieldSourceCategory[];
+}
+
 export interface SystemVariable {
   placeholder: string;
   name: string;
