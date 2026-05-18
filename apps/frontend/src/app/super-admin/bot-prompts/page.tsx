@@ -701,19 +701,26 @@ function VariablesPanel({
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: 3,
-                padding: '2px 6px',
-                fontSize: 10,
-                border: '1px solid var(--outline-gray-2)',
-                borderRadius: 3,
-                backgroundColor: 'transparent',
+                gap: 5,
+                padding: '5px 11px',
+                fontSize: 12,
+                border: '1px solid var(--ink-green-3)',
+                borderRadius: 6,
+                backgroundColor: 'var(--ink-green-3)',
                 cursor: 'pointer',
-                color: 'var(--ink-gray-7)',
-                fontWeight: 500,
+                color: 'white',
+                fontWeight: 600,
+                boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
               }}
               title="Criar, editar ou deletar variáveis customizadas"
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.filter = 'brightness(1.05)';
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.filter = '';
+              }}
             >
-              <Settings2 style={{ width: 11, height: 11 }} />
+              <Settings2 style={{ width: 13, height: 13 }} />
               Gerenciar
             </button>
           }

@@ -1,13 +1,32 @@
 'use client';
 
 // CRUD completo de variaveis customizadas (criar, listar, editar, deletar)
-// num Dialog dedicado. Sempre acessivel pelo botao "Gerenciar variaveis" do
-// painel direito — independente de qual tenant esta selecionado, ja que as
-// variaveis customizadas sao GLOBAIS (compartilhadas entre todos os tenants).
+// num Dialog dedicado, com documentacao embutida pra reduzir chance de erro:
+//   - Explicacao do que sao variaveis customizadas e quando usar
+//   - Diferenca entre os 2 tipos (estatica vs campo do tenant)
+//   - Lista das fontes permitidas pro tipo "campo do tenant" (allowlist do backend)
+//   - Exemplos concretos pra cada tipo
+//   - Validacao + mensagens claras
+//
+// As variaveis customizadas sao GLOBAIS (compartilhadas entre todos os tenants),
+// por isso o dialog e acessivel independente de qual unidade esta selecionada
+// na pagina principal.
 
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Pencil, Plus, Trash2, X } from 'lucide-react';
+import {
+  AlertCircle,
+  ChevronDown,
+  ChevronRight,
+  Database,
+  Info,
+  Lightbulb,
+  Lock,
+  Pencil,
+  Plus,
+  Trash2,
+  X,
+} from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -17,6 +36,25 @@ import {
 } from '@/components/ui/dialog';
 import { botPromptService } from '@/services/bot-prompt.service';
 import type { CustomVarType, CustomVariable } from '@/types/bot-prompt';
+
+// ============================================================================
+// Allowlist de fontes do tipo "tenant_field".
+// Espelha o _TENANT_FIELD_ALLOWLIST do backend
+// (app/services/bot_prompt_service.py). Qualquer valor fora desta lista e
+// rejeitado silenciosamente no backend (defense-in-depth contra SQL injection).
+// ============================================================================
+
+const ALLOWED_TENANT_FIELDS: { value: string; label: string; example: string }[] = [
+  { value: 'tenant.name', label: 'Nome do hotel', example: 'Hotel Santa' },
+  { value: 'tenant.email', label: 'E-mail principal do tenant', example: 'contato@hotel.com' },
+  { value: 'tenant.phone', label: 'Telefone do tenant', example: '+55 11 99999-9999' },
+  { value: 'tenant.city', label: 'Cidade', example: 'São Paulo' },
+  { value: 'tenant.state', label: 'Estado', example: 'SP' },
+  { value: 'tenant_onboardings.bot_name', label: 'Nome do bot (onboarding)', example: 'Eva' },
+];
+
+const PROPERTY_ANSWER_NOTE =
+  "Avancado: tambem aceita 'tenant_onboardings.property_answers->>\\'N\\'' onde N e o numero de uma pergunta do wizard de onboarding (1..90). Ex.: ->>'1' devolve a primeira resposta da secao 'property'.";
 
 export function CustomVariablesDialog({
   open,
@@ -29,6 +67,7 @@ export function CustomVariablesDialog({
   const [editing, setEditing] = useState<CustomVariable | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [helpOpen, setHelpOpen] = useState(true);
 
   const customQ = useQuery({
     queryKey: ['bot-prompts', 'custom-vars'],
@@ -60,99 +99,321 @@ export function CustomVariablesDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent style={{ maxWidth: 640 }}>
+      <DialogContent style={{ maxWidth: 760, maxHeight: '85vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         <DialogHeader>
-          <DialogTitle>Variáveis customizadas</DialogTitle>
+          <DialogTitle style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Database style={{ width: 18, height: 18, color: 'var(--ink-green-3)' }} />
+            Variáveis customizadas
+          </DialogTitle>
           <DialogDescription>
-            Variáveis globais (compartilhadas entre todos os tenants). Use{' '}
-            <code>{'{{var_key}}'}</code> no prompt para inserir.
+            Crie placeholders próprios pra reutilizar no prompt de qualquer unidade. São <strong>globais</strong> —
+            uma vez criadas, ficam disponíveis pra todos os hotéis.
           </DialogDescription>
         </DialogHeader>
 
-        {errorMsg && (
+        <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12, flex: 1 }}>
+          <HelpSection open={helpOpen} onToggle={() => setHelpOpen(!helpOpen)} />
+
+          {errorMsg && (
+            <div
+              style={{
+                padding: '10px 12px',
+                borderRadius: 6,
+                backgroundColor: 'var(--surface-red-2)',
+                color: 'var(--ink-red-3)',
+                fontSize: 12,
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 8,
+              }}
+            >
+              <AlertCircle style={{ width: 14, height: 14, marginTop: 1, flexShrink: 0 }} />
+              <span>{errorMsg}</span>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--ink-gray-9)' }}>
+              {customQ.data?.length ?? 0} variável(is) criada(s)
+            </p>
+            <button
+              type="button"
+              onClick={startNew}
+              disabled={showForm}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5,
+                padding: '7px 14px',
+                fontSize: 13,
+                border: 'none',
+                borderRadius: 6,
+                backgroundColor: showForm ? 'var(--surface-gray-2)' : 'var(--ink-blue-3)',
+                color: showForm ? 'var(--ink-gray-5)' : 'white',
+                fontWeight: 600,
+                cursor: showForm ? 'not-allowed' : 'pointer',
+              }}
+            >
+              <Plus style={{ width: 14, height: 14 }} />
+              Nova variável
+            </button>
+          </div>
+
+          {(showForm || editing) && (
+            <CustomVarForm
+              editing={editing}
+              onCancel={closeForm}
+              onSuccess={closeForm}
+              onError={(e) => flashError(e, setErrorMsg)}
+            />
+          )}
+
           <div
             style={{
-              padding: '8px 12px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 6,
+              border: '1px solid var(--outline-gray-1)',
               borderRadius: 6,
-              backgroundColor: 'var(--surface-red-2)',
-              color: 'var(--ink-red-3)',
-              fontSize: 12,
+              padding: 8,
+              backgroundColor: 'var(--surface-gray-1)',
             }}
           >
-            {errorMsg}
+            {customQ.isLoading ? (
+              <p style={{ fontSize: 13, color: 'var(--ink-gray-5)', textAlign: 'center', margin: 16 }}>
+                Carregando...
+              </p>
+            ) : (customQ.data ?? []).length === 0 ? (
+              <div
+                style={{
+                  textAlign: 'center',
+                  padding: '24px 12px',
+                  color: 'var(--ink-gray-5)',
+                  fontSize: 13,
+                }}
+              >
+                <p style={{ margin: 0, fontWeight: 500 }}>Nenhuma variável customizada ainda.</p>
+                <p style={{ margin: '4px 0 0', fontSize: 12 }}>
+                  Clique em <strong>Nova variável</strong> acima pra criar a primeira.
+                </p>
+              </div>
+            ) : (
+              customQ.data?.map((v) => (
+                <VarRow
+                  key={v.id}
+                  variable={v}
+                  isEditing={editing?.id === v.id}
+                  onEdit={() => startEdit(v)}
+                  onDelete={() => {
+                    if (
+                      confirm(
+                        `Deletar a variável {{${v.varKey}}}?\n\n` +
+                          `Prompts que ainda usem essa variável vão ficar com o placeholder ` +
+                          `literal no texto renderizado (o resolver não encontra mais nada pra substituir).`,
+                      )
+                    ) {
+                      deleteMut.mutate(v.id);
+                    }
+                  }}
+                  isDeleting={deleteMut.isPending && deleteMut.variables === v.id}
+                />
+              ))
+            )}
           </div>
-        )}
-
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <button
-            type="button"
-            onClick={startNew}
-            disabled={showForm}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 4,
-              padding: '6px 12px',
-              fontSize: 12,
-              border: '1px solid var(--outline-gray-2)',
-              borderRadius: 6,
-              backgroundColor: showForm ? 'var(--surface-gray-2)' : 'transparent',
-              cursor: showForm ? 'not-allowed' : 'pointer',
-              color: 'var(--ink-gray-8)',
-            }}
-          >
-            <Plus style={{ width: 13, height: 13 }} />
-            Nova variável
-          </button>
-        </div>
-
-        {(showForm || editing) && (
-          <CustomVarForm
-            editing={editing}
-            onCancel={closeForm}
-            onSuccess={closeForm}
-            onError={(e) => flashError(e, setErrorMsg)}
-          />
-        )}
-
-        <div
-          style={{
-            maxHeight: 360,
-            overflowY: 'auto',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 6,
-            border: '1px solid var(--outline-gray-1)',
-            borderRadius: 6,
-            padding: 8,
-            backgroundColor: 'var(--surface-gray-1)',
-          }}
-        >
-          {customQ.isLoading ? (
-            <p style={{ fontSize: 12, color: 'var(--ink-gray-5)', textAlign: 'center', margin: 12 }}>
-              Carregando...
-            </p>
-          ) : (customQ.data ?? []).length === 0 ? (
-            <p style={{ fontSize: 12, color: 'var(--ink-gray-5)', textAlign: 'center', margin: 12 }}>
-              Nenhuma variável customizada criada ainda.
-            </p>
-          ) : (
-            customQ.data?.map((v) => (
-              <VarRow
-                key={v.id}
-                variable={v}
-                isEditing={editing?.id === v.id}
-                onEdit={() => startEdit(v)}
-                onDelete={() => deleteMut.mutate(v.id)}
-                isDeleting={deleteMut.isPending && deleteMut.variables === v.id}
-              />
-            ))
-          )}
         </div>
       </DialogContent>
     </Dialog>
   );
 }
+
+// ============================================================================
+// Help section (collapsible)
+// ============================================================================
+
+function HelpSection({ open, onToggle }: { open: boolean; onToggle: () => void }) {
+  return (
+    <div
+      style={{
+        border: '1px solid var(--outline-blue-2)',
+        borderRadius: 6,
+        backgroundColor: 'var(--surface-blue-2)',
+        overflow: 'hidden',
+      }}
+    >
+      <button
+        type="button"
+        onClick={onToggle}
+        style={{
+          width: '100%',
+          padding: '8px 12px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          border: 'none',
+          backgroundColor: 'transparent',
+          cursor: 'pointer',
+          color: 'var(--ink-blue-3)',
+          fontSize: 13,
+          fontWeight: 600,
+        }}
+      >
+        {open ? <ChevronDown style={{ width: 14, height: 14 }} /> : <ChevronRight style={{ width: 14, height: 14 }} />}
+        <Info style={{ width: 14, height: 14 }} />
+        Como funciona — leia antes de criar a primeira
+      </button>
+
+      {open && (
+        <div style={{ padding: '0 14px 14px', fontSize: 12, color: 'var(--ink-gray-8)', lineHeight: 1.6 }}>
+          <p style={{ margin: '4px 0 10px' }}>
+            Variáveis customizadas são placeholders <strong>seus</strong> (vs. as 22 que já vêm
+            embutidas do sistema). Você escreve <code style={codeStyle}>{'{{nome_da_sua_var}}'}</code> dentro
+            do prompt de qualquer unidade — quando o N8N pedir o prompt renderizado, o backend
+            substitui automaticamente pelo valor que você configurou aqui.
+          </p>
+
+          <p style={{ margin: '10px 0 6px', fontWeight: 600, color: 'var(--ink-gray-9)' }}>
+            Os 2 tipos de variável:
+          </p>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            {/* Tipo 1: estática */}
+            <div
+              style={{
+                padding: 10,
+                border: '1px solid var(--outline-blue-2)',
+                borderRadius: 6,
+                backgroundColor: 'var(--surface-white)',
+              }}
+            >
+              <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: 'var(--ink-blue-3)' }}>
+                1. Estática (valor fixo)
+              </p>
+              <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--ink-gray-7)' }}>
+                Valor literal igual pra todos os hotéis.
+              </p>
+              <p style={{ margin: '8px 0 4px', fontSize: 11, fontWeight: 600, color: 'var(--ink-gray-8)' }}>
+                Exemplo:
+              </p>
+              <div style={exampleStyle}>
+                <span style={codeStyle}>{'{{nome_da_rede}}'}</span> → "Smart Hotéis Reserva"
+              </div>
+              <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--ink-gray-6)' }}>
+                Útil pra marca, slogan, instruções comuns, frases padrão.
+              </p>
+            </div>
+
+            {/* Tipo 2: campo do tenant */}
+            <div
+              style={{
+                padding: 10,
+                border: '1px solid var(--outline-blue-2)',
+                borderRadius: 6,
+                backgroundColor: 'var(--surface-white)',
+              }}
+            >
+              <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: 'var(--ink-blue-3)' }}>
+                2. Campo do tenant (valor por hotel)
+              </p>
+              <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--ink-gray-7)' }}>
+                Pega um campo do banco específico do hotel ativo.
+              </p>
+              <p style={{ margin: '8px 0 4px', fontSize: 11, fontWeight: 600, color: 'var(--ink-gray-8)' }}>
+                Exemplo:
+              </p>
+              <div style={exampleStyle}>
+                <span style={codeStyle}>{'{{cidade_hotel}}'}</span> → "Ilhabela" (no hotel A)
+                <br />
+                <span style={codeStyle}>{'{{cidade_hotel}}'}</span> → "Campos do Jordão" (no hotel B)
+              </div>
+              <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--ink-gray-6)' }}>
+                Útil pra cidade, telefone, e-mail, nome do bot etc.
+              </p>
+            </div>
+          </div>
+
+          {/* Lista de fontes permitidas */}
+          <p style={{ margin: '14px 0 6px', fontWeight: 600, color: 'var(--ink-gray-9)' }}>
+            <Lock style={{ width: 12, height: 12, display: 'inline', marginRight: 4 }} />
+            Fontes permitidas para "Campo do tenant":
+          </p>
+          <p style={{ margin: '0 0 8px', fontSize: 11, color: 'var(--ink-gray-6)' }}>
+            Por segurança, só estes valores são aceitos no campo "origem":
+          </p>
+          <table style={{ width: '100%', fontSize: 11, borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ backgroundColor: 'var(--surface-gray-2)' }}>
+                <th style={tableHeadStyle}>Origem (cole exatamente)</th>
+                <th style={tableHeadStyle}>O que é</th>
+                <th style={tableHeadStyle}>Exemplo de valor</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ALLOWED_TENANT_FIELDS.map((f) => (
+                <tr key={f.value}>
+                  <td style={tableCellStyle}>
+                    <code style={codeStyle}>{f.value}</code>
+                  </td>
+                  <td style={tableCellStyle}>{f.label}</td>
+                  <td style={{ ...tableCellStyle, fontStyle: 'italic', color: 'var(--ink-gray-6)' }}>
+                    {f.example}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <div
+            style={{
+              marginTop: 10,
+              padding: 8,
+              borderRadius: 4,
+              backgroundColor: 'var(--surface-amber-2)',
+              fontSize: 11,
+              color: 'var(--ink-amber-3)',
+              display: 'flex',
+              gap: 6,
+              alignItems: 'flex-start',
+            }}
+          >
+            <Lightbulb style={{ width: 12, height: 12, marginTop: 1, flexShrink: 0 }} />
+            <span>{PROPERTY_ANSWER_NOTE}</span>
+          </div>
+
+          <p style={{ margin: '14px 0 6px', fontWeight: 600, color: 'var(--ink-gray-9)' }}>
+            Regras importantes:
+          </p>
+          <ul style={{ margin: '0 0 8px', paddingLeft: 18, fontSize: 11, color: 'var(--ink-gray-7)' }}>
+            <li>
+              <strong>var_key</strong> só pode ter letras, números e underscore (sem espaço, sem
+              hífen, sem acento).
+            </li>
+            <li>
+              Nomes reservados pelo sistema (as 22 variáveis embutidas como{' '}
+              <code style={codeStyle}>bot_name</code>, <code style={codeStyle}>orientacoes</code> etc.) são
+              rejeitados.
+            </li>
+            <li>
+              <strong>Não dá pra renomear</strong> depois de criar (porque vai quebrar todos os prompts
+              que referenciam). Se errar o nome, delete e recrie.
+            </li>
+            <li>
+              Editar muda apenas o <strong>valor</strong> ou <strong>origem</strong> + descrição. O
+              tipo é fixo após criação.
+            </li>
+            <li>
+              Deletar é permanente, mas prompts que ainda usem a variável ficam com o placeholder
+              literal no texto renderizado (não quebra o bot — só fica feio).
+            </li>
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// Linha de variável na lista
+// ============================================================================
 
 function VarRow({
   variable,
@@ -175,7 +436,7 @@ function VarRow({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '8px 12px',
+        padding: '10px 12px',
         border: '1px solid',
         borderColor: isEditing ? 'var(--outline-blue-2)' : 'var(--outline-gray-1)',
         borderRadius: 4,
@@ -200,28 +461,35 @@ function VarRow({
               fontSize: 10,
               padding: '1px 6px',
               borderRadius: 3,
-              backgroundColor: 'var(--surface-gray-2)',
-              color: 'var(--ink-gray-6)',
-              fontWeight: 500,
+              backgroundColor:
+                variable.varType === 'static_global' ? 'var(--surface-blue-2)' : 'var(--surface-amber-2)',
+              color:
+                variable.varType === 'static_global' ? 'var(--ink-blue-3)' : 'var(--ink-amber-3)',
+              fontWeight: 600,
             }}
           >
-            {variable.varType === 'static_global' ? 'estática' : 'campo do tenant'}
+            {variable.varType === 'static_global' ? 'ESTÁTICA' : 'CAMPO DO TENANT'}
           </span>
         </div>
+        {variable.description && (
+          <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--ink-gray-7)' }}>
+            {variable.description}
+          </p>
+        )}
         <p
           style={{
             margin: '3px 0 0',
             fontSize: 11,
             color: 'var(--ink-gray-5)',
+            fontFamily: variable.varType === 'tenant_field' ? 'ui-monospace, monospace' : undefined,
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
           }}
-          title={variable.description ?? valueOrSource ?? ''}
+          title={valueOrSource ?? ''}
         >
-          {variable.description
-            ? `${variable.description} · ${valueOrSource ?? ''}`
-            : (valueOrSource ?? '—')}
+          {variable.varType === 'static_global' ? '= ' : 'origem: '}
+          {valueOrSource ?? '—'}
         </p>
       </div>
       <div style={{ display: 'flex', gap: 4, marginLeft: 8 }}>
@@ -230,9 +498,9 @@ function VarRow({
           onClick={onEdit}
           style={iconBtnStyle('var(--ink-gray-7)')}
           aria-label="Editar variável"
-          title="Editar"
+          title="Editar valor e descrição"
         >
-          <Pencil style={{ width: 13, height: 13 }} />
+          <Pencil style={{ width: 14, height: 14 }} />
         </button>
         <button
           type="button"
@@ -240,14 +508,18 @@ function VarRow({
           disabled={isDeleting}
           style={iconBtnStyle('var(--ink-red-3)')}
           aria-label="Deletar variável"
-          title="Deletar"
+          title="Deletar variável"
         >
-          <Trash2 style={{ width: 13, height: 13 }} />
+          <Trash2 style={{ width: 14, height: 14 }} />
         </button>
       </div>
     </div>
   );
 }
+
+// ============================================================================
+// Formulario (cria/edita)
+// ============================================================================
 
 function CustomVarForm({
   editing,
@@ -289,8 +561,6 @@ function CustomVarForm({
   const updateMut = useMutation({
     mutationFn: () =>
       botPromptService.updateCustomVariable(editing!.id, {
-        // Backend mantem o tipo original — so atualiza payload do tipo
-        // ja existente + descricao.
         staticValue: editing!.varType === 'static_global' ? staticValue : undefined,
         fieldSource: editing!.varType === 'tenant_field' ? fieldSource : undefined,
         description: description || undefined,
@@ -310,20 +580,23 @@ function CustomVarForm({
     ((varType === 'static_global' && staticValue.length > 0) ||
       (varType === 'tenant_field' && fieldSource.length > 0));
 
+  // Preview do placeholder enquanto digita
+  const previewKey = varKey || 'nome_da_var';
+
   return (
     <div
       style={{
-        border: '1px solid var(--outline-blue-2)',
-        backgroundColor: 'var(--surface-blue-2)',
-        borderRadius: 6,
-        padding: 12,
+        border: '2px solid var(--outline-blue-2)',
+        backgroundColor: 'var(--surface-white)',
+        borderRadius: 8,
+        padding: 16,
         display: 'flex',
         flexDirection: 'column',
-        gap: 8,
+        gap: 12,
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--ink-blue-3)' }}>
+        <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--ink-blue-3)' }}>
           {isEdit ? `Editar ${editing!.varKey}` : 'Nova variável'}
         </p>
         <button
@@ -332,25 +605,58 @@ function CustomVarForm({
           style={iconBtnStyle('var(--ink-gray-6)')}
           aria-label="Fechar formulário"
         >
-          <X style={{ width: 13, height: 13 }} />
+          <X style={{ width: 14, height: 14 }} />
         </button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px', gap: 8 }}>
-        <input
-          type="text"
-          placeholder="var_key (ex: nome_da_marca)"
-          value={varKey}
-          onChange={(e) => setVarKey(e.target.value)}
-          disabled={isEdit}
-          style={{
-            ...inputStyle,
-            backgroundColor: isEdit ? 'var(--surface-gray-2)' : 'var(--surface-white)',
-            color: isEdit ? 'var(--ink-gray-6)' : 'var(--ink-gray-9)',
-            cursor: isEdit ? 'not-allowed' : 'text',
-          }}
-          title={isEdit ? 'var_key não pode ser alterada (delete e recrie)' : undefined}
-        />
+      {/* Campo 1: var_key */}
+      <FormField
+        label="Nome da variável (var_key)"
+        hint={
+          isEdit
+            ? 'Não pode ser alterado — delete e recrie se precisar mudar o nome.'
+            : 'Use letras, números e underscore. Será referenciado como {{nome_da_var}} no prompt.'
+        }
+      >
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <input
+            type="text"
+            placeholder="ex: nome_da_marca"
+            value={varKey}
+            onChange={(e) => setVarKey(e.target.value)}
+            disabled={isEdit}
+            style={{
+              ...inputStyle,
+              backgroundColor: isEdit ? 'var(--surface-gray-2)' : 'var(--surface-white)',
+              color: isEdit ? 'var(--ink-gray-6)' : 'var(--ink-gray-9)',
+              cursor: isEdit ? 'not-allowed' : 'text',
+            }}
+          />
+          <code
+            style={{
+              ...codeStyle,
+              padding: '6px 10px',
+              fontSize: 12,
+              flexShrink: 0,
+            }}
+          >
+            {`{{${previewKey}}}`}
+          </code>
+        </div>
+        {!isEdit && !validKey && varKey.length > 0 && (
+          <p style={errorHintStyle}>Use apenas letras, números e underscore (sem espaço/acento/hífen).</p>
+        )}
+      </FormField>
+
+      {/* Campo 2: tipo */}
+      <FormField
+        label="Tipo da variável"
+        hint={
+          isEdit
+            ? 'Tipo não pode ser alterado — delete e recrie se precisar trocar.'
+            : 'Estática = valor fixo igual pra todos os hotéis. Campo do tenant = valor específico de cada hotel.'
+        }
+      >
         <select
           value={varType}
           onChange={(e) => setVarType(e.target.value as CustomVarType)}
@@ -363,52 +669,84 @@ function CustomVarForm({
           }}
         >
           <option value="static_global">Estática (valor fixo)</option>
-          <option value="tenant_field">Campo do tenant</option>
+          <option value="tenant_field">Campo do tenant (valor por hotel)</option>
         </select>
-      </div>
+      </FormField>
 
+      {/* Campo 3: valor (depende do tipo) */}
       {varType === 'static_global' ? (
-        <input
-          type="text"
-          placeholder="Valor (inserido literalmente no prompt)"
-          value={staticValue}
-          onChange={(e) => setStaticValue(e.target.value)}
-          style={inputStyle}
-        />
+        <FormField
+          label="Valor"
+          hint="Será inserido literalmente toda vez que o placeholder aparecer no prompt."
+        >
+          <input
+            type="text"
+            placeholder="ex: Smart Hotéis Reserva"
+            value={staticValue}
+            onChange={(e) => setStaticValue(e.target.value)}
+            style={inputStyle}
+          />
+        </FormField>
       ) : (
+        <FormField
+          label="Origem (campo do banco)"
+          hint="Selecione um dos campos da lista. Não escreva à mão — qualquer outro valor é rejeitado pelo backend."
+        >
+          <select
+            value={fieldSource}
+            onChange={(e) => setFieldSource(e.target.value)}
+            style={inputStyle}
+          >
+            <option value="">— escolha um campo —</option>
+            {ALLOWED_TENANT_FIELDS.map((f) => (
+              <option key={f.value} value={f.value}>
+                {f.label} ({f.value})
+              </option>
+            ))}
+          </select>
+          <details style={{ marginTop: 6 }}>
+            <summary style={{ fontSize: 11, color: 'var(--ink-gray-6)', cursor: 'pointer' }}>
+              Quero usar uma resposta específica do wizard (avançado)
+            </summary>
+            <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <p style={{ margin: 0, fontSize: 11, color: 'var(--ink-gray-7)' }}>
+                Cole o caminho no formato <code style={codeStyle}>tenant_onboardings.property_answers-&gt;&gt;&apos;N&apos;</code>{' '}
+                onde N é o número da pergunta (1..90). Exemplo: <code style={codeStyle}>tenant_onboardings.property_answers-&gt;&gt;&apos;1&apos;</code>{' '}
+                = primeira resposta da seção &quot;property&quot;.
+              </p>
+              <input
+                type="text"
+                placeholder="tenant_onboardings.property_answers->>'1'"
+                value={fieldSource}
+                onChange={(e) => setFieldSource(e.target.value)}
+                style={{ ...inputStyle, fontFamily: 'ui-monospace, monospace', fontSize: 11 }}
+              />
+            </div>
+          </details>
+        </FormField>
+      )}
+
+      {/* Campo 4: descrição */}
+      <FormField label="Descrição (opcional)" hint="Texto curto pra ajudar o próximo dev a entender o que essa variável faz.">
         <input
           type="text"
-          placeholder="Origem (ex: tenant_onboardings.bot_name)"
-          value={fieldSource}
-          onChange={(e) => setFieldSource(e.target.value)}
+          placeholder="ex: Nome comercial da rede de hotéis"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
           style={inputStyle}
         />
-      )}
+      </FormField>
 
-      <input
-        type="text"
-        placeholder="Descrição (opcional)"
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-        style={inputStyle}
-      />
-
-      {!isEdit && !validKey && varKey.length > 0 && (
-        <p style={{ fontSize: 11, color: 'var(--ink-red-3)', margin: 0 }}>
-          Use apenas letras, números e underscore.
-        </p>
-      )}
-
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
         <button
           type="button"
           onClick={onCancel}
           disabled={isPending}
           style={{
-            padding: '5px 12px',
-            fontSize: 12,
+            padding: '7px 14px',
+            fontSize: 13,
             border: '1px solid var(--outline-gray-2)',
-            borderRadius: 4,
+            borderRadius: 6,
             backgroundColor: 'transparent',
             cursor: 'pointer',
             color: 'var(--ink-gray-8)',
@@ -425,34 +763,56 @@ function CustomVarForm({
           }}
           disabled={!canSubmit || isPending}
           style={{
-            padding: '5px 12px',
-            fontSize: 12,
+            padding: '7px 14px',
+            fontSize: 13,
             border: 'none',
-            borderRadius: 4,
+            borderRadius: 6,
             backgroundColor: canSubmit ? 'var(--ink-blue-3)' : 'var(--surface-gray-2)',
             color: canSubmit ? 'white' : 'var(--ink-gray-5)',
             cursor: canSubmit && !isPending ? 'pointer' : 'not-allowed',
             fontWeight: 600,
           }}
         >
-          {isPending ? 'Salvando...' : isEdit ? 'Atualizar' : 'Criar'}
+          {isPending ? 'Salvando...' : isEdit ? 'Atualizar' : 'Criar variável'}
         </button>
       </div>
     </div>
   );
 }
 
+function FormField({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-gray-9)' }}>{label}</label>
+      {children}
+      {hint && <p style={hintStyle}>{hint}</p>}
+    </div>
+  );
+}
+
+// ============================================================================
+// Helpers + Styles
+// ============================================================================
+
 function flashError(e: unknown, setErrorMsg: (m: string | null) => void) {
   const err = e as { response?: { data?: { detail?: string } }; message?: string };
   const msg = err?.response?.data?.detail ?? err?.message ?? 'Erro inesperado';
   setErrorMsg(msg);
-  setTimeout(() => setErrorMsg(null), 4000);
+  setTimeout(() => setErrorMsg(null), 5000);
 }
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
-  padding: '6px 8px',
-  fontSize: 12,
+  padding: '7px 9px',
+  fontSize: 13,
   border: '1px solid var(--outline-gray-1)',
   borderRadius: 4,
   outline: 'none',
@@ -460,9 +820,60 @@ const inputStyle: React.CSSProperties = {
   color: 'var(--ink-gray-9)',
 };
 
+const codeStyle: React.CSSProperties = {
+  fontFamily: 'ui-monospace, "Cascadia Code", "Source Code Pro", Consolas, monospace',
+  fontSize: 11,
+  padding: '1px 5px',
+  borderRadius: 3,
+  backgroundColor: 'var(--surface-gray-2)',
+  color: 'var(--ink-gray-9)',
+};
+
+const hintStyle: React.CSSProperties = {
+  margin: 0,
+  fontSize: 11,
+  color: 'var(--ink-gray-6)',
+  lineHeight: 1.4,
+};
+
+const errorHintStyle: React.CSSProperties = {
+  margin: '2px 0 0',
+  fontSize: 11,
+  color: 'var(--ink-red-3)',
+  fontWeight: 500,
+};
+
+const exampleStyle: React.CSSProperties = {
+  padding: '6px 8px',
+  borderRadius: 4,
+  backgroundColor: 'var(--surface-gray-1)',
+  fontSize: 11,
+  fontFamily: 'ui-monospace, monospace',
+  color: 'var(--ink-gray-8)',
+  lineHeight: 1.6,
+};
+
+const tableHeadStyle: React.CSSProperties = {
+  textAlign: 'left',
+  padding: '5px 8px',
+  fontWeight: 600,
+  fontSize: 10,
+  textTransform: 'uppercase',
+  letterSpacing: '0.3px',
+  color: 'var(--ink-gray-7)',
+  borderBottom: '1px solid var(--outline-gray-2)',
+};
+
+const tableCellStyle: React.CSSProperties = {
+  padding: '5px 8px',
+  borderBottom: '1px solid var(--outline-gray-1)',
+  verticalAlign: 'top',
+  color: 'var(--ink-gray-8)',
+};
+
 function iconBtnStyle(color: string): React.CSSProperties {
   return {
-    padding: 4,
+    padding: 6,
     border: 'none',
     backgroundColor: 'transparent',
     cursor: 'pointer',
