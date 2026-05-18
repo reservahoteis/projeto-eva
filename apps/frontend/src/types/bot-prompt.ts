@@ -66,11 +66,17 @@ export interface FieldSourceOption {
   hint: string | null;
 }
 
+export interface FieldSourceSubgroup {
+  id: string;
+  label: string;
+  options: FieldSourceOption[];
+}
+
 export interface FieldSourceCategory {
   id: string;
   label: string;
   description: string;
-  options: FieldSourceOption[];
+  subgroups: FieldSourceSubgroup[];
 }
 
 export interface FieldSourcesResponse {

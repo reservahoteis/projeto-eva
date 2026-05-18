@@ -801,71 +801,123 @@ function FieldSourcePicker({
     queryFn: () => botPromptService.getFieldSources(),
   });
 
-  // Descobre a categoria do valor atual (pra hidratar o dropdown de
-  // categoria quando o dialog abre em modo edit).
-  const initialCategoryId = useMemo(() => {
-    if (!value || !sourcesQ.data) return '';
+  // Hidratacao em modo edit: descobre Categoria + Sub-grupo do valor
+  // ja salvo, pra pre-popular os 2 primeiros dropdowns.
+  const [initialCategoryId, initialSubgroupId] = useMemo(() => {
+    if (!value || !sourcesQ.data) return ['', ''];
     for (const cat of sourcesQ.data.categories) {
-      if (cat.options.some((o) => o.value === value)) return cat.id;
+      for (const sg of cat.subgroups) {
+        if (sg.options.some((o) => o.value === value)) {
+          return [cat.id, sg.id];
+        }
+      }
     }
-    return '';
+    return ['', ''];
   }, [value, sourcesQ.data]);
 
   const [categoryId, setCategoryId] = useState<string>('');
+  const [subgroupId, setSubgroupId] = useState<string>('');
+
   const effectiveCategoryId = categoryId || initialCategoryId;
+  const effectiveSubgroupId = subgroupId || initialSubgroupId;
 
   const currentCategory = sourcesQ.data?.categories.find(
     (c) => c.id === effectiveCategoryId,
+  );
+  const currentSubgroup = currentCategory?.subgroups.find(
+    (s) => s.id === effectiveSubgroupId,
   );
 
   return (
     <FormField
       label="Origem (de onde vem o valor)"
-      hint="Escolha primeiro a categoria, depois o campo específico. Toda fonte é validada no backend — não tem como digitar errado."
+      hint="Escolha em 3 passos: categoria → sub-grupo → campo. Toda fonte é validada no backend — não tem como digitar errado."
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <select
-          value={effectiveCategoryId}
-          onChange={(e) => {
-            setCategoryId(e.target.value);
-            onChange(''); // limpa o valor ao trocar de categoria
-          }}
-          style={inputStyle}
-          disabled={sourcesQ.isLoading}
-        >
-          <option value="">
-            {sourcesQ.isLoading ? 'Carregando categorias...' : '— escolha a categoria —'}
-          </option>
-          {sourcesQ.data?.categories.map((cat) => (
-            <option key={cat.id} value={cat.id}>
-              {cat.label} ({cat.options.length})
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {/* 1. Categoria */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <span style={subLabelStyle}>1. Categoria</span>
+          <select
+            value={effectiveCategoryId}
+            onChange={(e) => {
+              setCategoryId(e.target.value);
+              setSubgroupId('');
+              onChange('');
+            }}
+            style={inputStyle}
+            disabled={sourcesQ.isLoading}
+          >
+            <option value="">
+              {sourcesQ.isLoading ? 'Carregando categorias...' : '— escolha a categoria —'}
             </option>
-          ))}
-        </select>
+            {sourcesQ.data?.categories.map((cat) => {
+              const total = cat.subgroups.reduce((acc, sg) => acc + sg.options.length, 0);
+              return (
+                <option key={cat.id} value={cat.id}>
+                  {cat.label} ({total})
+                </option>
+              );
+            })}
+          </select>
+        </div>
 
+        {/* 2. Sub-grupo */}
         {currentCategory && (
-          <>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <span style={subLabelStyle}>
+              2. Sub-grupo de {currentCategory.label}
+            </span>
             <select
-              value={value}
-              onChange={(e) => onChange(e.target.value)}
+              value={effectiveSubgroupId}
+              onChange={(e) => {
+                setSubgroupId(e.target.value);
+                onChange('');
+              }}
               style={inputStyle}
             >
-              <option value="">— escolha o campo específico —</option>
-              {currentCategory.options.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
+              <option value="">— escolha o sub-grupo —</option>
+              {currentCategory.subgroups.map((sg) => (
+                <option key={sg.id} value={sg.id}>
+                  {sg.label} ({sg.options.length})
                 </option>
               ))}
             </select>
             <p style={{ margin: 0, fontSize: 11, color: 'var(--ink-gray-6)' }}>
               {currentCategory.description}
             </p>
-          </>
+          </div>
+        )}
+
+        {/* 3. Campo específico */}
+        {currentSubgroup && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <span style={subLabelStyle}>3. Campo específico</span>
+            <select
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              style={inputStyle}
+            >
+              <option value="">— escolha o campo —</option>
+              {currentSubgroup.options.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
         )}
       </div>
     </FormField>
   );
 }
+
+const subLabelStyle: React.CSSProperties = {
+  fontSize: 11,
+  fontWeight: 600,
+  color: 'var(--ink-gray-7)',
+  letterSpacing: '0.02em',
+  textTransform: 'uppercase' as const,
+};
 
 // ============================================================================
 // Helpers + Styles
