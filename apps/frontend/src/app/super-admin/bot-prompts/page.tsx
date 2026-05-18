@@ -23,10 +23,10 @@ import {
   Eye,
   GitCompare,
   History,
-  KeyRound,
   RotateCcw,
   Save,
   Search,
+  Settings2,
   Variable,
 } from 'lucide-react';
 import { botPromptService } from '@/services/bot-prompt.service';
@@ -37,9 +37,9 @@ import type {
   CustomVariable,
 } from '@/types/bot-prompt';
 import { formatDate } from '@/lib/utils';
-import { CustomVariablesPanel } from './custom-variables-panel';
+import { CustomVariablesDialog } from './custom-variables-dialog';
 
-type TabKey = 'history' | 'preview' | 'diff' | 'customVars';
+type TabKey = 'history' | 'preview' | 'diff';
 
 export default function BotPromptsPage() {
   const queryClient = useQueryClient();
@@ -51,6 +51,7 @@ export default function BotPromptsPage() {
   const [activeTab, setActiveTab] = useState<TabKey>('history');
   const [tenantSearch, setTenantSearch] = useState<string>('');
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [showCustomVarsDialog, setShowCustomVarsDialog] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
@@ -259,6 +260,7 @@ export default function BotPromptsPage() {
           systemVars={catalogQ.data?.systemVariables ?? []}
           customVars={catalogQ.data?.customVariables ?? []}
           onInsert={insertAtCursor}
+          onManageCustom={() => setShowCustomVarsDialog(true)}
           disabled={selectedTenantId === null}
         />
       </div>
@@ -271,6 +273,11 @@ export default function BotPromptsPage() {
           onConfirm={() => resetMut.mutate()}
         />
       )}
+
+      <CustomVariablesDialog
+        open={showCustomVarsDialog}
+        onOpenChange={setShowCustomVarsDialog}
+      />
     </div>
   );
 }
@@ -603,11 +610,13 @@ function VariablesPanel({
   systemVars,
   customVars,
   onInsert,
+  onManageCustom,
   disabled,
 }: {
   systemVars: SystemVariable[];
   customVars: CustomVariable[];
   onInsert: (s: string) => void;
+  onManageCustom: () => void;
   disabled: boolean;
 }) {
   const [filter, setFilter] = useState('');
@@ -633,7 +642,6 @@ function VariablesPanel({
         flexDirection: 'column',
         gap: '12px',
         minHeight: 0,
-        opacity: disabled ? 0.55 : 1,
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -686,6 +694,29 @@ function VariablesPanel({
         <VarGroup
           title="Customizadas"
           color="var(--ink-green-3)"
+          headerAction={
+            <button
+              type="button"
+              onClick={onManageCustom}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 3,
+                padding: '2px 6px',
+                fontSize: 10,
+                border: '1px solid var(--outline-gray-2)',
+                borderRadius: 3,
+                backgroundColor: 'transparent',
+                cursor: 'pointer',
+                color: 'var(--ink-gray-7)',
+                fontWeight: 500,
+              }}
+              title="Criar, editar ou deletar variáveis customizadas"
+            >
+              <Settings2 style={{ width: 11, height: 11 }} />
+              Gerenciar
+            </button>
+          }
           items={customVars
             .filter(
               (v) =>
@@ -701,7 +732,7 @@ function VariablesPanel({
             }))}
           onInsert={onInsert}
           disabled={disabled}
-          emptyHint="Nenhuma variável customizada. Crie pela aba 'Variáveis' abaixo."
+          emptyHint='Nenhuma ainda. Clique "Gerenciar" para criar.'
         />
       </div>
     </div>
@@ -715,6 +746,7 @@ function VarGroup({
   onInsert,
   disabled,
   emptyHint,
+  headerAction,
 }: {
   title: string;
   color: string;
@@ -722,21 +754,32 @@ function VarGroup({
   onInsert: (s: string) => void;
   disabled: boolean;
   emptyHint?: string;
+  headerAction?: React.ReactNode;
 }) {
   return (
     <div>
-      <p
+      <div
         style={{
-          fontSize: 11,
-          fontWeight: 600,
-          textTransform: 'uppercase',
-          letterSpacing: '0.5px',
-          color,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
           margin: '0 0 6px',
         }}
       >
-        {title} ({items.length})
-      </p>
+        <p
+          style={{
+            fontSize: 11,
+            fontWeight: 600,
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+            color,
+            margin: 0,
+          }}
+        >
+          {title} ({items.length})
+        </p>
+        {headerAction}
+      </div>
       {items.length === 0 ? (
         <p style={{ fontSize: 11, color: 'var(--ink-gray-5)', margin: 0 }}>
           {emptyHint ?? 'Nenhum resultado.'}
@@ -800,7 +843,6 @@ function BottomTabs({
     { key: 'history', label: 'Histórico', icon: History },
     { key: 'preview', label: 'Preview', icon: Eye },
     { key: 'diff', label: 'Diff vs padrão', icon: GitCompare },
-    { key: 'customVars', label: 'Variáveis customizadas', icon: KeyRound },
   ];
 
   return (
@@ -855,7 +897,6 @@ function BottomTabs({
         )}
         {activeTab === 'preview' && <PreviewTab tenantId={tenantId} />}
         {activeTab === 'diff' && <DiffTab tenantId={tenantId} />}
-        {activeTab === 'customVars' && <CustomVariablesPanel />}
       </div>
     </div>
   );
