@@ -246,6 +246,8 @@ export default function BotPromptsPage() {
                 activeTab={activeTab}
                 onTabChange={setActiveTab}
                 tenantId={selectedTenantId}
+                editorText={editorText}
+                isDirty={isDirty}
                 versions={versionsQ.data ?? []}
                 onActivateVersion={(vid) => activateMut.mutate(vid)}
                 activatingId={activateMut.variables ?? null}
@@ -836,6 +838,8 @@ function BottomTabs({
   activeTab,
   onTabChange,
   tenantId,
+  editorText,
+  isDirty,
   versions,
   onActivateVersion,
   activatingId,
@@ -844,6 +848,8 @@ function BottomTabs({
   activeTab: TabKey;
   onTabChange: (t: TabKey) => void;
   tenantId: string;
+  editorText: string;
+  isDirty: boolean;
   versions: BotPromptVersion[];
   onActivateVersion: (id: string) => void;
   activatingId: string | null;
@@ -905,7 +911,9 @@ function BottomTabs({
             activatingId={activatingId}
           />
         )}
-        {activeTab === 'preview' && <PreviewTab tenantId={tenantId} />}
+        {activeTab === 'preview' && (
+          <PreviewTab tenantId={tenantId} editorText={editorText} isDirty={isDirty} />
+        )}
         {activeTab === 'diff' && <DiffTab tenantId={tenantId} />}
       </div>
     </div>
@@ -999,11 +1007,31 @@ function HistoryTab({
   );
 }
 
-function PreviewTab({ tenantId }: { tenantId: string }) {
+function PreviewTab({
+  tenantId,
+  editorText,
+  isDirty,
+}: {
+  tenantId: string;
+  editorText: string;
+  isDirty: boolean;
+}) {
+  // Quando o dev EDITOU o texto e ainda nao salvou (isDirty=true), o preview
+  // mostra o RASCUNHO renderizado (POST /preview-draft com o texto do editor).
+  // Quando nao ha edicoes pendentes, mostra a versao ativa persistida
+  // (GET /preview da versao salva). Em ambos os casos as variaveis sao
+  // resolvidas pelos valores reais do tenant — essa e a "moral do preview":
+  // ver os valores reais ANTES de salvar, nao depois.
   const q = useQuery({
-    queryKey: ['bot-prompts', 'preview', tenantId],
-    queryFn: () => botPromptService.preview(tenantId),
+    queryKey: ['bot-prompts', isDirty ? 'preview-draft' : 'preview', tenantId, isDirty ? editorText : ''],
+    queryFn: () =>
+      isDirty
+        ? botPromptService.previewDraft(tenantId, editorText)
+        : botPromptService.preview(tenantId),
+    // Pequeno staleTime evita refetch desnecessario enquanto a tab esta aberta.
+    staleTime: 1000,
   });
+
   const [copied, setCopied] = useState(false);
   if (q.isLoading) return <p style={{ fontSize: 12, color: 'var(--ink-gray-5)' }}>Renderizando...</p>;
   if (!q.data) return <p style={{ fontSize: 12, color: 'var(--ink-gray-5)' }}>Sem dados.</p>;
@@ -1022,7 +1050,17 @@ function PreviewTab({ tenantId }: { tenantId: string }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <p style={{ fontSize: 11, color: 'var(--ink-gray-5)', margin: 0 }}>
-          v{q.data.versionNumber} · renderizado para o N8N (variáveis $now/phone ficam literais)
+          {isDirty ? (
+            <>
+              <strong style={{ color: 'var(--ink-amber-3)' }}>Rascunho</strong> · texto do
+              editor renderizado em tempo real (não salvo ainda)
+            </>
+          ) : (
+            <>
+              v{q.data.versionNumber} · versão ativa renderizada (mesmo output que o N8N
+              receberia)
+            </>
+          )}
         </p>
         <button
           type="button"

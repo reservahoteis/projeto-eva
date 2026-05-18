@@ -87,6 +87,14 @@ export const botPromptService = {
     return data;
   },
 
+  async previewDraft(tenantId: string, templateText: string): Promise<RenderedPrompt> {
+    const { data } = await api.post<RenderedPrompt>(
+      `${BASE}/${tenantId}/preview-draft`,
+      { templateText },
+    );
+    return data;
+  },
+
   async diff(tenantId: string, against: string = 'default'): Promise<PromptDiff> {
     const { data } = await api.get<PromptDiff>(`${BASE}/${tenantId}/diff`, {
       params: { against },
