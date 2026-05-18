@@ -85,7 +85,9 @@ export default function BotPromptsPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   // Dark mode persistido em localStorage. Aplica data-bp-theme="dark"
-  // no container raiz desta pagina, escopo local (nao afeta o resto do CRM).
+  // no <html> (documentElement) — pega sidebar/menu/layout pai inteiro,
+  // nao so o container desta pagina. Limpa ao desmontar pra nao vazar
+  // tema dark pras outras paginas do CRM.
   const [darkMode, setDarkMode] = useState<boolean>(false);
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -94,7 +96,20 @@ export default function BotPromptsPage() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     localStorage.setItem('bp-dark-mode', darkMode ? '1' : '0');
+    if (darkMode) {
+      document.documentElement.setAttribute('data-bp-theme', 'dark');
+    } else {
+      document.documentElement.removeAttribute('data-bp-theme');
+    }
   }, [darkMode]);
+  useEffect(() => {
+    // Cleanup ao sair da pagina — outras paginas voltam ao tema claro.
+    return () => {
+      if (typeof document !== 'undefined') {
+        document.documentElement.removeAttribute('data-bp-theme');
+      }
+    };
+  }, []);
 
   const editorRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -242,21 +257,7 @@ export default function BotPromptsPage() {
   }
 
   return (
-    <div
-      data-bp-theme={darkMode ? 'dark' : 'light'}
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '14px',
-        height: '100%',
-        // Em dark, o container ganha cor de fundo propria (o crm-app
-        // padrao e claro). Aplica a partir das vars sobrescritas abaixo.
-        backgroundColor: darkMode ? 'var(--surface-gray-1)' : 'transparent',
-        color: 'var(--ink-gray-9)',
-        margin: darkMode ? '-24px' : 0,
-        padding: darkMode ? '24px' : 0,
-      }}
-    >
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', height: '100%' }}>
       <PageHeader />
 
       <FlashBar errorMsg={errorMsg} successMsg={successMsg} />
@@ -364,10 +365,17 @@ export default function BotPromptsPage() {
           background-color: var(--ink-gray-5);
         }
 
-        /* Tema dark escopado para esta pagina via data-bp-theme.
-           Sobrescreve as CSS vars do crm.css localmente; nao afeta o
-           resto do app. Cores escolhidas pra contraste WCAG AA em texto. */
-        [data-bp-theme='dark'] {
+        /* Tema dark — aplicado no <html> via documentElement.setAttribute
+           enquanto o user esta na pagina /super-admin/bot-prompts. Pega
+           sidebar/menu/layout pai inteiros. Limpa ao desmontar a pagina
+           (cleanup do useEffect) — outras paginas voltam ao tema claro. */
+        html[data-bp-theme='dark'],
+        html[data-bp-theme='dark'] body,
+        html[data-bp-theme='dark'] .crm-app {
+          background-color: #18191d !important;
+          color: var(--ink-gray-9);
+        }
+        html[data-bp-theme='dark'] {
           --surface-white: #1f2025;
           --surface-gray-1: #25262b;
           --surface-gray-2: #2d2e33;
@@ -1166,8 +1174,6 @@ function Editor({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onDragOver={(e) => {
-          // Default do browser bloqueia drop em textarea — precisamos
-          // preventDefault aqui pra permitir o drop personalizado.
           e.preventDefault();
           e.dataTransfer.dropEffect = 'copy';
           if (!dragOver) setDragOver(true);
