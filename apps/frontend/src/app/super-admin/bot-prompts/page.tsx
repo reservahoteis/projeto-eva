@@ -13,7 +13,7 @@
 // e ja vira a ativa. Lock otimista via expectedActiveVersion: o painel
 // envia a versao que carregou; backend levanta 409 se outro dev mexeu.
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AlertTriangle,
@@ -43,6 +43,31 @@ import { CustomVariablesDialog } from './custom-variables-dialog';
 // Tabs auxiliares: preview agora vive ao lado do editor; restam Historico
 // e Diff vs padrao.
 type TabKey = 'history' | 'diff';
+
+// Hook reutilizavel: fecha o popover/dropdown quando o usuario clica
+// fora do container referenciado. Atende ao pedido "clicar em qualquer
+// lugar da tela ja desarma o dropdown".
+function useClickOutside<T extends HTMLElement>(
+  isOpen: boolean,
+  onOutsideClick: () => void,
+): React.RefObject<T> {
+  const ref = useRef<T>(null);
+  // Memoiza o callback pro effect nao reciclar listener a cada render
+  const cb = useCallback(onOutsideClick, [onOutsideClick]);
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        cb();
+      }
+    };
+    // mousedown (nao click) pra fechar ANTES do click event borbulhar
+    // pra elementos dentro do popover — evita race com onClick de itens.
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [isOpen, cb]);
+  return ref;
+}
 
 export default function BotPromptsPage() {
   const queryClient = useQueryClient();
@@ -284,6 +309,32 @@ export default function BotPromptsPage() {
         open={showCustomVarsDialog}
         onOpenChange={setShowCustomVarsDialog}
       />
+
+      {/*
+        Cursor "mãozinha" no thumb da barra de scroll dos containers
+        scrollaveis desta tela (popovers, listagens). Webkit only — Firefox
+        nao expoe scrollbar styling. Vale a pena ainda assim porque a base
+        dev usa Chrome/Edge.
+      */}
+      <style jsx global>{`
+        .bp-scroll::-webkit-scrollbar-thumb,
+        .bp-scroll::-webkit-scrollbar-thumb:hover {
+          cursor: pointer;
+        }
+        .bp-scroll::-webkit-scrollbar {
+          width: 10px;
+          height: 10px;
+        }
+        .bp-scroll::-webkit-scrollbar-thumb {
+          background-color: var(--outline-gray-2);
+          border-radius: 5px;
+          border: 2px solid transparent;
+          background-clip: padding-box;
+        }
+        .bp-scroll::-webkit-scrollbar-thumb:hover {
+          background-color: var(--ink-gray-5);
+        }
+      `}</style>
     </div>
   );
 }
@@ -407,6 +458,7 @@ function TopBar({
         isLoading={tenantsLoading}
         isOpen={tenantOpen}
         onToggle={() => setTenantOpen((v) => !v)}
+        onClose={() => setTenantOpen(false)}
         selectedSummary={selectedSummary}
       />
 
@@ -425,6 +477,7 @@ function TopBar({
         disabled={selectedTenantId === null}
         isOpen={varsOpen}
         onToggle={() => setVarsOpen((v) => !v)}
+        onClose={() => setVarsOpen(false)}
       />
 
       {/* Status da versao ativa (toma todo espaco que sobra) */}
@@ -513,6 +566,7 @@ function TenantDropdown({
   isLoading,
   isOpen,
   onToggle,
+  onClose,
   selectedSummary,
 }: {
   tenants: TopBarTenant[];
@@ -523,10 +577,12 @@ function TenantDropdown({
   isLoading: boolean;
   isOpen: boolean;
   onToggle: () => void;
+  onClose: () => void;
   selectedSummary: TopBarTenant | undefined;
 }) {
+  const containerRef = useClickOutside<HTMLDivElement>(isOpen, onClose);
   return (
-    <div style={{ position: 'relative', minWidth: 240 }}>
+    <div ref={containerRef} style={{ position: 'relative', minWidth: 240 }}>
       <button
         type="button"
         onClick={onToggle}
@@ -615,7 +671,7 @@ function TenantDropdown({
               }}
             />
           </div>
-          <div style={{ flex: 1, overflowY: 'auto', padding: '0 8px 8px' }}>
+          <div className="bp-scroll" style={{ flex: 1, overflowY: 'auto', padding: '0 8px 8px' }}>
             {isLoading ? (
               <p style={{ fontSize: 12, color: 'var(--ink-gray-5)', textAlign: 'center', margin: 12 }}>
                 Carregando...
@@ -678,6 +734,7 @@ function VariablesPopover({
   disabled,
   isOpen,
   onToggle,
+  onClose,
 }: {
   systemVars: SystemVariable[];
   customVars: CustomVariable[];
@@ -686,7 +743,9 @@ function VariablesPopover({
   disabled: boolean;
   isOpen: boolean;
   onToggle: () => void;
+  onClose: () => void;
 }) {
+  const containerRef = useClickOutside<HTMLDivElement>(isOpen, onClose);
   const [filter, setFilter] = useState('');
   const fq = filter.toLowerCase();
   const sysReal = systemVars.filter((v) => !v.isRuntime);
@@ -699,7 +758,7 @@ function VariablesPopover({
     v.placeholder.toLowerCase().includes(fq);
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div ref={containerRef} style={{ position: 'relative' }}>
       <button
         type="button"
         onClick={onToggle}
@@ -790,6 +849,7 @@ function VariablesPopover({
           </div>
 
           <div
+            className="bp-scroll"
             style={{
               flex: 1,
               overflowY: 'auto',
@@ -1142,7 +1202,7 @@ function SideTabs({
         })}
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: 12 }}>
+      <div className="bp-scroll" style={{ flex: 1, overflowY: 'auto', padding: 12 }}>
         {safeTab === 'history' && (
           <HistoryTab
             versions={versions}
@@ -1352,6 +1412,7 @@ function LivePreview({
         </button>
       </div>
       <pre
+        className="bp-scroll"
         style={{
           flex: 1,
           fontSize: 12,
