@@ -53,9 +53,6 @@ const ALLOWED_TENANT_FIELDS: { value: string; label: string; example: string }[]
   { value: 'tenant_onboardings.bot_name', label: 'Nome do bot (onboarding)', example: 'Eva' },
 ];
 
-const PROPERTY_ANSWER_NOTE =
-  "Avancado: tambem aceita 'tenant_onboardings.property_answers->>\\'N\\'' onde N e o numero de uma pergunta do wizard de onboarding (1..90). Ex.: ->>'1' devolve a primeira resposta da secao 'property'.";
-
 export function CustomVariablesDialog({
   open,
   onOpenChange,
@@ -234,9 +231,9 @@ function HelpSection({ open, onToggle }: { open: boolean; onToggle: () => void }
   return (
     <div
       style={{
-        border: '1px solid var(--outline-blue-2)',
-        borderRadius: 6,
-        backgroundColor: 'var(--surface-blue-2)',
+        border: '1px solid var(--outline-gray-2)',
+        borderRadius: 8,
+        backgroundColor: 'var(--surface-white)',
         overflow: 'hidden',
       }}
     >
@@ -245,59 +242,70 @@ function HelpSection({ open, onToggle }: { open: boolean; onToggle: () => void }
         onClick={onToggle}
         style={{
           width: '100%',
-          padding: '8px 12px',
+          padding: '12px 16px',
           display: 'flex',
           alignItems: 'center',
-          gap: 6,
+          gap: 8,
           border: 'none',
           backgroundColor: 'transparent',
           cursor: 'pointer',
-          color: 'var(--ink-blue-3)',
-          fontSize: 13,
+          color: 'var(--ink-gray-9)',
+          fontSize: 14,
           fontWeight: 600,
         }}
       >
-        {open ? <ChevronDown style={{ width: 14, height: 14 }} /> : <ChevronRight style={{ width: 14, height: 14 }} />}
-        <Info style={{ width: 14, height: 14 }} />
+        {open ? (
+          <ChevronDown style={{ width: 16, height: 16, color: 'var(--ink-gray-6)' }} />
+        ) : (
+          <ChevronRight style={{ width: 16, height: 16, color: 'var(--ink-gray-6)' }} />
+        )}
+        <Info style={{ width: 16, height: 16, color: 'var(--ink-blue-3)' }} />
         Como funciona — leia antes de criar a primeira
       </button>
 
       {open && (
-        <div style={{ padding: '0 14px 14px', fontSize: 12, color: 'var(--ink-gray-8)', lineHeight: 1.6 }}>
-          <p style={{ margin: '4px 0 10px' }}>
-            Variáveis customizadas são placeholders <strong>seus</strong> (vs. as 22 que já vêm
-            embutidas do sistema). Você escreve <code style={codeStyle}>{'{{nome_da_sua_var}}'}</code> dentro
-            do prompt de qualquer unidade — quando o N8N pedir o prompt renderizado, o backend
-            substitui automaticamente pelo valor que você configurou aqui.
+        <div
+          style={{
+            padding: '4px 20px 20px',
+            fontSize: 14,
+            color: 'var(--ink-gray-8)',
+            lineHeight: 1.65,
+            borderTop: '1px solid var(--outline-gray-1)',
+            marginTop: 4,
+            paddingTop: 16,
+          }}
+        >
+          <p style={{ margin: '0 0 16px' }}>
+            Variáveis customizadas são placeholders <strong>seus</strong>, criados pelo time (as 22
+            do sistema já vêm embutidas). Você escreve <code style={codeStyle}>{'{{nome_da_sua_var}}'}</code>{' '}
+            dentro do prompt de qualquer unidade — quando o N8N pedir o prompt renderizado, o
+            backend substitui pelo valor que você configurou aqui.
           </p>
 
-          <p style={{ margin: '10px 0 6px', fontWeight: 600, color: 'var(--ink-gray-9)' }}>
-            Os 2 tipos de variável:
+          <p style={{ margin: '0 0 10px', fontSize: 14, fontWeight: 700, color: 'var(--ink-gray-9)' }}>
+            Os 2 tipos de variável
           </p>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
             {/* Tipo 1: estática */}
             <div
               style={{
-                padding: 10,
-                border: '1px solid var(--outline-blue-2)',
-                borderRadius: 6,
-                backgroundColor: 'var(--surface-white)',
+                padding: 14,
+                border: '1px solid var(--outline-gray-2)',
+                borderRadius: 8,
+                backgroundColor: 'var(--surface-gray-1)',
               }}
             >
-              <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: 'var(--ink-blue-3)' }}>
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--ink-gray-9)' }}>
                 1. Estática (valor fixo)
               </p>
-              <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--ink-gray-7)' }}>
+              <p style={{ margin: '6px 0 10px', fontSize: 13, color: 'var(--ink-gray-7)' }}>
                 Valor literal igual pra todos os hotéis.
               </p>
-              <p style={{ margin: '8px 0 4px', fontSize: 11, fontWeight: 600, color: 'var(--ink-gray-8)' }}>
-                Exemplo:
-              </p>
               <div style={exampleStyle}>
-                <span style={codeStyle}>{'{{nome_da_rede}}'}</span> → "Smart Hotéis Reserva"
+                <code style={codeStyle}>{'{{nome_da_rede}}'}</code> → &quot;Smart Hotéis Reserva&quot;
               </div>
-              <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--ink-gray-6)' }}>
+              <p style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--ink-gray-6)' }}>
                 Útil pra marca, slogan, instruções comuns, frases padrão.
               </p>
             </div>
@@ -305,103 +313,139 @@ function HelpSection({ open, onToggle }: { open: boolean; onToggle: () => void }
             {/* Tipo 2: campo do tenant */}
             <div
               style={{
-                padding: 10,
-                border: '1px solid var(--outline-blue-2)',
-                borderRadius: 6,
-                backgroundColor: 'var(--surface-white)',
+                padding: 14,
+                border: '1px solid var(--outline-gray-2)',
+                borderRadius: 8,
+                backgroundColor: 'var(--surface-gray-1)',
               }}
             >
-              <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: 'var(--ink-blue-3)' }}>
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--ink-gray-9)' }}>
                 2. Campo do tenant (valor por hotel)
               </p>
-              <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--ink-gray-7)' }}>
+              <p style={{ margin: '6px 0 10px', fontSize: 13, color: 'var(--ink-gray-7)' }}>
                 Pega um campo do banco específico do hotel ativo.
               </p>
-              <p style={{ margin: '8px 0 4px', fontSize: 11, fontWeight: 600, color: 'var(--ink-gray-8)' }}>
-                Exemplo:
-              </p>
               <div style={exampleStyle}>
-                <span style={codeStyle}>{'{{cidade_hotel}}'}</span> → "Ilhabela" (no hotel A)
+                <code style={codeStyle}>{'{{cidade_hotel}}'}</code> → &quot;Ilhabela&quot; (hotel A)
                 <br />
-                <span style={codeStyle}>{'{{cidade_hotel}}'}</span> → "Campos do Jordão" (no hotel B)
+                <code style={codeStyle}>{'{{cidade_hotel}}'}</code> → &quot;Campos do Jordão&quot; (hotel B)
               </div>
-              <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--ink-gray-6)' }}>
+              <p style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--ink-gray-6)' }}>
                 Útil pra cidade, telefone, e-mail, nome do bot etc.
               </p>
             </div>
           </div>
 
           {/* Lista de fontes permitidas */}
-          <p style={{ margin: '14px 0 6px', fontWeight: 600, color: 'var(--ink-gray-9)' }}>
-            <Lock style={{ width: 12, height: 12, display: 'inline', marginRight: 4 }} />
-            Fontes permitidas para "Campo do tenant":
+          <p
+            style={{
+              margin: '0 0 4px',
+              fontSize: 14,
+              fontWeight: 700,
+              color: 'var(--ink-gray-9)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+          >
+            <Lock style={{ width: 14, height: 14, color: 'var(--ink-gray-7)' }} />
+            Fontes permitidas para &quot;Campo do tenant&quot;
           </p>
-          <p style={{ margin: '0 0 8px', fontSize: 11, color: 'var(--ink-gray-6)' }}>
-            Por segurança, só estes valores são aceitos no campo "origem":
+          <p style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--ink-gray-6)' }}>
+            Por segurança, só estes valores são aceitos no campo &quot;origem&quot;:
           </p>
-          <table style={{ width: '100%', fontSize: 11, borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ backgroundColor: 'var(--surface-gray-2)' }}>
-                <th style={tableHeadStyle}>Origem (cole exatamente)</th>
-                <th style={tableHeadStyle}>O que é</th>
-                <th style={tableHeadStyle}>Exemplo de valor</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ALLOWED_TENANT_FIELDS.map((f) => (
-                <tr key={f.value}>
-                  <td style={tableCellStyle}>
-                    <code style={codeStyle}>{f.value}</code>
-                  </td>
-                  <td style={tableCellStyle}>{f.label}</td>
-                  <td style={{ ...tableCellStyle, fontStyle: 'italic', color: 'var(--ink-gray-6)' }}>
-                    {f.example}
-                  </td>
+          <div
+            style={{
+              border: '1px solid var(--outline-gray-2)',
+              borderRadius: 6,
+              overflow: 'hidden',
+              marginBottom: 16,
+            }}
+          >
+            <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ backgroundColor: 'var(--surface-gray-2)' }}>
+                  <th style={tableHeadStyle}>Origem (cole exatamente)</th>
+                  <th style={tableHeadStyle}>O que é</th>
+                  <th style={tableHeadStyle}>Exemplo de valor</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {ALLOWED_TENANT_FIELDS.map((f, idx) => (
+                  <tr
+                    key={f.value}
+                    style={{
+                      backgroundColor:
+                        idx % 2 === 0 ? 'var(--surface-white)' : 'var(--surface-gray-1)',
+                    }}
+                  >
+                    <td style={tableCellStyle}>
+                      <code style={codeStyle}>{f.value}</code>
+                    </td>
+                    <td style={tableCellStyle}>{f.label}</td>
+                    <td style={{ ...tableCellStyle, color: 'var(--ink-gray-6)' }}>{f.example}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
           <div
             style={{
-              marginTop: 10,
-              padding: 8,
-              borderRadius: 4,
-              backgroundColor: 'var(--surface-amber-2)',
-              fontSize: 11,
-              color: 'var(--ink-amber-3)',
+              padding: 12,
+              borderRadius: 6,
+              backgroundColor: 'var(--surface-gray-1)',
+              border: '1px solid var(--outline-gray-2)',
+              fontSize: 13,
+              color: 'var(--ink-gray-8)',
               display: 'flex',
-              gap: 6,
+              gap: 8,
               alignItems: 'flex-start',
+              marginBottom: 20,
+              lineHeight: 1.55,
             }}
           >
-            <Lightbulb style={{ width: 12, height: 12, marginTop: 1, flexShrink: 0 }} />
-            <span>{PROPERTY_ANSWER_NOTE}</span>
+            <Lightbulb style={{ width: 16, height: 16, color: 'var(--ink-amber-3)', marginTop: 1, flexShrink: 0 }} />
+            <span>
+              <strong>Avançado:</strong> também aceita{' '}
+              <code style={codeStyle}>tenant_onboardings.property_answers-&gt;&gt;&apos;N&apos;</code>{' '}
+              onde N é o número de uma pergunta do wizard de onboarding (1..90). Ex.:{' '}
+              <code style={codeStyle}>-&gt;&gt;&apos;1&apos;</code> devolve a primeira resposta da seção
+              &quot;property&quot;.
+            </span>
           </div>
 
-          <p style={{ margin: '14px 0 6px', fontWeight: 600, color: 'var(--ink-gray-9)' }}>
-            Regras importantes:
+          <p style={{ margin: '0 0 8px', fontSize: 14, fontWeight: 700, color: 'var(--ink-gray-9)' }}>
+            Regras importantes
           </p>
-          <ul style={{ margin: '0 0 8px', paddingLeft: 18, fontSize: 11, color: 'var(--ink-gray-7)' }}>
+          <ul
+            style={{
+              margin: 0,
+              paddingLeft: 22,
+              fontSize: 13,
+              color: 'var(--ink-gray-8)',
+              lineHeight: 1.7,
+            }}
+          >
             <li>
               <strong>var_key</strong> só pode ter letras, números e underscore (sem espaço, sem
               hífen, sem acento).
             </li>
             <li>
               Nomes reservados pelo sistema (as 22 variáveis embutidas como{' '}
-              <code style={codeStyle}>bot_name</code>, <code style={codeStyle}>orientacoes</code> etc.) são
-              rejeitados.
+              <code style={codeStyle}>bot_name</code>, <code style={codeStyle}>orientacoes</code>{' '}
+              etc.) são rejeitados.
             </li>
             <li>
-              <strong>Não dá pra renomear</strong> depois de criar (porque vai quebrar todos os prompts
-              que referenciam). Se errar o nome, delete e recrie.
+              <strong>Não dá pra renomear</strong> depois de criar — vai quebrar todos os prompts
+              que referenciam. Se errar o nome, delete e recrie.
             </li>
             <li>
-              Editar muda apenas o <strong>valor</strong> ou <strong>origem</strong> + descrição. O
-              tipo é fixo após criação.
+              Editar muda apenas o <strong>valor</strong> (ou origem) e a descrição. O tipo é fixo
+              após criação.
             </li>
             <li>
-              Deletar é permanente, mas prompts que ainda usem a variável ficam com o placeholder
+              Deletar é permanente. Prompts que ainda usem a variável ficam com o placeholder
               literal no texto renderizado (não quebra o bot — só fica feio).
             </li>
           </ul>
