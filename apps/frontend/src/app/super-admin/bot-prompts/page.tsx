@@ -1169,10 +1169,10 @@ function Editor({
           Clique ou arraste variáveis do painel acima
         </p>
       </div>
-      <textarea
-        ref={textareaRef}
+      <HighlightedTextarea
+        textareaRef={textareaRef}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={onChange}
         onDragOver={(e) => {
           e.preventDefault();
           e.dataTransfer.dropEffect = 'copy';
@@ -1180,21 +1180,6 @@ function Editor({
         }}
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
-        spellCheck={false}
-        style={{
-          flex: 1,
-          width: '100%',
-          padding: '14px',
-          fontSize: 13,
-          fontFamily: 'Consolas, Menlo, Monaco, "Cascadia Code", "Source Code Pro", monospace',
-          lineHeight: 1.55,
-          border: 'none',
-          outline: 'none',
-          resize: 'none',
-          color: 'var(--ink-gray-9)',
-          backgroundColor: 'var(--surface-white)',
-          minHeight: 0,
-        }}
       />
       {isDirty && (
         <div
@@ -1222,6 +1207,141 @@ function Editor({
           />
         </div>
       )}
+    </div>
+  );
+}
+
+
+// ----------------------------------------------------------------------------
+// HighlightedTextarea — textarea com overlay <pre> mostrando placeholders
+// {{...}} em verde (estilo N8N). Hack classico:
+//   - overlay <pre> renderiza o mesmo texto, com spans coloridos nos
+//     placeholders, e pointer-events:none (nao interfere com o caret);
+//   - textarea por cima e transparente (color: transparent), com
+//     caret-color setado pra manter o cursor visivel;
+//   - onScroll sincroniza scrollTop/scrollLeft do overlay com a textarea.
+// Padding/fontSize/lineHeight/whiteSpace/wordBreak DEVEM ser identicos
+// entre os dois elementos pra o highlight nao desalinhar do caret.
+// ----------------------------------------------------------------------------
+
+function HighlightedTextarea({
+  textareaRef,
+  value,
+  onChange,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+}: {
+  textareaRef: React.MutableRefObject<HTMLTextAreaElement | null>;
+  value: string;
+  onChange: (v: string) => void;
+  onDragOver: (e: React.DragEvent<HTMLTextAreaElement>) => void;
+  onDragLeave: () => void;
+  onDrop: (e: React.DragEvent<HTMLTextAreaElement>) => void;
+}) {
+  const overlayRef = useRef<HTMLPreElement | null>(null);
+
+  const syncScroll = () => {
+    const ta = textareaRef.current;
+    const ov = overlayRef.current;
+    if (!ta || !ov) return;
+    ov.scrollTop = ta.scrollTop;
+    ov.scrollLeft = ta.scrollLeft;
+  };
+
+  // Split por placeholder. Grupo capturado preserva o delimitador no
+  // array de saida (split com regex grupo capturador).
+  const segments = value.split(/(\{\{[^{}]*\}\})/g);
+  const isPlaceholder = (s: string) =>
+    s.length >= 4 && s.startsWith('{{') && s.endsWith('}}');
+
+  const sharedTypo: React.CSSProperties = {
+    padding: 14,
+    fontSize: 13,
+    fontFamily: 'Consolas, Menlo, Monaco, "Cascadia Code", "Source Code Pro", monospace',
+    lineHeight: 1.55,
+    whiteSpace: 'pre-wrap',
+    wordBreak: 'break-word',
+    margin: 0,
+    tabSize: 4,
+  };
+
+  return (
+    <div
+      style={{
+        position: 'relative',
+        flex: 1,
+        minHeight: 0,
+        overflow: 'hidden',
+        backgroundColor: 'var(--surface-white)',
+      }}
+    >
+      {/* Overlay: renderiza o highlight visual; nao recebe eventos */}
+      <pre
+        ref={overlayRef}
+        aria-hidden="true"
+        className="bp-scroll"
+        style={{
+          ...sharedTypo,
+          position: 'absolute',
+          inset: 0,
+          overflow: 'auto',
+          pointerEvents: 'none',
+          color: 'var(--ink-gray-9)',
+          // Esse padding-right matching evita o highlight cortar quando
+          // o usuario digita perto da scrollbar.
+        }}
+      >
+        {segments.map((seg, i) =>
+          isPlaceholder(seg) ? (
+            <span
+              key={i}
+              style={{
+                backgroundColor: 'var(--bp-var-bg, rgba(16,185,129,0.18))',
+                color: 'var(--bp-var-fg, #047857)',
+                borderRadius: 3,
+                fontWeight: 600,
+              }}
+            >
+              {seg}
+            </span>
+          ) : (
+            <span key={i}>{seg}</span>
+          ),
+        )}
+        {/* Truque pra textarea nao "esconder" a ultima linha vazia:
+            quando o valor termina com \n, o browser adiciona uma linha
+            extra no textarea — replicamos no overlay com um espaco
+            invisivel pra altura bater. */}
+        {value.endsWith('\n') ? '​' : null}
+      </pre>
+
+      {/* Textarea real: transparente em cima do overlay, captura input */}
+      <textarea
+        ref={textareaRef}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onScroll={syncScroll}
+        onDragOver={onDragOver}
+        onDragLeave={onDragLeave}
+        onDrop={onDrop}
+        spellCheck={false}
+        className="bp-scroll"
+        style={{
+          ...sharedTypo,
+          position: 'absolute',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          border: 'none',
+          outline: 'none',
+          resize: 'none',
+          color: 'transparent',
+          caretColor: 'var(--ink-gray-9)',
+          backgroundColor: 'transparent',
+          overflow: 'auto',
+        }}
+      />
     </div>
   );
 }
