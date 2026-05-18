@@ -96,7 +96,28 @@ export function CustomVariablesDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent style={{ maxWidth: 760, maxHeight: '85vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      {/*
+        Dialog deste projeto usa pattern "overlay scrolla, conteudo cresce
+        naturalmente" (veja components/ui/dialog.tsx). NAO usar maxHeight
+        ou overflow no DialogContent — quebra a rolagem do conteudo longo.
+        Deixar o conteudo crescer; a propria overlay rola a pagina inteira
+        do modal quando necessario.
+      */}
+      {/*
+        Forcamos explicitamente a stack InterVar/Inter porque o Dialog
+        renderiza num portal fora do .crm-app, entao a regra de
+        crm.css linha 49 nao alcanca aqui via heranca. Sem este override,
+        o conteudo cai pra fonte default do body (system-ui) que tem
+        renderizacao pior e foi reportada como "horrivel" pela review.
+      */}
+      <DialogContent
+        style={{
+          maxWidth: 760,
+          fontFamily: "InterVar, Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+          WebkitFontSmoothing: 'antialiased',
+          MozOsxFontSmoothing: 'grayscale',
+        }}
+      >
         <DialogHeader>
           <DialogTitle style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Database style={{ width: 18, height: 18, color: 'var(--ink-green-3)' }} />
@@ -108,7 +129,7 @@ export function CustomVariablesDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12, flex: 1 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <HelpSection open={helpOpen} onToggle={() => setHelpOpen(!helpOpen)} />
 
           {errorMsg && (
