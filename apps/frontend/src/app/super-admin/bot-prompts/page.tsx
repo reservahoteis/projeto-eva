@@ -566,7 +566,10 @@ function Editor({
           width: '100%',
           padding: '14px',
           fontSize: 13,
-          fontFamily: 'ui-monospace, "Cascadia Code", "Source Code Pro", Consolas, monospace',
+          // Stack que prioriza Consolas (Windows) e Menlo (Mac) ANTES do
+          // ui-monospace generico — sem isso, alguns browsers Windows caem
+          // pra Courier New (legibilidade pessima criticada na review).
+          fontFamily: 'Consolas, Menlo, Monaco, "Cascadia Code", "Source Code Pro", monospace',
           lineHeight: 1.55,
           border: 'none',
           outline: 'none',
@@ -808,7 +811,7 @@ function VarGroup({
                 backgroundColor: 'var(--surface-white)',
                 cursor: disabled ? 'not-allowed' : 'pointer',
                 color: 'var(--ink-gray-9)',
-                fontFamily: 'ui-monospace, monospace',
+                fontWeight: 500,
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
@@ -1044,7 +1047,7 @@ function PreviewTab({ tenantId }: { tenantId: string }) {
       <pre
         style={{
           fontSize: 11,
-          fontFamily: 'ui-monospace, monospace',
+          fontFamily: 'Consolas, Menlo, Monaco, "Cascadia Code", monospace',
           margin: 0,
           padding: 10,
           backgroundColor: 'var(--surface-gray-1)',
@@ -1080,8 +1083,8 @@ function DiffTab({ tenantId }: { tenantId: string }) {
   return (
     <pre
       style={{
-        fontSize: 11,
-        fontFamily: 'ui-monospace, monospace',
+        fontSize: 12,
+        fontFamily: 'Consolas, Menlo, Monaco, "Cascadia Code", monospace',
         margin: 0,
         padding: 10,
         backgroundColor: 'var(--surface-gray-1)',

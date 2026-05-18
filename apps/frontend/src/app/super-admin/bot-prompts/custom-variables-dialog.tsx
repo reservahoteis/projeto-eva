@@ -492,10 +492,10 @@ function VarRow({
           <p
             style={{
               margin: 0,
-              fontSize: 13,
-              fontFamily: 'ui-monospace, monospace',
-              fontWeight: 600,
-              color: 'var(--ink-gray-9)',
+              fontSize: 14,
+              fontWeight: 700,
+              color: 'var(--ink-blue-3)',
+              letterSpacing: '-0.01em',
             }}
           >
             {`{{${variable.varKey}}}`}
@@ -516,16 +516,15 @@ function VarRow({
           </span>
         </div>
         {variable.description && (
-          <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--ink-gray-7)' }}>
+          <p style={{ margin: '5px 0 0', fontSize: 13, color: 'var(--ink-gray-7)' }}>
             {variable.description}
           </p>
         )}
         <p
           style={{
-            margin: '3px 0 0',
-            fontSize: 11,
-            color: 'var(--ink-gray-5)',
-            fontFamily: variable.varType === 'tenant_field' ? 'ui-monospace, monospace' : undefined,
+            margin: '4px 0 0',
+            fontSize: 13,
+            color: 'var(--ink-gray-6)',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
@@ -763,7 +762,7 @@ function CustomVarForm({
                 placeholder="tenant_onboardings.property_answers->>'1'"
                 value={fieldSource}
                 onChange={(e) => setFieldSource(e.target.value)}
-                style={{ ...inputStyle, fontFamily: 'ui-monospace, monospace', fontSize: 11 }}
+                style={inputStyle}
               />
             </div>
           </details>
@@ -864,13 +863,20 @@ const inputStyle: React.CSSProperties = {
   color: 'var(--ink-gray-9)',
 };
 
+// Snippets curtos inline: usa a Inter (fonte principal do app) com peso
+// bold e cor azul. Decidimos NAO usar monospace aqui porque ui-monospace
+// no Windows cai pra Courier New (legibilidade pessima); a Inter
+// destacada por cor+peso preenche a mesma funcao visual com legibilidade
+// muito melhor.
 const codeStyle: React.CSSProperties = {
-  fontFamily: 'ui-monospace, "Cascadia Code", "Source Code Pro", Consolas, monospace',
-  fontSize: 11,
-  padding: '1px 5px',
-  borderRadius: 3,
+  fontFamily: 'inherit',
+  fontSize: '0.92em',
+  fontWeight: 600,
+  padding: '2px 6px',
+  borderRadius: 4,
   backgroundColor: 'var(--surface-gray-2)',
-  color: 'var(--ink-gray-9)',
+  color: 'var(--ink-blue-3)',
+  letterSpacing: '-0.01em',
 };
 
 const hintStyle: React.CSSProperties = {
@@ -888,13 +894,13 @@ const errorHintStyle: React.CSSProperties = {
 };
 
 const exampleStyle: React.CSSProperties = {
-  padding: '6px 8px',
-  borderRadius: 4,
-  backgroundColor: 'var(--surface-gray-1)',
-  fontSize: 11,
-  fontFamily: 'ui-monospace, monospace',
+  padding: '8px 10px',
+  borderRadius: 6,
+  backgroundColor: 'var(--surface-white)',
+  border: '1px solid var(--outline-gray-2)',
+  fontSize: 13,
   color: 'var(--ink-gray-8)',
-  lineHeight: 1.6,
+  lineHeight: 1.7,
 };
 
 const tableHeadStyle: React.CSSProperties = {
