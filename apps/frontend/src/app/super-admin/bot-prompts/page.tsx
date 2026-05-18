@@ -24,10 +24,12 @@ import {
   Copy,
   GitCompare,
   History,
+  Moon,
   RotateCcw,
   Save,
   Search,
   Settings2,
+  Sun,
   Variable,
 } from 'lucide-react';
 import { botPromptService } from '@/services/bot-prompt.service';
@@ -82,6 +84,17 @@ export default function BotPromptsPage() {
   const [showCustomVarsDialog, setShowCustomVarsDialog] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  // Dark mode persistido em localStorage. Aplica data-bp-theme="dark"
+  // no container raiz desta pagina, escopo local (nao afeta o resto do CRM).
+  const [darkMode, setDarkMode] = useState<boolean>(false);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    setDarkMode(localStorage.getItem('bp-dark-mode') === '1');
+  }, []);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('bp-dark-mode', darkMode ? '1' : '0');
+  }, [darkMode]);
 
   const editorRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -229,7 +242,21 @@ export default function BotPromptsPage() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', height: '100%' }}>
+    <div
+      data-bp-theme={darkMode ? 'dark' : 'light'}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '14px',
+        height: '100%',
+        // Em dark, o container ganha cor de fundo propria (o crm-app
+        // padrao e claro). Aplica a partir das vars sobrescritas abaixo.
+        backgroundColor: darkMode ? 'var(--surface-gray-1)' : 'transparent',
+        color: 'var(--ink-gray-9)',
+        margin: darkMode ? '-24px' : 0,
+        padding: darkMode ? '24px' : 0,
+      }}
+    >
       <PageHeader />
 
       <FlashBar errorMsg={errorMsg} successMsg={successMsg} />
@@ -252,6 +279,8 @@ export default function BotPromptsPage() {
         customVars={catalogQ.data?.customVariables ?? []}
         onInsertVariable={insertAtCursor}
         onManageCustomVars={() => setShowCustomVarsDialog(true)}
+        darkMode={darkMode}
+        onToggleDarkMode={() => setDarkMode((v) => !v)}
       />
 
       {selectedTenantId === null ? (
@@ -334,6 +363,39 @@ export default function BotPromptsPage() {
         .bp-scroll::-webkit-scrollbar-thumb:hover {
           background-color: var(--ink-gray-5);
         }
+
+        /* Tema dark escopado para esta pagina via data-bp-theme.
+           Sobrescreve as CSS vars do crm.css localmente; nao afeta o
+           resto do app. Cores escolhidas pra contraste WCAG AA em texto. */
+        [data-bp-theme='dark'] {
+          --surface-white: #1f2025;
+          --surface-gray-1: #25262b;
+          --surface-gray-2: #2d2e33;
+          --surface-menu-bar: #1a1b1f;
+          --surface-selected: #2a3a5a;
+          --outline-gray-1: #2e2f34;
+          --outline-gray-2: #3a3b40;
+          --ink-gray-3: #46464a;
+          --ink-gray-4: #5a5a60;
+          --ink-gray-5: #888890;
+          --ink-gray-6: #a8a8ac;
+          --ink-gray-7: #c0c0c4;
+          --ink-gray-8: #dadadc;
+          --ink-gray-9: #e8e8ea;
+          --ink-blue-3: #4dabf7;
+          --ink-green-3: #51cf66;
+          --ink-amber-3: #ffa94d;
+          --ink-red-3: #ff6b6b;
+          --surface-blue-2: rgba(77, 171, 247, 0.18);
+          --surface-green-2: rgba(81, 207, 102, 0.18);
+          --surface-amber-2: rgba(255, 169, 77, 0.18);
+          --surface-red-2: rgba(255, 107, 107, 0.18);
+          --outline-blue-2: rgba(77, 171, 247, 0.45);
+          /* Verde do destaque das variaveis no preview/editor — usa o
+             mesmo verde do N8N (mais saturado pra contrastar em dark). */
+          --bp-var-bg: rgba(81, 207, 102, 0.22);
+          --bp-var-fg: #69db7c;
+        }
       `}</style>
     </div>
   );
@@ -409,6 +471,8 @@ function TopBar({
   customVars,
   onInsertVariable,
   onManageCustomVars,
+  darkMode,
+  onToggleDarkMode,
 }: {
   tenants: TopBarTenant[];
   tenantSearch: string;
@@ -426,6 +490,8 @@ function TopBar({
   customVars: CustomVariable[];
   onInsertVariable: (s: string) => void;
   onManageCustomVars: () => void;
+  darkMode: boolean;
+  onToggleDarkMode: () => void;
 }) {
   const [tenantOpen, setTenantOpen] = useState(false);
   const [varsOpen, setVarsOpen] = useState(false);
@@ -507,6 +573,31 @@ function TopBar({
           </p>
         )}
       </div>
+
+      {/* Toggle dark mode — sempre visivel, mesmo sem tenant selecionado */}
+      <button
+        type="button"
+        onClick={onToggleDarkMode}
+        title={darkMode ? 'Mudar para tema claro' : 'Mudar para tema escuro'}
+        aria-label="Alternar tema"
+        style={{
+          padding: 7,
+          border: '1px solid var(--outline-gray-2)',
+          borderRadius: 6,
+          backgroundColor: 'transparent',
+          color: 'var(--ink-gray-8)',
+          cursor: 'pointer',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {darkMode ? (
+          <Sun style={{ width: 16, height: 16 }} />
+        ) : (
+          <Moon style={{ width: 16, height: 16 }} />
+        )}
+      </button>
 
       {/* Acoes */}
       {selectedTenantId !== null && (
