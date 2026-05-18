@@ -1,19 +1,10 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/auth-context';
-import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { useLocalStorage } from '@/hooks/use-local-storage';
 import {
   Tooltip,
   TooltipContent,
@@ -21,255 +12,254 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import {
-  Building2,
-  LogOut,
-  Settings,
-  User,
-  LayoutDashboard,
-  MessageSquare,
-  Phone,
-  Users,
-  BarChart3,
-  ChevronLeft,
-  ChevronRight,
-} from 'lucide-react';
-import { getInitials } from '@/lib/utils';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Building2, MessageSquareCode, Settings, ChevronDown, LogOut } from 'lucide-react';
 
 const navigation = [
   {
     name: 'Tenants',
     href: '/super-admin/tenants',
     icon: Building2,
-    badge: 12,
-    badgeColor: 'bg-blue-500',
+  },
+  {
+    name: 'Prompt Smart Agent',
+    href: '/super-admin/bot-prompts',
+    icon: MessageSquareCode,
   },
   {
     name: 'Configurações SA',
     href: '/super-admin/settings',
     icon: Settings,
   },
-  // Divider - Dashboard Tenant
-  {
-    name: 'divider',
-    label: 'Dashboard Tenant',
-  },
-  {
-    name: 'Dashboard',
-    href: '/dashboard',
-    icon: LayoutDashboard,
-  },
-  {
-    name: 'Conversas',
-    href: '/dashboard/conversations',
-    icon: MessageSquare,
-    badge: 3,
-    badgeColor: 'bg-rose-500',
-  },
-  {
-    name: 'Contatos',
-    href: '/dashboard/contacts',
-    icon: Phone,
-  },
-  {
-    name: 'Usuários',
-    href: '/dashboard/users',
-    icon: Users,
-  },
-  {
-    name: 'Relatórios',
-    href: '/dashboard/reports',
-    icon: BarChart3,
-  },
-  {
-    name: 'Configurações',
-    href: '/dashboard/settings',
-    icon: Settings,
-  },
 ];
 
-export function SuperAdminSidebar() {
+function SidebarLink({
+  icon: Icon,
+  label,
+  href,
+  isCollapsed,
+  onClick,
+}: {
+  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+  label: string;
+  href?: string;
+  isCollapsed: boolean;
+  onClick?: () => void;
+}) {
   const pathname = usePathname();
+  const isActive = href
+    ? pathname === href || pathname.startsWith(href + '/')
+    : false;
+
+  const content = (
+    <button
+      onClick={onClick}
+      className="flex h-[30px] w-full cursor-pointer items-center rounded transition-all duration-300 ease-in-out focus:outline-none"
+      style={{
+        backgroundColor: isActive ? 'var(--surface-selected)' : undefined,
+        boxShadow: isActive
+          ? '0px 0px 1px rgba(0,0,0,0.45), 0px 1px 2px rgba(0,0,0,0.1)'
+          : undefined,
+      }}
+      onMouseEnter={(e) => {
+        if (!isActive) e.currentTarget.style.backgroundColor = 'var(--surface-gray-2)';
+      }}
+      onMouseLeave={(e) => {
+        if (!isActive) e.currentTarget.style.backgroundColor = '';
+      }}
+    >
+      <div
+        className="flex w-full items-center transition-all duration-300 ease-in-out"
+        style={{ padding: isCollapsed ? '4px 4px 4px 3px' : '7px 8px' }}
+      >
+        <div className="flex items-center truncate">
+          <Icon className="h-4 w-4 flex-shrink-0" style={{ color: 'var(--ink-gray-8)' }} />
+          <span
+            className="flex-1 flex-shrink-0 truncate text-sm transition-all duration-300 ease-in-out"
+            style={{
+              color: 'var(--ink-gray-8)',
+              marginLeft: isCollapsed ? 0 : '8px',
+              width: isCollapsed ? 0 : 'auto',
+              opacity: isCollapsed ? 0 : 1,
+              overflow: isCollapsed ? 'hidden' : undefined,
+            }}
+          >
+            {label}
+          </span>
+        </div>
+      </div>
+    </button>
+  );
+
+  if (href) {
+    const wrappedInLink = <Link href={href}>{content}</Link>;
+    if (isCollapsed) {
+      return (
+        <Tooltip>
+          <TooltipTrigger asChild>{wrappedInLink}</TooltipTrigger>
+          <TooltipContent side="right">
+            <p>{label}</p>
+          </TooltipContent>
+        </Tooltip>
+      );
+    }
+    return wrappedInLink;
+  }
+
+  if (isCollapsed) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{content}</TooltipTrigger>
+        <TooltipContent side="right">
+          <p>{label}</p>
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return content;
+}
+
+export function SuperAdminSidebar() {
   const { user, logout } = useAuth();
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useLocalStorage('superAdminSidebarCollapsed', false);
 
   return (
     <TooltipProvider delayDuration={0}>
-      <div className={cn(
-        "flex h-screen flex-col glass-sidebar transition-all duration-300 ease-in-out relative",
-        isCollapsed ? "w-20" : "w-64"
-      )}>
-        {/* Toggle Button */}
-        <button
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className="absolute -right-3 top-7 w-6 h-6 bg-slate-800 border border-white/10 rounded-full flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-700 transition-all z-50 shadow-lg"
-        >
-          {isCollapsed ? (
-            <ChevronRight className="w-4 h-4" />
-          ) : (
-            <ChevronLeft className="w-4 h-4" />
-          )}
-        </button>
-
-        {/* Logo Header */}
-        <div className={cn(
-          "flex items-center gap-3 px-5 py-5 border-b border-white/5",
-          isCollapsed && "justify-center px-3"
-        )}>
-          <div className="w-11 h-11 rounded-2xl bg-white flex items-center justify-center shadow-lg overflow-hidden flex-shrink-0">
-            <Image
-              src="/logo.png"
-              alt="Hotéis Reserva"
-              width={36}
-              height={36}
-              className="object-contain"
-              priority
-            />
-          </div>
-          {!isCollapsed && (
-            <div className="flex flex-col overflow-hidden">
-              <span className="text-white font-semibold text-sm whitespace-nowrap">Hotéis Reserva</span>
-              <span className="text-slate-400 text-xs whitespace-nowrap">Super Admin</span>
-            </div>
-          )}
-        </div>
-
-        {/* Navigation */}
-        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-          {navigation.map((item, index) => {
-            // Render divider
-            if (item.name === 'divider') {
-              if (isCollapsed) {
-                return (
-                  <div key={`divider-${index}`} className="py-3">
-                    <div className="border-t border-white/10" />
-                  </div>
-                );
-              }
-              return (
-                <div key={`divider-${index}`} className="pt-5 pb-2">
-                  <p className="px-3 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
-                    {item.label}
-                  </p>
-                </div>
-              );
-            }
-
-            const Icon = item.icon!;
-            const isActive = pathname === item.href;
-
-            const linkContent = (
-              <Link key={item.name} href={item.href!}>
-                <div
-                  className={cn(
-                    'sidebar-item group relative',
-                    isActive && 'active',
-                    isCollapsed && 'justify-center px-3'
-                  )}
-                >
-                  <Icon className={cn(
-                    'h-5 w-5 transition-colors flex-shrink-0',
-                    isActive ? 'text-white' : 'text-slate-400 group-hover:text-white'
-                  )} />
-                  {!isCollapsed && (
-                    <>
-                      <span className={cn(
-                        'flex-1 text-sm font-medium transition-colors whitespace-nowrap',
-                        isActive ? 'text-white' : 'text-slate-300 group-hover:text-white'
-                      )}>
-                        {item.name}
-                      </span>
-                      {item.badge && (
-                        <span className={cn(
-                          'badge-count text-white',
-                          item.badgeColor || 'bg-blue-500'
-                        )}>
-                          {item.badge}
-                        </span>
-                      )}
-                    </>
-                  )}
-                  {isCollapsed && item.badge && (
-                    <span className={cn(
-                      "absolute top-1 right-1 w-2 h-2 rounded-full",
-                      item.badgeColor || 'bg-blue-500'
-                    )} />
-                  )}
-                </div>
-              </Link>
-            );
-
-            if (isCollapsed) {
-              return (
-                <Tooltip key={item.name}>
-                  <TooltipTrigger asChild>
-                    {linkContent}
-                  </TooltipTrigger>
-                  <TooltipContent side="right" className="bg-slate-800 text-white border-slate-700">
-                    <p>{item.name}</p>
-                    {item.badge && (
-                      <span className="ml-2 text-xs text-slate-400">({item.badge})</span>
-                    )}
-                  </TooltipContent>
-                </Tooltip>
-              );
-            }
-
-            return linkContent;
-          })}
-        </nav>
-
-        {/* User Menu */}
-        <div className="border-t border-white/5 p-3">
+      <div
+        className="relative flex h-full flex-col justify-between transition-all duration-300 ease-in-out"
+        style={{ width: isCollapsed ? '48px' : '220px' }}
+      >
+        {/* Brand / User dropdown */}
+        <div className="p-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                className={cn(
-                  "w-full justify-start gap-3 px-3 py-6 hover:bg-white/5 rounded-xl transition-all",
-                  isCollapsed && "justify-center px-0"
-                )}
+              <button
+                className="flex h-12 items-center rounded-md transition-all duration-300 ease-in-out focus:outline-none"
+                style={{
+                  width: isCollapsed ? 'auto' : '100%',
+                  padding: isCollapsed ? '8px 0' : '8px',
+                }}
+                onMouseEnter={(e) => {
+                  if (!isCollapsed)
+                    e.currentTarget.style.backgroundColor = 'var(--surface-gray-2)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '';
+                }}
               >
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white font-semibold text-sm shadow-lg flex-shrink-0">
-                  {user ? getInitials(user.name) : 'SA'}
+                <div className="h-8 w-8 flex-shrink-0 rounded-lg overflow-hidden">
+                  <Image
+                    src="/logo.png"
+                    alt="Hotéis Reserva"
+                    width={32}
+                    height={32}
+                    className="object-contain"
+                    priority
+                  />
                 </div>
-                {!isCollapsed && (
-                  <>
-                    <div className="flex flex-col items-start text-left overflow-hidden">
-                      <span className="text-white font-medium text-sm truncate max-w-[120px]">{user?.name || 'Super Admin'}</span>
-                      <span className="text-slate-400 text-xs truncate max-w-[120px]">{user?.email}</span>
-                    </div>
-                    <LogOut className="ml-auto h-4 w-4 text-slate-400 flex-shrink-0" />
-                  </>
-                )}
-              </Button>
+                <div
+                  className="flex flex-1 flex-col text-left truncate transition-all duration-300 ease-in-out"
+                  style={{
+                    marginLeft: isCollapsed ? 0 : '8px',
+                    width: isCollapsed ? 0 : 'auto',
+                    opacity: isCollapsed ? 0 : 1,
+                    overflow: isCollapsed ? 'hidden' : undefined,
+                  }}
+                >
+                  <div
+                    className="text-sm font-medium leading-none truncate"
+                    style={{ color: 'var(--ink-gray-9)' }}
+                  >
+                    Hotéis Reserva
+                  </div>
+                  <div
+                    className="mt-1 text-xs leading-none truncate"
+                    style={{ color: 'var(--ink-gray-5)' }}
+                  >
+                    Super Admin
+                  </div>
+                </div>
+                <div
+                  className="transition-all duration-300 ease-in-out"
+                  style={{
+                    marginLeft: isCollapsed ? 0 : '8px',
+                    width: isCollapsed ? 0 : 'auto',
+                    opacity: isCollapsed ? 0 : 1,
+                    overflow: isCollapsed ? 'hidden' : undefined,
+                  }}
+                >
+                  <ChevronDown className="h-4 w-4" style={{ color: 'var(--ink-gray-5)' }} />
+                </div>
+              </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align={isCollapsed ? "center" : "end"}
-              side="top"
-              className="w-56 mb-2 rounded-ios-sm border-white/10 bg-slate-900/95 backdrop-blur-xl"
-            >
-              <div className="px-3 py-2 border-b border-white/5">
-                <p className="text-sm font-medium text-white">{user?.name}</p>
-                <p className="text-xs text-slate-400">Super Admin</p>
-              </div>
-              <DropdownMenuItem className="text-slate-300 focus:bg-white/5 focus:text-white cursor-pointer">
-                <User className="mr-2 h-4 w-4" />
-                Perfil
-              </DropdownMenuItem>
-              <DropdownMenuItem className="text-slate-300 focus:bg-white/5 focus:text-white cursor-pointer">
-                <Settings className="mr-2 h-4 w-4" />
-                Configurações
-              </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-white/5" />
-              <DropdownMenuItem
-                onClick={logout}
-                className="text-red-400 focus:bg-red-500/10 focus:text-red-400 cursor-pointer"
+            <DropdownMenuContent align="start" side="bottom" className="w-56">
+              <div
+                className="px-3 py-2"
+                style={{ borderBottom: '1px solid var(--outline-gray-1)' }}
               >
+                <p className="text-sm font-medium" style={{ color: 'var(--ink-gray-9)' }}>
+                  {user?.name || 'Super Admin'}
+                </p>
+                <p className="text-xs" style={{ color: 'var(--ink-gray-5)' }}>
+                  {user?.email}
+                </p>
+              </div>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={logout} className="cursor-pointer text-red-600">
                 <LogOut className="mr-2 h-4 w-4" />
                 Sair
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+        </div>
+
+        {/* Navigation */}
+        <div className="flex-1 overflow-y-auto">
+          <nav className="flex flex-col">
+            {navigation.map((item) => (
+              <div key={item.name} className="mx-2 my-[1.5px]">
+                <SidebarLink
+                  icon={item.icon}
+                  label={item.name}
+                  href={item.href}
+                  isCollapsed={isCollapsed}
+                />
+              </div>
+            ))}
+          </nav>
+        </div>
+
+        {/* Footer — collapse toggle */}
+        <div className="m-2 flex flex-col gap-1">
+          <SidebarLink
+            icon={({ className, style }) => (
+              <svg
+                className={className}
+                style={{
+                  ...style,
+                  transform: isCollapsed ? 'rotateY(180deg)' : undefined,
+                  transition: 'transform 0.3s ease-in-out',
+                }}
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M11 2L5 8l6 6" />
+              </svg>
+            )}
+            label={isCollapsed ? 'Expandir' : 'Recolher'}
+            isCollapsed={isCollapsed}
+            onClick={() => setIsCollapsed(!isCollapsed)}
+          />
         </div>
       </div>
     </TooltipProvider>
