@@ -57,26 +57,45 @@ export enum TenantPlan {
   ENTERPRISE = 'ENTERPRISE',
 }
 
+// Admin embed retornado dentro de Tenant pelo backend
+// (tenants.email costuma ser NULL — o email "do hotel" e o do TENANT_ADMIN).
+export interface TenantAdminUser {
+  id: string;
+  name: string;
+  email: string;
+  accessCode?: string | null;
+  mustChangePassword?: boolean;
+  firstLoginAt?: string | null;
+  passwordChangedAt?: string | null;
+  lastLoginAt?: string | null;
+  createdAt: string;
+}
+
 export interface Tenant {
   id: string;
   name: string;
   slug: string;
-  email: string;
+  email?: string | null; // raramente preenchido — preferir adminUser.email
   plan: TenantPlan;
   status: TenantStatus;
-  maxUsers: number;
-  maxContacts: number;
-  whatsappPhoneNumberId?: string;
-  whatsappBusinessAccountId?: string;
-  isWhatsappConnected: boolean;
+  maxUsers?: number;
+  maxContacts?: number;
+  whatsappPhoneNumberId?: string | null;
+  whatsappBusinessAccountId?: string | null;
+  // Backend devolve `whatsappConnected` (camelCase do snake `whatsapp_connected`).
+  // Mantemos `isWhatsappConnected` como alias opcional para compat com codigo
+  // mais antigo — qualquer chamador novo usa `whatsappConnected`.
+  whatsappConnected?: boolean;
+  isWhatsappConnected?: boolean;
   trialEndsAt?: string;
   createdAt: string;
   updatedAt: string;
-  _count?: {
-    users: number;
-    contacts: number;
-    conversations: number;
-  };
+  // Stats agregadas pelo TenantAdminService.list_tenants (camelCase).
+  userCount?: number;
+  conversationCount?: number;
+  unitCount?: number;
+  // Admin user embed (vem da relacao tenants.users WHERE role=TENANT_ADMIN).
+  adminUser?: TenantAdminUser | null;
 }
 
 // ============================================
