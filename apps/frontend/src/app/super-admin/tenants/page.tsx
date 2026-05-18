@@ -3,10 +3,17 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { tenantService } from '@/services/tenant.service';
-import { Plus, Building2, Users, MessageSquare } from 'lucide-react';
+import { Plus, Building2, Users, MessageSquare, Copy, Check, KeyRound } from 'lucide-react';
 import { CreateTenantDialog } from '@/components/super-admin/create-tenant-dialog';
-import { TenantStatus } from '@/types';
+import { Tenant, TenantStatus } from '@/types';
 import { formatDate } from '@/lib/utils';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 const STATUS_STYLE: Record<TenantStatus, { bg: string; color: string; label: string }> = {
   ACTIVE: { bg: 'var(--surface-green-2)', color: 'var(--ink-green-3)', label: 'Ativo' },
@@ -35,8 +42,148 @@ function StatusBadge({ status }: { status: TenantStatus }) {
   );
 }
 
+// Modal de detalhes do tenant — abre ao clicar no card.
+// Exibe os dados completos + codigo de acesso (HR-XXXXXX) com botao copiar.
+function TenantDetailDialog({
+  tenant,
+  open,
+  onOpenChange,
+}: {
+  tenant: Tenant | null;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  if (!tenant) return null;
+
+  const handleCopy = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // navigator.clipboard pode falhar em http sem contexto seguro — silencioso.
+    }
+  };
+
+  const adminEmail = tenant.adminUser?.email ?? tenant.email ?? '—';
+  const accessCode = tenant.adminUser?.accessCode ?? null;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent style={{ maxWidth: '560px' }}>
+        <DialogHeader>
+          <DialogTitle>{tenant.name}</DialogTitle>
+          <DialogDescription>@{tenant.slug}</DialogDescription>
+        </DialogHeader>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          {/* Codigo de acesso — destaque visual + botao copiar */}
+          {accessCode && (
+            <div
+              style={{
+                backgroundColor: 'var(--surface-blue-2)',
+                border: '1px solid var(--outline-blue-2)',
+                borderRadius: '8px',
+                padding: '12px 14px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '12px',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <KeyRound style={{ width: '16px', height: '16px', color: 'var(--ink-blue-3)' }} />
+                <div>
+                  <p style={{ fontSize: '11px', color: 'var(--ink-blue-3)', margin: 0, fontWeight: 500 }}>
+                    Código de acesso
+                  </p>
+                  <p
+                    style={{
+                      fontSize: '15px',
+                      fontFamily: 'monospace',
+                      fontWeight: 600,
+                      color: 'var(--ink-gray-9)',
+                      margin: '2px 0 0',
+                      letterSpacing: '0.5px',
+                    }}
+                  >
+                    {accessCode}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleCopy(accessCode)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  backgroundColor: 'transparent',
+                  border: '1px solid var(--outline-blue-2)',
+                  borderRadius: '6px',
+                  padding: '6px 10px',
+                  fontSize: '12px',
+                  color: 'var(--ink-blue-3)',
+                  cursor: 'pointer',
+                }}
+                aria-label="Copiar código de acesso"
+              >
+                {copied ? (
+                  <>
+                    <Check style={{ width: '14px', height: '14px' }} /> Copiado
+                  </>
+                ) : (
+                  <>
+                    <Copy style={{ width: '14px', height: '14px' }} /> Copiar
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+
+          {/* Grid de campos */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <DetailField label="Status" value={STATUS_STYLE[tenant.status]?.label ?? tenant.status} />
+            <DetailField label="Plano" value={tenant.plan} />
+            <DetailField label="Email do admin" value={adminEmail} />
+            <DetailField
+              label="WhatsApp"
+              value={tenant.whatsappConnected ? 'Conectado' : 'Não configurado'}
+            />
+            <DetailField label="Usuários" value={String(tenant.userCount ?? 0)} />
+            <DetailField label="Conversas" value={String(tenant.conversationCount ?? 0)} />
+            {tenant.unitCount !== undefined && (
+              <DetailField label="Unidades" value={String(tenant.unitCount)} />
+            )}
+            <DetailField label="Criado em" value={formatDate(tenant.createdAt)} />
+          </div>
+
+          {tenant.adminUser?.lastLoginAt && (
+            <DetailField
+              label="Último login do admin"
+              value={formatDate(tenant.adminUser.lastLoginAt)}
+            />
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function DetailField({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p style={{ fontSize: '11px', color: 'var(--ink-gray-5)', margin: '0 0 2px' }}>{label}</p>
+      <p style={{ fontSize: '13px', color: 'var(--ink-gray-9)', margin: 0 }}>{value}</p>
+    </div>
+  );
+}
+
 export default function TenantsPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['tenants'],
@@ -169,6 +316,15 @@ export default function TenantsPage() {
           {tenants.map((tenant) => (
             <div
               key={tenant.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => setSelectedTenant(tenant)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setSelectedTenant(tenant);
+                }
+              }}
               style={{
                 backgroundColor: 'var(--surface-white)',
                 border: '1px solid var(--outline-gray-1)',
@@ -178,6 +334,7 @@ export default function TenantsPage() {
                 flexDirection: 'column',
                 gap: '16px',
                 transition: 'border-color 0.15s ease',
+                cursor: 'pointer',
               }}
               onMouseEnter={(e) => {
                 (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--outline-gray-2)';
@@ -292,16 +449,37 @@ export default function TenantsPage() {
                 </span>
               </div>
 
-              {/* Footer */}
+              {/* Footer com codigo de acesso + data */}
               <div
                 style={{
                   paddingTop: '12px',
                   borderTop: '1px solid var(--outline-gray-1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '8px',
                 }}
               >
                 <p style={{ fontSize: '11px', color: 'var(--ink-gray-4)', margin: 0 }}>
                   Criado em {formatDate(tenant.createdAt)}
                 </p>
+                {tenant.adminUser?.accessCode && (
+                  <span
+                    style={{
+                      fontSize: '11px',
+                      fontFamily: 'monospace',
+                      fontWeight: 500,
+                      color: 'var(--ink-blue-3)',
+                      backgroundColor: 'var(--surface-blue-2)',
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                      letterSpacing: '0.3px',
+                    }}
+                    title="Código de acesso do admin"
+                  >
+                    {tenant.adminUser.accessCode}
+                  </span>
+                )}
               </div>
             </div>
           ))}
@@ -315,6 +493,15 @@ export default function TenantsPage() {
         onSuccess={() => {
           refetch();
           setIsCreateDialogOpen(false);
+        }}
+      />
+
+      {/* Modal de detalhes — abre ao clicar num card. */}
+      <TenantDetailDialog
+        tenant={selectedTenant}
+        open={selectedTenant !== null}
+        onOpenChange={(v) => {
+          if (!v) setSelectedTenant(null);
         }}
       />
 
